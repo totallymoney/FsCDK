@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "fantomas": {
+      "version": "6.2.3",
+      "commands": [
+        "fantomas"
+      ]
+    },
+    "amazon.lambda.tools": {
+      "version": "5.9.0",
+      "commands": [
+        "dotnet-lambda"
+      ]
+    }
+  }
+}

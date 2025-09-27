@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <IsTestProject>true</IsTestProject>
+        <GenerateProgramFile>false</GenerateProgramFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="FSharp.Core" />
+        <PackageReference Include="Expecto" />
+        <PackageReference Include="YoloDev.Expecto.TestSdk" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="AWSSDK.DynamoDBv2" />
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\FsCDK.fsproj" />
+    </ItemGroup>
+
+</Project>
