@@ -11,5 +11,5 @@ let appTests =
               let app = app { stacks [ stack { name "TestStack" } ] }
 
               Expect.equal app.Stacks[0].StackName "TestStack" "Stack name should match"
-              Expect.equal app.Version "48.0.0" "No version should be set"
+              Expect.equal app.Version "48.0.0" "CloudAssembly version should match"
           } ]

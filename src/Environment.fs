@@ -39,7 +39,11 @@ type StackPropsConfig =
       TerminationProtection: bool option
       AnalyticsReporting: bool option
       CrossRegionReferences: bool option
-      SuppressTemplateIndentation: bool option }
+      SuppressTemplateIndentation: bool option
+      NotificationArns: string list option
+      PermissionsBoundary: PermissionsBoundary option
+      PropertyInjectors: IPropertyInjector list option
+      Synthesizer: IStackSynthesizer option }
 
 type StackPropsBuilder() =
     member _.Yield _ : StackPropsConfig =
@@ -50,7 +54,11 @@ type StackPropsBuilder() =
           TerminationProtection = None
           AnalyticsReporting = None
           CrossRegionReferences = None
-          SuppressTemplateIndentation = None }
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None }
 
     member _.Zero() : StackPropsConfig =
         { Env = None
@@ -60,7 +68,11 @@ type StackPropsBuilder() =
           TerminationProtection = None
           AnalyticsReporting = None
           CrossRegionReferences = None
-          SuppressTemplateIndentation = None }
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None }
 
     member _.Run(config: StackPropsConfig) =
         let props = StackProps()
@@ -86,6 +98,17 @@ type StackPropsBuilder() =
 
         config.SuppressTemplateIndentation
         |> Option.iter (fun sti -> props.SuppressTemplateIndentation <- System.Nullable<bool>(sti))
+
+        config.NotificationArns
+        |> Option.iter (fun arns -> props.NotificationArns <- (arns |> List.toArray))
+
+        config.PermissionsBoundary
+        |> Option.iter (fun pb -> props.PermissionsBoundary <- pb)
+
+        config.PropertyInjectors
+        |> Option.iter (fun injectors -> props.PropertyInjectors <- (injectors |> List.toArray))
+
+        config.Synthesizer |> Option.iter (fun synth -> props.Synthesizer <- synth)
 
         props
 
@@ -122,3 +145,23 @@ type StackPropsBuilder() =
     member _.SuppressTemplateIndentation(config: StackPropsConfig, enabled: bool) =
         { config with
             SuppressTemplateIndentation = Some enabled }
+
+    [<CustomOperation("notificationArns")>]
+    member _.NotificationArns(config: StackPropsConfig, arns: string list) =
+        { config with
+            NotificationArns = Some arns }
+
+    [<CustomOperation("permissionsBoundary")>]
+    member _.PermissionsBoundary(config: StackPropsConfig, boundary: PermissionsBoundary) =
+        { config with
+            PermissionsBoundary = Some boundary }
+
+    [<CustomOperation("propertyInjectors")>]
+    member _.PropertyInjectors(config: StackPropsConfig, injectors: IPropertyInjector list) =
+        { config with
+            PropertyInjectors = Some injectors }
+
+    [<CustomOperation("synthesizer")>]
+    member _.Synthesizer(config: StackPropsConfig, synthesizer: IStackSynthesizer) =
+        { config with
+            Synthesizer = Some synthesizer }

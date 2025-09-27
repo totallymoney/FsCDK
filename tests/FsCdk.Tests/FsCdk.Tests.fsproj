@@ -17,6 +17,7 @@
     <ItemGroup>
         <Compile Include="DynamoDBTests.fs" />
         <Compile Include="AppTests.fs" />
+        <Compile Include="StackPropsTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>

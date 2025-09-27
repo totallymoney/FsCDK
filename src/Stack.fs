@@ -4,10 +4,7 @@ open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.SNS
-open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.SSM
-open Constructs
-
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
@@ -227,7 +224,7 @@ type AppBuilder() =
                 | Some p -> Stack(app, spec.Name, p)
                 | None -> Stack(app, spec.Name)
 
-            // Make version available to operations if needed
+            // Make a version available to operations if needed
             stackVersion |> Option.iter (fun v -> stack.Node.SetContext("stack-version", v))
 
             for op in spec.Operations do
