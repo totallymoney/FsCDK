@@ -65,7 +65,7 @@ type TableBuilder() =
         config.BillingMode |> Option.iter (fun mode -> props.BillingMode <- mode)
 
         config.RemovalPolicy
-        |> Option.iter (fun policy -> props.RemovalPolicy <- policy)
+        |> Option.iter (fun policy -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(policy))
 
         // Note: PointInTimeRecoverySpecification needs the enabled flag set
         config.PointInTimeRecovery

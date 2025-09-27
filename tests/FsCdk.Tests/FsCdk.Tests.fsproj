@@ -15,7 +15,9 @@
         <PackageReference Include="AWSSDK.DynamoDBv2" />
     </ItemGroup>
     <ItemGroup>
-        <Compile Include="Program.fs"/>
+        <Compile Include="DynamoDBTests.fs" />
+        <Compile Include="AppTests.fs" />
+        <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\..\src\FsCDK.fsproj" />

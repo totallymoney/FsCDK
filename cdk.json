@@ -1,5 +1,5 @@
 {
-  "app": "/usr/local/share/dotnet/dotnet run",
+  "app": "dotnet run --project tests/FsCdk.Tests/FsCdk.Tests.fsproj",
   "watch": {
     "include": [
       "**"

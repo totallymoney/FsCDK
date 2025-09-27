@@ -16,7 +16,7 @@
       <Compile Include="SQS.fs" />
       <Compile Include="Grants.fs" />
       <Compile Include="Stack.fs" />
-      <Compile Include="DSL.fs" />
+      <Compile Include="App.fs" />
     </ItemGroup>
 
   <ItemGroup>
