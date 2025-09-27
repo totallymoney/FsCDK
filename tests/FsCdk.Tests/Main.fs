@@ -1,7 +1,7 @@
 ﻿module Main
 
 open Expecto
+
 [<EntryPoint>]
 let main argv =
-        Tests.runTestsInAssemblyWithCLIArgs [ No_Spinner ] argv
-
+    Tests.runTestsInAssemblyWithCLIArgs [ No_Spinner ] argv
