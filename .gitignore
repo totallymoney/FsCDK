@@ -1,0 +1,71 @@
+# .NET
+bin/
+obj/
+artifacts/
+*.user
+*.userprefs
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.mdb
+.DS_Store
+*.swp
+*~
+
+# NuGet
+packages/
+*.nupkg
+.nuget/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.sln.docstates
+*.sln.ide/
+.vscode/
+
+# Rider
+.idea/
+*.iml
+
+# Test Results
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# AWS CDK
+cdk.out/
+.cdk.staging/
+node_modules/
+*.js
+*.d.ts
+!jest.config.js
+!cdk/jest.config.js
+
+# Environment files
+.env
+.env.local
+appsettings.Development.json
+appsettings.Local.json
+
+# Logs
+*.log
+logs/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+**/docker-compose.override.yml
+
+# Mac
+.DS_Store

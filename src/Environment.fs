@@ -1,0 +1,124 @@
+namespace FsCDK
+
+open Amazon.CDK
+open System.Collections.Generic
+
+// ============================================================================
+// Environment and StackProps Configuration DSL
+// ============================================================================
+
+// Environment configuration DSL
+type EnvironmentConfig =
+    { Account: string option
+      Region: string option }
+
+type EnvironmentBuilder() =
+    member _.Yield _ : EnvironmentConfig = { Account = None; Region = None }
+
+    member _.Zero() : EnvironmentConfig = { Account = None; Region = None }
+
+    member _.Run(config: EnvironmentConfig) =
+        let env = Environment()
+        config.Account |> Option.iter (fun acc -> env.Account <- acc)
+        config.Region |> Option.iter (fun reg -> env.Region <- reg)
+        env
+
+    [<CustomOperation("account")>]
+    member _.Account(config: EnvironmentConfig, accountId: string) =
+        { config with Account = Some accountId }
+
+    [<CustomOperation("region")>]
+    member _.Region(config: EnvironmentConfig, regionName: string) =
+        { config with Region = Some regionName }
+// StackProps configuration DSL
+type StackPropsConfig =
+    { Env: Environment option
+      Description: string option
+      StackName: string option
+      Tags: Map<string, string> option
+      TerminationProtection: bool option
+      AnalyticsReporting: bool option
+      CrossRegionReferences: bool option
+      SuppressTemplateIndentation: bool option }
+
+type StackPropsBuilder() =
+    member _.Yield _ : StackPropsConfig =
+        { Env = None
+          Description = None
+          StackName = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None }
+
+    member _.Zero() : StackPropsConfig =
+        { Env = None
+          Description = None
+          StackName = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None }
+
+    member _.Run(config: StackPropsConfig) =
+        let props = StackProps()
+
+        config.Env |> Option.iter (fun env -> props.Env <- env)
+        config.Description |> Option.iter (fun desc -> props.Description <- desc)
+        config.StackName |> Option.iter (fun name -> props.StackName <- name)
+
+        config.Tags
+        |> Option.iter (fun tags ->
+            let tagDict = Dictionary<string, string>()
+            tags |> Map.iter (fun k v -> tagDict.Add(k, v))
+            props.Tags <- tagDict)
+
+        config.TerminationProtection
+        |> Option.iter (fun tp -> props.TerminationProtection <- System.Nullable<bool>(tp))
+
+        config.AnalyticsReporting
+        |> Option.iter (fun ar -> props.AnalyticsReporting <- System.Nullable<bool>(ar))
+
+        config.CrossRegionReferences
+        |> Option.iter (fun crr -> props.CrossRegionReferences <- System.Nullable<bool>(crr))
+
+        config.SuppressTemplateIndentation
+        |> Option.iter (fun sti -> props.SuppressTemplateIndentation <- System.Nullable<bool>(sti))
+
+        props
+
+    [<CustomOperation("env")>]
+    member _.Environment(config: StackPropsConfig, env: Environment) = { config with Env = Some env }
+
+    [<CustomOperation("description")>]
+    member _.Description(config: StackPropsConfig, desc: string) = { config with Description = Some desc }
+
+    [<CustomOperation("stackName")>]
+    member _.StackName(config: StackPropsConfig, name: string) = { config with StackName = Some name }
+
+    [<CustomOperation("tags")>]
+    member _.Tags(config: StackPropsConfig, tags: (string * string) list) =
+        { config with
+            Tags = Some(tags |> Map.ofList) }
+
+    [<CustomOperation("terminationProtection")>]
+    member _.TerminationProtection(config: StackPropsConfig, enabled: bool) =
+        { config with
+            TerminationProtection = Some enabled }
+
+    [<CustomOperation("analyticsReporting")>]
+    member _.AnalyticsReporting(config: StackPropsConfig, enabled: bool) =
+        { config with
+            AnalyticsReporting = Some enabled }
+
+    [<CustomOperation("crossRegionReferences")>]
+    member _.CrossRegionReferences(config: StackPropsConfig, enabled: bool) =
+        { config with
+            CrossRegionReferences = Some enabled }
+
+    [<CustomOperation("suppressTemplateIndentation")>]
+    member _.SuppressTemplateIndentation(config: StackPropsConfig, enabled: bool) =
+        { config with
+            SuppressTemplateIndentation = Some enabled }

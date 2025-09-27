@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <GenerateProgramFile>false</GenerateProgramFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Include="DatadogConfig.fs" />
+      <Compile Include="DatadogLogsAspect.fs" />
+      <Compile Include="Environment.fs" />
+      <Compile Include="DynamoDB.fs" />
+      <Compile Include="Lambda.fs" />
+      <Compile Include="SNS.fs" />
+      <Compile Include="SQS.fs" />
+      <Compile Include="Grants.fs" />
+      <Compile Include="Stack.fs" />
+      <Compile Include="DSL.fs" />
+    </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Amazon.CDK.Lib" />
+    <PackageReference Include="Constructs" />
+  </ItemGroup>
+
+</Project>
