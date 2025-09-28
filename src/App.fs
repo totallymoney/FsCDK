@@ -15,6 +15,7 @@ module Builders =
     let stack = StackBuilder()
     let table = TableBuilder()
     let lambda = LambdaBuilder()
+    let dockerImageFunction = DockerImageFunctionBuilder()
     let topic = TopicBuilder()
     let queue = QueueBuilder()
     let subscription = SubscriptionBuilder()

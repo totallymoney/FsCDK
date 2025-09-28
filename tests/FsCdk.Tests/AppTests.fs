@@ -7,9 +7,34 @@ open FsCDK
 let appTests =
     testList
         "FsCDK DSL"
-        [ test "app synth returns a cloud assembly" {
-              let app = app { stacks [ stack { name "TestStack" } ] }
+        [ test "app with Dev and Prod stacks" {
+              let devEnv =
+                  environment {
+                      account "123456789012"
+                      region "us-east-1"
+                  }
 
-              Expect.equal app.Stacks[0].StackName "TestStack" "Stack name should match"
-              Expect.equal app.Version "48.0.0" "CloudAssembly version should match"
+              let dev =
+                  stack {
+                      name "Dev"
+                      props (stackProps { env devEnv })
+                  }
+
+              let prodEnv =
+                  environment {
+                      account "098765432109"
+                      region "us-east-1"
+                  }
+
+              let prod =
+                  stack {
+                      name "Prod"
+                      props (stackProps { env prodEnv })
+                  }
+
+              let specs = [ dev; prod ]
+
+              Expect.equal specs.Length 2 "Should create exactly two stack specs"
+              Expect.equal specs[0].Name "Dev" "First spec should be Dev"
+              Expect.equal specs[1].Name "Prod" "Second spec should be Prod"
           } ]

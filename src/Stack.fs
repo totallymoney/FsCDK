@@ -88,6 +88,22 @@ type StackBuilder() =
         { config with
             Operations = Seq.toList config.Operations @ [ op ] }
 
+    [<CustomOperation("addDockerImageLambda")>]
+    member _.AddDockerImageLambda(config: StackConfig, imageLambdaSpec: DockerImageFunctionSpec) : StackConfig =
+        let op =
+            fun (stack: Stack) ->
+                // Create code lazily to avoid JSII side-effects during spec construction
+                imageLambdaSpec.Props.Code <- DockerImageCode.FromImageAsset(imageLambdaSpec.Code)
+                // Apply deferred timeout to avoid jsii in tests
+                if imageLambdaSpec.TimeoutSeconds.HasValue then
+                    imageLambdaSpec.Props.Timeout <- Duration.Seconds(imageLambdaSpec.TimeoutSeconds.Value)
+                // Use the specified construct ID
+                DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
+                |> ignore
+
+        { config with
+            Operations = Seq.toList config.Operations @ [ op ] }
+
     [<CustomOperation("addGrant")>]
     member _.AddGrant(config: StackConfig, grantSpec: GrantSpec) : StackConfig =
         let op = fun (stack: Stack) -> Grants.processGrant stack grantSpec
