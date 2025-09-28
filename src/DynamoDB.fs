@@ -67,7 +67,6 @@ type TableBuilder() =
         config.RemovalPolicy
         |> Option.iter (fun policy -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(policy))
 
-        // Note: PointInTimeRecoverySpecification needs the enabled flag set
         config.PointInTimeRecovery
         |> Option.iter (fun enabled ->
             if enabled then
