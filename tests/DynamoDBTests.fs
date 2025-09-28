@@ -1,4 +1,4 @@
-module FsCdk.Tests.DynamoDBTests
+module FsCDK.Tests.DynamoDBTests
 
 open Expecto
 open FsCDK

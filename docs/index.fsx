@@ -1,11 +1,11 @@
 (**
 ---
-title: FsCdk
+title: FsCDK
 category: docs
 index: 0
 ---
 
-Welcome to the FsCdk documentation!
+Welcome to the FsCDK documentation!
 
 This is a minimal homepage to verify that FsDocs works for this repository.
 

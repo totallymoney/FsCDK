@@ -1,4 +1,4 @@
-module FsCdk.Tests.StackPropsTests
+module FsCDK.Tests.StackPropsTests
 
 open Expecto
 open FsCDK

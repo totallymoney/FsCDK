@@ -1,0 +1,28 @@
+<Project>
+
+  <PropertyGroup>
+    <RepositoryUrl>https://github.com/edgarfgp/FsCDK</RepositoryUrl>
+    <PackageProjectUrl>https://edgarfgp.github.io/FsCDK/</PackageProjectUrl>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <DisableImplicitSystemValueTupleReference>true</DisableImplicitSystemValueTupleReference>
+    <!-- Example ultra-simple styling and generation settings for FsDocs default template-->
+    <FsDocsLogoLink>https://github.com/edgarfgp/FsCDK</FsDocsLogoLink>
+    <FsDocsLicenseLink>https://github.com/edgarfgp/FsCDK/blob/main/LICENSE</FsDocsLicenseLink>
+    <FsDocsReleaseNotesLink>https://github.com/edgarfgp/FsCDK/blob/main/CHANGELOG.md</FsDocsReleaseNotesLink>
+  </PropertyGroup>
+
+  <!-- Shared NuGet Package info -->
+  <PropertyGroup>
+    <Authors>Edgar Gonzalez</Authors>
+    <PackageTags>F#;Declarative;AWS;CDK</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OtherFlags>$(OtherFlags) --test:GraphBasedChecking --test:ParallelOptimization --test:ParallelIlxGen --strict-indentation+ --realsig+</OtherFlags>
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+  </PropertyGroup>
+
+</Project>

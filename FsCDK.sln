@@ -9,14 +9,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{3E18BBE4-26A
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{36AEBCA8-FFAD-4C0F-8590-97198297D82B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsCdk.Tests", "tests\FsCdk.Tests\FsCdk.Tests.fsproj", "{ADCFE1A1-9D29-4FB6-ABC4-863CB4BF3266}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Solution Items", "_Solution Items", "{7D9FEEC0-C610-485F-ACE7-C1754853B04F}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Packages.props = Directory.Packages.props
-		workflows\build.yml = workflows\build.yml
 		build.fsx = build.fsx
+		CHANGELOG.md = CHANGELOG.md
+		.github\workflows\build.yml = .github\workflows\build.yml
+		.github\workflows\pull_request.yml = .github\workflows\pull_request.yml
+		Directory.Build.props = Directory.Build.props
 	EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsCdk.Tests", "tests\FsCdk.Tests.fsproj", "{1B14065B-D1A4-4A08-9E41-A4B5D2365A1D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,13 +34,13 @@ Global
 		{C84C6050-4009-4FDD-84A3-4DC8DDA89E58}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C84C6050-4009-4FDD-84A3-4DC8DDA89E58}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C84C6050-4009-4FDD-84A3-4DC8DDA89E58}.Release|Any CPU.Build.0 = Release|Any CPU
-		{ADCFE1A1-9D29-4FB6-ABC4-863CB4BF3266}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ADCFE1A1-9D29-4FB6-ABC4-863CB4BF3266}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ADCFE1A1-9D29-4FB6-ABC4-863CB4BF3266}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ADCFE1A1-9D29-4FB6-ABC4-863CB4BF3266}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B14065B-D1A4-4A08-9E41-A4B5D2365A1D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B14065B-D1A4-4A08-9E41-A4B5D2365A1D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B14065B-D1A4-4A08-9E41-A4B5D2365A1D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B14065B-D1A4-4A08-9E41-A4B5D2365A1D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C84C6050-4009-4FDD-84A3-4DC8DDA89E58} = {3E18BBE4-26AA-4A7F-97C2-2B1CA0C66378}
-		{ADCFE1A1-9D29-4FB6-ABC4-863CB4BF3266} = {36AEBCA8-FFAD-4C0F-8590-97198297D82B}
+		{1B14065B-D1A4-4A08-9E41-A4B5D2365A1D} = {36AEBCA8-FFAD-4C0F-8590-97198297D82B}
 	EndGlobalSection
 EndGlobal

@@ -1,4 +1,4 @@
-module FsCdk.Tests.DockerImageFunctionTests
+module FsCDK.Tests.DockerImageFunctionTests
 
 open Expecto
 open FsCDK
