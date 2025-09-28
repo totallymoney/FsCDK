@@ -64,7 +64,7 @@ let dynamo_table_dsl_tests =
                       billingMode BillingMode.PAY_PER_REQUEST
                   }
 
-              Expect.equal spec.Props.BillingMode BillingMode.PAY_PER_REQUEST "Billing mode should be set"
+              Expect.equal spec.Props.BillingMode.Value BillingMode.PAY_PER_REQUEST "Billing mode should be set"
           }
 
           test "applies removal policy when configured" {

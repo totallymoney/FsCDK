@@ -1,10 +1,12 @@
-name: Build and Test CDK
+name: CI and Pages
 
 on:
   push:
+  pull_request:
 
 jobs:
   build:
+    name: Build, Test, and Synth
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,20 +35,60 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Restore
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --configuration Release --nologo
-
-      - name: Test
-        run: dotnet test tests/FsCdk.Tests/FsCdk.Tests.fsproj --configuration Release --no-build --nologo
-
-      - name: CDK Synth
-        run: npx cdk synth
+      - name: Run CI via build.fsx
+        run: dotnet fsi ./build.fsx
 
       - name: Upload synthesized Cloud Assembly
         uses: actions/upload-artifact@v4
         with:
           name: cdk.out
           path: cdk.out
+
+  docs:
+    name: Build and Deploy Docs to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.nuget/packages
+            ~/.local/share/NuGet/v3-cache
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore local dotnet tools
+        run: dotnet tool restore
+
+      - name: Build FsDocs site
+        run: dotnet fsdocs build --properties Configuration=Release --eval --strict --output docs/_site
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

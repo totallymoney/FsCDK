@@ -33,20 +33,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Restore
-        run: dotnet restore
-
-      - name: Build
-        run: dotnet build --configuration Release --nologo
-
-      - name: Test
-        run: dotnet test tests/FsCdk.Tests/FsCdk.Tests.fsproj --configuration Release --no-build --nologo
+      - name: Run CI via build.fsx
+        run: dotnet fsi ./build.fsx
 
       - name: CDK Synth
         run: npx cdk synth
-
-      - name: Upload synthesized Cloud Assembly
-        uses: actions/upload-artifact@v4
-        with:
-          name: cdk.out
-          path: cdk.out
+#
+#  deploy:
+#    environment:
+#      name: github-pages
+#      url: ${{ steps.deployment.outputs.page_url }}
+#    runs-on: ubuntu-latest
+#    needs: build
+#    steps:
+#      - name: Deploy to GitHub Pages
+#        id: deployment
+#        uses: actions/deploy-pages@v4
