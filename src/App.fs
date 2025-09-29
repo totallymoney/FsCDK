@@ -33,4 +33,4 @@ module Builders =
             for op in spec.Operations do
                 op stack
 
-        cdkApp.Synth()
+        cdkApp.Synth() |> ignore

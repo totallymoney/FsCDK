@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net8.0": {
+      "Amazon.Lambda.Core": {
+        "type": "Direct",
+        "requested": "[2.7.0, )",
+        "resolved": "2.7.0",
+        "contentHash": "MUl+uIpB00yE8TwmW4ICEE3hd7DEgIWu94a7sFtAHoKz+skS52splHDxN/syId2E5STSYHCertdJSv7Qg1JdSA=="
+      },
+      "Amazon.Lambda.Serialization.SystemTextJson": {
+        "type": "Direct",
+        "requested": "[2.4.4, )",
+        "resolved": "2.4.4",
+        "contentHash": "iv/cvqFuZ3v3+NFDyof0IJZvU+4kdpzOe3pWSBwp9HB885I+D32WQxuid9V4GnvRynER9XnWMPaDmImX8qH5cA==",
+        "dependencies": {
+          "Amazon.Lambda.Core": "2.3.0"
+        }
+      }
+    }
+  }
+}

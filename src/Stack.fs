@@ -219,7 +219,7 @@ type AppBuilder() =
             for op in spec.Operations do
                 op stack
 
-        app.Synth()
+        app.Synth() |> ignore
 
     member _.RunWithApp(specs: StackSpec seq, app: App) =
         // Get version from CDK context (can be overridden per stack)
@@ -246,7 +246,7 @@ type AppBuilder() =
             for op in spec.Operations do
                 op stack
 
-        app.Synth()
+        app.Synth() |> ignore
 
     [<CustomOperation("stacks")>]
     member _.Stacks(_, specs: StackSpec seq) = specs

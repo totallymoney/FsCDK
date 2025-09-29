@@ -14,7 +14,7 @@ type LambdaConfig =
       ConstructId: string option // Optional custom construct ID
       Handler: string option
       Runtime: Runtime option
-      CodePath: string option
+      CodePath: Code option
       Environment: (string * string) seq
       Timeout: float option
       Memory: int option
@@ -73,7 +73,7 @@ type LambdaBuilder() =
 
         props.Code <-
             match config.CodePath with
-            | Some path -> Code.FromAsset(path)
+            | Some path -> path
             | None -> failwith "Lambda code path is required"
 
         // Environment variables
@@ -106,7 +106,13 @@ type LambdaBuilder() =
     member _.Runtime(config: LambdaConfig, value: Runtime) = { config with Runtime = Some value }
 
     [<CustomOperation("code")>]
-    member _.Code(config: LambdaConfig, path: string) = { config with CodePath = Some path }
+    member _.Code(config: LambdaConfig, path: string) =
+        { config with
+            CodePath = Some(Code.FromAsset(path)) }
+
+
+    [<CustomOperation("code")>]
+    member _.Code(config: LambdaConfig, path: Code) = { config with CodePath = Some path }
 
     [<CustomOperation("environment")>]
     member _.Environment(config: LambdaConfig, vars: (string * string) seq) = { config with Environment = vars }
