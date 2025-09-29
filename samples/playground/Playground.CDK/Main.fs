@@ -16,7 +16,7 @@ let main _ =
                           name "Playground-SayHello"
                           runtime Runtime.DOTNET_8
                           handler "Playground::Handlers::sayHello"
-                          code (Code.FromAsset("../samples/Playground/bin/Release/net8.0/publish"))
+                          code (Code.FromAsset("../Playground/bin/Release/net8.0/publish"))
                           timeout 30.0
                           memory 256
                           description "A simple hello world lambda"

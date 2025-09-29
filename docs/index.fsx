@@ -21,17 +21,10 @@ What you’ll see below:
 #r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
-open Amazon.CDK.CXAPI
 open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
 open Amazon.CDK.AWS.Lambda
-
-// A tiny helper to print what got built in-memory (no deploys on this page)
-let describeStack (assembly: CloudAssembly) =
-  // Print each synthesized stack's name from the CloudAssembly
-  for art in assembly.Stacks do
-    printfn "Stack %s" art.StackName
 
 // 1) Environments
 let devEnv =
@@ -170,17 +163,12 @@ let prodStack =
 
 // 4) Build an in-memory CDK app (no deploy here). We create stacks into an App
 // and ignore the synthesized assembly; we just want to show what's inside.
-let cdkApp: CloudAssembly =
-  app {
-    // You can pass context values here if needed
-    // context [ "key", "value" ]
+app {
+  // You can pass context values here if needed
+  // context [ "key", "value" ]
 
-    // Build both stacks into the same app
-    stacks [ devStack; prodStack ]
-  }
-
-
-// Print a friendly summary so the page shows something tangible
-describeStack cdkApp
+  // Build both stacks into the same app
+  stacks [ devStack; prodStack ]
+}
 
 (*** include-output ***)

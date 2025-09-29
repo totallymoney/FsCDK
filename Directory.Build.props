@@ -15,7 +15,8 @@
   <PropertyGroup>
     <Authors>Edgar Gonzalez</Authors>
     <PackageTags>F#;Declarative;AWS;CDK</PackageTags>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <!-- Only include README.md for packable projects that actually have the file in their project directory -->
+    <PackageReadmeFile Condition="'$(IsPackable)' == 'true' and Exists('README.md')">README.md</PackageReadmeFile>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
