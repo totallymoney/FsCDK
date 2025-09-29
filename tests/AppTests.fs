@@ -139,10 +139,20 @@ let appTests =
                       addTable usersTable
                   }
 
-              let specs = [ devStack; prodStack ]
+              // 4) Finally, build the app
+              let app =
+                  app {
 
+                      stacks [ devStack; prodStack ]
+                  }
 
-              Expect.equal specs.Length 2 "Should create exactly two stack specs"
-              Expect.equal specs[0].Name "Dev" "First spec should be Dev"
-              Expect.equal specs[1].Name "Prod" "Second spec should be Prod"
+              Expect.equal app.Account null "App account should be null"
+
+              // 5) Synthesize and validate
+
+              let cloudAssembly = app.Synth()
+
+              Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
+              Expect.equal cloudAssembly.Stacks[0].DisplayName "Dev" "First spec should be Dev"
+              Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod (users-prod)" "Second spec should be Prod"
           } ]

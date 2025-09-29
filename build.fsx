@@ -35,6 +35,11 @@ pipeline "ci" {
     run $"dotnet test {sln} -c {config} --no-build"
   }
 
+  stage "cdk synth" {
+    run "npx aws-cdk --version"
+    run "npx cdk synth"
+  }
+
   stage "docs" {
     run $"dotnet publish src -f net8.0 -c {config}"
     run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"

@@ -24,5 +24,7 @@ let main _ =
                   )
               } ]
     }
+    |> fun a -> a.Synth()
+    |> ignore
 
     0
