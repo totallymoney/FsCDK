@@ -44,6 +44,7 @@ pipeline "ci" {
   stage "cdk synth samples" {
     workingDir (__SOURCE_DIRECTORY__ </> "samples/playground/Playground.CDK")
     run "npx aws-cdk --version"
+    run $"dotnet publish ../Playground -c {config} -f net8.0"
     run "npx cdk synth"
   }
 
