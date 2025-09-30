@@ -97,4 +97,5 @@ module Builders =
     let queue name = QueueBuilder(name)
     let subscription = SubscriptionBuilder()
     let grant = GrantBuilder()
+    let importSource = ImportSourceBuilder()
     let app = AppBuilder()
