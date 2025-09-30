@@ -23,7 +23,6 @@ type Operation =
 // Stack and App Configuration DSL
 // ============================================================================
 
-// Stack configuration
 type StackConfig =
     { Name: string
       Environment: string option
@@ -47,7 +46,6 @@ type StackBuilder(name) =
           Props = None
           Operations = [] }
 
-    // Implicit yield overloads for individual spec types
     member _.Yield(tableSpec: TableSpec) : StackConfig =
         { Name = name
           Environment = None
@@ -97,6 +95,13 @@ type StackBuilder(name) =
           Props = None
           Operations = [ SubscriptionOp subSpec ] }
 
+    member _.Yield(props: StackProps) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = Some props
+          Operations = [] }
+
     member _.Zero() : StackConfig =
         { Name = name
           Environment = None
@@ -104,7 +109,6 @@ type StackBuilder(name) =
           Props = None
           Operations = [] }
 
-    // Combine multiple operations - essential for Pattern 2
     member _.Combine(state1: StackConfig, state2: StackConfig) : StackConfig =
         { Name = state1.Name
           Environment =
@@ -120,11 +124,9 @@ type StackBuilder(name) =
           Props = if state1.Props.IsSome then state1.Props else state2.Props
           Operations = state1.Operations @ state2.Operations }
 
-    // Delay for proper computation expression evaluation
     member _.Delay(f: unit -> StackConfig) : StackConfig = f ()
 
     member _.Run(config: StackConfig) : StackSpec =
-        // Stack name is required
         let name = config.Name
 
         { Name = name
@@ -133,16 +135,12 @@ type StackBuilder(name) =
           Props = config.Props
           Operations = config.Operations }
 
-    // Configuration operations
     [<CustomOperation("env")>]
     member _.Environment(config: StackConfig, value: string) : StackConfig =
         { config with Environment = Some value }
 
     [<CustomOperation("version")>]
     member _.Version(config: StackConfig, value: string) : StackConfig = { config with Version = Some value }
-
-    [<CustomOperation("props")>]
-    member _.Props(config: StackConfig, value: StackProps) : StackConfig = { config with Props = Some value }
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack

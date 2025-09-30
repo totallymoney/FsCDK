@@ -36,13 +36,15 @@ pipeline "ci" {
   }
 
   stage "cdk synth tests" {
+    workingDir (__SOURCE_DIRECTORY__ </> "tests")
     run "npx aws-cdk --version"
-    run "cd tests && npx cdk synth"
+    run "npx cdk synth"
   }
 
   stage "cdk synth samples" {
+    workingDir (__SOURCE_DIRECTORY__ </> "samples/playground/Playground.CDK")
     run "npx aws-cdk --version"
-    run "cd samples/Playground/Playground.CDK && npx cdk synth"
+    run "npx cdk synth"
   }
 
   stage "docs" {

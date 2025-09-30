@@ -90,6 +90,6 @@ let appTests =
 
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
               Expect.equal cloudAssembly.Stacks[0].DisplayName "Dev" "First spec should be Dev"
-              Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod" "Second spec should be Prod"
+              Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod (users-prod)" "Second spec should be Prod"
           } ]
     |> testSequenced
