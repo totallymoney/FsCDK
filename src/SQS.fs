@@ -10,7 +10,7 @@ open System.Collections.Generic
 
 // SQS Queue configuration DSL
 type QueueConfig =
-    { QueueName: string option
+    { QueueName: string
       ConstructId: string option // Optional custom construct ID
       VisibilityTimeout: float option // seconds
       MessageRetention: float option // seconds
@@ -27,9 +27,9 @@ type QueueSpec =
       DeadLetterQueueName: string option
       MaxReceiveCount: int option }
 
-type QueueBuilder() =
+type QueueBuilder(name: string) =
     member _.Yield _ : QueueConfig =
-        { QueueName = None
+        { QueueName = name
           ConstructId = None
           VisibilityTimeout = None
           MessageRetention = None
@@ -40,7 +40,7 @@ type QueueBuilder() =
           DelaySeconds = None }
 
     member _.Zero() : QueueConfig =
-        { QueueName = None
+        { QueueName = name
           ConstructId = None
           VisibilityTimeout = None
           MessageRetention = None
@@ -52,10 +52,7 @@ type QueueBuilder() =
 
     member _.Run(config: QueueConfig) : QueueSpec =
         // Queue name is required
-        let queueName =
-            match config.QueueName with
-            | Some name -> name
-            | None -> failwith "Queue name is required"
+        let queueName = config.QueueName
 
         // Construct ID defaults to queue name if not specified
         let constructId = config.ConstructId |> Option.defaultValue queueName
@@ -87,11 +84,6 @@ type QueueBuilder() =
           Props = props
           DeadLetterQueueName = config.DeadLetterQueueName
           MaxReceiveCount = config.MaxReceiveCount }
-
-    [<CustomOperation("name")>]
-    member _.Name(config: QueueConfig, queueName: string) =
-        { config with
-            QueueName = Some queueName }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: QueueConfig, id: string) = { config with ConstructId = Some id }

@@ -9,24 +9,13 @@ open Amazon.CDK.AWS.DynamoDB
 let dynamo_table_dsl_tests =
     testList
         "DynamoDB table DSL"
-        [ test "fails when table name is missing" {
-              let thrower () =
-                  table { partitionKey "pk" AttributeType.STRING } |> ignore
-
-              Expect.throws thrower "Table builder should throw when name is missing"
-          }
-
-          test "fails when partition key is missing" {
-              let thrower () = table { name "MyTable" } |> ignore
+        [ test "fails when partition key is missing" {
+              let thrower () = table "MyTable" { () } |> ignore
               Expect.throws thrower "Table builder should throw when partition key is missing"
           }
 
           test "defaults constructId to table name" {
-              let spec =
-                  table {
-                      name "Users"
-                      partitionKey "pk" AttributeType.STRING
-                  }
+              let spec = table "Users" { partitionKey "pk" AttributeType.STRING }
 
               Expect.equal spec.TableName "Users" "TableName should be set"
               Expect.equal spec.ConstructId "Users" "ConstructId should default to table name"
@@ -34,8 +23,7 @@ let dynamo_table_dsl_tests =
 
           test "uses custom constructId when provided" {
               let spec =
-                  table {
-                      name "Users"
+                  table "Users" {
                       constructId "UsersTable"
                       partitionKey "pk" AttributeType.STRING
                   }
@@ -45,8 +33,7 @@ let dynamo_table_dsl_tests =
 
           test "applies sort key when configured" {
               let spec =
-                  table {
-                      name "Orders"
+                  table "Orders" {
                       partitionKey "orderId" AttributeType.STRING
                       sortKey "createdAt" AttributeType.NUMBER
                   }
@@ -58,8 +45,7 @@ let dynamo_table_dsl_tests =
 
           test "applies billing mode when configured" {
               let spec =
-                  table {
-                      name "Billing"
+                  table "Billing" {
                       partitionKey "pk" AttributeType.STRING
                       billingMode BillingMode.PAY_PER_REQUEST
                   }
@@ -69,8 +55,7 @@ let dynamo_table_dsl_tests =
 
           test "applies removal policy when configured" {
               let spec =
-                  table {
-                      name "Tmp"
+                  table "Tmp" {
                       partitionKey "pk" AttributeType.STRING
                       removalPolicy RemovalPolicy.DESTROY
                   }
@@ -80,8 +65,7 @@ let dynamo_table_dsl_tests =
 
           test "enables point-in-time recovery when set to true" {
               let spec =
-                  table {
-                      name "History"
+                  table "History" {
                       partitionKey "pk" AttributeType.STRING
                       pointInTimeRecovery true
                   }
@@ -94,11 +78,7 @@ let dynamo_table_dsl_tests =
           }
 
           test "optional sort key remains unset when not provided" {
-              let spec =
-                  table {
-                      name "Simple"
-                      partitionKey "pk" AttributeType.STRING
-                  }
+              let spec = table "Simple" { partitionKey "pk" AttributeType.STRING }
 
               Expect.isNull (box spec.Props.SortKey) "SortKey should be null when not configured"
           } ]

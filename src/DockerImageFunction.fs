@@ -14,7 +14,7 @@ open System
 // JSII compatibility: expose and pass only .NET CDK types (no F#-specific types)
 
 type DockerImageFunctionConfig =
-    { FunctionName: string option
+    { FunctionName: string
       ConstructId: string option // Optional custom construct ID
       Code: string option
       Environment: (string * string) seq
@@ -29,9 +29,13 @@ type DockerImageFunctionSpec =
       TimeoutSeconds: System.Nullable<double>
       Props: DockerImageFunctionProps }
 
-type DockerImageFunctionBuilder() =
+type DockerImageFunctionBuilder(name: string) =
+    do
+        if System.String.IsNullOrWhiteSpace(name) then
+            failwith "Docker image function name is required"
+
     member _.Yield _ : DockerImageFunctionConfig =
-        { FunctionName = None
+        { FunctionName = name
           ConstructId = None
           Code = None
           Environment = []
@@ -40,7 +44,7 @@ type DockerImageFunctionBuilder() =
           Description = None }
 
     member _.Zero() : DockerImageFunctionConfig =
-        { FunctionName = None
+        { FunctionName = name
           ConstructId = None
           Code = None
           Environment = []
@@ -50,10 +54,7 @@ type DockerImageFunctionBuilder() =
 
     member _.Run(config: DockerImageFunctionConfig) : DockerImageFunctionSpec =
         // Function name is required
-        let lambdaName =
-            match config.FunctionName with
-            | Some name -> name
-            | None -> failwith "Lambda function name is required"
+        let lambdaName = config.FunctionName
 
         // Construct ID defaults to function name if not specified
         let constructId = config.ConstructId |> Option.defaultValue lambdaName
@@ -85,11 +86,6 @@ type DockerImageFunctionBuilder() =
              | Some t -> Nullable t
              | None -> Nullable())
           Props = props }
-
-    [<CustomOperation("functionName")>]
-    member _.FunctionName(config: DockerImageFunctionConfig, lambdaName: string) =
-        { config with
-            FunctionName = Some lambdaName }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: DockerImageFunctionConfig, id: string) = { config with ConstructId = Some id }

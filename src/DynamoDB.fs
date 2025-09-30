@@ -9,7 +9,7 @@ open Amazon.CDK.AWS.DynamoDB
 
 // Table configuration DSL
 type TableConfig =
-    { TableName: string option
+    { TableName: string
       ConstructId: string option // Optional custom construct ID
       PartitionKey: (string * AttributeType) option
       SortKey: (string * AttributeType) option
@@ -22,9 +22,9 @@ type TableSpec =
       ConstructId: string // Construct ID for CDK
       Props: TableProps }
 
-type TableBuilder() =
+type TableBuilder(name: string) =
     member _.Yield _ : TableConfig =
-        { TableName = None
+        { TableName = name
           ConstructId = None
           PartitionKey = None
           SortKey = None
@@ -33,7 +33,7 @@ type TableBuilder() =
           PointInTimeRecovery = None }
 
     member _.Zero() : TableConfig =
-        { TableName = None
+        { TableName = name
           ConstructId = None
           PartitionKey = None
           SortKey = None
@@ -43,10 +43,7 @@ type TableBuilder() =
 
     member _.Run(config: TableConfig) : TableSpec =
         // Table name is required
-        let tableName =
-            match config.TableName with
-            | Some name -> name
-            | None -> failwith "Table name is required"
+        let tableName = config.TableName
 
         // Construct ID defaults to table name if not specified
         let constructId = config.ConstructId |> Option.defaultValue tableName
@@ -76,11 +73,6 @@ type TableBuilder() =
         { TableName = tableName
           ConstructId = constructId
           Props = props }
-
-    [<CustomOperation("name")>]
-    member _.Name(config: TableConfig, tableName: string) =
-        { config with
-            TableName = Some tableName }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: TableConfig, id: string) = { config with ConstructId = Some id }
