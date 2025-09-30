@@ -35,9 +35,14 @@ pipeline "ci" {
     run $"dotnet test {sln} -c {config} --no-build"
   }
 
-  stage "cdk synth" {
+  stage "cdk synth tests" {
     run "npx aws-cdk --version"
-    run "npx cdk synth"
+    run "cd tests && npx cdk synth"
+  }
+
+  stage "cdk synth samples" {
+    run "npx aws-cdk --version"
+    run "cd samples/Playground/Playground.CDK && npx cdk synth"
   }
 
   stage "docs" {

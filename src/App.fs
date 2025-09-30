@@ -33,7 +33,7 @@ type AppBuilder() =
                 | Some p -> Stack(app, spec.Name, p)
                 | None -> Stack(app, spec.Name)
 
-            // Make version available to operations if needed
+            // Make a version available to operations if needed
             stackVersion |> Option.iter (fun v -> stack.Node.SetContext("stack-version", v))
 
             for op in spec.Operations do
@@ -49,7 +49,7 @@ type AppBuilder() =
             | v -> Some(v.ToString())
 
         for spec in specs do
-            // Use stack-specific version if provided, otherwise use global version from context
+            // Use a stack-specific version if provided, otherwise use global version from context
             let stackVersion =
                 match spec.Version with
                 | Some v -> Some v
