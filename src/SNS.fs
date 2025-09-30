@@ -13,7 +13,7 @@ open Constructs
 
 // SNS Topic configuration DSL
 type TopicConfig =
-    { TopicName: string option
+    { TopicName: string
       ConstructId: string option // Optional custom construct ID
       DisplayName: string option
       FifoTopic: bool option
@@ -24,16 +24,16 @@ type TopicSpec =
       ConstructId: string // Construct ID for CDK
       Props: TopicProps }
 
-type TopicBuilder() =
+type TopicBuilder(name: string) =
     member _.Yield _ : TopicConfig =
-        { TopicName = None
+        { TopicName = name
           ConstructId = None
           DisplayName = None
           FifoTopic = None
           ContentBasedDeduplication = None }
 
     member _.Zero() : TopicConfig =
-        { TopicName = None
+        { TopicName = name
           ConstructId = None
           DisplayName = None
           FifoTopic = None
@@ -41,11 +41,7 @@ type TopicBuilder() =
 
     member _.Run(config: TopicConfig) : TopicSpec =
         // Topic name is required
-        let topicName =
-            match config.TopicName with
-            | Some name -> name
-            | None -> failwith "Topic name is required"
-
+        let topicName = config.TopicName
         // Construct ID defaults to topic name if not specified
         let constructId = config.ConstructId |> Option.defaultValue topicName
 
@@ -64,11 +60,6 @@ type TopicBuilder() =
         { TopicName = topicName
           ConstructId = constructId
           Props = props }
-
-    [<CustomOperation("name")>]
-    member _.Name(config: TopicConfig, topicName: string) =
-        { config with
-            TopicName = Some topicName }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: TopicConfig, id: string) = { config with ConstructId = Some id }

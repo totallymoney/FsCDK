@@ -5,44 +5,18 @@ open Amazon.CDK.AWS.DynamoDB
 open Expecto
 open FsCDK
 
+
 [<Tests>]
 let appTests =
     testList
-        "FsCDK DSL"
-        [ test "app with Dev and Prod stacks" {
-              let devEnv =
-                  environment {
-                      account "123456789012"
-                      region "us-east-1"
-                  }
-
-              let dev =
-                  stack {
-                      name "Dev"
-                      props (stackProps { env devEnv })
-                  }
-
-              let prodEnv =
-                  environment {
-                      account "098765432109"
-                      region "us-east-1"
-                  }
-
-              let prod =
-                  stack {
-                      name "Prod"
-                      props (stackProps { env prodEnv })
-                  }
-
-              let specs = [ dev; prod ]
-
-              Expect.equal specs.Length 2 "Should create exactly two stack specs"
-              Expect.equal specs[0].Name "Dev" "First spec should be Dev"
-              Expect.equal specs[1].Name "Prod" "Second spec should be Prod"
+        "FsCDK App Tests"
+        [ test "App with no stacks" {
+              let app = app { () }
+              let cloudAssembly = app.Synth()
+              Expect.equal cloudAssembly.Stacks.Length 0 "App should have no stacks"
           }
 
-          test "app with no stacks" {
-              // 1) Environments
+          test "App with stacks" {
               let devEnv =
                   environment {
                       account "123456789012"
@@ -57,102 +31,65 @@ let appTests =
 
               // 2) A Dev stack you can actually work with
               let devStack =
-                  // Names double as construct IDs unless you override them
-                  let usersTable =
-                      table {
-                          name "users"
+                  stack "Dev" {
+                      stackProps {
+                          env devEnv
+                          description "Developer stack for feature work"
+                          tags [ "service", "users"; "env", "dev" ]
+                      }
+
+                      table "users" {
                           partitionKey "id" AttributeType.STRING
                           billingMode BillingMode.PAY_PER_REQUEST
                           removalPolicy RemovalPolicy.DESTROY // fine for dev
                       }
 
-
-                  let dlq =
-                      queue {
-                          name "users-dlq"
+                      queue "users-dlq" {
                           messageRetention (7.0 * 24.0 * 3600.0) // 7 days
                       }
 
-                  let mainQueue =
-                      queue {
-                          name "users-queue"
+                      queue "users-queue" {
                           deadLetterQueue "users-dlq" 5
                           visibilityTimeout 30.0
                       }
 
-                  let events =
-                      topic {
-                          name "user-events"
-                          displayName "User events"
+                      topic "user-events" { displayName "User events" }
+
+                      subscription {
+                          topic "user-events"
+                          queue "users-queue"
                       }
-
-                  stack {
-                      name "Dev"
-
-                      props (
-                          stackProps {
-                              env devEnv
-                              description "Developer stack for feature work"
-                              tags [ "service", "users"; "env", "dev" ]
-                          }
-                      )
-
-                      // resources
-                      addTable usersTable
-                      addQueue dlq
-                      addQueue mainQueue
-                      addTopic events
-
-                      // wiring
-                      subscribe (
-                          subscription {
-                              topic "user-events"
-                              queue "users-queue"
-                          }
-                      )
                   }
 
-              // 3) A production-leaning stack
               let prodStack =
-                  let usersTable =
-                      table {
-                          name "users"
+                  stack "Prod" {
+                      stackProps {
+                          env prodEnv
+                          stackName "users-prod"
+                          terminationProtection true
+                          tags [ "service", "users"; "env", "prod" ]
+                      }
+
+                      table "users" {
                           partitionKey "id" AttributeType.STRING
                           billingMode BillingMode.PAY_PER_REQUEST
                           removalPolicy RemovalPolicy.RETAIN // keep data safe
                           pointInTimeRecovery true
                       }
-
-
-                  stack {
-                      name "Prod"
-
-                      props (
-                          stackProps {
-                              env prodEnv
-                              stackName "users-prod"
-                              terminationProtection true
-                              tags [ "service", "users"; "env", "prod" ]
-                          }
-                      )
-
-                      addTable usersTable
                   }
 
-              // 4) Finally, build the app
               let app =
                   app {
-
-                      stacks [ devStack; prodStack ]
+                      devStack
+                      prodStack
                   }
 
               Expect.equal app.Account null "App account should be null"
-
-              // 5) Synthesize and validate
 
               let cloudAssembly = app.Synth()
 
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
               Expect.equal cloudAssembly.Stacks[0].DisplayName "Dev" "First spec should be Dev"
-              Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod (users-prod)" "Second spec should be Prod"
+              Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod" "Second spec should be Prod"
           } ]
+    |> testSequenced

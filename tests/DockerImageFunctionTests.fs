@@ -9,25 +9,20 @@ let docker_image_lambda_dsl_tests =
         "DockerImage Lambda DSL"
         [ test "fails when function name is missing" {
               let thrower () =
-                  dockerImageFunction { code (System.IO.Directory.GetCurrentDirectory()) }
-                  |> ignore
+                  dockerImageFunction null { code "./path/to/docker/context" } |> ignore
 
               Expect.throws thrower "Builder should throw when name is missing"
           }
 
           test "fails when image asset path is missing" {
               let thrower () =
-                  dockerImageFunction { functionName "ImgFn" } |> ignore
+                  dockerImageFunction "ImgFn" { () } |> ignore
 
               Expect.throws thrower "Builder should throw when image path is missing"
           }
 
           test "defaults constructId to function name" {
-              let spec =
-                  dockerImageFunction {
-                      functionName "UsersImgFn"
-                      code (System.IO.Directory.GetCurrentDirectory())
-                  }
+              let spec = dockerImageFunction "UsersImgFn" { code "./path/to/docker/context" }
 
               Expect.equal spec.FunctionName "UsersImgFn" "FunctionName should be set"
               Expect.equal spec.ConstructId "UsersImgFn" "ConstructId should default to function name"
@@ -35,10 +30,9 @@ let docker_image_lambda_dsl_tests =
 
           test "uses custom constructId when provided" {
               let spec =
-                  dockerImageFunction {
-                      functionName "UsersImgFn"
+                  dockerImageFunction "UsersImgFn" {
                       constructId "UsersImageFunction"
-                      code (System.IO.Directory.GetCurrentDirectory())
+                      code "./path/to/docker/context"
                   }
 
               Expect.equal spec.ConstructId "UsersImageFunction" "Custom constructId should be used"
@@ -46,8 +40,7 @@ let docker_image_lambda_dsl_tests =
 
           test "applies environment variables when configured" {
               let spec =
-                  dockerImageFunction {
-                      functionName "EnvImgFn"
+                  dockerImageFunction "EnvImgFn" {
                       code (System.IO.Directory.GetCurrentDirectory())
                       environment [ ("A", "1"); ("B", "2") ]
                   }
@@ -60,9 +53,8 @@ let docker_image_lambda_dsl_tests =
 
           test "applies optional properties when configured" {
               let spec =
-                  dockerImageFunction {
-                      functionName "OptsImgFn"
-                      code (System.IO.Directory.GetCurrentDirectory())
+                  dockerImageFunction "OptsImgFn" {
+                      code "./path/to/docker/context"
                       timeout 10.0
                       memorySize 512
                       description "My docker image function"

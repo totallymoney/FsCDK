@@ -11,8 +11,8 @@
       <Compile Include="DatadogLogsAspect.fs" />
       <Compile Include="Environment.fs" />
       <Compile Include="DynamoDB.fs" />
-      <Compile Include="DockerImageLambda.fs" />
-      <Compile Include="Lambda.fs" />
+      <Compile Include="DockerImageFunction.fs" />
+      <Compile Include="Function.fs" />
       <Compile Include="SNS.fs" />
       <Compile Include="SQS.fs" />
       <Compile Include="Grants.fs" />

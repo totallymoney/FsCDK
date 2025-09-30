@@ -1,28 +1,29 @@
 namespace FsCDK
 
 open Amazon.CDK
+open FsCDK.StackOperations
 
 
 type AppBuilder() =
     member _.Yield _ = []
 
+    member _.Yield(stackSpec: StackSpec) = [ stackSpec ]
+
     member _.Zero() = []
 
-    [<CustomOperation("stacks")>]
-    member _.Stacks(_, specs: StackSpec seq) = specs
+    member _.Combine(specs1: StackSpec list, specs2: StackSpec list) = specs1 @ specs2
 
-    member _.Run(specs: StackSpec seq) =
+    member _.Delay(f: unit -> StackSpec list) = f ()
+
+    member _.Run(specs: StackSpec list) =
         let app = App()
 
-
-        // Get version from CDK context (can be overridden per stack)
         let globalVersion =
             match app.Node.TryGetContext("version") with
             | null -> None
             | v -> Some(v.ToString())
 
         for spec in specs do
-            // Use a stack-specific version if provided, otherwise use global version from context
             let stackVersion =
                 match spec.Version with
                 | Some v -> Some v
@@ -33,23 +34,27 @@ type AppBuilder() =
                 | Some p -> Stack(app, spec.Name, p)
                 | None -> Stack(app, spec.Name)
 
-            // Make a version available to operations if needed
             stackVersion |> Option.iter (fun v -> stack.Node.SetContext("stack-version", v))
 
+            let config: StackConfig =
+                { Name = spec.Name
+                  Environment = spec.Environment
+                  Version = spec.Version
+                  Props = spec.Props
+                  Operations = [] }
+
             for op in spec.Operations do
-                op stack
+                processOperation stack config op
 
         app
 
-    member _.RunWithApp(specs: StackSpec seq, app: App) =
-        // Get version from CDK context (can be overridden per stack)
+    member _.RunWithApp(specs: StackSpec list, app: App) =
         let globalVersion =
             match app.Node.TryGetContext("version") with
             | null -> None
             | v -> Some(v.ToString())
 
         for spec in specs do
-            // Use a stack-specific version if provided, otherwise use global version from context
             let stackVersion =
                 match spec.Version with
                 | Some v -> Some v
@@ -60,11 +65,17 @@ type AppBuilder() =
                 | Some p -> Stack(app, spec.Name, p)
                 | None -> Stack(app, spec.Name)
 
-            // Make a version available to operations if needed
             stackVersion |> Option.iter (fun v -> stack.Node.SetContext("stack-version", v))
 
+            let config: StackConfig =
+                { Name = spec.Name
+                  Environment = spec.Environment
+                  Version = spec.Version
+                  Props = spec.Props
+                  Operations = [] }
+
             for op in spec.Operations do
-                op stack
+                processOperation stack config op
 
         app
 
@@ -78,12 +89,12 @@ type AppBuilder() =
 module Builders =
     let environment = EnvironmentBuilder()
     let stackProps = StackPropsBuilder()
-    let stack = StackBuilder()
-    let table = TableBuilder()
-    let lambda = LambdaBuilder()
-    let dockerImageFunction = DockerImageFunctionBuilder()
-    let topic = TopicBuilder()
-    let queue = QueueBuilder()
+    let stack name = StackBuilder(name)
+    let table name = TableBuilder(name)
+    let lambda name = FunctionBuilder(name)
+    let dockerImageFunction name = DockerImageFunctionBuilder(name)
+    let topic name = TopicBuilder(name)
+    let queue name = QueueBuilder(name)
     let subscription = SubscriptionBuilder()
     let grant = GrantBuilder()
     let app = AppBuilder()

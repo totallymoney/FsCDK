@@ -7,10 +7,9 @@ open Amazon.CDK.AWS.DynamoDB
 // DynamoDB Table Configuration DSL
 // ============================================================================
 
-// Table configuration DSL
 type TableConfig =
-    { TableName: string option
-      ConstructId: string option // Optional custom construct ID
+    { TableName: string
+      ConstructId: string option
       PartitionKey: (string * AttributeType) option
       SortKey: (string * AttributeType) option
       BillingMode: BillingMode option
@@ -19,12 +18,12 @@ type TableConfig =
 
 type TableSpec =
     { TableName: string
-      ConstructId: string // Construct ID for CDK
+      ConstructId: string
       Props: TableProps }
 
-type TableBuilder() =
+type TableBuilder(name: string) =
     member _.Yield _ : TableConfig =
-        { TableName = None
+        { TableName = name
           ConstructId = None
           PartitionKey = None
           SortKey = None
@@ -33,7 +32,7 @@ type TableBuilder() =
           PointInTimeRecovery = None }
 
     member _.Zero() : TableConfig =
-        { TableName = None
+        { TableName = name
           ConstructId = None
           PartitionKey = None
           SortKey = None
@@ -42,26 +41,19 @@ type TableBuilder() =
           PointInTimeRecovery = None }
 
     member _.Run(config: TableConfig) : TableSpec =
-        // Table name is required
-        let tableName =
-            match config.TableName with
-            | Some name -> name
-            | None -> failwith "Table name is required"
+        let tableName = config.TableName
 
-        // Construct ID defaults to table name if not specified
         let constructId = config.ConstructId |> Option.defaultValue tableName
 
         let props = TableProps(TableName = tableName)
 
-        // Set a partition key (required)
         match config.PartitionKey with
         | Some(name, attrType) -> props.PartitionKey <- Attribute(Name = name, Type = attrType)
         | None -> failwith "Partition key is required for DynamoDB table"
 
-        // Set optional properties
         config.SortKey
         |> Option.iter (fun (name, attrType) -> props.SortKey <- Attribute(Name = name, Type = attrType))
-        // Only set if explicitly configured
+
         config.BillingMode |> Option.iter (fun mode -> props.BillingMode <- mode)
 
         config.RemovalPolicy
@@ -76,11 +68,6 @@ type TableBuilder() =
         { TableName = tableName
           ConstructId = constructId
           Props = props }
-
-    [<CustomOperation("name")>]
-    member _.Name(config: TableConfig, tableName: string) =
-        { config with
-            TableName = Some tableName }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: TableConfig, id: string) = { config with ConstructId = Some id }
