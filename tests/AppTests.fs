@@ -112,7 +112,7 @@ let appTests =
                       stack "Dev" {
                           stackProps { env devEnv }
 
-                          Table(table "users" { partitionKey "id" AttributeType.STRING })
+                          table "users" { partitionKey "id" AttributeType.STRING }
                       }
 
                       stack "Prod" {
