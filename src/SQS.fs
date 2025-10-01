@@ -23,7 +23,11 @@ type QueueConfig =
 type QueueSpec =
     { QueueName: string
       ConstructId: string // Construct ID for CDK
-      Props: QueueProps
+      VisibilityTimeout: float option // seconds
+      MessageRetention: float option // seconds
+      FifoQueue: bool option
+      ContentBasedDeduplication: bool option
+      DelaySeconds: int option
       DeadLetterQueueName: string option
       MaxReceiveCount: int option }
 
@@ -57,31 +61,14 @@ type QueueBuilder(name: string) =
         // Construct ID defaults to queue name if not specified
         let constructId = config.ConstructId |> Option.defaultValue queueName
 
-        let props = QueueProps()
-
-        // Set queue name
-        props.QueueName <- queueName
-
-        // Set optional properties
-        config.VisibilityTimeout
-        |> Option.iter (fun v -> props.VisibilityTimeout <- Duration.Seconds(v))
-
-        config.MessageRetention
-        |> Option.iter (fun r -> props.RetentionPeriod <- Duration.Seconds(r))
-
-        config.FifoQueue |> Option.iter (fun f -> props.Fifo <- f)
-
-        config.ContentBasedDeduplication
-        |> Option.iter (fun c -> props.ContentBasedDeduplication <- c)
-
-        config.DelaySeconds
-        |> Option.iter (fun d -> props.DeliveryDelay <- Duration.Seconds(float d))
-
-        // Note: Dead letter queue configuration is handled separately in Stack builder
-
+        // Avoid using Amazon.CDK.Duration at spec-build time to keep tests jsii-free
         { QueueName = queueName
           ConstructId = constructId
-          Props = props
+          VisibilityTimeout = config.VisibilityTimeout
+          MessageRetention = config.MessageRetention
+          FifoQueue = config.FifoQueue
+          ContentBasedDeduplication = config.ContentBasedDeduplication
+          DelaySeconds = config.DelaySeconds
           DeadLetterQueueName = config.DeadLetterQueueName
           MaxReceiveCount = config.MaxReceiveCount }
 
@@ -116,41 +103,3 @@ type QueueBuilder(name: string) =
     member _.DelaySeconds(config: QueueConfig, seconds: int) =
         { config with
             DelaySeconds = Some seconds }
-
-module SQS =
-    // Queue processing function for Stack builder
-    let processQueue (stack: Stack) (queueSpec: QueueSpec) =
-        // Handle dead letter queue configuration if specified
-        let props =
-            match queueSpec.DeadLetterQueueName, queueSpec.MaxReceiveCount with
-            | Some dlqName, Some maxReceive ->
-                // Find the DLQ in the stack first if it exists
-                try
-                    let dlq = stack.Node.FindChild(dlqName) :?> Queue
-                    let dlqSpec = DeadLetterQueue(Queue = dlq, MaxReceiveCount = maxReceive)
-                    // Create new props with DLQ configured
-                    let propsWithDlq = QueueProps()
-                    // Copy all properties from original spec
-                    propsWithDlq.QueueName <- queueSpec.Props.QueueName
-
-                    if queueSpec.Props.VisibilityTimeout <> null then
-                        propsWithDlq.VisibilityTimeout <- queueSpec.Props.VisibilityTimeout
-
-                    if queueSpec.Props.RetentionPeriod <> null then
-                        propsWithDlq.RetentionPeriod <- queueSpec.Props.RetentionPeriod
-
-                    propsWithDlq.Fifo <- queueSpec.Props.Fifo
-                    propsWithDlq.ContentBasedDeduplication <- queueSpec.Props.ContentBasedDeduplication
-
-                    if queueSpec.Props.DeliveryDelay <> null then
-                        propsWithDlq.DeliveryDelay <- queueSpec.Props.DeliveryDelay
-                    // Set the DLQ
-                    propsWithDlq.DeadLetterQueue <- dlqSpec
-                    propsWithDlq
-                with ex ->
-                    printfn $"Warning: Could not configure DLQ for queue %s{queueSpec.QueueName}: %s{ex.Message}"
-                    queueSpec.Props
-            | _ -> queueSpec.Props
-
-        // Use the specified construct ID and configured props
-        Queue(stack, queueSpec.ConstructId, props) |> ignore

@@ -4,6 +4,7 @@ open Expecto
 open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
+open Amazon.CDK.AWS.S3
 
 [<Tests>]
 let dynamo_table_dsl_tests =
@@ -48,6 +49,11 @@ let dynamo_table_dsl_tests =
                   table "Billing" {
                       partitionKey "pk" AttributeType.STRING
                       billingMode BillingMode.PAY_PER_REQUEST
+
+                      importSource
+                          { new IImportSourceSpecification with
+                              member this.Bucket = failwith "todo"
+                              member this.InputFormat = failwith "todo" }
                   }
 
               Expect.equal spec.Props.BillingMode.Value BillingMode.PAY_PER_REQUEST "Billing mode should be set"
@@ -81,4 +87,44 @@ let dynamo_table_dsl_tests =
               let spec = table "Simple" { partitionKey "pk" AttributeType.STRING }
 
               Expect.isNull (box spec.Props.SortKey) "SortKey should be null when not configured"
+          }
+
+          test "applies import source when configured via class" {
+              let app = App()
+              let stack = Stack(app, "Test")
+              let bucket = Bucket(stack, "Bucket")
+              let importSpec = ImportSourceSpecification()
+              importSpec.Bucket <- bucket
+              importSpec.InputFormat <- InputFormat.DynamoDBJson()
+              importSpec.KeyPrefix <- "prefix"
+
+              let spec =
+                  table "Import" {
+                      partitionKey "pk" AttributeType.STRING
+                      importSource importSpec
+                  }
+
+              Expect.isNotNull (box spec.Props.ImportSource) "ImportSource should be set"
+          }
+
+          test "applies import source when configured via builder" {
+              let app = App()
+              let stack = Stack(app, "Test2")
+              let myBucket = Bucket(stack, "Bucket2")
+
+              let myImport =
+                  importSource {
+                      bucket myBucket
+                      inputFormat (InputFormat.DynamoDBJson())
+                      keyPrefix "prefix"
+                  }
+
+              let spec =
+                  table "Import2" {
+                      partitionKey "pk" AttributeType.STRING
+                      importSource myImport
+                  }
+
+              Expect.isNotNull (box spec.Props.ImportSource) "ImportSource should be set via builder"
           } ]
+    |> testSequenced

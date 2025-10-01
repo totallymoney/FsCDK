@@ -2,24 +2,25 @@ namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
+open Amazon.CDK.AWS.S3
 
 // ============================================================================
 // DynamoDB Table Configuration DSL
 // ============================================================================
 
-// Table configuration DSL
 type TableConfig =
     { TableName: string
-      ConstructId: string option // Optional custom construct ID
+      ConstructId: string option
       PartitionKey: (string * AttributeType) option
       SortKey: (string * AttributeType) option
       BillingMode: BillingMode option
       RemovalPolicy: RemovalPolicy option
-      PointInTimeRecovery: bool option }
+      PointInTimeRecovery: bool option
+      ImportSource: IImportSourceSpecification option }
 
 type TableSpec =
     { TableName: string
-      ConstructId: string // Construct ID for CDK
+      ConstructId: string
       Props: TableProps }
 
 type TableBuilder(name: string) =
@@ -30,7 +31,8 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = None }
+          PointInTimeRecovery = None
+          ImportSource = None }
 
     member _.Zero() : TableConfig =
         { TableName = name
@@ -39,26 +41,23 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = None }
+          PointInTimeRecovery = None
+          ImportSource = None }
 
     member _.Run(config: TableConfig) : TableSpec =
-        // Table name is required
         let tableName = config.TableName
 
-        // Construct ID defaults to table name if not specified
         let constructId = config.ConstructId |> Option.defaultValue tableName
 
         let props = TableProps(TableName = tableName)
 
-        // Set a partition key (required)
         match config.PartitionKey with
         | Some(name, attrType) -> props.PartitionKey <- Attribute(Name = name, Type = attrType)
         | None -> failwith "Partition key is required for DynamoDB table"
 
-        // Set optional properties
         config.SortKey
         |> Option.iter (fun (name, attrType) -> props.SortKey <- Attribute(Name = name, Type = attrType))
-        // Only set if explicitly configured
+
         config.BillingMode |> Option.iter (fun mode -> props.BillingMode <- mode)
 
         config.RemovalPolicy
@@ -69,6 +68,8 @@ type TableBuilder(name: string) =
             if enabled then
                 props.PointInTimeRecoverySpecification <-
                     PointInTimeRecoverySpecification(PointInTimeRecoveryEnabled = true))
+
+        config.ImportSource |> Option.iter (fun spec -> props.ImportSource <- spec)
 
         { TableName = tableName
           ConstructId = constructId
@@ -99,3 +100,73 @@ type TableBuilder(name: string) =
     member _.PointInTimeRecovery(config: TableConfig, enabled: bool) =
         { config with
             PointInTimeRecovery = Some enabled }
+
+    [<CustomOperation("importSource")>]
+    member _.ImportSource(config: TableConfig, spec: IImportSourceSpecification) =
+        { config with ImportSource = Some spec }
+
+// ============================================================================
+// ImportSourceSpecification Builder DSL
+// ============================================================================
+
+type ImportSourceConfig =
+    { Bucket: IBucket option
+      InputFormat: InputFormat option
+      BucketOwner: string option
+      CompressionType: InputCompressionType option
+      KeyPrefix: string option }
+
+type ImportSourceBuilder() =
+    member _.Yield _ : ImportSourceConfig =
+        { Bucket = None
+          InputFormat = None
+          BucketOwner = None
+          CompressionType = None
+          KeyPrefix = None }
+
+    member _.Zero() : ImportSourceConfig =
+        { Bucket = None
+          InputFormat = None
+          BucketOwner = None
+          CompressionType = None
+          KeyPrefix = None }
+
+    member _.Run(config: ImportSourceConfig) : IImportSourceSpecification =
+        let spec = ImportSourceSpecification()
+
+        let bucket =
+            match config.Bucket with
+            | Some b -> b
+            | None -> failwith "ImportSource.bucket is required"
+
+        let input =
+            match config.InputFormat with
+            | Some i -> i
+            | None -> failwith "ImportSource.inputFormat is required"
+
+        spec.Bucket <- bucket
+        spec.InputFormat <- input
+
+        config.BucketOwner |> Option.iter (fun o -> spec.BucketOwner <- o)
+        config.CompressionType |> Option.iter (fun c -> spec.CompressionType <- c)
+        config.KeyPrefix |> Option.iter (fun k -> spec.KeyPrefix <- k)
+
+        spec :> IImportSourceSpecification
+
+    [<CustomOperation("bucket")>]
+    member _.Bucket(config: ImportSourceConfig, bucket: IBucket) = { config with Bucket = Some bucket }
+
+    [<CustomOperation("inputFormat")>]
+    member _.InputFormat(config: ImportSourceConfig, input: InputFormat) =
+        { config with InputFormat = Some input }
+
+    [<CustomOperation("bucketOwner")>]
+    member _.BucketOwner(config: ImportSourceConfig, owner: string) =
+        { config with BucketOwner = Some owner }
+
+    [<CustomOperation("compressionType")>]
+    member _.CompressionType(config: ImportSourceConfig, c: InputCompressionType) =
+        { config with CompressionType = Some c }
+
+    [<CustomOperation("keyPrefix")>]
+    member _.KeyPrefix(config: ImportSourceConfig, prefix: string) = { config with KeyPrefix = Some prefix }

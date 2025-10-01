@@ -4,27 +4,25 @@ open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.SNS
-open Amazon.CDK.AWS.SSM
+open Amazon.CDK.AWS.SQS
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
 // ============================================================================
 
 type Operation =
-    | Table of TableSpec
-    | Function of FunctionSpec
-    | DockerImageFunction of DockerImageFunctionSpec
-    | Grant of GrantSpec
-    | Topic of TopicSpec
-    | Queue of QueueSpec
-    | Subscription of SubscriptionSpec
-    | Datadog of bool
+    | TableOp of TableSpec
+    | FunctionOp of FunctionSpec
+    | DockerImageFunctionOp of DockerImageFunctionSpec
+    | GrantOp of GrantSpec
+    | TopicOp of TopicSpec
+    | QueueOp of QueueSpec
+    | SubscriptionOp of SubscriptionSpec
 
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
 
-// Stack configuration
 type StackConfig =
     { Name: string
       Environment: string option
@@ -48,13 +46,61 @@ type StackBuilder(name) =
           Props = None
           Operations = [] }
 
-    // Allow yielding operations directly - this is the key for Pattern 2
-    member _.Yield(op: Operation) : StackConfig =
+    member _.Yield(tableSpec: TableSpec) : StackConfig =
         { Name = name
           Environment = None
           Version = None
           Props = None
-          Operations = [ op ] }
+          Operations = [ TableOp tableSpec ] }
+
+    member _.Yield(funcSpec: FunctionSpec) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = None
+          Operations = [ FunctionOp funcSpec ] }
+
+    member _.Yield(dockerSpec: DockerImageFunctionSpec) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = None
+          Operations = [ DockerImageFunctionOp dockerSpec ] }
+
+    member _.Yield(grantSpec: GrantSpec) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = None
+          Operations = [ GrantOp grantSpec ] }
+
+    member _.Yield(topicSpec: TopicSpec) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = None
+          Operations = [ TopicOp topicSpec ] }
+
+    member _.Yield(queueSpec: QueueSpec) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = None
+          Operations = [ QueueOp queueSpec ] }
+
+    member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = None
+          Operations = [ SubscriptionOp subSpec ] }
+
+    member _.Yield(props: StackProps) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = Some props
+          Operations = [] }
 
     member _.Zero() : StackConfig =
         { Name = name
@@ -63,7 +109,6 @@ type StackBuilder(name) =
           Props = None
           Operations = [] }
 
-    // Combine multiple operations - essential for Pattern 2
     member _.Combine(state1: StackConfig, state2: StackConfig) : StackConfig =
         { Name = state1.Name
           Environment =
@@ -79,11 +124,9 @@ type StackBuilder(name) =
           Props = if state1.Props.IsSome then state1.Props else state2.Props
           Operations = state1.Operations @ state2.Operations }
 
-    // Delay for proper computation expression evaluation
     member _.Delay(f: unit -> StackConfig) : StackConfig = f ()
 
     member _.Run(config: StackConfig) : StackSpec =
-        // Stack name is required
         let name = config.Name
 
         { Name = name
@@ -92,16 +135,12 @@ type StackBuilder(name) =
           Props = config.Props
           Operations = config.Operations }
 
-    // Configuration operations
     [<CustomOperation("env")>]
     member _.Environment(config: StackConfig, value: string) : StackConfig =
         { config with Environment = Some value }
 
     [<CustomOperation("version")>]
     member _.Version(config: StackConfig, value: string) : StackConfig = { config with Version = Some value }
-
-    [<CustomOperation("props")>]
-    member _.Props(config: StackConfig, value: StackProps) : StackConfig = { config with Props = Some value }
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -111,71 +150,53 @@ module StackOperations =
     // Process a single operation on a stack
     let processOperation (stack: Stack) (config: StackConfig) (operation: Operation) : unit =
         match operation with
-        | Table tableSpec ->
-            Amazon.CDK.AWS.DynamoDB.Table(stack, tableSpec.ConstructId, tableSpec.Props)
-            |> ignore
+        | TableOp tableSpec -> Table(stack, tableSpec.ConstructId, tableSpec.Props) |> ignore
 
-        | Function lambdaSpec ->
-            Amazon.CDK.AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
-            |> ignore
+        | FunctionOp lambdaSpec -> Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props) |> ignore
 
-        | DockerImageFunction imageLambdaSpec ->
+        | DockerImageFunctionOp imageLambdaSpec ->
             // Create code lazily to avoid JSII side effects during spec construction
             imageLambdaSpec.Props.Code <- DockerImageCode.FromImageAsset(imageLambdaSpec.Code)
             // Apply deferred timeout to avoid jsii in tests
             if imageLambdaSpec.TimeoutSeconds.HasValue then
                 imageLambdaSpec.Props.Timeout <- Duration.Seconds(imageLambdaSpec.TimeoutSeconds.Value)
 
-            Amazon.CDK.AWS.Lambda.DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
+            DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
             |> ignore
 
-        | Grant grantSpec -> Grants.processGrant stack grantSpec
+        | GrantOp grantSpec -> Grants.processGrant stack grantSpec
 
-        | Topic topicSpec ->
-            Amazon.CDK.AWS.SNS.Topic(stack, topicSpec.ConstructId, topicSpec.Props)
-            |> ignore
+        | TopicOp topicSpec -> Topic(stack, topicSpec.ConstructId, topicSpec.Props) |> ignore
 
-        | Queue queueSpec -> SQS.processQueue stack queueSpec
+        | QueueOp queueSpec ->
+            // Build QueueProps from spec (convert primitives to Duration etc.)
+            let props = QueueProps()
+            props.QueueName <- queueSpec.QueueName
 
-        | Subscription subscriptionSpec -> SNS.processSubscription stack subscriptionSpec
+            queueSpec.VisibilityTimeout
+            |> Option.iter (fun v -> props.VisibilityTimeout <- Duration.Seconds(v))
 
-        | Datadog enabled ->
-            if enabled then
-                // Get env and version from the stack context or config
-                let env =
-                    match config.Environment with
-                    | Some e -> e
-                    | None ->
-                        match stack.Node.TryGetContext("environment") with
-                        | null -> "dev"
-                        | e -> e.ToString()
+            queueSpec.MessageRetention
+            |> Option.iter (fun r -> props.RetentionPeriod <- Duration.Seconds(r))
 
-                let version =
-                    match config.Version with
-                    | Some v -> v
-                    | None ->
-                        match stack.Node.TryGetContext("stack-version") with
-                        | null ->
-                            match stack.Node.TryGetContext("version") with
-                            | null -> "local-dev"
-                            | v -> v.ToString()
-                        | v -> v.ToString()
+            queueSpec.FifoQueue |> Option.iter (fun f -> props.Fifo <- f)
 
-                // Find all Function constructs in the stack and configure Datadog
-                for child in stack.Node.Children do
-                    match child with
-                    | :? Function as lambda ->
-                        // Configure Datadog for the Lambda function
-                        let settings = DatadogConfig.getDefaultSettings env version
-                        DatadogConfig.configureDatadogForLambda stack lambda settings
-                    | _ -> ()
+            queueSpec.ContentBasedDeduplication
+            |> Option.iter (fun c -> props.ContentBasedDeduplication <- c)
 
-                // Configure Datadog log forwarding
-                printfn $"Datadog integration enabled for stack: {stack.StackName}"
+            queueSpec.DelaySeconds
+            |> Option.iter (fun d -> props.DeliveryDelay <- Duration.Seconds(float d))
 
-                // Get the Datadog forwarder ARN from SSM
-                let ddForwarderArn =
-                    StringParameter.ValueForStringParameter(stack, "/datadog/forwarder-arn")
+            match queueSpec.DeadLetterQueueName, queueSpec.MaxReceiveCount with
+            | Some dlqName, Some maxReceive ->
+                try
+                    let dlq = stack.Node.FindChild(dlqName) :?> Queue
+                    let dlqSpec = DeadLetterQueue(Queue = dlq, MaxReceiveCount = maxReceive)
+                    props.DeadLetterQueue <- dlqSpec
+                with ex ->
+                    printfn $"Warning: Could not configure DLQ for queue %s{queueSpec.QueueName}: %s{ex.Message}"
+            | _ -> ()
 
-                // Use the module-based approach for simplicity and clarity
-                DatadogLogSubscription.configureStackLogSubscriptions stack ddForwarderArn
+            Queue(stack, queueSpec.ConstructId, props) |> ignore
+
+        | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec

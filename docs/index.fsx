@@ -41,18 +41,22 @@ let prodEnv =
 
 // 2) A Dev stack you can actually work with
 let devStack =
-  // Names double as construct IDs unless you override them
-  let usersTable =
-    table {
-      name "users"
+  stack "Dev" {
+    // Attach StackProps implicitly via nested builder
+    stackProps {
+      env devEnv
+      description "Developer stack for feature work"
+      tags [ "service", "users"; "env", "dev" ]
+    }
+
+    // resources
+    table "users" {
       partitionKey "id" AttributeType.STRING
       billingMode BillingMode.PAY_PER_REQUEST
       removalPolicy RemovalPolicy.DESTROY // fine for dev
     }
 
-  let usersApi =
-    lambda {
-      name "users-api-dev"
+    lambda "users-api-dev" {
       handler "Users::Handler::FunctionHandler"
       runtime Runtime.DOTNET_8
       code "./examples/lambdas/users" // any folder with your code bundle
@@ -61,74 +65,48 @@ let devStack =
       description "CRUD over the users table"
     }
 
-  let dlq =
-    queue {
-      name "users-dlq"
+    queue "users-dlq" {
       messageRetention (7.0 * 24.0 * 3600.0) // 7 days
     }
 
-  let mainQueue =
-    queue {
-      name "users-queue"
+    queue "users-queue" {
       deadLetterQueue "users-dlq" 5
       visibilityTimeout 30.0
     }
 
-  let events =
-    topic {
-      name "user-events"
-      displayName "User events"
-    }
-
-  stack {
-    name "Dev"
-
-    props (
-      stackProps {
-        env devEnv
-        description "Developer stack for feature work"
-        tags [ "service", "users"; "env", "dev" ]
-      }
-    )
-
-    // resources
-    addTable usersTable
-    addLambda usersApi
-    addQueue dlq
-    addQueue mainQueue
-    addTopic events
+    topic "user-events" { displayName "User events" }
 
     // wiring
-    subscribe (
-      subscription {
-        topic "user-events"
-        queue "users-queue"
-      }
-    )
+    subscription {
+      topic "user-events"
+      queue "users-queue"
+    }
 
-    addGrant (
-      grant {
-        table "users"
-        lambda "users-api-dev"
-        readWriteAccess
-      }
-    )
+    grant {
+      table "users"
+      lambda "users-api-dev"
+      readWriteAccess
+    }
   }
 
 // 3) A production-leaning stack
 let prodStack =
-  let usersTable =
-    table {
-      name "users"
+  stack "Prod" {
+    stackProps {
+      env prodEnv
+      stackName "users-prod"
+      terminationProtection true
+      tags [ "service", "users"; "env", "prod" ]
+    }
+
+    table "users" {
       partitionKey "id" AttributeType.STRING
       billingMode BillingMode.PAY_PER_REQUEST
       removalPolicy RemovalPolicy.RETAIN // keep data safe
       pointInTimeRecovery true
     }
 
-  let usersApi =
-    lambda {
-      name "users-api"
+    lambda "users-api" {
       handler "Users::Handler::FunctionHandler"
       runtime Runtime.DOTNET_8
       code "./examples/lambdas/users"
@@ -137,38 +115,16 @@ let prodStack =
       description "CRUD over the users table"
     }
 
-  stack {
-    name "Prod"
-
-    props (
-      stackProps {
-        env prodEnv
-        stackName "users-prod"
-        terminationProtection true
-        tags [ "service", "users"; "env", "prod" ]
-      }
-    )
-
-    addTable usersTable
-    addLambda usersApi
-
-    addGrant (
-      grant {
-        table "users"
-        lambda "users-api"
-        readWriteAccess
-      }
-    )
+    grant {
+      table "users"
+      lambda "users-api"
+      readWriteAccess
+    }
   }
 
 // 4) Build an in-memory CDK app (no deploy here). We create stacks into an App
-// and ignore the synthesized assembly; we just want to show what's inside.
 app {
-  // You can pass context values here if needed
-  // context [ "key", "value" ]
-
   // Build both stacks into the same app
-  stacks [ devStack; prodStack ]
+  devStack
+  prodStack
 }
-
-(*** include-output ***)

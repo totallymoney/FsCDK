@@ -5,36 +5,18 @@ open Amazon.CDK.AWS.DynamoDB
 open Expecto
 open FsCDK
 
+
 [<Tests>]
 let appTests =
     testList
-        "FsCDK DSL"
-        [ test "app with Dev and Prod stacks" {
-              let devEnv =
-                  environment {
-                      account "123456789012"
-                      region "us-east-1"
-                  }
-
-              let dev = stack "Dev" { props (stackProps { env devEnv }) }
-
-              let prodEnv =
-                  environment {
-                      account "098765432109"
-                      region "us-east-1"
-                  }
-
-              let prod = stack "Prod" { props (stackProps { env prodEnv }) }
-
-              let specs = [ dev; prod ]
-
-              Expect.equal specs.Length 2 "Should create exactly two stack specs"
-              Expect.equal specs[0].Name "Dev" "First spec should be Dev"
-              Expect.equal specs[1].Name "Prod" "Second spec should be Prod"
+        "FsCDK App Tests"
+        [ test "App with no stacks" {
+              let app = app { () }
+              let cloudAssembly = app.Synth()
+              Expect.equal cloudAssembly.Stacks.Length 0 "App should have no stacks"
           }
 
-          test "app with no stacks" {
-              // 1) Environments
+          test "App with stacks" {
               let devEnv =
                   environment {
                       account "123456789012"
@@ -79,7 +61,6 @@ let appTests =
                       }
                   }
 
-              // 3) A production-leaning stack
               let prodStack =
                   stack "Prod" {
                       stackProps {
@@ -97,12 +78,14 @@ let appTests =
                       }
                   }
 
-              // 4) Finally, build the app
-              let app = app { stacks [ devStack; prodStack ] }
+              let app =
+                  app {
+                      devStack
+                      prodStack
+                  }
 
               Expect.equal app.Account null "App account should be null"
 
-              // 5) Synthesize and validate
               let cloudAssembly = app.Synth()
 
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
@@ -142,3 +125,4 @@ let appTests =
               let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
           } ]
+    |> testSequenced
