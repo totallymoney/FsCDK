@@ -10,6 +10,7 @@
       <Compile Include="DatadogConfig.fs" />
       <Compile Include="DatadogLogsAspect.fs" />
       <Compile Include="Environment.fs" />
+      <Compile Include="S3.fs" />
       <Compile Include="DynamoDB.fs" />
       <Compile Include="DockerImageFunction.fs" />
       <Compile Include="Function.fs" />

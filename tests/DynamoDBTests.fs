@@ -102,6 +102,7 @@ let dynamo_table_dsl_tests =
                   table "Import" {
                       partitionKey "pk" AttributeType.STRING
                       importSource importSpec
+                      stream StreamViewType.NEW_IMAGE
                   }
 
               Expect.isNotNull (box spec.Props.ImportSource) "ImportSource should be set"

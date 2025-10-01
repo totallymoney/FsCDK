@@ -5,6 +5,7 @@ open Amazon.CDK.AWS.DynamoDB
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.SNS
 open Amazon.CDK.AWS.SQS
+open Amazon.CDK.AWS.S3
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -17,6 +18,7 @@ type Operation =
     | GrantOp of GrantSpec
     | TopicOp of TopicSpec
     | QueueOp of QueueSpec
+    | BucketOp of BucketSpec
     | SubscriptionOp of SubscriptionSpec
 
 // ============================================================================
@@ -88,6 +90,13 @@ type StackBuilder(name) =
           Props = None
           Operations = [ QueueOp queueSpec ] }
 
+    member _.Yield(bucketSpec: BucketSpec) : StackConfig =
+        { Name = name
+          Environment = None
+          Version = None
+          Props = None
+          Operations = [ BucketOp bucketSpec ] }
+
     member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
         { Name = name
           Environment = None
@@ -152,7 +161,11 @@ module StackOperations =
         match operation with
         | TableOp tableSpec -> Table(stack, tableSpec.ConstructId, tableSpec.Props) |> ignore
 
-        | FunctionOp lambdaSpec -> Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props) |> ignore
+        | FunctionOp lambdaSpec ->
+            let fn = Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
+
+            for action in lambdaSpec.Actions do
+                action fn
 
         | DockerImageFunctionOp imageLambdaSpec ->
             // Create code lazily to avoid JSII side effects during spec construction
@@ -198,5 +211,7 @@ module StackOperations =
             | _ -> ()
 
             Queue(stack, queueSpec.ConstructId, props) |> ignore
+
+        | BucketOp bucketSpec -> Bucket(stack, bucketSpec.ConstructId, bucketSpec.Props) |> ignore
 
         | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec

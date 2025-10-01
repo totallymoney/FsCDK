@@ -2,6 +2,7 @@ namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
+open Amazon.CDK.AWS.Kinesis
 open Amazon.CDK.AWS.S3
 
 // ============================================================================
@@ -16,7 +17,9 @@ type TableConfig =
       BillingMode: BillingMode option
       RemovalPolicy: RemovalPolicy option
       PointInTimeRecovery: bool option
-      ImportSource: IImportSourceSpecification option }
+      ImportSource: IImportSourceSpecification option
+      Stream: StreamViewType option
+      KinesisStream: IStream option }
 
 type TableSpec =
     { TableName: string
@@ -32,7 +35,9 @@ type TableBuilder(name: string) =
           BillingMode = None
           RemovalPolicy = None
           PointInTimeRecovery = None
-          ImportSource = None }
+          ImportSource = None
+          Stream = None
+          KinesisStream = None }
 
     member _.Zero() : TableConfig =
         { TableName = name
@@ -42,7 +47,9 @@ type TableBuilder(name: string) =
           BillingMode = None
           RemovalPolicy = None
           PointInTimeRecovery = None
-          ImportSource = None }
+          ImportSource = None
+          Stream = None
+          KinesisStream = None }
 
     member _.Run(config: TableConfig) : TableSpec =
         let tableName = config.TableName
@@ -70,6 +77,11 @@ type TableBuilder(name: string) =
                     PointInTimeRecoverySpecification(PointInTimeRecoveryEnabled = true))
 
         config.ImportSource |> Option.iter (fun spec -> props.ImportSource <- spec)
+
+        config.Stream |> Option.iter (fun streamType -> props.Stream <- streamType)
+
+        config.KinesisStream
+        |> Option.iter (fun kinesisStream -> props.KinesisStream <- kinesisStream)
 
         { TableName = tableName
           ConstructId = constructId
@@ -104,6 +116,15 @@ type TableBuilder(name: string) =
     [<CustomOperation("importSource")>]
     member _.ImportSource(config: TableConfig, spec: IImportSourceSpecification) =
         { config with ImportSource = Some spec }
+
+    [<CustomOperation("stream")>]
+    member _.Stream(config: TableConfig, streamType: StreamViewType) =
+        { config with Stream = Some streamType }
+
+    [<CustomOperation("kinesisStream")>]
+    member _.KinesisStream(config: TableConfig, stream: IStream) =
+        { config with
+            KinesisStream = Some stream }
 
 // ============================================================================
 // ImportSourceSpecification Builder DSL

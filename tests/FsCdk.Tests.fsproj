@@ -19,8 +19,13 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="DynamoDBTests.fs" />
+        <Compile Include="S3CorsRuleBuilderTests.fs" />
+        <Compile Include="S3Tests.fs" />
         <Compile Include="AppTests.fs" />
         <Compile Include="DockerImageFunctionTests.fs" />
+        <Compile Include="FunctionTests.fs" />
+        <Compile Include="FunctionUrlOptionsTests.fs" />
+        <Compile Include="FunctionAddOptionsBuildersTests.fs" />
         <Compile Include="StackPropsTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
