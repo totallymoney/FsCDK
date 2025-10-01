@@ -91,5 +91,38 @@ let appTests =
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
               Expect.equal cloudAssembly.Stacks[0].DisplayName "Dev" "First spec should be Dev"
               Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod (users-prod)" "Second spec should be Prod"
+          }
+
+          test "app with implicit yields" {
+              let devEnv =
+                  environment {
+                      account "123456789012"
+                      region "us-east-1"
+                  }
+
+              let prodEnv =
+                  environment {
+                      account "098765432109"
+                      region "us-east-1"
+                  }
+
+              // Build app with implicit yields (no stacks wrapper)
+              let app =
+                  app {
+                      stack "Dev" {
+                          stackProps { env devEnv }
+
+                          table "users" { partitionKey "id" AttributeType.STRING }
+                      }
+
+                      stack "Prod" {
+                          stackProps { env prodEnv }
+
+                          table "users" { partitionKey "id" AttributeType.STRING }
+                      }
+                  }
+
+              let cloudAssembly = app.Synth()
+              Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
           } ]
     |> testSequenced
