@@ -163,13 +163,11 @@ let lambda_function_dsl_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          permission
-                              "ApiGwInvoke"
-                              (Permission(
-                                  Principal = ServicePrincipal("apigateway.amazonaws.com"),
-                                  Action = "lambda:InvokeFunction",
-                                  SourceArn = "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
-                              ))
+                          permission "ApiGwInvoke" {
+                              principal (ServicePrincipal("apigateway.amazonaws.com"))
+                              action "lambda:InvokeFunction"
+                              sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
+                          }
                       }
                   }
 

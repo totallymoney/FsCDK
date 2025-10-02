@@ -6,6 +6,8 @@ open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.S3.Assets
 open System.Collections.Generic
 
+type PermissionSpec = { Id: string; Permission: IPermission }
+
 // ============================================================================
 // Lambda Function Configuration DSL
 // ============================================================================
@@ -36,6 +38,23 @@ type FunctionSpec =
       Actions: (Function -> unit) list }
 
 type FunctionBuilder(name: string) =
+    member _.Yield(spec: PermissionSpec) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = [ (spec.Id, spec.Permission) ]
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None }
+
     member _.Yield _ : FunctionConfig =
         { FunctionName = name
           ConstructId = None
@@ -52,6 +71,65 @@ type FunctionBuilder(name: string) =
           Permissions = []
           RolePolicyStatements = []
           AsyncInvokeOptions = None }
+
+    member _.Combine(state1: FunctionConfig, state2: FunctionConfig) : FunctionConfig =
+        { FunctionName = state1.FunctionName
+          ConstructId =
+            if state1.ConstructId.IsSome then
+                state1.ConstructId
+            else
+                state2.ConstructId
+          Handler =
+            if state1.Handler.IsSome then
+                state1.Handler
+            else
+                state2.Handler
+          Runtime =
+            if state1.Runtime.IsSome then
+                state1.Runtime
+            else
+                state2.Runtime
+          CodePath =
+            if state1.CodePath.IsSome then
+                state1.CodePath
+            else
+                state2.CodePath
+          Environment = List.ofSeq (Seq.append state1.Environment state2.Environment)
+          Timeout =
+            if state1.Timeout.IsSome then
+                state1.Timeout
+            else
+                state2.Timeout
+          Memory =
+            if state1.Memory.IsSome then
+                state1.Memory
+            else
+                state2.Memory
+          Description =
+            if state1.Description.IsSome then
+                state1.Description
+            else
+                state2.Description
+          EventSources = state1.EventSources @ state2.EventSources
+          EventSourceMappings = state1.EventSourceMappings @ state2.EventSourceMappings
+          FunctionUrlOptions =
+            if state1.FunctionUrlOptions.IsSome then
+                state1.FunctionUrlOptions
+            else
+                state2.FunctionUrlOptions
+          Permissions = state1.Permissions @ state2.Permissions
+          RolePolicyStatements = state1.RolePolicyStatements @ state2.RolePolicyStatements
+          AsyncInvokeOptions =
+            if state1.AsyncInvokeOptions.IsSome then
+                state1.AsyncInvokeOptions
+            else
+                state2.AsyncInvokeOptions }
+
+    member _.Delay(f: unit -> FunctionConfig) : FunctionConfig = f ()
+
+    member x.For(config: FunctionConfig, f: unit -> FunctionConfig) : FunctionConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
 
     member _.Zero() : FunctionConfig =
         { FunctionName = name
@@ -187,11 +265,6 @@ type FunctionBuilder(name: string) =
         { config with
             FunctionUrlOptions = Some options }
 
-    [<CustomOperation("permission")>]
-    member _.Permission(config: FunctionConfig, id: string, permission: IPermission) =
-        { config with
-            Permissions = config.Permissions @ [ (id, permission) ] }
-
     [<CustomOperation("toRolePolicy")>]
     member _.ToRolePolicy(config: FunctionConfig, statement: PolicyStatement) =
         { config with
@@ -320,28 +393,35 @@ type EventSourceMappingOptionsBuilder() =
 // Builder for Permission
 
 type PermissionConfig =
-    { Principal: IPrincipal option
+    { Id: string
+      Principal: IPrincipal option
       Action: string option
       SourceArn: string option
       SourceAccount: string option
       EventSourceToken: string option }
 
-type PermissionBuilder() =
+type PermissionBuilder(id: string) =
     member _.Yield _ : PermissionConfig =
-        { Principal = None
+        { Id = id
+          Principal = None
           Action = None
           SourceArn = None
           SourceAccount = None
           EventSourceToken = None }
 
     member _.Zero() : PermissionConfig =
-        { Principal = None
+        { Id = id
+          Principal = None
           Action = None
           SourceArn = None
           SourceAccount = None
           EventSourceToken = None }
 
-    member _.Run(config: PermissionConfig) : IPermission =
+    member _.Delay(f: unit -> PermissionConfig) : PermissionConfig = f ()
+
+    member _.For(config: PermissionConfig, f: unit -> PermissionConfig) : PermissionConfig = f ()
+
+    member _.Run(config: PermissionConfig) : PermissionSpec =
         let p = Permission()
 
         let principal =
@@ -354,10 +434,11 @@ type PermissionBuilder() =
         config.SourceArn |> Option.iter (fun arn -> p.SourceArn <- arn)
         config.SourceAccount |> Option.iter (fun acc -> p.SourceAccount <- acc)
         config.EventSourceToken |> Option.iter (fun t -> p.EventSourceToken <- t)
-        p :> IPermission
+
+        { Id = config.Id; Permission = p }
 
     [<CustomOperation("principal")>]
-    member _.Principal(config: PermissionConfig, principal: IPrincipal) =
+    member _.Principal(config: PermissionConfig, principal: IPrincipal) : PermissionConfig =
         { config with
             Principal = Some principal }
 
@@ -376,6 +457,34 @@ type PermissionBuilder() =
     member _.EventSourceToken(config: PermissionConfig, token: string) =
         { config with
             EventSourceToken = Some token }
+
+    member _.Combine(state1: PermissionConfig, state2: PermissionConfig) =
+        { Id = state1.Id
+          Principal =
+            if state1.Principal.IsSome then
+                state1.Principal
+            else
+                state2.Principal
+          Action =
+            if state1.Action.IsSome then
+                state1.Action
+            else
+                state2.Action
+          SourceArn =
+            if state1.SourceArn.IsSome then
+                state1.SourceArn
+            else
+                state2.SourceArn
+          SourceAccount =
+            if state1.SourceAccount.IsSome then
+                state1.SourceAccount
+            else
+                state2.SourceAccount
+          EventSourceToken =
+            if state1.EventSourceToken.IsSome then
+                state1.EventSourceToken
+            else
+                state2.EventSourceToken }
 
 // Builder for EventInvokeConfigOptions
 

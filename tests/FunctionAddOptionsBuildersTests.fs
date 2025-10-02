@@ -42,13 +42,11 @@ let lambda_add_options_builders_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          permission
-                              "ApiGwInvoke"
-                              (Builders.permission {
-                                  principal (ServicePrincipal("apigateway.amazonaws.com"))
-                                  action "lambda:InvokeFunction"
-                                  sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
-                              })
+                          permission "ApiGwInvoke" {
+                              principal (ServicePrincipal("apigateway.amazonaws.com"))
+                              action "lambda:InvokeFunction"
+                              sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
+                          }
                       }
                   }
 
