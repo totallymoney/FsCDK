@@ -17,7 +17,7 @@ let function_url_options_builder_tests =
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                          functionUrl (functionUrlOptions { authType FunctionUrlAuthType.NONE })
+                          functionUrl { authType FunctionUrlAuthType.NONE }
                       }
                   }
 
@@ -35,21 +35,17 @@ let function_url_options_builder_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          functionUrl (
-                              functionUrlOptions {
-                                  authType FunctionUrlAuthType.NONE
+                          functionUrl {
+                              authType FunctionUrlAuthType.NONE
 
-                                  cors (
-                                      functionUrlCorsOptions {
-                                          allowedOrigins [ "https://example.com" ]
-                                          allowedMethods [ HttpMethod.GET; HttpMethod.OPTIONS ]
-                                          allowedHeaders [ "*" ]
-                                          allowCredentials true
-                                          maxAge (Duration.Seconds(60.0))
-                                      }
-                                  )
+                              cors {
+                                  allowedOrigins [ "https://example.com" ]
+                                  allowedMethods [ HttpMethod.GET; HttpMethod.OPTIONS ]
+                                  allowedHeaders [ "*" ]
+                                  allowCredentials true
+                                  maxAge (Duration.Seconds(60.0))
                               }
-                          )
+                          }
                       }
                   }
 

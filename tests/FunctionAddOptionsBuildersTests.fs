@@ -19,12 +19,10 @@ let lambda_add_options_builders_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          eventSourceMapping
-                              "SqsMapping"
-                              (eventSourceMappingOptions {
-                                  eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
-                                  batchSize 5
-                              })
+                          eventSourceMapping "SqsMapping" {
+                              eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
+                              batchSize 5
+                          }
                       }
                   }
 
@@ -64,12 +62,10 @@ let lambda_add_options_builders_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          configureAsyncInvoke (
-                              eventInvokeConfigOptions {
-                                  maxEventAge (Duration.Minutes(1.0))
-                                  retryAttempts 1
-                              }
-                          )
+                          configureAsyncInvoke {
+                              maxEventAge (Duration.Minutes(1.0))
+                              retryAttempts 1
+                          }
                       }
                   }
 

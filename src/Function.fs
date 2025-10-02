@@ -8,6 +8,16 @@ open System.Collections.Generic
 
 type PermissionSpec = { Id: string; Permission: IPermission }
 
+type EventSourceMappingSpec =
+    { Id: string
+      Options: IEventSourceMappingOptions }
+
+type EventInvokeConfigSpec = { Options: IEventInvokeConfigOptions }
+
+type FunctionUrlSpec = { Options: IFunctionUrlOptions }
+
+type FunctionUrlCorsSpec = { Options: IFunctionUrlCorsOptions }
+
 // ============================================================================
 // Lambda Function Configuration DSL
 // ============================================================================
@@ -38,6 +48,57 @@ type FunctionSpec =
       Actions: (Function -> unit) list }
 
 type FunctionBuilder(name: string) =
+    member _.Yield(spec: EventInvokeConfigSpec) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = Some spec.Options }
+
+    member _.Yield(spec: FunctionUrlSpec) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = Some spec.Options
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None }
+
+    member _.Yield(stmt: PolicyStatement) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = [ stmt ]
+          AsyncInvokeOptions = None }
+
     member _.Yield(spec: PermissionSpec) : FunctionConfig =
         { FunctionName = name
           ConstructId = None
@@ -255,30 +316,145 @@ type FunctionBuilder(name: string) =
         { config with
             EventSources = config.EventSources @ [ source ] }
 
-    [<CustomOperation("eventSourceMapping")>]
-    member _.EventSourceMapping(config: FunctionConfig, id: string, options: IEventSourceMappingOptions) =
-        { config with
-            EventSourceMappings = config.EventSourceMappings @ [ (id, options) ] }
-
-    [<CustomOperation("functionUrl")>]
-    member _.FunctionUrl(config: FunctionConfig, options: IFunctionUrlOptions) =
-        { config with
-            FunctionUrlOptions = Some options }
-
-    [<CustomOperation("toRolePolicy")>]
-    member _.ToRolePolicy(config: FunctionConfig, statement: PolicyStatement) =
-        { config with
-            RolePolicyStatements = config.RolePolicyStatements @ [ statement ] }
-
-    [<CustomOperation("configureAsyncInvoke")>]
-    member _.ConfigureAsyncInvoke(config: FunctionConfig, options: IEventInvokeConfigOptions) =
-        { config with
-            AsyncInvokeOptions = Some options }
+    member _.Yield(spec: EventSourceMappingSpec) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = [ (spec.Id, spec.Options) ]
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None }
 
 
 // ============================================================================
 // Lambda Function URL Options Builder DSL
 // ============================================================================
+
+type FunctionUrlCorsOptionsConfig =
+    { AllowCredentials: bool option
+      AllowedHeaders: string list option
+      AllowedMethods: HttpMethod list option
+      AllowedOrigins: string list option
+      ExposeHeaders: string list option
+      MaxAge: Duration option }
+
+type FunctionUrlCorsOptionsBuilder() =
+    member _.Yield _ : FunctionUrlCorsOptionsConfig =
+        { AllowCredentials = None
+          AllowedHeaders = None
+          AllowedMethods = None
+          AllowedOrigins = None
+          ExposeHeaders = None
+          MaxAge = None }
+
+    member _.Zero() : FunctionUrlCorsOptionsConfig =
+        { AllowCredentials = None
+          AllowedHeaders = None
+          AllowedMethods = None
+          AllowedOrigins = None
+          ExposeHeaders = None
+          MaxAge = None }
+
+    member _.Delay(f: unit -> FunctionUrlCorsOptionsConfig) : FunctionUrlCorsOptionsConfig = f ()
+
+    member x.For
+        (
+            config: FunctionUrlCorsOptionsConfig,
+            f: unit -> FunctionUrlCorsOptionsConfig
+        ) : FunctionUrlCorsOptionsConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Combine
+        (
+            state1: FunctionUrlCorsOptionsConfig,
+            state2: FunctionUrlCorsOptionsConfig
+        ) : FunctionUrlCorsOptionsConfig =
+        { AllowCredentials =
+            if state1.AllowCredentials.IsSome then
+                state1.AllowCredentials
+            else
+                state2.AllowCredentials
+          AllowedHeaders =
+            if state1.AllowedHeaders.IsSome then
+                state1.AllowedHeaders
+            else
+                state2.AllowedHeaders
+          AllowedMethods =
+            if state1.AllowedMethods.IsSome then
+                state1.AllowedMethods
+            else
+                state2.AllowedMethods
+          AllowedOrigins =
+            if state1.AllowedOrigins.IsSome then
+                state1.AllowedOrigins
+            else
+                state2.AllowedOrigins
+          ExposeHeaders =
+            if state1.ExposeHeaders.IsSome then
+                state1.ExposeHeaders
+            else
+                state2.ExposeHeaders
+          MaxAge =
+            if state1.MaxAge.IsSome then
+                state1.MaxAge
+            else
+                state2.MaxAge }
+
+    member _.Run(config: FunctionUrlCorsOptionsConfig) : FunctionUrlCorsSpec =
+        let o = FunctionUrlCorsOptions()
+        config.AllowCredentials |> Option.iter (fun v -> o.AllowCredentials <- v)
+
+        config.AllowedHeaders
+        |> Option.iter (fun v -> o.AllowedHeaders <- (v |> List.toArray))
+
+        config.AllowedMethods
+        |> Option.iter (fun v -> o.AllowedMethods <- (v |> List.toArray))
+
+        config.AllowedOrigins
+        |> Option.iter (fun v -> o.AllowedOrigins <- (v |> List.toArray))
+
+        config.ExposeHeaders
+        |> Option.iter (fun v -> o.ExposedHeaders <- (v |> List.toArray))
+
+        config.MaxAge |> Option.iter (fun d -> o.MaxAge <- d)
+        { Options = o :> IFunctionUrlCorsOptions }
+
+    [<CustomOperation("allowCredentials")>]
+    member _.AllowCredentials(config: FunctionUrlCorsOptionsConfig, value: bool) =
+        { config with
+            AllowCredentials = Some value }
+
+    [<CustomOperation("allowedHeaders")>]
+    member _.AllowedHeaders(config: FunctionUrlCorsOptionsConfig, headers: string list) =
+        { config with
+            AllowedHeaders = Some headers }
+
+    [<CustomOperation("allowedMethods")>]
+    member _.AllowedMethods(config: FunctionUrlCorsOptionsConfig, methods: HttpMethod list) =
+        { config with
+            AllowedMethods = Some methods }
+
+    [<CustomOperation("allowedOrigins")>]
+    member _.AllowedOrigins(config: FunctionUrlCorsOptionsConfig, origins: string list) =
+        { config with
+            AllowedOrigins = Some origins }
+
+    [<CustomOperation("exposeHeaders")>]
+    member _.ExposeHeaders(config: FunctionUrlCorsOptionsConfig, headers: string list) =
+        { config with
+            ExposeHeaders = Some headers }
+
+    [<CustomOperation("maxAge")>]
+    member _.MaxAge(config: FunctionUrlCorsOptionsConfig, duration: Duration) = { config with MaxAge = Some duration }
 
 type FunctionUrlOptionsConfig =
     { AuthType: FunctionUrlAuthType option
@@ -296,29 +472,50 @@ type FunctionUrlOptionsBuilder() =
           Cors = None
           InvokeMode = None }
 
-    member _.Run(config: FunctionUrlOptionsConfig) : IFunctionUrlOptions =
+    member _.Run(config: FunctionUrlOptionsConfig) : FunctionUrlSpec =
         let opts = FunctionUrlOptions()
         config.AuthType |> Option.iter (fun a -> opts.AuthType <- a)
         config.Cors |> Option.iter (fun c -> opts.Cors <- c)
         config.InvokeMode |> Option.iter (fun m -> opts.InvokeMode <- m)
-        opts :> IFunctionUrlOptions
+        { Options = opts :> IFunctionUrlOptions }
+
+    member _.Delay(f: unit -> FunctionUrlOptionsConfig) : FunctionUrlOptionsConfig = f ()
+
+    member x.For(config: FunctionUrlOptionsConfig, f: unit -> FunctionUrlOptionsConfig) : FunctionUrlOptionsConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Combine(state1: FunctionUrlOptionsConfig, state2: FunctionUrlOptionsConfig) : FunctionUrlOptionsConfig =
+        { AuthType =
+            if state1.AuthType.IsSome then
+                state1.AuthType
+            else
+                state2.AuthType
+          Cors = if state1.Cors.IsSome then state1.Cors else state2.Cors
+          InvokeMode =
+            if state1.InvokeMode.IsSome then
+                state1.InvokeMode
+            else
+                state2.InvokeMode }
 
     [<CustomOperation("authType")>]
     member _.AuthType(config: FunctionUrlOptionsConfig, auth: FunctionUrlAuthType) =
         { config with AuthType = Some auth }
 
-    [<CustomOperation("cors")>]
-    member _.Cors(config: FunctionUrlOptionsConfig, cors: IFunctionUrlCorsOptions) = { config with Cors = Some cors }
-
     [<CustomOperation("invokeMode")>]
     member _.InvokeMode(config: FunctionUrlOptionsConfig, mode: InvokeMode) = { config with InvokeMode = Some mode }
+
+    member _.Yield(spec: FunctionUrlCorsSpec) : FunctionUrlOptionsConfig =
+        { AuthType = None
+          Cors = Some spec.Options
+          InvokeMode = None }
 
 
 // ============================================================================
 // Lambda Add* Options Builders DSL (for consistency with other add functions)
 // ============================================================================
 
-// Builder for EventSourceMappingOptions
+// Types for EventSourceMapping
 
 type EventSourceMappingOptionsConfig =
     { EventSourceArn: string option
@@ -328,7 +525,7 @@ type EventSourceMappingOptionsConfig =
       MaxBatchingWindow: Duration option
       ParallelizationFactor: int option }
 
-type EventSourceMappingOptionsBuilder() =
+type EventSourceMappingOptionsBuilder(id: string) =
     member _.Yield _ : EventSourceMappingOptionsConfig =
         { EventSourceArn = None
           BatchSize = None
@@ -345,7 +542,53 @@ type EventSourceMappingOptionsBuilder() =
           MaxBatchingWindow = None
           ParallelizationFactor = None }
 
-    member _.Run(config: EventSourceMappingOptionsConfig) : IEventSourceMappingOptions =
+    member _.Delay(f: unit -> EventSourceMappingOptionsConfig) : EventSourceMappingOptionsConfig = f ()
+
+    member x.For
+        (
+            config: EventSourceMappingOptionsConfig,
+            f: unit -> EventSourceMappingOptionsConfig
+        ) : EventSourceMappingOptionsConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Combine
+        (
+            state1: EventSourceMappingOptionsConfig,
+            state2: EventSourceMappingOptionsConfig
+        ) : EventSourceMappingOptionsConfig =
+        { EventSourceArn =
+            if state1.EventSourceArn.IsSome then
+                state1.EventSourceArn
+            else
+                state2.EventSourceArn
+          BatchSize =
+            if state1.BatchSize.IsSome then
+                state1.BatchSize
+            else
+                state2.BatchSize
+          StartingPosition =
+            if state1.StartingPosition.IsSome then
+                state1.StartingPosition
+            else
+                state2.StartingPosition
+          Enabled =
+            if state1.Enabled.IsSome then
+                state1.Enabled
+            else
+                state2.Enabled
+          MaxBatchingWindow =
+            if state1.MaxBatchingWindow.IsSome then
+                state1.MaxBatchingWindow
+            else
+                state2.MaxBatchingWindow
+          ParallelizationFactor =
+            if state1.ParallelizationFactor.IsSome then
+                state1.ParallelizationFactor
+            else
+                state2.ParallelizationFactor }
+
+    member _.Run(config: EventSourceMappingOptionsConfig) : EventSourceMappingSpec =
         let opts = EventSourceMappingOptions()
 
         let arn =
@@ -362,7 +605,8 @@ type EventSourceMappingOptionsBuilder() =
         config.ParallelizationFactor
         |> Option.iter (fun v -> opts.ParallelizationFactor <- v)
 
-        opts :> IEventSourceMappingOptions
+        { Id = id
+          Options = opts :> IEventSourceMappingOptions }
 
     [<CustomOperation("eventSourceArn")>]
     member _.EventSourceArn(config: EventSourceMappingOptionsConfig, arn: string) =
@@ -418,8 +662,6 @@ type PermissionBuilder(id: string) =
           EventSourceToken = None }
 
     member _.Delay(f: unit -> PermissionConfig) : PermissionConfig = f ()
-
-    member _.For(config: PermissionConfig, f: unit -> PermissionConfig) : PermissionConfig = f ()
 
     member _.Run(config: PermissionConfig) : PermissionSpec =
         let p = Permission()
@@ -501,11 +743,11 @@ type EventInvokeConfigOptionsBuilder() =
         { MaxEventAge = None
           RetryAttempts = None }
 
-    member _.Run(config: EventInvokeConfigOptionsConfig) : IEventInvokeConfigOptions =
+    member _.Run(config: EventInvokeConfigOptionsConfig) : EventInvokeConfigSpec =
         let o = EventInvokeConfigOptions()
         config.MaxEventAge |> Option.iter (fun d -> o.MaxEventAge <- d)
         config.RetryAttempts |> Option.iter (fun r -> o.RetryAttempts <- r)
-        o :> IEventInvokeConfigOptions
+        { Options = o :> IEventInvokeConfigOptions }
 
     [<CustomOperation("maxEventAge")>]
     member _.MaxEventAge(config: EventInvokeConfigOptionsConfig, duration: Duration) =
@@ -521,78 +763,6 @@ type EventInvokeConfigOptionsBuilder() =
 // ============================================================================
 // Lambda Function URL CORS Options Builder DSL
 // ============================================================================
-
-type FunctionUrlCorsOptionsConfig =
-    { AllowCredentials: bool option
-      AllowedHeaders: string list option
-      AllowedMethods: HttpMethod list option
-      AllowedOrigins: string list option
-      ExposeHeaders: string list option
-      MaxAge: Duration option }
-
-type FunctionUrlCorsOptionsBuilder() =
-    member _.Yield _ : FunctionUrlCorsOptionsConfig =
-        { AllowCredentials = None
-          AllowedHeaders = None
-          AllowedMethods = None
-          AllowedOrigins = None
-          ExposeHeaders = None
-          MaxAge = None }
-
-    member _.Zero() : FunctionUrlCorsOptionsConfig =
-        { AllowCredentials = None
-          AllowedHeaders = None
-          AllowedMethods = None
-          AllowedOrigins = None
-          ExposeHeaders = None
-          MaxAge = None }
-
-    member _.Run(config: FunctionUrlCorsOptionsConfig) : IFunctionUrlCorsOptions =
-        let o = FunctionUrlCorsOptions()
-        config.AllowCredentials |> Option.iter (fun v -> o.AllowCredentials <- v)
-
-        config.AllowedHeaders
-        |> Option.iter (fun v -> o.AllowedHeaders <- (v |> List.toArray))
-
-        config.AllowedMethods
-        |> Option.iter (fun v -> o.AllowedMethods <- (v |> List.toArray))
-
-        config.AllowedOrigins
-        |> Option.iter (fun v -> o.AllowedOrigins <- (v |> List.toArray))
-
-        config.ExposeHeaders
-        |> Option.iter (fun v -> o.ExposedHeaders <- (v |> List.toArray))
-
-        config.MaxAge |> Option.iter (fun d -> o.MaxAge <- d)
-        o :> IFunctionUrlCorsOptions
-
-    [<CustomOperation("allowCredentials")>]
-    member _.AllowCredentials(config: FunctionUrlCorsOptionsConfig, value: bool) =
-        { config with
-            AllowCredentials = Some value }
-
-    [<CustomOperation("allowedHeaders")>]
-    member _.AllowedHeaders(config: FunctionUrlCorsOptionsConfig, headers: string list) =
-        { config with
-            AllowedHeaders = Some headers }
-
-    [<CustomOperation("allowedMethods")>]
-    member _.AllowedMethods(config: FunctionUrlCorsOptionsConfig, methods: HttpMethod list) =
-        { config with
-            AllowedMethods = Some methods }
-
-    [<CustomOperation("allowedOrigins")>]
-    member _.AllowedOrigins(config: FunctionUrlCorsOptionsConfig, origins: string list) =
-        { config with
-            AllowedOrigins = Some origins }
-
-    [<CustomOperation("exposeHeaders")>]
-    member _.ExposeHeaders(config: FunctionUrlCorsOptionsConfig, headers: string list) =
-        { config with
-            ExposeHeaders = Some headers }
-
-    [<CustomOperation("maxAge")>]
-    member _.MaxAge(config: FunctionUrlCorsOptionsConfig, duration: Duration) = { config with MaxAge = Some duration }
 
 // ============================================================================
 // IAM PolicyStatementProps and PolicyStatement Builders DSL
@@ -669,6 +839,14 @@ type PolicyStatementBuilder() =
           Principals = []
           Sid = None }
 
+    member _.Yield(props: PolicyStatementProps) : PolicyStatementConfig =
+        { Props = Some props
+          Actions = []
+          Resources = []
+          Effect = None
+          Principals = []
+          Sid = None }
+
     member _.Zero() : PolicyStatementConfig =
         { Props = None
           Actions = []
@@ -677,9 +855,36 @@ type PolicyStatementBuilder() =
           Principals = []
           Sid = None }
 
+    member _.Delay(f: unit -> PolicyStatementConfig) : PolicyStatementConfig = f ()
+
+    member x.For(config: PolicyStatementConfig, f: unit -> PolicyStatementConfig) : PolicyStatementConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Combine(state1: PolicyStatementConfig, state2: PolicyStatementConfig) : PolicyStatementConfig =
+        { Props = if state1.Props.IsSome then state1.Props else state2.Props
+          Actions = state1.Actions @ state2.Actions
+          Resources = state1.Resources @ state2.Resources
+          Effect =
+            if state1.Effect.IsSome then
+                state1.Effect
+            else
+                state2.Effect
+          Principals = state1.Principals @ state2.Principals
+          Sid = if state1.Sid.IsSome then state1.Sid else state2.Sid }
+
     member _.Run(config: PolicyStatementConfig) : PolicyStatement =
         match config.Props with
-        | Some props -> PolicyStatement(props)
+        | Some props ->
+            let stmt = PolicyStatement(props)
+            // Apply any additional properties
+            if config.Actions.Length > 0 then
+                stmt.AddActions([| for a in config.Actions -> a |])
+
+            if config.Resources.Length > 0 then
+                stmt.AddResources([| for r in config.Resources -> r |])
+
+            stmt
         | None ->
             let props = PolicyStatementProps()
 

@@ -120,7 +120,17 @@ let lambda_function_dsl_tests =
                           description "Test function"
 
                           // Post-creation operations that don't require extra packages
-                          functionUrl (FunctionUrlOptions(AuthType = FunctionUrlAuthType.NONE))
+                          functionUrl {
+                              authType FunctionUrlAuthType.NONE
+
+                              cors {
+                                  allowedOrigins [ "*" ]
+                                  allowedMethods [ HttpMethod.ALL ]
+                                  allowedHeaders [ "*" ]
+                                  allowCredentials false
+                                  maxAge (Duration.Seconds(300.0))
+                              }
+                          }
                       }
                   }
 
@@ -140,12 +150,10 @@ let lambda_function_dsl_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          eventSourceMapping
-                              "SqsMapping"
-                              (EventSourceMappingOptions(
-                                  EventSourceArn = "arn:aws:sqs:us-east-1:111122223333:my-queue",
-                                  BatchSize = 5
-                              ))
+                          eventSourceMapping "SqsMapping" {
+                              eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
+                              batchSize 5
+                          }
                       }
                   }
 
@@ -185,12 +193,16 @@ let lambda_function_dsl_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          toRolePolicy (
-                              let props = PolicyStatementProps(Effect = Effect.ALLOW)
-                              props.Actions <- [| "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" |]
-                              props.Resources <- [| "*" |]
-                              PolicyStatement(props)
-                          )
+                          policyStatement {
+                              policyStatementProps {
+                                  effect Effect.ALLOW
+                                  actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                                  resources [ "*" ]
+                              }
+
+                              actions [ "dynamodb:Query"; "dynamodb:Scan" ]
+                              resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
+                          }
                       }
                   }
 
@@ -208,9 +220,10 @@ let lambda_function_dsl_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          configureAsyncInvoke (
-                              EventInvokeConfigOptions(MaxEventAge = Duration.Minutes(1.0), RetryAttempts = 1)
-                          )
+                          configureAsyncInvoke {
+                              maxEventAge (Duration.Minutes(1.0))
+                              retryAttempts 1
+                          }
                       }
                   }
 
@@ -246,17 +259,16 @@ let lambda_function_dsl_tests =
                           runtime Runtime.DOTNET_8
                           code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                          toRolePolicy (
-                              policyStatement {
-                                  withProps (
-                                      policyStatementProps {
-                                          effect Effect.ALLOW
-                                          actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
-                                          resources [ "*" ]
-                                      }
-                                  )
+                          policyStatement {
+                              policyStatementProps {
+                                  effect Effect.ALLOW
+                                  actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                                  resources [ "*" ]
                               }
-                          )
+
+                              actions [ "dynamodb:Query"; "dynamodb:Scan" ]
+                              resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
+                          }
                       }
                   }
 
