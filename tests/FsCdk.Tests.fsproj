@@ -18,6 +18,7 @@
         <PackageReference Include="AWSSDK.DynamoDBv2" />
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="TestHelpers.fs" />
         <Compile Include="DynamoDBTests.fs" />
         <Compile Include="S3CorsRuleBuilderTests.fs" />
         <Compile Include="S3Tests.fs" />

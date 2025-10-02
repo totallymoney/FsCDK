@@ -3,6 +3,7 @@ namespace FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.Lambda
+open Amazon.CDK.AWS.S3.Assets
 open System.Collections.Generic
 
 // ============================================================================
@@ -149,6 +150,11 @@ type FunctionBuilder(name: string) =
     member _.Code(config: FunctionConfig, path: string) =
         { config with
             CodePath = Some(Code.FromAsset(path)) }
+
+    [<CustomOperation("code")>]
+    member _.Code(config: FunctionConfig, path: string, options: AssetOptions) =
+        { config with
+            CodePath = Some(Code.FromAsset(path, options)) }
 
 
     [<CustomOperation("code")>]

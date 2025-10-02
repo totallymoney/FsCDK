@@ -5,6 +5,7 @@ open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.IAM
+open FsCdk.Tests.TestHelpers
 
 [<Tests>]
 let lambda_function_dsl_tests =
@@ -14,7 +15,7 @@ let lambda_function_dsl_tests =
               let thrower () =
                   lambda "MyFn" {
                       runtime Runtime.DOTNET_8
-                      code (System.IO.Directory.GetCurrentDirectory())
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                   }
                   |> ignore
 
@@ -25,7 +26,7 @@ let lambda_function_dsl_tests =
               let thrower () =
                   lambda "MyFn" {
                       handler "Program::Handler"
-                      code (System.IO.Directory.GetCurrentDirectory())
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                   }
                   |> ignore
 
@@ -48,7 +49,7 @@ let lambda_function_dsl_tests =
                   lambda "UsersFn" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
-                      code (System.IO.Directory.GetCurrentDirectory())
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                   }
 
               Expect.equal spec.FunctionName "UsersFn" "FunctionName should be set"
@@ -61,7 +62,7 @@ let lambda_function_dsl_tests =
                       constructId "UsersFunction"
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
-                      code (System.IO.Directory.GetCurrentDirectory())
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                   }
 
               Expect.equal spec.ConstructId "UsersFunction" "Custom constructId should be used"
@@ -72,7 +73,7 @@ let lambda_function_dsl_tests =
                   lambda "EnvFn" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
-                      code (System.IO.Directory.GetCurrentDirectory())
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                       environment [ ("A", "1"); ("B", "2") ]
                   }
 
@@ -87,13 +88,13 @@ let lambda_function_dsl_tests =
                   lambda "OptsFn" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
-                      code (System.IO.Directory.GetCurrentDirectory())
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                       timeout 10.0
                       memory 512
                       description "My function"
                   }
 
-              // MemorySize can be int or Nullable<double> depending on CDK version; handle both
+              // MemorySize can be int or Nullable<double> depending on the CDK version; handle both
               let memObj = box spec.Props.MemorySize
 
               match memObj with
@@ -112,7 +113,7 @@ let lambda_function_dsl_tests =
                           constructId "MyFunction"
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                           environment [ ("A", "1"); ("B", "2") ]
                           timeout 5.0
                           memory 256
@@ -137,7 +138,7 @@ let lambda_function_dsl_tests =
                       lambda "fn-esm" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           eventSourceMapping
                               "SqsMapping"
@@ -160,7 +161,7 @@ let lambda_function_dsl_tests =
                       lambda "fn-perm" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           permission
                               "ApiGwInvoke"
@@ -184,7 +185,7 @@ let lambda_function_dsl_tests =
                       lambda "fn-policy" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           toRolePolicy (
                               let props = PolicyStatementProps(Effect = Effect.ALLOW)
@@ -207,7 +208,7 @@ let lambda_function_dsl_tests =
                       lambda "fn-async" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           configureAsyncInvoke (
                               EventInvokeConfigOptions(MaxEventAge = Duration.Minutes(1.0), RetryAttempts = 1)
@@ -222,7 +223,7 @@ let lambda_function_dsl_tests =
           }
 
           test "builder captures addEventSource action" {
-              // Use a dummy IEventSource to avoid extra dependencies
+              // Use a fake IEventSource to avoid extra dependencies
               let dummyEventSource =
                   { new IEventSource with
                       member _.Bind(_target: IFunction) = () }
@@ -231,7 +232,7 @@ let lambda_function_dsl_tests =
                   lambda "fn-dummy" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
-                      code (System.IO.Directory.GetCurrentDirectory())
+                      code (System.IO.Directory.GetCurrentDirectory()) S3.excludeCommonAssetDirs
                       eventSource dummyEventSource
                   }
 
@@ -245,7 +246,7 @@ let lambda_function_dsl_tests =
                       lambda "fn-policy-b" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           toRolePolicy (
                               policyStatement {

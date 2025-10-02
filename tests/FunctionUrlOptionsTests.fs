@@ -4,6 +4,7 @@ open Expecto
 open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
+open FsCdk.Tests.TestHelpers
 
 [<Tests>]
 let function_url_options_builder_tests =
@@ -15,7 +16,7 @@ let function_url_options_builder_tests =
                       lambda "fn-url" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                           functionUrl (functionUrlOptions { authType FunctionUrlAuthType.NONE })
                       }
                   }
@@ -32,7 +33,7 @@ let function_url_options_builder_tests =
                       lambda "fn-url-cors" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           functionUrl (
                               functionUrlOptions {

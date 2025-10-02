@@ -5,6 +5,7 @@ open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.IAM
+open FsCdk.Tests.TestHelpers
 
 [<Tests>]
 let lambda_add_options_builders_tests =
@@ -16,7 +17,7 @@ let lambda_add_options_builders_tests =
                       lambda "fn-esm-b" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           eventSourceMapping
                               "SqsMapping"
@@ -39,7 +40,7 @@ let lambda_add_options_builders_tests =
                       lambda "fn-perm-b" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           permission
                               "ApiGwInvoke"
@@ -63,7 +64,7 @@ let lambda_add_options_builders_tests =
                       lambda "fn-async-b" {
                           handler "Program::Handler"
                           runtime Runtime.DOTNET_8
-                          code (System.IO.Directory.GetCurrentDirectory())
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                           configureAsyncInvoke (
                               eventInvokeConfigOptions {
