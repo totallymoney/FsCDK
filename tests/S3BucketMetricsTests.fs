@@ -54,14 +54,7 @@ let s3_bucket_metrics_tests =
 
                           metrics {
                               id "tagged-metrics"
-
-                              // FIXME: This should be a list of TagFilter, not a dictionary
-                              tagFilters (
-                                  Dictionary<string, obj>()
-                                  |> (fun d ->
-                                      d.Add("env", "prod" :> obj)
-                                      d)
-                              )
+                              tagFilters [ "env", "prod"; "team", "analytics" ]
                           }
                       }
                   }
@@ -125,12 +118,7 @@ let s3_bucket_metrics_tests =
                           metrics {
                               id "tagged-objects"
 
-                              tagFilters (
-                                  Dictionary<string, obj>()
-                                  |> (fun d ->
-                                      d.Add("env", "prod" :> obj)
-                                      d)
-                              )
+                              tagFilters [ "env", "prod"; "team", "analytics" ]
                           }
                       }
                   }

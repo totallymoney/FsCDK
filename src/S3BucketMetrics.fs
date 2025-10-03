@@ -1,30 +1,30 @@
 namespace FsCDK
 
-open Amazon.CDK
+open System.Collections.Generic
 open Amazon.CDK.AWS.S3
 
 type BucketMetricsConfig =
     { Id: string option
       Prefix: string option
-      TagFilters: System.Collections.Generic.IDictionary<string, obj> option }
+      TagFilters: (string * obj) list }
 
 type BucketMetricsBuilder() =
     member _.Yield _ : BucketMetricsConfig =
         { Id = None
           Prefix = None
-          TagFilters = None }
+          TagFilters = [] }
 
     member _.Zero() : BucketMetricsConfig =
         { Id = None
           Prefix = None
-          TagFilters = None }
+          TagFilters = [] }
 
     member _.Delay(f: unit -> BucketMetricsConfig) : BucketMetricsConfig = f ()
 
     member _.Combine(state1: BucketMetricsConfig, state2: BucketMetricsConfig) : BucketMetricsConfig =
         { Id = state2.Id |> Option.orElse state1.Id
           Prefix = state2.Prefix |> Option.orElse state1.Prefix
-          TagFilters = state2.TagFilters |> Option.orElse state1.TagFilters }
+          TagFilters = state2.TagFilters @ state1.TagFilters }
 
     member x.For(config: BucketMetricsConfig, f: unit -> BucketMetricsConfig) : BucketMetricsConfig =
         let newConfig = f ()
@@ -41,7 +41,10 @@ type BucketMetricsBuilder() =
         metrics.Id <- id
 
         config.Prefix |> Option.iter (fun p -> metrics.Prefix <- p)
-        config.TagFilters |> Option.iter (fun t -> metrics.TagFilters <- t)
+
+        let tagFilters = config.TagFilters |> Map.ofList |> Dictionary
+
+        metrics.TagFilters <- tagFilters
 
         metrics :> IBucketMetrics
 
@@ -52,6 +55,5 @@ type BucketMetricsBuilder() =
     member _.Prefix(config: BucketMetricsConfig, prefix: string) = { config with Prefix = Some prefix }
 
     [<CustomOperation("tagFilters")>]
-    member _.TagFilters(config: BucketMetricsConfig, filters: System.Collections.Generic.IDictionary<string, obj>) =
-        { config with
-            TagFilters = Some filters }
+    member _.TagFilters(config: BucketMetricsConfig, filters: (string * obj) list) =
+        { config with TagFilters = filters }
