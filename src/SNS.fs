@@ -39,6 +39,21 @@ type TopicBuilder(name: string) =
           FifoTopic = None
           ContentBasedDeduplication = None }
 
+    member _.Delay(f: unit -> TopicConfig) : TopicConfig = f ()
+
+    member _.Combine(state1: TopicConfig, state2: TopicConfig) : TopicConfig =
+        { TopicName = state1.TopicName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          DisplayName = state2.DisplayName |> Option.orElse state1.DisplayName
+          FifoTopic = state2.FifoTopic |> Option.orElse state1.FifoTopic
+          ContentBasedDeduplication =
+            state2.ContentBasedDeduplication
+            |> Option.orElse state1.ContentBasedDeduplication }
+
+    member x.For(config: TopicConfig, f: unit -> TopicConfig) : TopicConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
     member _.Run(config: TopicConfig) : TopicSpec =
         // Topic name is required
         let topicName = config.TopicName
@@ -111,6 +126,18 @@ type SubscriptionBuilder() =
           Endpoint = None
           FilterPolicy = None
           DeadLetterQueue = None }
+
+    member _.Delay(f: unit -> SubscriptionConfig) : SubscriptionConfig = f ()
+
+    member _.Combine(state1: SubscriptionConfig, state2: SubscriptionConfig) : SubscriptionConfig =
+        { TopicConstructId = state2.TopicConstructId |> Option.orElse state1.TopicConstructId
+          Endpoint = state2.Endpoint |> Option.orElse state1.Endpoint
+          FilterPolicy = state2.FilterPolicy |> Option.orElse state1.FilterPolicy
+          DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue }
+
+    member x.For(config: SubscriptionConfig, f: unit -> SubscriptionConfig) : SubscriptionConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
 
     member _.Run(config: SubscriptionConfig) : SubscriptionSpec =
         match config.TopicConstructId, config.Endpoint with

@@ -23,9 +23,9 @@ type BucketConfig =
       AutoDeleteObjects: bool option
       WebsiteIndexDocument: string option
       WebsiteErrorDocument: string option
-      LifecycleRules: ILifecycleRule list option
-      Cors: ICorsRule list option
-      Metrics: IBucketMetrics list option }
+      LifecycleRules: ILifecycleRule list
+      Cors: ICorsRule list
+      Metrics: IBucketMetrics list }
 
 type BucketSpec =
     { BucketName: string
@@ -46,9 +46,60 @@ type BucketBuilder(name: string) =
           AutoDeleteObjects = None
           WebsiteIndexDocument = None
           WebsiteErrorDocument = None
-          LifecycleRules = None
-          Cors = None
-          Metrics = None }
+          LifecycleRules = []
+          Cors = []
+          Metrics = [] }
+
+    member _.Yield(corsRule: ICorsRule) : BucketConfig =
+        { BucketName = name
+          ConstructId = None
+          BlockPublicAccess = None
+          Encryption = None
+          EnforceSSL = None
+          Versioned = None
+          RemovalPolicy = None
+          ServerAccessLogsBucket = None
+          ServerAccessLogsPrefix = None
+          AutoDeleteObjects = None
+          WebsiteIndexDocument = None
+          WebsiteErrorDocument = None
+          LifecycleRules = []
+          Cors = [ corsRule ]
+          Metrics = [] }
+
+    member _.Yield(lifecycleRule: ILifecycleRule) : BucketConfig =
+        { BucketName = name
+          ConstructId = None
+          BlockPublicAccess = None
+          Encryption = None
+          EnforceSSL = None
+          Versioned = None
+          RemovalPolicy = None
+          ServerAccessLogsBucket = None
+          ServerAccessLogsPrefix = None
+          AutoDeleteObjects = None
+          WebsiteIndexDocument = None
+          WebsiteErrorDocument = None
+          LifecycleRules = [ lifecycleRule ]
+          Cors = []
+          Metrics = [] }
+
+    member _.Yield(metrics: IBucketMetrics) : BucketConfig =
+        { BucketName = name
+          ConstructId = None
+          BlockPublicAccess = None
+          Encryption = None
+          EnforceSSL = None
+          Versioned = None
+          RemovalPolicy = None
+          ServerAccessLogsBucket = None
+          ServerAccessLogsPrefix = None
+          AutoDeleteObjects = None
+          WebsiteIndexDocument = None
+          WebsiteErrorDocument = None
+          LifecycleRules = []
+          Cors = []
+          Metrics = [ metrics ] }
 
     member _.Zero() : BucketConfig =
         { BucketName = name
@@ -63,9 +114,32 @@ type BucketBuilder(name: string) =
           AutoDeleteObjects = None
           WebsiteIndexDocument = None
           WebsiteErrorDocument = None
-          LifecycleRules = None
-          Cors = None
-          Metrics = None }
+          LifecycleRules = []
+          Cors = []
+          Metrics = [] }
+
+    member _.Delay(f: unit -> BucketConfig) : BucketConfig = f ()
+
+    member _.Combine(state1: BucketConfig, state2: BucketConfig) : BucketConfig =
+        { BucketName = state1.BucketName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          BlockPublicAccess = state2.BlockPublicAccess |> Option.orElse state1.BlockPublicAccess
+          Encryption = state2.Encryption |> Option.orElse state1.Encryption
+          EnforceSSL = state2.EnforceSSL |> Option.orElse state1.EnforceSSL
+          Versioned = state2.Versioned |> Option.orElse state1.Versioned
+          RemovalPolicy = state2.RemovalPolicy |> Option.orElse state1.RemovalPolicy
+          ServerAccessLogsBucket = state2.ServerAccessLogsBucket |> Option.orElse state1.ServerAccessLogsBucket
+          ServerAccessLogsPrefix = state2.ServerAccessLogsPrefix |> Option.orElse state1.ServerAccessLogsPrefix
+          AutoDeleteObjects = state2.AutoDeleteObjects |> Option.orElse state1.AutoDeleteObjects
+          WebsiteIndexDocument = state2.WebsiteIndexDocument |> Option.orElse state1.WebsiteIndexDocument
+          WebsiteErrorDocument = state2.WebsiteErrorDocument |> Option.orElse state1.WebsiteErrorDocument
+          LifecycleRules = state1.LifecycleRules @ state2.LifecycleRules
+          Cors = state1.Cors @ state2.Cors
+          Metrics = state1.Metrics @ state2.Metrics }
+
+    member x.For(config: BucketConfig, f: unit -> BucketConfig) : BucketConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
 
     member _.Run(config: BucketConfig) : BucketSpec =
         let bucketName = config.BucketName
@@ -96,11 +170,14 @@ type BucketBuilder(name: string) =
         config.WebsiteErrorDocument
         |> Option.iter (fun v -> props.WebsiteErrorDocument <- v)
 
-        config.LifecycleRules
-        |> Option.iter (fun v -> props.LifecycleRules <- (v |> List.toArray))
+        if not (List.isEmpty config.LifecycleRules) then
+            props.LifecycleRules <- (config.LifecycleRules |> List.toArray)
 
-        config.Cors |> Option.iter (fun v -> props.Cors <- (v |> List.toArray))
-        config.Metrics |> Option.iter (fun v -> props.Metrics <- (v |> List.toArray))
+        if not (List.isEmpty config.Cors) then
+            props.Cors <- (config.Cors |> List.toArray)
+
+        if not (List.isEmpty config.Metrics) then
+            props.Metrics <- (config.Metrics |> List.toArray)
 
         { BucketName = bucketName
           ConstructId = constructId
@@ -156,13 +233,17 @@ type BucketBuilder(name: string) =
     [<CustomOperation("lifecycleRules")>]
     member _.LifecycleRules(config: BucketConfig, rules: ILifecycleRule list) =
         { config with
-            LifecycleRules = Some rules }
+            LifecycleRules = config.LifecycleRules @ rules }
 
     [<CustomOperation("cors")>]
-    member _.Cors(config: BucketConfig, cors: ICorsRule list) = { config with Cors = Some cors }
+    member _.Cors(config: BucketConfig, cors: ICorsRule list) =
+        { config with
+            Cors = config.Cors @ cors }
 
     [<CustomOperation("metrics")>]
-    member _.Metrics(config: BucketConfig, metrics: IBucketMetrics list) = { config with Metrics = Some metrics }
+    member _.Metrics(config: BucketConfig, metrics: IBucketMetrics list) =
+        { config with
+            Metrics = config.Metrics @ metrics }
 
 
 // ============================================================================
@@ -193,6 +274,20 @@ type CorsRuleBuilder() =
           ExposedHeaders = None
           Id = None
           MaxAge = None }
+
+    member _.Delay(f: unit -> CorsRuleConfig) : CorsRuleConfig = f ()
+
+    member _.Combine(state1: CorsRuleConfig, state2: CorsRuleConfig) : CorsRuleConfig =
+        { AllowedMethods = state2.AllowedMethods |> Option.orElse state1.AllowedMethods
+          AllowedOrigins = state2.AllowedOrigins |> Option.orElse state1.AllowedOrigins
+          AllowedHeaders = state2.AllowedHeaders |> Option.orElse state1.AllowedHeaders
+          ExposedHeaders = state2.ExposedHeaders |> Option.orElse state1.ExposedHeaders
+          Id = state2.Id |> Option.orElse state1.Id
+          MaxAge = state2.MaxAge |> Option.orElse state1.MaxAge }
+
+    member x.For(config: CorsRuleConfig, f: unit -> CorsRuleConfig) : CorsRuleConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
 
     member _.Run(config: CorsRuleConfig) : ICorsRule =
         let rule = CorsRule()

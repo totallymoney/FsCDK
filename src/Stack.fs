@@ -135,6 +135,10 @@ type StackBuilder(name) =
 
     member _.Delay(f: unit -> StackConfig) : StackConfig = f ()
 
+    member x.For(config: StackConfig, f: unit -> StackConfig) : StackConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
     member _.Run(config: StackConfig) : StackSpec =
         let name = config.Name
 

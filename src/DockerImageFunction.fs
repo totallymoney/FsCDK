@@ -52,6 +52,21 @@ type DockerImageFunctionBuilder(name: string) =
           Memory = None
           Description = None }
 
+    member _.Delay(f: unit -> DockerImageFunctionConfig) : DockerImageFunctionConfig = f ()
+
+    member _.Combine(state1: DockerImageFunctionConfig, state2: DockerImageFunctionConfig) : DockerImageFunctionConfig =
+        { FunctionName = state1.FunctionName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          Code = state2.Code |> Option.orElse state1.Code
+          Environment = List.ofSeq (Seq.append state1.Environment state2.Environment)
+          Timeout = state2.Timeout |> Option.orElse state1.Timeout
+          Memory = state2.Memory |> Option.orElse state1.Memory
+          Description = state2.Description |> Option.orElse state1.Description }
+
+    member x.For(config: DockerImageFunctionConfig, f: unit -> DockerImageFunctionConfig) : DockerImageFunctionConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
     member _.Run(config: DockerImageFunctionConfig) : DockerImageFunctionSpec =
         // Function name is required
         let lambdaName = config.FunctionName

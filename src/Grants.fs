@@ -37,6 +37,17 @@ type GrantBuilder() =
           LambdaConstructId = None
           Access = None }
 
+    member _.Delay(f: unit -> GrantConfig) : GrantConfig = f ()
+
+    member _.Combine(state1: GrantConfig, state2: GrantConfig) : GrantConfig =
+        { TableConstructId = state2.TableConstructId |> Option.orElse state1.TableConstructId
+          LambdaConstructId = state2.LambdaConstructId |> Option.orElse state1.LambdaConstructId
+          Access = state2.Access |> Option.orElse state1.Access }
+
+    member x.For(config: GrantConfig, f: unit -> GrantConfig) : GrantConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
     member _.Run(config: GrantConfig) : GrantSpec =
         match config.TableConstructId, config.LambdaConstructId, config.Access with
         | Some t, Some l, Some a ->

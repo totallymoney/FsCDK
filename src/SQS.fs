@@ -54,6 +54,25 @@ type QueueBuilder(name: string) =
           DeadLetterQueueName = None
           DelaySeconds = None }
 
+    member _.Delay(f: unit -> QueueConfig) : QueueConfig = f ()
+
+    member _.Combine(state1: QueueConfig, state2: QueueConfig) : QueueConfig =
+        { QueueName = state1.QueueName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          VisibilityTimeout = state2.VisibilityTimeout |> Option.orElse state1.VisibilityTimeout
+          MessageRetention = state2.MessageRetention |> Option.orElse state1.MessageRetention
+          FifoQueue = state2.FifoQueue |> Option.orElse state1.FifoQueue
+          ContentBasedDeduplication =
+            state2.ContentBasedDeduplication
+            |> Option.orElse state1.ContentBasedDeduplication
+          MaxReceiveCount = state2.MaxReceiveCount |> Option.orElse state1.MaxReceiveCount
+          DeadLetterQueueName = state2.DeadLetterQueueName |> Option.orElse state1.DeadLetterQueueName
+          DelaySeconds = state2.DelaySeconds |> Option.orElse state1.DelaySeconds }
+
+    member x.For(config: QueueConfig, f: unit -> QueueConfig) : QueueConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
     member _.Run(config: QueueConfig) : QueueSpec =
         // Queue name is required
         let queueName = config.QueueName
