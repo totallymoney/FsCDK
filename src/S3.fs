@@ -230,22 +230,6 @@ type BucketBuilder(name: string) =
         { config with
             WebsiteErrorDocument = Some doc }
 
-    [<CustomOperation("lifecycleRules")>]
-    member _.LifecycleRules(config: BucketConfig, rules: ILifecycleRule list) =
-        { config with
-            LifecycleRules = config.LifecycleRules @ rules }
-
-    [<CustomOperation("cors")>]
-    member _.Cors(config: BucketConfig, cors: ICorsRule list) =
-        { config with
-            Cors = config.Cors @ cors }
-
-    [<CustomOperation("metrics")>]
-    member _.Metrics(config: BucketConfig, metrics: IBucketMetrics list) =
-        { config with
-            Metrics = config.Metrics @ metrics }
-
-
 // ============================================================================
 // S3 CorsRule Builder DSL
 // ============================================================================

@@ -23,18 +23,16 @@ let s3_bucket_happy_path_tests =
                           websiteIndexDocument "index.html"
                           websiteErrorDocument "error.html"
 
-                          lifecycleRules
-                              [ LifecycleRule(Id = "expire-30-days", Enabled = true, Expiration = Duration.Days(30.0)) ]
+                          LifecycleRule(Id = "expire-30-days", Enabled = true, Expiration = Duration.Days(30.0))
 
-                          cors
-                              [ CorsRule(
-                                    AllowedOrigins = [| "*" |],
-                                    AllowedMethods = [| HttpMethods.GET; HttpMethods.HEAD |],
-                                    AllowedHeaders = [| "*" |]
-                                ) ]
+                          CorsRule(
+                              AllowedOrigins = [| "*" |],
+                              AllowedMethods = [| HttpMethods.GET; HttpMethods.HEAD |],
+                              AllowedHeaders = [| "*" |]
+                          )
 
                           // Metrics configuration
-                          metrics [ BucketMetrics(Id = "all-objects") ]
+                          BucketMetrics(Id = "all-objects")
                       }
                   }
 

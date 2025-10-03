@@ -14,14 +14,13 @@ let s3_cors_rule_builder_tests =
                       bucket "my-bucket-cors-builder" {
                           constructId "MyBucketCorsBuilder"
 
-                          cors
-                              [ corsRule {
-                                    allowedOrigins [ "*" ]
-                                    allowedMethods [ HttpMethods.GET; HttpMethods.HEAD ]
-                                    allowedHeaders [ "*" ]
-                                    id "default"
-                                    maxAgeSeconds 300
-                                } ]
+                          corsRule {
+                              allowedOrigins [ "*" ]
+                              allowedMethods [ HttpMethods.GET; HttpMethods.HEAD ]
+                              allowedHeaders [ "*" ]
+                              id "default"
+                              maxAgeSeconds 300
+                          }
                       }
                   }
 
