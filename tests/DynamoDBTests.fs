@@ -45,15 +45,18 @@ let dynamo_table_dsl_tests =
           }
 
           test "applies billing mode when configured" {
+              let importSourceSpecification =
+                  { new IImportSourceSpecification with
+                      member this.Bucket = failwith "todo"
+                      member this.InputFormat = failwith "todo" }
+
               let spec =
                   table "Billing" {
                       partitionKey "pk" AttributeType.STRING
                       billingMode BillingMode.PAY_PER_REQUEST
 
-                      importSource
-                          { new IImportSourceSpecification with
-                              member this.Bucket = failwith "todo"
-                              member this.InputFormat = failwith "todo" }
+                      importSourceSpecification
+
                   }
 
               Expect.equal spec.Props.BillingMode.Value BillingMode.PAY_PER_REQUEST "Billing mode should be set"
@@ -101,7 +104,7 @@ let dynamo_table_dsl_tests =
               let spec =
                   table "Import" {
                       partitionKey "pk" AttributeType.STRING
-                      importSource importSpec
+                      importSpec
                       stream StreamViewType.NEW_IMAGE
                   }
 
@@ -113,17 +116,15 @@ let dynamo_table_dsl_tests =
               let stack = Stack(app, "Test2")
               let myBucket = Bucket(stack, "Bucket2")
 
-              let myImport =
-                  importSource {
-                      bucket myBucket
-                      inputFormat (InputFormat.DynamoDBJson())
-                      keyPrefix "prefix"
-                  }
-
               let spec =
                   table "Import2" {
                       partitionKey "pk" AttributeType.STRING
-                      importSource myImport
+
+                      importSource {
+                          bucket myBucket
+                          inputFormat (InputFormat.DynamoDBJson())
+                          keyPrefix "prefix"
+                      }
                   }
 
               Expect.isNotNull (box spec.Props.ImportSource) "ImportSource should be set via builder"

@@ -8,6 +8,8 @@ open System.Collections.Generic
 
 type PermissionSpec = { Id: string; Permission: IPermission }
 
+type EventSourcesSpec = { Sources: IEventSource list }
+
 type EventSourceMappingSpec =
     { Id: string
       Options: IEventSourceMappingOptions }
@@ -33,7 +35,6 @@ type FunctionConfig =
       Timeout: float option
       Memory: int option
       Description: string option
-      // Post-creation operations
       EventSources: IEventSource list
       EventSourceMappings: (string * IEventSourceMappingOptions) list
       FunctionUrlOptions: IFunctionUrlOptions option
@@ -97,6 +98,23 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = []
           RolePolicyStatements = [ stmt ]
+          AsyncInvokeOptions = None }
+
+    member _.Yield(event: IEventSource) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = [ event ]
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
           AsyncInvokeOptions = None }
 
     member _.Yield(spec: PermissionSpec) : FunctionConfig =
@@ -310,11 +328,6 @@ type FunctionBuilder(name: string) =
 
     [<CustomOperation("description")>]
     member _.Description(config: FunctionConfig, desc: string) = { config with Description = Some desc }
-
-    [<CustomOperation("eventSource")>]
-    member _.EventSource(config: FunctionConfig, source: IEventSource) =
-        { config with
-            EventSources = config.EventSources @ [ source ] }
 
     member _.Yield(spec: EventSourceMappingSpec) : FunctionConfig =
         { FunctionName = name

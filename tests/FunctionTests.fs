@@ -244,7 +244,7 @@ let lambda_function_dsl_tests =
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
                       code (System.IO.Directory.GetCurrentDirectory()) S3.excludeCommonAssetDirs
-                      eventSource dummyEventSource
+                      dummyEventSource
                   }
 
               // Ensure an action was captured for AddEventSource
