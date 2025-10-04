@@ -53,7 +53,7 @@ pipeline "ci" {
     run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"
   }
 
-  stage "pack" { run $"dotnet pack {sln} -c {config} -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}" }
+  stage "pack" { run $"dotnet pack src/FsCDK.fsproj -c {config} -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}" }
 
   runIfOnlySpecified false
 }
