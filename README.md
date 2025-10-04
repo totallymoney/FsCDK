@@ -53,7 +53,7 @@ cdk deploy  # Deploy to AWS
 
 ## Documentation
 
-For detailed documentation, examples, and best practices, visit our [Wiki](https://github.com/edgarfgp/FsCDK/wiki).
+For detailed documentation, examples, and best practices, visit our [Documentation Site](https://edgarfgp.github.io/FsCDK/).
 
 ## Examples
 
@@ -63,7 +63,6 @@ Check out the [samples directory](./samples) for complete examples of common inf
 
 Contributions are welcome! Whether it's:
 - Reporting a bug
-- Discussing the current state of the code
 - Submitting a fix
 - Proposing new features
 
