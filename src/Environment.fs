@@ -17,13 +17,17 @@ type EnvironmentBuilder() =
 
     member _.Zero() : EnvironmentConfig = { Account = None; Region = None }
 
-    member _.Delay(f: unit -> EnvironmentConfig) : EnvironmentConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> EnvironmentConfig) : EnvironmentConfig = f ()
 
     member _.Combine(state1: EnvironmentConfig, state2: EnvironmentConfig) : EnvironmentConfig =
         { Account = state2.Account |> Option.orElse state1.Account
           Region = state2.Region |> Option.orElse state1.Region }
 
-    member x.For(config: EnvironmentConfig, f: unit -> EnvironmentConfig) : EnvironmentConfig =
+    member inline x.For
+        (
+            config: EnvironmentConfig,
+            [<InlineIfLambda>] f: unit -> EnvironmentConfig
+        ) : EnvironmentConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 

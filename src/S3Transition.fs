@@ -1,12 +1,13 @@
 namespace FsCDK
 
+open System
 open Amazon.CDK
 open Amazon.CDK.AWS.S3
 
 type TransitionConfig =
     { StorageClass: StorageClass option
       TransitionAfter: Duration option
-      TransitionDate: System.DateTime option }
+      TransitionDate: DateTime option }
 
 type TransitionBuilder() =
     member _.Yield _ : TransitionConfig =
@@ -19,7 +20,7 @@ type TransitionBuilder() =
           TransitionAfter = None
           TransitionDate = None }
 
-    member _.Delay(f: unit -> TransitionConfig) : TransitionConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> TransitionConfig) : TransitionConfig = f ()
 
     member _.Combine(state1: TransitionConfig, state2: TransitionConfig) : TransitionConfig =
         { StorageClass = state2.StorageClass |> Option.orElse state1.StorageClass
@@ -40,7 +41,7 @@ type TransitionBuilder() =
         config.TransitionAfter |> Option.iter (fun d -> transition.TransitionAfter <- d)
         config.TransitionDate |> Option.iter (fun d -> transition.TransitionDate <- d)
 
-        transition :> ITransition
+        transition
 
     [<CustomOperation("storageClass")>]
     member _.StorageClass(config: TransitionConfig, storageClass: StorageClass) =
@@ -73,7 +74,10 @@ type NoncurrentVersionTransitionBuilder() =
           TransitionAfter = None
           NoncurrentVersionsToRetain = None }
 
-    member _.Delay(f: unit -> NoncurrentVersionTransitionConfig) : NoncurrentVersionTransitionConfig = f ()
+    member inline _.Delay
+        ([<InlineIfLambda>] f: unit -> NoncurrentVersionTransitionConfig)
+        : NoncurrentVersionTransitionConfig =
+        f ()
 
     member _.Combine
         (
@@ -86,10 +90,10 @@ type NoncurrentVersionTransitionBuilder() =
             state2.NoncurrentVersionsToRetain
             |> Option.orElse state1.NoncurrentVersionsToRetain }
 
-    member x.For
+    member inline x.For
         (
             config: NoncurrentVersionTransitionConfig,
-            f: unit -> NoncurrentVersionTransitionConfig
+            [<InlineIfLambda>] f: unit -> NoncurrentVersionTransitionConfig
         ) : NoncurrentVersionTransitionConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)

@@ -118,7 +118,7 @@ type BucketBuilder(name: string) =
           Cors = []
           Metrics = [] }
 
-    member _.Delay(f: unit -> BucketConfig) : BucketConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> BucketConfig) : BucketConfig = f ()
 
     member _.Combine(state1: BucketConfig, state2: BucketConfig) : BucketConfig =
         { BucketName = state1.BucketName
@@ -137,7 +137,7 @@ type BucketBuilder(name: string) =
           Cors = state1.Cors @ state2.Cors
           Metrics = state1.Metrics @ state2.Metrics }
 
-    member x.For(config: BucketConfig, f: unit -> BucketConfig) : BucketConfig =
+    member inline x.For(config: BucketConfig, [<InlineIfLambda>] f: unit -> BucketConfig) : BucketConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -259,7 +259,7 @@ type CorsRuleBuilder() =
           Id = None
           MaxAge = None }
 
-    member _.Delay(f: unit -> CorsRuleConfig) : CorsRuleConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> CorsRuleConfig) : CorsRuleConfig = f ()
 
     member _.Combine(state1: CorsRuleConfig, state2: CorsRuleConfig) : CorsRuleConfig =
         { AllowedMethods = state2.AllowedMethods |> Option.orElse state1.AllowedMethods
@@ -269,7 +269,7 @@ type CorsRuleBuilder() =
           Id = state2.Id |> Option.orElse state1.Id
           MaxAge = state2.MaxAge |> Option.orElse state1.MaxAge }
 
-    member x.For(config: CorsRuleConfig, f: unit -> CorsRuleConfig) : CorsRuleConfig =
+    member inline x.For(config: CorsRuleConfig, [<InlineIfLambda>] f: unit -> CorsRuleConfig) : CorsRuleConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 

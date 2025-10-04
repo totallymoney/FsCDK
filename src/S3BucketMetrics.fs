@@ -6,7 +6,7 @@ open Amazon.CDK.AWS.S3
 type BucketMetricsConfig =
     { Id: string option
       Prefix: string option
-      TagFilters: (string * obj) list }
+      TagFilters: (string * obj) seq }
 
 type BucketMetricsBuilder() =
     member _.Yield _ : BucketMetricsConfig =
@@ -19,14 +19,18 @@ type BucketMetricsBuilder() =
           Prefix = None
           TagFilters = [] }
 
-    member _.Delay(f: unit -> BucketMetricsConfig) : BucketMetricsConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> BucketMetricsConfig) : BucketMetricsConfig = f ()
 
     member _.Combine(state1: BucketMetricsConfig, state2: BucketMetricsConfig) : BucketMetricsConfig =
         { Id = state2.Id |> Option.orElse state1.Id
           Prefix = state2.Prefix |> Option.orElse state1.Prefix
-          TagFilters = state2.TagFilters @ state1.TagFilters }
+          TagFilters = Seq.toList state2.TagFilters @ Seq.toList state1.TagFilters }
 
-    member x.For(config: BucketMetricsConfig, f: unit -> BucketMetricsConfig) : BucketMetricsConfig =
+    member inline x.For
+        (
+            config: BucketMetricsConfig,
+            [<InlineIfLambda>] f: unit -> BucketMetricsConfig
+        ) : BucketMetricsConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -42,7 +46,7 @@ type BucketMetricsBuilder() =
 
         config.Prefix |> Option.iter (fun p -> metrics.Prefix <- p)
 
-        let tagFilters = config.TagFilters |> Map.ofList |> Dictionary
+        let tagFilters = config.TagFilters |> Seq.toList |> Map.ofList |> Dictionary
 
         metrics.TagFilters <- tagFilters
 
@@ -55,5 +59,4 @@ type BucketMetricsBuilder() =
     member _.Prefix(config: BucketMetricsConfig, prefix: string) = { config with Prefix = Some prefix }
 
     [<CustomOperation("tagFilters")>]
-    member _.TagFilters(config: BucketMetricsConfig, filters: (string * obj) list) =
-        { config with TagFilters = filters }
+    member _.TagFilters(config: BucketMetricsConfig, filters: (string * obj) seq) = { config with TagFilters = filters }

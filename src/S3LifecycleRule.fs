@@ -84,7 +84,7 @@ type LifecycleRuleBuilder() =
           TagFilters = None
           Transitions = [] }
 
-    member _.Delay(f: unit -> LifecycleRuleConfig) : LifecycleRuleConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> LifecycleRuleConfig) : LifecycleRuleConfig = f ()
 
     member _.Combine(state1: LifecycleRuleConfig, state2: LifecycleRuleConfig) : LifecycleRuleConfig =
         { AbortIncompleteMultipartUploadAfter =
@@ -110,7 +110,11 @@ type LifecycleRuleBuilder() =
           TagFilters = state2.TagFilters |> Option.orElse state1.TagFilters
           Transitions = state1.Transitions @ state2.Transitions }
 
-    member x.For(config: LifecycleRuleConfig, f: unit -> LifecycleRuleConfig) : LifecycleRuleConfig =
+    member inline x.For
+        (
+            config: LifecycleRuleConfig,
+            [<InlineIfLambda>] f: unit -> LifecycleRuleConfig
+        ) : LifecycleRuleConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 

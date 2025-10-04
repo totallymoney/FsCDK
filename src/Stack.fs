@@ -133,9 +133,9 @@ type StackBuilder(name) =
           Props = if state1.Props.IsSome then state1.Props else state2.Props
           Operations = state1.Operations @ state2.Operations }
 
-    member _.Delay(f: unit -> StackConfig) : StackConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> StackConfig) : StackConfig = f ()
 
-    member x.For(config: StackConfig, f: unit -> StackConfig) : StackConfig =
+    member inline x.For(config: StackConfig, [<InlineIfLambda>] f: unit -> StackConfig) : StackConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 

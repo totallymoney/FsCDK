@@ -52,7 +52,7 @@ type DockerImageFunctionBuilder(name: string) =
           Memory = None
           Description = None }
 
-    member _.Delay(f: unit -> DockerImageFunctionConfig) : DockerImageFunctionConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> DockerImageFunctionConfig) : DockerImageFunctionConfig = f ()
 
     member _.Combine(state1: DockerImageFunctionConfig, state2: DockerImageFunctionConfig) : DockerImageFunctionConfig =
         { FunctionName = state1.FunctionName
@@ -63,7 +63,11 @@ type DockerImageFunctionBuilder(name: string) =
           Memory = state2.Memory |> Option.orElse state1.Memory
           Description = state2.Description |> Option.orElse state1.Description }
 
-    member x.For(config: DockerImageFunctionConfig, f: unit -> DockerImageFunctionConfig) : DockerImageFunctionConfig =
+    member inline x.For
+        (
+            config: DockerImageFunctionConfig,
+            [<InlineIfLambda>] f: unit -> DockerImageFunctionConfig
+        ) : DockerImageFunctionConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 

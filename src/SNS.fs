@@ -39,7 +39,7 @@ type TopicBuilder(name: string) =
           FifoTopic = None
           ContentBasedDeduplication = None }
 
-    member _.Delay(f: unit -> TopicConfig) : TopicConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> TopicConfig) : TopicConfig = f ()
 
     member _.Combine(state1: TopicConfig, state2: TopicConfig) : TopicConfig =
         { TopicName = state1.TopicName
@@ -50,7 +50,7 @@ type TopicBuilder(name: string) =
             state2.ContentBasedDeduplication
             |> Option.orElse state1.ContentBasedDeduplication }
 
-    member x.For(config: TopicConfig, f: unit -> TopicConfig) : TopicConfig =
+    member inline x.For(config: TopicConfig, [<InlineIfLambda>] f: unit -> TopicConfig) : TopicConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -127,7 +127,7 @@ type SubscriptionBuilder() =
           FilterPolicy = None
           DeadLetterQueue = None }
 
-    member _.Delay(f: unit -> SubscriptionConfig) : SubscriptionConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> SubscriptionConfig) : SubscriptionConfig = f ()
 
     member _.Combine(state1: SubscriptionConfig, state2: SubscriptionConfig) : SubscriptionConfig =
         { TopicConstructId = state2.TopicConstructId |> Option.orElse state1.TopicConstructId
@@ -135,7 +135,11 @@ type SubscriptionBuilder() =
           FilterPolicy = state2.FilterPolicy |> Option.orElse state1.FilterPolicy
           DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue }
 
-    member x.For(config: SubscriptionConfig, f: unit -> SubscriptionConfig) : SubscriptionConfig =
+    member inline x.For
+        (
+            config: SubscriptionConfig,
+            [<InlineIfLambda>] f: unit -> SubscriptionConfig
+        ) : SubscriptionConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 

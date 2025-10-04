@@ -37,7 +37,7 @@ type ImportSourceBuilder() =
           CompressionType = None
           KeyPrefix = None }
 
-    member _.Delay(f: unit -> ImportSourceConfig) : ImportSourceConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> ImportSourceConfig) : ImportSourceConfig = f ()
 
     member _.Combine(state1: ImportSourceConfig, state2: ImportSourceConfig) : ImportSourceConfig =
         { Bucket = state2.Bucket |> Option.orElse state1.Bucket
@@ -46,7 +46,11 @@ type ImportSourceBuilder() =
           CompressionType = state2.CompressionType |> Option.orElse state1.CompressionType
           KeyPrefix = state2.KeyPrefix |> Option.orElse state1.KeyPrefix }
 
-    member x.For(config: ImportSourceConfig, f: unit -> ImportSourceConfig) : ImportSourceConfig =
+    member inline x.For
+        (
+            config: ImportSourceConfig,
+            [<InlineIfLambda>] f: unit -> ImportSourceConfig
+        ) : ImportSourceConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -156,11 +160,11 @@ type TableBuilder(name: string) =
             Stream = config2.Stream |> Option.orElse config1.Stream
             KinesisStream = config2.KinesisStream |> Option.orElse config1.KinesisStream }
 
-    member x.For(config: TableConfig, f: unit -> TableConfig) : TableConfig =
+    member inline x.For(config: TableConfig, [<InlineIfLambda>] f: unit -> TableConfig) : TableConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Delay(f: unit -> TableConfig) : TableConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> TableConfig) : TableConfig = f ()
 
     member _.Run(config: TableConfig) : TableSpec =
         let tableName = config.TableName

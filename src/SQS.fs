@@ -54,7 +54,7 @@ type QueueBuilder(name: string) =
           DeadLetterQueueName = None
           DelaySeconds = None }
 
-    member _.Delay(f: unit -> QueueConfig) : QueueConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> QueueConfig) : QueueConfig = f ()
 
     member _.Combine(state1: QueueConfig, state2: QueueConfig) : QueueConfig =
         { QueueName = state1.QueueName
@@ -69,7 +69,7 @@ type QueueBuilder(name: string) =
           DeadLetterQueueName = state2.DeadLetterQueueName |> Option.orElse state1.DeadLetterQueueName
           DelaySeconds = state2.DelaySeconds |> Option.orElse state1.DelaySeconds }
 
-    member x.For(config: QueueConfig, f: unit -> QueueConfig) : QueueConfig =
+    member inline x.For(config: QueueConfig, [<InlineIfLambda>] f: unit -> QueueConfig) : QueueConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 

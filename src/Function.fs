@@ -204,9 +204,9 @@ type FunctionBuilder(name: string) =
             else
                 state2.AsyncInvokeOptions }
 
-    member _.Delay(f: unit -> FunctionConfig) : FunctionConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> FunctionConfig) : FunctionConfig = f ()
 
-    member x.For(config: FunctionConfig, f: unit -> FunctionConfig) : FunctionConfig =
+    member inline x.For(config: FunctionConfig, [<InlineIfLambda>] f: unit -> FunctionConfig) : FunctionConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -376,12 +376,13 @@ type FunctionUrlCorsOptionsBuilder() =
           ExposeHeaders = None
           MaxAge = None }
 
-    member _.Delay(f: unit -> FunctionUrlCorsOptionsConfig) : FunctionUrlCorsOptionsConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> FunctionUrlCorsOptionsConfig) : FunctionUrlCorsOptionsConfig =
+        f ()
 
-    member x.For
+    member inline x.For
         (
             config: FunctionUrlCorsOptionsConfig,
-            f: unit -> FunctionUrlCorsOptionsConfig
+            [<InlineIfLambda>] f: unit -> FunctionUrlCorsOptionsConfig
         ) : FunctionUrlCorsOptionsConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
@@ -492,9 +493,13 @@ type FunctionUrlOptionsBuilder() =
         config.InvokeMode |> Option.iter (fun m -> opts.InvokeMode <- m)
         { Options = opts :> IFunctionUrlOptions }
 
-    member _.Delay(f: unit -> FunctionUrlOptionsConfig) : FunctionUrlOptionsConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> FunctionUrlOptionsConfig) : FunctionUrlOptionsConfig = f ()
 
-    member x.For(config: FunctionUrlOptionsConfig, f: unit -> FunctionUrlOptionsConfig) : FunctionUrlOptionsConfig =
+    member inline x.For
+        (
+            config: FunctionUrlOptionsConfig,
+            [<InlineIfLambda>] f: unit -> FunctionUrlOptionsConfig
+        ) : FunctionUrlOptionsConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -555,12 +560,15 @@ type EventSourceMappingOptionsBuilder(id: string) =
           MaxBatchingWindow = None
           ParallelizationFactor = None }
 
-    member _.Delay(f: unit -> EventSourceMappingOptionsConfig) : EventSourceMappingOptionsConfig = f ()
+    member inline _.Delay
+        ([<InlineIfLambda>] f: unit -> EventSourceMappingOptionsConfig)
+        : EventSourceMappingOptionsConfig =
+        f ()
 
-    member x.For
+    member inline x.For
         (
             config: EventSourceMappingOptionsConfig,
-            f: unit -> EventSourceMappingOptionsConfig
+            [<InlineIfLambda>] f: unit -> EventSourceMappingOptionsConfig
         ) : EventSourceMappingOptionsConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
@@ -674,7 +682,7 @@ type PermissionBuilder(id: string) =
           SourceAccount = None
           EventSourceToken = None }
 
-    member _.Delay(f: unit -> PermissionConfig) : PermissionConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> PermissionConfig) : PermissionConfig = f ()
 
     member _.Run(config: PermissionConfig) : PermissionSpec =
         let p = Permission()
@@ -868,9 +876,13 @@ type PolicyStatementBuilder() =
           Principals = []
           Sid = None }
 
-    member _.Delay(f: unit -> PolicyStatementConfig) : PolicyStatementConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> PolicyStatementConfig) : PolicyStatementConfig = f ()
 
-    member x.For(config: PolicyStatementConfig, f: unit -> PolicyStatementConfig) : PolicyStatementConfig =
+    member inline x.For
+        (
+            config: PolicyStatementConfig,
+            [<InlineIfLambda>] f: unit -> PolicyStatementConfig
+        ) : PolicyStatementConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
