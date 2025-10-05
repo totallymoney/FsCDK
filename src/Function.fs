@@ -1,9 +1,15 @@
 namespace FsCDK
 
+open System
 open Amazon.CDK
 open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.Lambda
+open Amazon.CDK.AWS.EFS
 open Amazon.CDK.AWS.S3.Assets
+open Amazon.CDK.AWS.Logs
+open Amazon.CDK.AWS.EC2
+open Amazon.CDK.AWS.SQS
+open System
 open System.Collections.Generic
 
 type PermissionSpec = { Id: string; Permission: IPermission }
@@ -40,7 +46,24 @@ type FunctionConfig =
       FunctionUrlOptions: IFunctionUrlOptions option
       Permissions: (string * IPermission) list
       RolePolicyStatements: PolicyStatement list
-      AsyncInvokeOptions: IEventInvokeConfigOptions option }
+      AsyncInvokeOptions: IEventInvokeConfigOptions option
+      ReservedConcurrentExecutions: int option
+      LogRetention: RetentionDays option
+      LogGroup: ILogGroup option
+      Role: IRole option
+      InsightsVersion: LambdaInsightsVersion option
+      CurrentVersionOptions: VersionOptions option
+      Layers: ILayerVersion list
+      Architecture: Architecture option
+      Tracing: Tracing option
+      VpcSubnets: SubnetSelection option
+      SecurityGroups: ISecurityGroup list
+      FileSystem: Amazon.CDK.AWS.Lambda.FileSystem option
+      DeadLetterQueue: IQueue option
+      DeadLetterQueueEnabled: bool option
+      LoggingFormat: LoggingFormat option
+      MaxEventAge: Duration option
+      RetryAttempts: int option }
 
 type FunctionSpec =
     { FunctionName: string
@@ -64,7 +87,24 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = []
           RolePolicyStatements = []
-          AsyncInvokeOptions = Some spec.Options }
+          AsyncInvokeOptions = Some spec.Options
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
 
     member _.Yield(spec: FunctionUrlSpec) : FunctionConfig =
         { FunctionName = name
@@ -81,7 +121,24 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = Some spec.Options
           Permissions = []
           RolePolicyStatements = []
-          AsyncInvokeOptions = None }
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
 
     member _.Yield(stmt: PolicyStatement) : FunctionConfig =
         { FunctionName = name
@@ -98,7 +155,24 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = []
           RolePolicyStatements = [ stmt ]
-          AsyncInvokeOptions = None }
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
 
     member _.Yield(event: IEventSource) : FunctionConfig =
         { FunctionName = name
@@ -115,7 +189,24 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = []
           RolePolicyStatements = []
-          AsyncInvokeOptions = None }
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
 
     member _.Yield(spec: PermissionSpec) : FunctionConfig =
         { FunctionName = name
@@ -132,7 +223,24 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = [ (spec.Id, spec.Permission) ]
           RolePolicyStatements = []
-          AsyncInvokeOptions = None }
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
 
     member _.Yield _ : FunctionConfig =
         { FunctionName = name
@@ -149,7 +257,24 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = []
           RolePolicyStatements = []
-          AsyncInvokeOptions = None }
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
 
     member _.Combine(state1: FunctionConfig, state2: FunctionConfig) : FunctionConfig =
         { FunctionName = state1.FunctionName
@@ -202,7 +327,80 @@ type FunctionBuilder(name: string) =
             if state1.AsyncInvokeOptions.IsSome then
                 state1.AsyncInvokeOptions
             else
-                state2.AsyncInvokeOptions }
+                state2.AsyncInvokeOptions
+          ReservedConcurrentExecutions =
+            if state1.ReservedConcurrentExecutions.IsSome then
+                state1.ReservedConcurrentExecutions
+            else
+                state2.ReservedConcurrentExecutions
+          LogRetention =
+            if state1.LogRetention.IsSome then
+                state1.LogRetention
+            else
+                state2.LogRetention
+          LogGroup =
+            if state1.LogGroup.IsSome then
+                state1.LogGroup
+            else
+                state2.LogGroup
+          Role = if state1.Role.IsSome then state1.Role else state2.Role
+          InsightsVersion =
+            if state1.InsightsVersion.IsSome then
+                state1.InsightsVersion
+            else
+                state2.InsightsVersion
+          CurrentVersionOptions =
+            if state1.CurrentVersionOptions.IsSome then
+                state1.CurrentVersionOptions
+            else
+                state2.CurrentVersionOptions
+          Layers = state1.Layers @ state2.Layers
+          Architecture =
+            if state1.Architecture.IsSome then
+                state1.Architecture
+            else
+                state2.Architecture
+          Tracing =
+            if state1.Tracing.IsSome then
+                state1.Tracing
+            else
+                state2.Tracing
+          VpcSubnets =
+            if state1.VpcSubnets.IsSome then
+                state1.VpcSubnets
+            else
+                state2.VpcSubnets
+          SecurityGroups = state1.SecurityGroups @ state2.SecurityGroups
+          FileSystem =
+            if state1.FileSystem.IsSome then
+                state1.FileSystem
+            else
+                state2.FileSystem
+          DeadLetterQueue =
+            if state1.DeadLetterQueue.IsSome then
+                state1.DeadLetterQueue
+            else
+                state2.DeadLetterQueue
+          DeadLetterQueueEnabled =
+            if state1.DeadLetterQueueEnabled.IsSome then
+                state1.DeadLetterQueueEnabled
+            else
+                state2.DeadLetterQueueEnabled
+          LoggingFormat =
+            if state1.LoggingFormat.IsSome then
+                state1.LoggingFormat
+            else
+                state2.LoggingFormat
+          MaxEventAge =
+            if state1.MaxEventAge.IsSome then
+                state1.MaxEventAge
+            else
+                state2.MaxEventAge
+          RetryAttempts =
+            if state1.RetryAttempts.IsSome then
+                state1.RetryAttempts
+            else
+                state2.RetryAttempts }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> FunctionConfig) : FunctionConfig = f ()
 
@@ -225,7 +423,24 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = []
           RolePolicyStatements = []
-          AsyncInvokeOptions = None }
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
 
     member _.Run(config: FunctionConfig) : FunctionSpec =
         // Function name is required
@@ -261,6 +476,37 @@ type FunctionBuilder(name: string) =
         config.Timeout |> Option.iter (fun t -> props.Timeout <- Duration.Seconds(t))
         config.Memory |> Option.iter (fun m -> props.MemorySize <- m)
         config.Description |> Option.iter (fun desc -> props.Description <- desc)
+
+        config.ReservedConcurrentExecutions
+        |> Option.iter (fun r -> props.ReservedConcurrentExecutions <- r)
+
+        config.LogRetention |> Option.iter (fun r -> props.LogRetention <- r)
+        config.LogGroup |> Option.iter (fun f -> props.LogGroup <- f)
+        config.Role |> Option.iter (fun r -> props.Role <- r)
+        config.InsightsVersion |> Option.iter (fun v -> props.InsightsVersion <- v)
+
+        config.CurrentVersionOptions
+        |> Option.iter (fun o -> props.CurrentVersionOptions <- o)
+
+        if not (List.isEmpty config.Layers) then
+            props.Layers <- config.Layers |> List.toArray
+
+        config.Architecture |> Option.iter (fun a -> props.Architecture <- a)
+        config.Tracing |> Option.iter (fun t -> props.Tracing <- t)
+        config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
+
+        if not (List.isEmpty config.SecurityGroups) then
+            props.SecurityGroups <- config.SecurityGroups |> List.toArray
+
+        config.FileSystem |> Option.iter (fun fs -> props.Filesystem <- fs)
+        config.DeadLetterQueue |> Option.iter (fun q -> props.DeadLetterQueue <- q)
+
+        config.DeadLetterQueueEnabled
+        |> Option.iter (fun e -> props.DeadLetterQueueEnabled <- Nullable<bool>(e))
+
+        config.LoggingFormat |> Option.iter (fun f -> props.LoggingFormat <- f)
+        config.MaxEventAge |> Option.iter (fun d -> props.MaxEventAge <- d)
+        config.RetryAttempts |> Option.iter (fun r -> props.RetryAttempts <- r)
 
         // Build post-creation actions based on config
         let actions = ResizeArray<Function -> unit>()
@@ -329,6 +575,287 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("description")>]
     member _.Description(config: FunctionConfig, desc: string) = { config with Description = Some desc }
 
+    // Custom operations for enums and primitives
+    [<CustomOperation("architecture")>]
+    member _.Architecture(config: FunctionConfig, value: Architecture) =
+        { config with
+            Architecture = Some value }
+
+    [<CustomOperation("tracing")>]
+    member _.Tracing(config: FunctionConfig, value: Tracing) = { config with Tracing = Some value }
+
+    [<CustomOperation("loggingFormat")>]
+    member _.LoggingFormat(config: FunctionConfig, value: LoggingFormat) =
+        { config with
+            LoggingFormat = Some value }
+
+    [<CustomOperation("logRetention")>]
+    member _.LogRetention(config: FunctionConfig, value: RetentionDays) =
+        { config with
+            LogRetention = Some value }
+
+    [<CustomOperation("reservedConcurrentExecutions")>]
+    member _.ReservedConcurrentExecutions(config: FunctionConfig, value: int) =
+        { config with
+            ReservedConcurrentExecutions = Some value }
+
+    member _.Yield(layer: ILayerVersion) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = [ layer ]
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
+
+    member _.Yield(sg: ISecurityGroup) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = [ sg ]
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
+
+    member _.Yield(role: IRole) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = Some role
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
+
+    member _.Yield(fs: Amazon.CDK.AWS.Lambda.FileSystem option) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = fs
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
+
+    member _.Yield(q: IQueue) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = Some q
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
+
+    member _.Yield(vpcSel: SubnetSelection) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = Some vpcSel
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
+
+    member _.Yield(verOpts: VersionOptions) : FunctionConfig =
+        { FunctionName = name
+          ConstructId = None
+          Handler = None
+          Runtime = None
+          CodePath = None
+          Environment = []
+          Timeout = None
+          Memory = None
+          Description = None
+          EventSources = []
+          EventSourceMappings = []
+          FunctionUrlOptions = None
+          Permissions = []
+          RolePolicyStatements = []
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = Some verOpts
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
+
+    [<CustomOperation("insightsVersion")>]
+    member _.InsightsVersion(config: FunctionConfig, value: LambdaInsightsVersion) =
+        { config with
+            InsightsVersion = Some value }
+
+    [<CustomOperation("maxEventAge")>]
+    member _.MaxEventAge(config: FunctionConfig, value: Duration) =
+        { config with MaxEventAge = Some value }
+
+    [<CustomOperation("retryAttempts")>]
+    member _.RetryAttempts(config: FunctionConfig, value: int) =
+        { config with
+            RetryAttempts = Some value }
+
+    [<CustomOperation("deadLetterQueueEnabled")>]
+    member _.DeadLetterQueueEnabled(config: FunctionConfig, value: bool) =
+        { config with
+            DeadLetterQueueEnabled = Some value }
+
     member _.Yield(spec: EventSourceMappingSpec) : FunctionConfig =
         { FunctionName = name
           ConstructId = None
@@ -344,8 +871,255 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = []
           RolePolicyStatements = []
-          AsyncInvokeOptions = None }
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = None
+          LogRetention = None
+          LogGroup = None
+          Role = None
+          InsightsVersion = None
+          CurrentVersionOptions = None
+          Layers = []
+          Architecture = None
+          Tracing = None
+          VpcSubnets = None
+          SecurityGroups = []
+          FileSystem = None
+          DeadLetterQueue = None
+          DeadLetterQueueEnabled = None
+          LoggingFormat = None
+          MaxEventAge = None
+          RetryAttempts = None }
 
+
+// ============================================================================
+// EC2 SubnetSelection Builder DSL (complex type helper)
+// ============================================================================
+
+type SubnetSelectionConfig =
+    { SubnetType: SubnetType option
+      AvailabilityZones: string list option }
+
+type SubnetSelectionBuilder() =
+    member _.Yield _ : SubnetSelectionConfig =
+        { SubnetType = None
+          AvailabilityZones = None }
+
+    member _.Zero() : SubnetSelectionConfig =
+        { SubnetType = None
+          AvailabilityZones = None }
+
+    member _.Combine(a: SubnetSelectionConfig, b: SubnetSelectionConfig) : SubnetSelectionConfig =
+        { SubnetType = (if a.SubnetType.IsSome then a.SubnetType else b.SubnetType)
+          AvailabilityZones =
+            (if a.AvailabilityZones.IsSome then
+                 a.AvailabilityZones
+             else
+                 b.AvailabilityZones) }
+
+    member inline _.Delay(f: unit -> SubnetSelectionConfig) = f ()
+    member inline x.For(state: SubnetSelectionConfig, f: unit -> SubnetSelectionConfig) = x.Combine(state, f ())
+
+    member _.Run(cfg: SubnetSelectionConfig) : SubnetSelection =
+        let s = SubnetSelection()
+        cfg.SubnetType |> Option.iter (fun t -> s.SubnetType <- t)
+
+        cfg.AvailabilityZones
+        |> Option.iter (fun az -> s.AvailabilityZones <- (az |> List.toArray))
+
+        s
+
+    [<CustomOperation("subnetType")>]
+    member _.SubnetType(cfg: SubnetSelectionConfig, value: SubnetType) = { cfg with SubnetType = Some value }
+
+    [<CustomOperation("availabilityZones")>]
+    member _.AvailabilityZones(cfg: SubnetSelectionConfig, azs: string list) =
+        { cfg with
+            AvailabilityZones = Some azs }
+
+// ============================================================================
+// Lambda VersionOptions Builder DSL (complex type helper)
+// Use inline implicit yield in lambda CE: versionOptions { ... }
+// ============================================================================
+
+type VersionOptionsConfig =
+    { Description: string option
+      RemovalPolicy: RemovalPolicy option
+      CodeSha256: string option }
+
+type VersionOptionsBuilder() =
+    member _.Yield _ : VersionOptionsConfig =
+        { Description = None
+          RemovalPolicy = None
+          CodeSha256 = None }
+
+    member _.Zero() : VersionOptionsConfig =
+        { Description = None
+          RemovalPolicy = None
+          CodeSha256 = None }
+
+    member _.Combine(a: VersionOptionsConfig, b: VersionOptionsConfig) : VersionOptionsConfig =
+        { Description =
+            if a.Description.IsSome then
+                a.Description
+            else
+                b.Description
+          RemovalPolicy =
+            if a.RemovalPolicy.IsSome then
+                a.RemovalPolicy
+            else
+                b.RemovalPolicy
+          CodeSha256 = if a.CodeSha256.IsSome then a.CodeSha256 else b.CodeSha256 }
+
+    member inline _.Delay(f: unit -> VersionOptionsConfig) = f ()
+    member inline x.For(state: VersionOptionsConfig, f: unit -> VersionOptionsConfig) = x.Combine(state, f ())
+
+    member _.Run(cfg: VersionOptionsConfig) : VersionOptions =
+        let o = VersionOptions()
+        cfg.Description |> Option.iter (fun d -> o.Description <- d)
+        cfg.RemovalPolicy |> Option.iter (fun rp -> o.RemovalPolicy <- rp)
+        cfg.CodeSha256 |> Option.iter (fun s -> o.CodeSha256 <- s)
+        o
+
+    [<CustomOperation("description")>]
+    member _.Desc(cfg: VersionOptionsConfig, d: string) = { cfg with Description = Some d }
+
+    [<CustomOperation("removalPolicy")>]
+    member _.RemovalPolicy(cfg: VersionOptionsConfig, rp: RemovalPolicy) = { cfg with RemovalPolicy = Some rp }
+
+    [<CustomOperation("codeSha256")>]
+    member _.CodeSha256(cfg: VersionOptionsConfig, sha: string) = { cfg with CodeSha256 = Some sha }
+
+// ============================================================================
+// Lambda FileSystem Builder DSL (complex type helper)
+// ============================================================================
+
+type FileSystemConfig =
+    { AccessPoint: IAccessPoint option
+      LocalMountPath: string option }
+
+type FileSystemBuilder() =
+    member _.Yield _ : FileSystemConfig =
+        { AccessPoint = None
+          LocalMountPath = None }
+
+    member _.Zero() : FileSystemConfig =
+        { AccessPoint = None
+          LocalMountPath = None }
+
+    member _.Combine(a: FileSystemConfig, b: FileSystemConfig) : FileSystemConfig =
+        { AccessPoint =
+            if a.AccessPoint.IsSome then
+                a.AccessPoint
+            else
+                b.AccessPoint
+          LocalMountPath =
+            if a.LocalMountPath.IsSome then
+                a.LocalMountPath
+            else
+                b.LocalMountPath }
+
+    member inline _.Delay(f: unit -> FileSystemConfig) = f ()
+    member inline x.For(state: FileSystemConfig, f: unit -> FileSystemConfig) = x.Combine(state, f ())
+
+    member _.Run(cfg: FileSystemConfig) : Amazon.CDK.AWS.Lambda.FileSystem option =
+        match cfg.AccessPoint, cfg.LocalMountPath with
+        | Some ap, Some path -> Some(Amazon.CDK.AWS.Lambda.FileSystem.FromEfsAccessPoint(ap, path))
+        | _ -> None // Return None if either property is missing
+
+    [<CustomOperation("accessPoint")>]
+    member _.AccessPoint(cfg: FileSystemConfig, ap: IAccessPoint) = { cfg with AccessPoint = Some ap }
+
+    [<CustomOperation("localMountPath")>]
+    member _.LocalMountPath(cfg: FileSystemConfig, path: string) = { cfg with LocalMountPath = Some path }
+
+// ============================================================================
+// EFS AccessPoint Builder DSL
+// ============================================================================
+
+type AccessPointConfig =
+    { Stack: Stack
+      Id: string
+      Props: AccessPointProps }
+
+type AccessPointBuilder(stack: Stack, id: string, fs: IFileSystem) =
+    member _.Yield _ : AccessPointConfig =
+        { Stack = stack
+          Id = id
+          Props = AccessPointProps(FileSystem = fs) }
+
+    member _.Zero() : AccessPointConfig =
+        { Stack = stack
+          Id = id
+          Props = AccessPointProps(FileSystem = fs) }
+
+    member _.Run(config: AccessPointConfig) : IAccessPoint =
+        AccessPoint(config.Stack, config.Id, config.Props)
+
+    [<CustomOperation("path")>]
+    member _.Path(config: AccessPointConfig, value: string) =
+        config.Props.Path <- value
+        config
+
+    [<CustomOperation("posixUser")>]
+    member _.PosixUser(config: AccessPointConfig, uid: string, gid: string) =
+        config.Props.PosixUser <- PosixUser(Uid = uid, Gid = gid)
+        config
+
+    [<CustomOperation("createAcl")>]
+    member _.CreateAcl(config: AccessPointConfig, ownerGid: string, ownerUid: string, permissions: string) =
+        config.Props.CreateAcl <- Acl(OwnerGid = ownerGid, OwnerUid = ownerUid, Permissions = permissions)
+        config
+
+// ============================================================================
+// EFS AccessPointProps Builder DSL
+// ============================================================================
+
+type AccessPointPropsConfig =
+    { FileSystem: IFileSystem
+      Path: string option
+      PosixUser: PosixUser option
+      CreateAcl: Acl option }
+
+type AccessPointPropsBuilder(fileSystem: IFileSystem) =
+    member _.Yield _ : AccessPointPropsConfig =
+        { FileSystem = fileSystem
+          Path = None
+          PosixUser = None
+          CreateAcl = None }
+
+    member _.Zero() : AccessPointPropsConfig =
+        { FileSystem = fileSystem
+          Path = None
+          PosixUser = None
+          CreateAcl = None }
+
+    member _.Combine(a: AccessPointPropsConfig, b: AccessPointPropsConfig) : AccessPointPropsConfig =
+        { FileSystem = a.FileSystem
+          Path = Option.orElse a.Path b.Path
+          PosixUser = Option.orElse a.PosixUser b.PosixUser
+          CreateAcl = Option.orElse a.CreateAcl b.CreateAcl }
+
+    member inline _.Delay(f: unit -> AccessPointPropsConfig) = f ()
+
+    member _.Run(config: AccessPointPropsConfig) =
+        let props = AccessPointProps(FileSystem = config.FileSystem)
+        config.Path |> Option.iter (fun p -> props.Path <- p)
+        config.PosixUser |> Option.iter (fun u -> props.PosixUser <- u)
+        config.CreateAcl |> Option.iter (fun a -> props.CreateAcl <- a)
+        props
+
+    [<CustomOperation("path")>]
+    member _.Path(config: AccessPointPropsConfig, value: string) = { config with Path = Some value }
+
+    [<CustomOperation("posixUser")>]
+    member _.PosixUser(config: AccessPointPropsConfig, uid: string, gid: string) =
+        let user = PosixUser(Gid = gid, Uid = uid)
+        { config with PosixUser = Some user }
+
+    [<CustomOperation("createAcl")>]
+    member _.CreateAcl(config: AccessPointPropsConfig, ownerGid: string, ownerUid: string, permissions: string) =
+        let acl = Acl(OwnerGid = ownerGid, OwnerUid = ownerUid, Permissions = permissions)
+        { config with CreateAcl = Some acl }
 
 // ============================================================================
 // Lambda Function URL Options Builder DSL

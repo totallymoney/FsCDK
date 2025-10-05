@@ -1,11 +1,16 @@
 module FsCDK.Tests.FunctionTests
 
-open Expecto
-open FsCDK
 open Amazon.CDK
+open Amazon.CDK.AWS.EFS
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.IAM
+open Amazon.CDK.AWS.Logs
+open Amazon.CDK.AWS.EC2
+open Expecto
+open FsCDK
 open FsCdk.Tests.TestHelpers
+
+open FsCDK.Builders
 
 [<Tests>]
 let lambda_function_dsl_tests =
@@ -276,5 +281,333 @@ let lambda_function_dsl_tests =
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
+          }
+
+          test "implicit yield sets Architecture correctly" {
+              let spec =
+                  lambda "fn-arch" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      architecture Architecture.ARM_64
+                  }
+
+              Expect.equal spec.Props.Architecture Architecture.ARM_64 "Architecture should be set correctly"
+          }
+
+          test "implicit yield sets Tracing correctly" {
+              let spec =
+                  lambda "fn-trace" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      tracing Tracing.ACTIVE
+                  }
+
+              // Tracing might be Nullable depending on version
+              let tracingObj = box spec.Props.Tracing
+
+              match tracingObj with
+              | :? System.Nullable<Tracing> as n when n.HasValue ->
+                  Expect.equal n.Value Tracing.ACTIVE "Tracing should be set correctly"
+              | :? Tracing as t -> Expect.equal t Tracing.ACTIVE "Tracing should be set correctly"
+              | _ -> failtestf $"Unexpected Tracing type/value: %A{tracingObj}"
+          }
+
+          test "file system CE yields correctly" {
+              let stack = Stack(App())
+              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps())
+
+              let ap =
+                  accessPoint stack "ap" efsFs {
+                      path "/export/lambda"
+                      posixUser "1000" "1000"
+                      createAcl "1000" "1000" "750"
+                  }
+
+              let spec =
+                  lambda "fn-fs" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      fileSystem {
+                          accessPoint ap
+                          localMountPath "/mnt/data"
+                      }
+                  }
+
+              // Verify FileSystem is set correctly
+              Expect.isNotNull spec.Props.Filesystem "FileSystem should be set"
+          }
+
+          test "file system CE validates required properties" {
+              let stack = Stack(App())
+              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps())
+
+              let ap =
+                  accessPoint stack "ap" efsFs {
+                      path "/export/lambda"
+                      posixUser "1000" "1000"
+                      createAcl "1000" "1000" "750"
+                  }
+
+              // Empty configuration should yield None
+              let spec1 =
+                  lambda "fn-fs1" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      fileSystem { }
+                  }
+
+              // Missing localMountPath should yield None
+              let spec2 =
+                  lambda "fn-fs2" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      fileSystem { accessPoint accessPoint }
+                  }
+
+              // Missing accessPoint should yield None
+              let spec3 =
+                  lambda "fn-fs3" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      fileSystem { localMountPath "/mnt/data" }
+                  }
+
+              Expect.isNull spec1.Props.Filesystem "Empty FileSystem configuration should yield null"
+              Expect.isNull spec2.Props.Filesystem "FileSystem config missing localMountPath should yield null"
+              Expect.isNull spec3.Props.Filesystem "FileSystem config missing accessPoint should yield null"
+          }
+
+          test "access point CE creates correct resource" {
+              let stack = Stack(App())
+              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps())
+
+              let ap =
+                  accessPoint stack "ap" efsFs {
+                      path "/export/lambda"
+                      posixUser "1000" "1000"
+                      createAcl "1000" "1000" "750"
+                  }
+
+              // Check construction result (basic sanity: id and stack)
+              Expect.isNotNull ap "AccessPoint should be created"
+              Expect.equal ap.Node.Id "ap" "AccessPoint id should match"
+
+              Expect.equal
+                  (ap.Node.Scope :?> Stack).StackName
+                  stack.StackName
+                  "AccessPoint should be created in the provided stack"
+          }
+
+          test "access point CE validates required properties" {
+              let stack = Stack(App())
+              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps())
+
+              // Only FileSystem is required
+              let ap = accessPoint stack "minimal" efsFs { }
+
+              // Verify minimal configuration creates a valid resource
+              Expect.isNotNull ap "AccessPoint should be created"
+              Expect.equal ap.Node.Id "minimal" "AccessPoint id should match"
+              Expect.isNotNull (ap) "AccessPoint should be created"
+          }
+
+          test "file system CE properties are immutable" {
+              let stack = Stack(App())
+              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps())
+
+              let ap =
+                  accessPoint stack "ap" efsFs {
+                      path "/export/lambda"
+                      posixUser "1000" "1000"
+                      createAcl "1000" "1000" "750"
+                  }
+
+              // First configuration
+              let spec1 =
+                  lambda "fn-fs1" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      fileSystem {
+                          accessPoint ap
+                          localMountPath "/mnt/data1"
+                      }
+                  }
+
+              // Second configuration with same access point but different mount path
+              let spec2 =
+                  lambda "fn-fs2" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      fileSystem {
+                          accessPoint ap
+                          localMountPath "/mnt/data2"
+                      }
+                  }
+
+              Expect.isNotNull spec1.Props.Filesystem "FileSystem should be set in first config"
+              Expect.isNotNull spec2.Props.Filesystem "FileSystem should be set in second config"
+          }
+
+          test "implicit yield sets VPC subnet selection correctly" {
+              let spec =
+                  lambda "fn-vpc" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      vpcSubnets { subnetType SubnetType.PRIVATE_WITH_EGRESS }
+                  }
+
+              let subnetTypeObj = box spec.Props.VpcSubnets.SubnetType
+
+              match subnetTypeObj with
+              | :? System.Nullable<SubnetType> as n when n.HasValue ->
+                  Expect.equal n.Value SubnetType.PRIVATE_WITH_EGRESS "VPC subnet type should be set correctly"
+              | :? SubnetType as t ->
+                  Expect.equal t SubnetType.PRIVATE_WITH_EGRESS "VPC subnet type should be set correctly"
+              | _ -> failtestf $"Unexpected SubnetType type/value: %A{subnetTypeObj}"
+          }
+          test "multiple implicit yields combine correctly" {
+              let spec =
+                  lambda "fn-multi" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      architecture Architecture.ARM_64
+                      tracing Tracing.ACTIVE
+
+                      vpcSubnets {
+                          subnetType SubnetType.PUBLIC
+                          availabilityZones [ "us-east-1a"; "us-east-1b" ]
+                      }
+                  }
+
+              Expect.equal spec.Props.Architecture Architecture.ARM_64 "Architecture should be set correctly"
+              let subnetTypeObj = box spec.Props.VpcSubnets.SubnetType
+
+              match subnetTypeObj with
+              | :? System.Nullable<SubnetType> as n when n.HasValue ->
+                  Expect.equal n.Value SubnetType.PUBLIC "VPC subnet type should be set correctly"
+              | :? SubnetType as t -> Expect.equal t SubnetType.PUBLIC "VPC subnet type should be set correctly"
+              | _ -> failtestf $"Unexpected SubnetType type/value: %A{subnetTypeObj}"
+
+              let az = spec.Props.VpcSubnets.AvailabilityZones
+
+              Expect.equal
+                  (az |> Array.toList)
+                  [ "us-east-1a"; "us-east-1b" ]
+                  "Availability zones should be set correctly"
+
+              let tracingObj = box spec.Props.Tracing
+
+              match tracingObj with
+              | :? System.Nullable<Tracing> as n when n.HasValue ->
+                  Expect.equal n.Value Tracing.ACTIVE "Tracing should be set correctly"
+              | :? Tracing as t -> Expect.equal t Tracing.ACTIVE "Tracing should be set correctly"
+              | _ -> failtestf $"Unexpected Tracing type/value: %A{tracingObj}"
+          }
+
+          test "version options CE yields correctly" {
+              let spec =
+                  lambda "fn-version" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      versionOptions {
+                          description "v1.0.0"
+                          removalPolicy RemovalPolicy.RETAIN
+                          codeSha256 "abc123"
+                      }
+                  }
+
+              Expect.equal
+                  spec.Props.CurrentVersionOptions.Description
+                  "v1.0.0"
+                  "Version description should be set correctly"
+
+              let removalPolicyObj = box spec.Props.CurrentVersionOptions.RemovalPolicy
+
+              match removalPolicyObj with
+              | :? System.Nullable<RemovalPolicy> as n when n.HasValue ->
+                  Expect.equal n.Value RemovalPolicy.RETAIN "Version removal policy should be set correctly"
+              | :? RemovalPolicy as p ->
+                  Expect.equal p RemovalPolicy.RETAIN "Version removal policy should be set correctly"
+              | _ -> failtestf $"Unexpected RemovalPolicy type/value: %A{removalPolicyObj}"
+
+              Expect.equal
+                  spec.Props.CurrentVersionOptions.CodeSha256
+                  "abc123"
+                  "Version code SHA256 should be set correctly"
+          }
+
+          test "primitive and enum custom operations set correctly" {
+              let spec =
+                  lambda "fn-primitive" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      loggingFormat LoggingFormat.JSON
+                      architecture Architecture.ARM_64
+                      tracing Tracing.ACTIVE
+                      reservedConcurrentExecutions 100
+                      retryAttempts 3
+                      maxEventAge (Duration.Minutes(5.0))
+                      deadLetterQueueEnabled true
+                  }
+
+              let fmtObj = box spec.Props.LoggingFormat
+
+              match fmtObj with
+              | :? System.Nullable<LoggingFormat> as n when n.HasValue ->
+                  Expect.equal n.Value LoggingFormat.JSON "LoggingFormat should be set correctly"
+              | :? LoggingFormat as f -> Expect.equal f LoggingFormat.JSON "LoggingFormat should be set correctly"
+              | _ -> failtestf $"Unexpected LoggingFormat type/value: %A{fmtObj}"
+
+              Expect.equal spec.Props.Architecture Architecture.ARM_64 "Architecture should be set correctly"
+
+              // Check primitives (handle possible nullable numeric types)
+              let rceObj = box spec.Props.ReservedConcurrentExecutions
+
+              match rceObj with
+              | :? int as i -> Expect.equal i 100 "ReservedConcurrentExecutions should be set correctly"
+              | :? System.Nullable<double> as n when n.HasValue ->
+                  Expect.equal (int n.Value) 100 "ReservedConcurrentExecutions should be set correctly"
+              | :? System.Nullable<int> as n when n.HasValue ->
+                  Expect.equal n.Value 100 "ReservedConcurrentExecutions should be set correctly"
+              | _ -> failtestf $"Unexpected ReservedConcurrentExecutions type/value: %A{rceObj}"
+
+              let retryObj = box spec.Props.RetryAttempts
+
+              match retryObj with
+              | :? int as i -> Expect.equal i 3 "RetryAttempts should be set correctly"
+              | :? System.Nullable<double> as n when n.HasValue ->
+                  Expect.equal (int n.Value) 3 "RetryAttempts should be set correctly"
+              | :? System.Nullable<int> as n when n.HasValue ->
+                  Expect.equal n.Value 3 "RetryAttempts should be set correctly"
+              | _ -> failtestf $"Unexpected RetryAttempts type/value: %A{retryObj}"
+
+              Expect.equal
+                  (spec.Props.MaxEventAge.ToString())
+                  (Duration.Minutes(5.0).ToString())
+                  "MaxEventAge should be set correctly"
+
+              let dleObj = box spec.Props.DeadLetterQueueEnabled
+
+              match dleObj with
+              | :? System.Nullable<bool> as n when n.HasValue ->
+                  Expect.equal n.Value true "DeadLetterQueueEnabled should be set correctly"
+              | :? bool as b -> Expect.equal b true "DeadLetterQueueEnabled should be set correctly"
+              | _ -> failtestf $"Unexpected DeadLetterQueueEnabled type/value: %A{dleObj}"
           } ]
     |> testSequenced
