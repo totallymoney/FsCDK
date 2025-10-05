@@ -31,18 +31,37 @@ open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open FsCDK
 
-// Define a stack with an S3 bucket
-let myStack = 
-    stack "MyStack" {
-        bucket "data-bucket" {
-            versioned true
-            encryption BucketEncryption.S3_MANAGED
-            blockPublicAccess BlockPublicAccess.BLOCK_ALL
+let config = Config.get () // Load Environment Variables
+
+let app =
+    app {
+        stack "MyFirstStack" {
+            let stackEnv =
+                environment {
+                    account config.Account
+                    region config.Region
+                }
+
+            stackProps {
+                env stackEnv
+                description "My first CDK stack in F#"
+                tags [ "project", "FsCDK"; "owner", "me" ]
+            }
+
+            lambda "Playground-SayHello" {
+                runtime Runtime.DOTNET_8
+                handler "Playground::Playground.Handlers::sayHello"
+                code "../Playground/bin/Release/net8.0/publish"
+                timeout 30.0
+                memory 256
+                description "A simple hello world lambda"
+            }
         }
     }
 
-// Create the app
-let app = app { myStack }
+app
+|> _.Synth()
+|> ignore
 ```
 
 1. Deploy your infrastructure:

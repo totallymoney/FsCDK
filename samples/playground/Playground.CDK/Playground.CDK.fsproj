@@ -7,8 +7,13 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Config.fs" />
         <Compile Include="Main.fs" />
         <Content Include="cdk.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="dotenv.net" />
     </ItemGroup>
 
     <ItemGroup>

@@ -1,19 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
+        <OutputType>Library</OutputType>
         <TargetFramework>net8.0</TargetFramework>
         <IsPackable>false</IsPackable>
+        <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+        <PublishReadyToRun>false</PublishReadyToRun>
     </PropertyGroup>
 
     <ItemGroup>
         <Compile Include="Handlers.fs" />
-        <Compile Include="Main.fs" />
     </ItemGroup>
   
     <ItemGroup>
       <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" />
       <PackageReference Include="Amazon.Lambda.Core" />
+      <PackageReference Include="FSharp.Core" />
     </ItemGroup>
 
 </Project>

@@ -21,5 +21,6 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Amazon.CDK.Lib" Version="2.213.0" />
     <PackageVersion Include="Constructs" Version="[10.0.0,11.0.0)" />
+    <PackageVersion Include="dotenv.net" Version="4.0.0"/>
   </ItemGroup>
 </Project>
