@@ -21,7 +21,7 @@ let main _ =
                     }
 
                 stackProps {
-                    env stackEnv
+                    stackEnv
                     description "My first CDK stack in F#"
                     tags [ "project", "FsCDK"; "owner", "me" ]
                 }

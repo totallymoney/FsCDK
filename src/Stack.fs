@@ -27,15 +27,11 @@ type Operation =
 
 type StackConfig =
     { Name: string
-      Environment: string option
-      Version: string option
       Props: StackProps option
       Operations: Operation list }
 
 type StackSpec =
     { Name: string
-      Environment: string option
-      Version: string option
       Props: StackProps option
       Operations: Operation list }
 
@@ -43,93 +39,61 @@ type StackBuilder(name) =
 
     member _.Yield _ : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [] }
 
     member _.Yield(tableSpec: TableSpec) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [ TableOp tableSpec ] }
 
     member _.Yield(funcSpec: FunctionSpec) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [ FunctionOp funcSpec ] }
 
     member _.Yield(dockerSpec: DockerImageFunctionSpec) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [ DockerImageFunctionOp dockerSpec ] }
 
     member _.Yield(grantSpec: GrantSpec) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [ GrantOp grantSpec ] }
 
     member _.Yield(topicSpec: TopicSpec) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [ TopicOp topicSpec ] }
 
     member _.Yield(queueSpec: QueueSpec) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [ QueueOp queueSpec ] }
 
     member _.Yield(bucketSpec: BucketSpec) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [ BucketOp bucketSpec ] }
 
     member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [ SubscriptionOp subSpec ] }
 
     member _.Yield(props: StackProps) : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = Some props
           Operations = [] }
 
     member _.Zero() : StackConfig =
         { Name = name
-          Environment = None
-          Version = None
           Props = None
           Operations = [] }
 
     member _.Combine(state1: StackConfig, state2: StackConfig) : StackConfig =
         { Name = state1.Name
-          Environment =
-            if state1.Environment.IsSome then
-                state1.Environment
-            else
-                state2.Environment
-          Version =
-            if state1.Version.IsSome then
-                state1.Version
-            else
-                state2.Version
           Props = if state1.Props.IsSome then state1.Props else state2.Props
           Operations = state1.Operations @ state2.Operations }
 
@@ -143,17 +107,8 @@ type StackBuilder(name) =
         let name = config.Name
 
         { Name = name
-          Environment = config.Environment
-          Version = config.Version
           Props = config.Props
           Operations = config.Operations }
-
-    [<CustomOperation("env")>]
-    member _.Environment(config: StackConfig, value: string) : StackConfig =
-        { config with Environment = Some value }
-
-    [<CustomOperation("version")>]
-    member _.Version(config: StackConfig, value: string) : StackConfig = { config with Version = Some value }
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -161,7 +116,7 @@ type StackBuilder(name) =
 
 module StackOperations =
     // Process a single operation on a stack
-    let processOperation (stack: Stack) (config: StackConfig) (operation: Operation) : unit =
+    let processOperation (stack: Stack) (operation: Operation) : unit =
         match operation with
         | TableOp tableSpec -> Table(stack, tableSpec.ConstructId, tableSpec.Props) |> ignore
 

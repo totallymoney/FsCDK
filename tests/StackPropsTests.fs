@@ -16,7 +16,7 @@ let stackPropsTests =
 
               let props =
                   stackProps {
-                      env envProps
+                      envProps
                       stackName "MyStack"
                   }
 

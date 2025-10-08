@@ -3,6 +3,7 @@ namespace FsCDK
 open System
 open Amazon.CDK
 open Amazon.CDK.AWS.IAM
+open Amazon.CDK.AWS.KMS
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.EFS
 open Amazon.CDK.AWS.S3.Assets
@@ -48,7 +49,6 @@ type FunctionConfig =
       RolePolicyStatements: PolicyStatement list
       AsyncInvokeOptions: IEventInvokeConfigOptions option
       ReservedConcurrentExecutions: int option
-      LogRetention: RetentionDays option
       LogGroup: ILogGroup option
       Role: IRole option
       InsightsVersion: LambdaInsightsVersion option
@@ -89,7 +89,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = Some spec.Options
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -123,7 +122,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -157,7 +155,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = [ stmt ]
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -191,7 +188,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -225,7 +221,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -259,7 +254,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -333,11 +327,6 @@ type FunctionBuilder(name: string) =
                 state1.ReservedConcurrentExecutions
             else
                 state2.ReservedConcurrentExecutions
-          LogRetention =
-            if state1.LogRetention.IsSome then
-                state1.LogRetention
-            else
-                state2.LogRetention
           LogGroup =
             if state1.LogGroup.IsSome then
                 state1.LogGroup
@@ -425,7 +414,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -480,7 +468,6 @@ type FunctionBuilder(name: string) =
         config.ReservedConcurrentExecutions
         |> Option.iter (fun r -> props.ReservedConcurrentExecutions <- r)
 
-        config.LogRetention |> Option.iter (fun r -> props.LogRetention <- r)
         config.LogGroup |> Option.iter (fun f -> props.LogGroup <- f)
         config.Role |> Option.iter (fun r -> props.Role <- r)
         config.InsightsVersion |> Option.iter (fun v -> props.InsightsVersion <- v)
@@ -589,11 +576,6 @@ type FunctionBuilder(name: string) =
         { config with
             LoggingFormat = Some value }
 
-    [<CustomOperation("logRetention")>]
-    member _.LogRetention(config: FunctionConfig, value: RetentionDays) =
-        { config with
-            LogRetention = Some value }
-
     [<CustomOperation("reservedConcurrentExecutions")>]
     member _.ReservedConcurrentExecutions(config: FunctionConfig, value: int) =
         { config with
@@ -616,7 +598,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -650,7 +631,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -684,7 +664,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = Some role
           InsightsVersion = None
@@ -701,7 +680,7 @@ type FunctionBuilder(name: string) =
           MaxEventAge = None
           RetryAttempts = None }
 
-    member _.Yield(fs: Amazon.CDK.AWS.Lambda.FileSystem option) : FunctionConfig =
+    member _.Yield(fs: Amazon.CDK.AWS.Lambda.FileSystem) : FunctionConfig =
         { FunctionName = name
           ConstructId = None
           Handler = None
@@ -718,7 +697,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -728,7 +706,7 @@ type FunctionBuilder(name: string) =
           Tracing = None
           VpcSubnets = None
           SecurityGroups = []
-          FileSystem = fs
+          FileSystem = Some fs
           DeadLetterQueue = None
           DeadLetterQueueEnabled = None
           LoggingFormat = None
@@ -752,7 +730,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -786,7 +763,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -820,7 +796,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -873,7 +848,6 @@ type FunctionBuilder(name: string) =
           RolePolicyStatements = []
           AsyncInvokeOptions = None
           ReservedConcurrentExecutions = None
-          LogRetention = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -993,20 +967,20 @@ type VersionOptionsBuilder() =
 // Lambda FileSystem Builder DSL (complex type helper)
 // ============================================================================
 
-type FileSystemConfig =
+type LambdaFileSystemConfig =
     { AccessPoint: IAccessPoint option
       LocalMountPath: string option }
 
-type FileSystemBuilder() =
-    member _.Yield _ : FileSystemConfig =
+type LambdaFileSystemBuilder() =
+    member _.Yield _ : LambdaFileSystemConfig =
         { AccessPoint = None
           LocalMountPath = None }
 
-    member _.Zero() : FileSystemConfig =
+    member _.Zero() : LambdaFileSystemConfig =
         { AccessPoint = None
           LocalMountPath = None }
 
-    member _.Combine(a: FileSystemConfig, b: FileSystemConfig) : FileSystemConfig =
+    member _.Combine(a: LambdaFileSystemConfig, b: LambdaFileSystemConfig) : LambdaFileSystemConfig =
         { AccessPoint =
             if a.AccessPoint.IsSome then
                 a.AccessPoint
@@ -1018,22 +992,24 @@ type FileSystemBuilder() =
             else
                 b.LocalMountPath }
 
-    member inline _.Delay(f: unit -> FileSystemConfig) = f ()
-    member inline x.For(state: FileSystemConfig, f: unit -> FileSystemConfig) = x.Combine(state, f ())
+    member inline _.Delay(f: unit -> LambdaFileSystemConfig) = f ()
+    member inline x.For(state: LambdaFileSystemConfig, f: unit -> LambdaFileSystemConfig) = x.Combine(state, f ())
 
-    member _.Run(cfg: FileSystemConfig) : Amazon.CDK.AWS.Lambda.FileSystem option =
+    member _.Run(cfg: LambdaFileSystemConfig) : Amazon.CDK.AWS.Lambda.FileSystem =
         match cfg.AccessPoint, cfg.LocalMountPath with
-        | Some ap, Some path -> Some(Amazon.CDK.AWS.Lambda.FileSystem.FromEfsAccessPoint(ap, path))
-        | _ -> None // Return None if either property is missing
-
-    [<CustomOperation("accessPoint")>]
-    member _.AccessPoint(cfg: FileSystemConfig, ap: IAccessPoint) = { cfg with AccessPoint = Some ap }
+        | Some ap, Some path -> Amazon.CDK.AWS.Lambda.FileSystem.FromEfsAccessPoint(ap, path)
+        | _ -> failwith "Both accessPoint and localMountPath are required for Lambda FileSystem"
 
     [<CustomOperation("localMountPath")>]
-    member _.LocalMountPath(cfg: FileSystemConfig, path: string) = { cfg with LocalMountPath = Some path }
+    member _.LocalMountPath(cfg: LambdaFileSystemConfig, path: string) = { cfg with LocalMountPath = Some path }
+
+    // Complex type as implicit yield
+    member _.Yield(ap: IAccessPoint) : LambdaFileSystemConfig =
+        { AccessPoint = Some ap
+          LocalMountPath = None }
 
 // ============================================================================
-// EFS AccessPoint Builder DSL
+// EFS FileSystem Builder DSL
 // ============================================================================
 
 type AccessPointConfig =
@@ -1041,20 +1017,238 @@ type AccessPointConfig =
       Id: string
       Props: AccessPointProps }
 
-type AccessPointBuilder(stack: Stack, id: string, fs: IFileSystem) =
-    member _.Yield _ : AccessPointConfig =
-        { Stack = stack
+type EfsFileSystemConfig =
+    { Stack: Stack option
+      Id: string
+      Vpc: IVpc option
+      RemovalPolicy: RemovalPolicy option
+      Encrypted: bool option
+      KmsKey: IKey option
+      PerformanceMode: PerformanceMode option
+      ThroughputMode: ThroughputMode option
+      ProvisionedThroughputPerSecond: Size option
+      SecurityGroup: ISecurityGroup option }
+
+type EfsFileSystemBuilder(id: string) =
+    member _.Yield _ : EfsFileSystemConfig =
+        { Stack = None
           Id = id
-          Props = AccessPointProps(FileSystem = fs) }
+          Vpc = None
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = None
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = None }
+
+    member _.Zero() : EfsFileSystemConfig =
+        { Stack = None
+          Id = id
+          Vpc = None
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = None
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = None }
+
+    member _.Run(config: EfsFileSystemConfig) : IFileSystem =
+        let stack =
+            match config.Stack with
+            | Some s -> s
+            | None -> failwith "Stack is required for EFS FileSystem"
+
+        let props = FileSystemProps()
+
+        // Set VPC
+        match config.Vpc with
+        | Some vpc -> props.Vpc <- vpc
+        | None -> failwith "Vpc is required for EFS FileSystem"
+
+        // Optional properties
+        config.RemovalPolicy |> Option.iter (fun p -> props.RemovalPolicy <- p)
+        config.Encrypted |> Option.iter (fun e -> props.Encrypted <- e)
+        config.KmsKey |> Option.iter (fun k -> props.KmsKey <- k)
+        config.PerformanceMode |> Option.iter (fun m -> props.PerformanceMode <- m)
+        config.ThroughputMode |> Option.iter (fun m -> props.ThroughputMode <- m)
+
+        config.ProvisionedThroughputPerSecond
+        |> Option.iter (fun t -> props.ProvisionedThroughputPerSecond <- t)
+
+        config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
+
+        FileSystem(stack, config.Id, props)
+
+    member _.Combine(a: EfsFileSystemConfig, b: EfsFileSystemConfig) : EfsFileSystemConfig =
+        { Stack = if a.Stack.IsSome then a.Stack else b.Stack
+          Id = a.Id
+          Vpc = if a.Vpc.IsSome then a.Vpc else b.Vpc
+          RemovalPolicy =
+            if a.RemovalPolicy.IsSome then
+                a.RemovalPolicy
+            else
+                b.RemovalPolicy
+          Encrypted = if a.Encrypted.IsSome then a.Encrypted else b.Encrypted
+          KmsKey = if a.KmsKey.IsSome then a.KmsKey else b.KmsKey
+          PerformanceMode =
+            if a.PerformanceMode.IsSome then
+                a.PerformanceMode
+            else
+                b.PerformanceMode
+          ThroughputMode =
+            if a.ThroughputMode.IsSome then
+                a.ThroughputMode
+            else
+                b.ThroughputMode
+          ProvisionedThroughputPerSecond =
+            if a.ProvisionedThroughputPerSecond.IsSome then
+                a.ProvisionedThroughputPerSecond
+            else
+                b.ProvisionedThroughputPerSecond
+          SecurityGroup =
+            if a.SecurityGroup.IsSome then
+                a.SecurityGroup
+            else
+                b.SecurityGroup }
+
+    member inline _.Delay(f: unit -> EfsFileSystemConfig) = f ()
+    member inline x.For(state: EfsFileSystemConfig, f: unit -> EfsFileSystemConfig) = x.Combine(state, f ())
+
+    // Custom operations only for primitive values
+    [<CustomOperation("encrypted")>]
+    member _.Encrypted(config: EfsFileSystemConfig, value: bool) = { config with Encrypted = Some value }
+
+    [<CustomOperation("performanceMode")>]
+    member _.PerformanceMode(config: EfsFileSystemConfig, mode: PerformanceMode) =
+        { config with
+            PerformanceMode = Some mode }
+
+    [<CustomOperation("throughputMode")>]
+    member _.ThroughputMode(config: EfsFileSystemConfig, mode: ThroughputMode) =
+        { config with
+            ThroughputMode = Some mode }
+
+    [<CustomOperation("provisionedThroughput")>]
+    member _.ProvisionedThroughput(config: EfsFileSystemConfig, throughput: Size) =
+        { config with
+            ProvisionedThroughputPerSecond = Some throughput }
+
+    [<CustomOperation("removalPolicy")>]
+    member _.RemovalPolicy(config: EfsFileSystemConfig, policy: RemovalPolicy) =
+        { config with
+            RemovalPolicy = Some policy }
+
+    // Implicit yields for complex types
+    member _.Yield(stack: Stack) : EfsFileSystemConfig =
+        { Stack = Some stack
+          Id = id
+          Vpc = None
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = None
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = None }
+
+    member _.Yield(vpc: IVpc) : EfsFileSystemConfig =
+        { Stack = None
+          Id = id
+          Vpc = Some vpc
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = None
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = None }
+
+    member _.Yield(key: IKey) : EfsFileSystemConfig =
+        { Stack = None
+          Id = id
+          Vpc = None
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = Some key
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = None }
+
+    member _.Yield(sg: ISecurityGroup) : EfsFileSystemConfig =
+        { Stack = None
+          Id = id
+          Vpc = None
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = None
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = Some sg }
+
+type AccessPointBuilder(id: string) =
+    member _.Yield _ : AccessPointConfig =
+        { Stack = Unchecked.defaultof<Stack>
+          Id = id
+          Props = AccessPointProps() }
 
     member _.Zero() : AccessPointConfig =
+        { Stack = Unchecked.defaultof<Stack>
+          Id = id
+          Props = AccessPointProps() }
+
+    member _.Run(config: AccessPointConfig) : IAccessPoint =
+        match isNull (box config.Stack), isNull (box config.Props.FileSystem) with
+        | true, _ -> failwith "Stack is required for AccessPointBuilder"
+        | _, true -> failwith "FileSystem is required for AccessPointBuilder"
+        | _ -> AccessPoint(config.Stack, config.Id, config.Props)
+
+    // Implicit yields for complex types
+    member _.Yield(stack: Stack) : AccessPointConfig =
         { Stack = stack
+          Id = id
+          Props = AccessPointProps() }
+
+    member _.Yield(fs: IFileSystem) : AccessPointConfig =
+        { Stack = Unchecked.defaultof<Stack>
           Id = id
           Props = AccessPointProps(FileSystem = fs) }
 
-    member _.Run(config: AccessPointConfig) : IAccessPoint =
-        AccessPoint(config.Stack, config.Id, config.Props)
+    member _.Combine(a: AccessPointConfig, b: AccessPointConfig) : AccessPointConfig =
+        let stack = if isNull (box a.Stack) then b.Stack else a.Stack
+        let props = AccessPointProps()
 
+        if not (isNull (box a.Props.FileSystem)) then
+            props.FileSystem <- a.Props.FileSystem
+        elif not (isNull (box b.Props.FileSystem)) then
+            props.FileSystem <- b.Props.FileSystem
+
+        if not (isNull (box a.Props.Path)) then
+            props.Path <- a.Props.Path
+        elif not (isNull (box b.Props.Path)) then
+            props.Path <- b.Props.Path
+
+        if not (isNull (box a.Props.PosixUser)) then
+            props.PosixUser <- a.Props.PosixUser
+        elif not (isNull (box b.Props.PosixUser)) then
+            props.PosixUser <- b.Props.PosixUser
+
+        if not (isNull (box a.Props.CreateAcl)) then
+            props.CreateAcl <- a.Props.CreateAcl
+        elif not (isNull (box b.Props.CreateAcl)) then
+            props.CreateAcl <- b.Props.CreateAcl
+
+        { Stack = stack
+          Id = id
+          Props = props }
+
+    member inline _.Delay(f: unit -> AccessPointConfig) = f ()
+    member inline x.For(state: AccessPointConfig, f: unit -> AccessPointConfig) = x.Combine(state, f ())
+
+    // Custom operations only for primitive values
     [<CustomOperation("path")>]
     member _.Path(config: AccessPointConfig, value: string) =
         config.Props.Path <- value

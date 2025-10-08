@@ -33,7 +33,7 @@ let appTests =
               let devStack =
                   stack "Dev" {
                       stackProps {
-                          env devEnv
+                          devEnv
                           description "Developer stack for feature work"
                           tags [ "service", "users"; "env", "dev" ]
                       }
@@ -64,7 +64,7 @@ let appTests =
               let prodStack =
                   stack "Prod" {
                       stackProps {
-                          env prodEnv
+                          prodEnv
                           stackName "users-prod"
                           terminationProtection true
                           tags [ "service", "users"; "env", "prod" ]
@@ -80,6 +80,10 @@ let appTests =
 
               let app =
                   app {
+                      context "environment" "production"
+                      context "feature-flag" true
+                      context "version" "1.2.3"
+
                       devStack
                       prodStack
                   }
@@ -91,6 +95,15 @@ let appTests =
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
               Expect.equal cloudAssembly.Stacks[0].DisplayName "Dev" "First spec should be Dev"
               Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod (users-prod)" "Second spec should be Prod"
+
+              Expect.equal
+                  (app.Node.TryGetContext("environment"))
+                  "production"
+                  "App context 'environment' should be 'production'"
+
+              Expect.equal (app.Node.TryGetContext("feature-flag")) true "App context 'feature-flag' should be true"
+
+              Expect.equal (app.Node.TryGetContext("version")) "1.2.3" "App context 'version' should be '1.2.3'"
           }
 
           test "app with implicit yields" {
@@ -109,14 +122,17 @@ let appTests =
               // Build app with implicit yields (no stacks wrapper)
               let app =
                   app {
+                      stackTraces true
+
                       stack "Dev" {
-                          stackProps { env devEnv }
+                          devEnv
+                          stackProps { devEnv }
 
                           table "users" { partitionKey "id" AttributeType.STRING }
                       }
 
                       stack "Prod" {
-                          stackProps { env prodEnv }
+                          stackProps { prodEnv }
 
                           table "users" { partitionKey "id" AttributeType.STRING }
                       }

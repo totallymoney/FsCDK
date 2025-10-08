@@ -44,9 +44,9 @@ type EnvironmentBuilder() =
     [<CustomOperation("region")>]
     member _.Region(config: EnvironmentConfig, regionName: string) =
         { config with Region = Some regionName }
-// StackProps configuration DSL
+
 type StackPropsConfig =
-    { Env: Environment option
+    { Env: IEnvironment option
       Description: string option
       StackName: string option
       Tags: Map<string, string> option
@@ -73,6 +73,38 @@ type StackPropsBuilder() =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None }
+
+    member _.Yield(env: IEnvironment) : StackPropsConfig =
+        { Env = Some env
+          Description = None
+          StackName = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> StackPropsConfig) : StackPropsConfig = f ()
+
+    member _.Combine(state1: StackPropsConfig, state2: StackPropsConfig) : StackPropsConfig =
+        { Env = state2.Env |> Option.orElse state1.Env
+          Description = state2.Description |> Option.orElse state1.Description
+          StackName = state2.StackName |> Option.orElse state1.StackName
+          Tags = state2.Tags |> Option.orElse state1.Tags
+          TerminationProtection = state2.TerminationProtection |> Option.orElse state1.TerminationProtection
+          AnalyticsReporting = state2.AnalyticsReporting |> Option.orElse state1.AnalyticsReporting
+          CrossRegionReferences = state2.CrossRegionReferences |> Option.orElse state1.CrossRegionReferences
+          SuppressTemplateIndentation =
+            state2.SuppressTemplateIndentation
+            |> Option.orElse state1.SuppressTemplateIndentation
+          NotificationArns = state2.NotificationArns |> Option.orElse state1.NotificationArns
+          PermissionsBoundary = state2.PermissionsBoundary |> Option.orElse state1.PermissionsBoundary
+          PropertyInjectors = state2.PropertyInjectors |> Option.orElse state1.PropertyInjectors
+          Synthesizer = state2.Synthesizer |> Option.orElse state1.Synthesizer }
 
     member _.Zero() : StackPropsConfig =
         { Env = None
@@ -126,8 +158,6 @@ type StackPropsBuilder() =
 
         props
 
-    [<CustomOperation("env")>]
-    member _.Environment(config: StackPropsConfig, env: Environment) = { config with Env = Some env }
 
     [<CustomOperation("description")>]
     member _.Description(config: StackPropsConfig, desc: string) = { config with Description = Some desc }
