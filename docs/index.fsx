@@ -44,7 +44,7 @@ let devStack =
   stack "Dev" {
     // Attach StackProps implicitly via nested builder
     stackProps {
-      env devEnv
+      devEnv
       description "Developer stack for feature work"
       tags [ "service", "users"; "env", "dev" ]
     }
@@ -93,7 +93,7 @@ let devStack =
 let prodStack =
   stack "Prod" {
     stackProps {
-      env prodEnv
+      prodEnv
       stackName "users-prod"
       terminationProtection true
       tags [ "service", "users"; "env", "prod" ]
