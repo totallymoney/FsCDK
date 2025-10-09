@@ -31,7 +31,7 @@ type DockerImageFunctionSpec =
 
 type DockerImageFunctionBuilder(name: string) =
     do
-        if System.String.IsNullOrWhiteSpace(name) then
+        if String.IsNullOrWhiteSpace(name) then
             failwith "Docker image function name is required"
 
     member _.Yield _ : DockerImageFunctionConfig =

@@ -54,7 +54,7 @@ type TransitionBuilder() =
             TransitionAfter = Some duration }
 
     [<CustomOperation("transitionDate")>]
-    member _.TransitionDate(config: TransitionConfig, date: System.DateTime) =
+    member _.TransitionDate(config: TransitionConfig, date: DateTime) =
         { config with
             TransitionDate = Some date }
 
