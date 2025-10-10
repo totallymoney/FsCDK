@@ -29,7 +29,7 @@ let appTests =
                       region "us-east-1"
                   }
 
-              let application =
+              let app =
                   app {
                       context "environment" "production"
                       context "feature-flag" true
@@ -37,7 +37,9 @@ let appTests =
                   }
 
               // 2) A Dev stack you can actually work with
-              stack "Dev" application {
+              stack "Dev" {
+                  app
+
                   stackProps {
                       devEnv
                       description "Developer stack for feature work"
@@ -67,7 +69,9 @@ let appTests =
                   }
               }
 
-              stack "Prod" application {
+              stack "Prod" {
+                  app
+
                   stackProps {
                       prodEnv
                       stackName "users-prod"
@@ -83,25 +87,22 @@ let appTests =
                   }
               }
 
-              Expect.equal application.Account null "App account should be null"
+              Expect.equal app.Account null "App account should be null"
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
 
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
               Expect.equal cloudAssembly.Stacks[0].DisplayName "Dev" "First spec should be Dev"
               Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod (users-prod)" "Second spec should be Prod"
 
               Expect.equal
-                  (application.Node.TryGetContext("environment"))
+                  (app.Node.TryGetContext("environment"))
                   "production"
                   "App context 'environment' should be 'production'"
 
-              Expect.equal
-                  (application.Node.TryGetContext("feature-flag"))
-                  true
-                  "App context 'feature-flag' should be true"
+              Expect.equal (app.Node.TryGetContext("feature-flag")) true "App context 'feature-flag' should be true"
 
-              Expect.equal (application.Node.TryGetContext("version")) "1.2.3" "App context 'version' should be '1.2.3'"
+              Expect.equal (app.Node.TryGetContext("version")) "1.2.3" "App context 'version' should be '1.2.3'"
           }
 
           test "app with implicit yields" {
@@ -118,22 +119,24 @@ let appTests =
                   }
 
               // Build app with implicit yields (no stacks wrapper)
-              let application = app { stackTraces true }
+              let app = app { stackTraces true }
 
-              stack "Dev" application {
+              stack "Dev" {
+                  app
                   devEnv
                   stackProps { devEnv }
 
                   table "users" { partitionKey "id" AttributeType.STRING }
               }
 
-              stack "Prod" application {
+              stack "Prod" {
+                  app
                   stackProps { prodEnv }
 
                   table "users" { partitionKey "id" AttributeType.STRING }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
           } ]
     |> testSequenced

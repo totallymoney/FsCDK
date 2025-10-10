@@ -10,9 +10,11 @@ let s3_bucket_happy_path_tests =
     testList
         "S3 Bucket DSL"
         [ test "app synth succeeds with bucket all-common-properties" {
-              let application = App()
+              let app = App()
 
-              stack "S3Stack" application {
+              stack "S3Stack" {
+                  app
+
                   bucket "my-bucket" {
                       constructId "MyBucket"
                       blockPublicAccess BlockPublicAccess.BLOCK_ALL
@@ -37,7 +39,7 @@ let s3_bucket_happy_path_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
 
               // Basic assertion: we produced exactly one stack in this app
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"

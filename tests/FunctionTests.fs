@@ -112,9 +112,11 @@ let lambda_function_dsl_tests =
           }
 
           test "app synth succeeds with function all-common-properties" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaStack" application {
+              stack "LambdaStack" {
+                  app
+
                   lambda "my-fn" {
                       constructId "MyFunction"
                       handler "Program::Handler"
@@ -140,16 +142,18 @@ let lambda_function_dsl_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
 
               // Basic assertion: we produced exactly one stack in this app
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with addEventSourceMapping" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaESM" application {
+              stack "LambdaESM" {
+                  app
+
                   lambda "fn-esm" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -162,14 +166,16 @@ let lambda_function_dsl_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with addPermission" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaPerm" application {
+              stack "LambdaPerm" {
+                  app
+
                   lambda "fn-perm" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -183,14 +189,16 @@ let lambda_function_dsl_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with addToRolePolicy" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaPolicy" application {
+              stack "LambdaPolicy" {
+                  app
+
                   lambda "fn-policy" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -209,14 +217,16 @@ let lambda_function_dsl_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with configureAsyncInvoke" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaAsync" application {
+              stack "LambdaAsync" {
+                  app
+
                   lambda "fn-async" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -229,7 +239,7 @@ let lambda_function_dsl_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
@@ -252,9 +262,11 @@ let lambda_function_dsl_tests =
           }
 
           test "app synth succeeds with addToRolePolicy via builders" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaPolicyBuilders" application {
+              stack "LambdaPolicyBuilders" {
+                  app
+
                   lambda "fn-policy-b" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -273,7 +285,7 @@ let lambda_function_dsl_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 

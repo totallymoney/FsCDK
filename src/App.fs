@@ -104,5 +104,5 @@ module Builders =
     let efsFileSystem id = EfsFileSystemBuilder(id)
     let accessPointProps fs = AccessPointPropsBuilder(fs)
     let accessPoint id = AccessPointBuilder(id)
-    let stack name app = StackBuilder(name, app)
+    let stack name = StackBuilder(name)
     let app = AppBuilder()

@@ -10,9 +10,11 @@ let s3_lifecycle_rule_builder_tests =
     testList
         "S3 LifecycleRule builder"
         [ test "app synth succeeds with basic lifecycle rule via builder" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackLifecycleBuilder" application {
+              stack "S3StackLifecycleBuilder" {
+                  app
+
                   bucket "my-bucket-lifecycle-builder" {
                       constructId "MyBucketLifecycleBuilder"
 
@@ -26,15 +28,16 @@ let s3_lifecycle_rule_builder_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with transitions via nested builders" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackLifecycleBuilder" application {
+              stack "S3StackLifecycleBuilder" {
                   bucket "my-bucket-lifecycle-builder" {
+                      app
                       constructId "MyBucketLifecycleBuilder"
 
                       lifecycleRule {
@@ -55,14 +58,16 @@ let s3_lifecycle_rule_builder_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with noncurrent version transitions via nested builders" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackLifecycleBuilder" application {
+              stack "S3StackLifecycleBuilder" {
+                  app
+
                   bucket "my-bucket-lifecycle-builder" {
                       constructId "MyBucketLifecycleBuilder"
                       versioned true
@@ -80,7 +85,7 @@ let s3_lifecycle_rule_builder_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           } ]
     |> testSequenced

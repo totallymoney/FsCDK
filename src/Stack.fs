@@ -93,75 +93,81 @@ module StackOperations =
 
 type StackConfig =
     { Name: string
-      App: App
+      App: App option
       Props: StackProps option
       Operations: Operation list }
 
-type StackBuilder(name: string, app: App) =
+type StackBuilder(name: string) =
 
     member _.Yield _ : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [] }
 
     member _.Yield(tableSpec: TableSpec) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [ TableOp tableSpec ] }
 
+    member _.Yield(app: App) : StackConfig =
+        { Name = name
+          App = Some app
+          Props = None
+          Operations = [] }
+
     member _.Yield(funcSpec: FunctionSpec) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [ FunctionOp funcSpec ] }
 
     member _.Yield(dockerSpec: DockerImageFunctionSpec) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [ DockerImageFunctionOp dockerSpec ] }
 
     member _.Yield(grantSpec: GrantSpec) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [ GrantOp grantSpec ] }
 
     member _.Yield(topicSpec: TopicSpec) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [ TopicOp topicSpec ] }
 
     member _.Yield(queueSpec: QueueSpec) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [ QueueOp queueSpec ] }
 
     member _.Yield(bucketSpec: BucketSpec) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [ BucketOp bucketSpec ] }
 
     member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [ SubscriptionOp subSpec ] }
 
     member _.Yield(props: StackProps) : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = Some props
           Operations = [] }
 
     member _.Zero() : StackConfig =
         { Name = name
-          App = app
+          App = None
           Props = None
           Operations = [] }
 
@@ -178,15 +184,15 @@ type StackBuilder(name: string, app: App) =
         x.Combine(config, newConfig)
 
     member this.Run(config: StackConfig) =
+        let app = config.App |> Option.defaultWith (fun () -> App())
+
         let stack =
             match config.Props with
-            | Some props -> Stack(config.App, name, props)
-            | None -> Stack(config.App, name)
+            | Some props -> Stack(app, name, props)
+            | None -> Stack(app, name)
 
         for op in config.Operations do
             StackOperations.processOperation stack op
-
-
 
 // { Name = name
 //   Props = config.Props

@@ -35,15 +35,12 @@ let devEnv =
 
 let prodEnv =
   environment {
-    account "098765432109"
+    account "123456789012"
     region "us-east-1"
   }
 
-let app = App()
-
 // 2) A Dev stack you can actually work with
-stack "Dev" app {
-  // Attach StackProps implicitly via nested builder
+stack "Dev" {
   stackProps {
     devEnv
     description "Developer stack for feature work"
@@ -54,13 +51,13 @@ stack "Dev" app {
   table "users" {
     partitionKey "id" AttributeType.STRING
     billingMode BillingMode.PAY_PER_REQUEST
-    removalPolicy RemovalPolicy.DESTROY // fine for dev
+    removalPolicy RemovalPolicy.DESTROY
   }
 
   lambda "users-api-dev" {
     handler "Users::Handler::FunctionHandler"
     runtime Runtime.DOTNET_8
-    code "./examples/lambdas/users" // any folder with your code bundle
+    code "./examples/lambdas/users"
     memory 512
     timeout 10.0
     description "CRUD over the users table"
@@ -77,7 +74,6 @@ stack "Dev" app {
 
   topic "user-events" { displayName "User events" }
 
-  // wiring
   subscription {
     topic "user-events"
     queue "users-queue"
@@ -90,8 +86,7 @@ stack "Dev" app {
   }
 }
 
-// 3) A production-leaning stack
-stack "Prod" app {
+stack "Prod" {
   stackProps {
     prodEnv
     stackName "users-prod"
@@ -102,7 +97,7 @@ stack "Prod" app {
   table "users" {
     partitionKey "id" AttributeType.STRING
     billingMode BillingMode.PAY_PER_REQUEST
-    removalPolicy RemovalPolicy.RETAIN // keep data safe
+    removalPolicy RemovalPolicy.RETAIN
     pointInTimeRecovery true
   }
 
@@ -121,5 +116,3 @@ stack "Prod" app {
     readWriteAccess
   }
 }
-
-// 4) Build an in-memory CDK app (no deploy here). We create stacks into an App

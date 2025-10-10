@@ -11,9 +11,9 @@ let s3_bucket_metrics_tests =
     testList
         "S3 Bucket metrics builder"
         [ test "app synth succeeds with basic metrics configuration" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackMetricsBuilder" application {
+              stack "S3StackMetricsBuilder" {
                   bucket "my-bucket-metrics-builder" {
                       constructId "MyBucketMetricsBuilder"
 
@@ -22,14 +22,14 @@ let s3_bucket_metrics_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with metrics prefix" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackMetricsBuilder" application {
+              stack "S3StackMetricsBuilder" {
                   bucket "my-bucket-metrics-builder" {
                       constructId "MyBucketMetricsBuilder"
 
@@ -40,14 +40,16 @@ let s3_bucket_metrics_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with metrics tag filters" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackMetricsBuilder" application {
+              stack "S3StackMetricsBuilder" {
+                  app
+
                   bucket "my-bucket-metrics-builder" {
                       constructId "MyBucketMetricsBuilder"
 
@@ -58,14 +60,16 @@ let s3_bucket_metrics_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with multiple metrics configurations" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackMetricsBuilder" application {
+              stack "S3StackMetricsBuilder" {
+                  app
+
                   bucket "my-bucket-metrics-builder" {
                       constructId "MyBucketMetricsBuilder"
 
@@ -81,16 +85,18 @@ let s3_bucket_metrics_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth fails when metrics id is not provided" {
               Expect.throwsT<System.Exception>
                   (fun () ->
-                      let application = App()
+                      let app = App()
 
-                      stack "S3StackMetricsBuilder" application {
+                      stack "S3StackMetricsBuilder" {
+                          app
+
                           bucket "my-bucket-metrics-builder" {
                               constructId "MyBucketMetricsBuilder"
 
@@ -98,14 +104,16 @@ let s3_bucket_metrics_tests =
                           }
                       }
 
-                      application.Synth() |> ignore)
+                      app.Synth() |> ignore)
                   "Should throw when metrics ID is not provided"
           }
 
           test "app synth succeeds with combined metrics configurations" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackMetricsBuilder" application {
+              stack "S3StackMetricsBuilder" {
+                  app
+
                   bucket "my-bucket" {
                       metrics {
                           id "all-objects"
@@ -120,7 +128,7 @@ let s3_bucket_metrics_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           } ]
     |> testSequenced

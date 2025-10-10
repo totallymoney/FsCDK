@@ -10,9 +10,11 @@ let s3_cors_rule_builder_tests =
     testList
         "S3 CorsRule builder"
         [ test "app synth succeeds with cors via builder" {
-              let application = App()
+              let app = App()
 
-              stack "S3StackCorsBuilder" application {
+              stack "S3StackCorsBuilder" {
+                  app
+
                   bucket "my-bucket-cors-builder" {
                       constructId "MyBucketCorsBuilder"
 
@@ -26,7 +28,7 @@ let s3_cors_rule_builder_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           } ]
     |> testSequenced

@@ -11,9 +11,11 @@ let function_url_options_builder_tests =
     testList
         "FunctionUrlOptions builder"
         [ test "app synth succeeds with addFunctionUrl via builder" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaFnUrl" application {
+              stack "LambdaFnUrl" {
+                  app
+
                   lambda "fn-url" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -22,14 +24,16 @@ let function_url_options_builder_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with addFunctionUrl + cors via builders" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaFnUrlCors" application {
+              stack "LambdaFnUrlCors" {
+                  app
+
                   lambda "fn-url-cors" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -49,7 +53,7 @@ let function_url_options_builder_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           } ]
     |> testSequenced

@@ -12,9 +12,11 @@ let lambda_add_options_builders_tests =
     testList
         "Lambda add* options builders"
         [ test "app synth with addEventSourceMapping via builder" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaESMBuilder" application {
+              stack "LambdaESMBuilder" {
+                  app
+
                   lambda "fn-esm-b" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -27,14 +29,16 @@ let lambda_add_options_builders_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth with addPermission via builder" {
-              let application = App()
+              let app = App()
 
-              stack "LambdaPermBuilder" application {
+              stack "LambdaPermBuilder" {
+                  app
+
                   lambda "fn-perm-b" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
@@ -48,14 +52,16 @@ let lambda_add_options_builders_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth with configureAsyncInvoke via builder" {
               let application = App()
 
-              stack "LambdaAsyncBuilder" application {
+              stack "LambdaAsyncBuilder" {
+                  application
+
                   lambda "fn-async-b" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8

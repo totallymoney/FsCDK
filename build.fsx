@@ -60,11 +60,13 @@ pipeline "ci" {
 
 pipeline "docs" {
   description "Build the documentation (default)"
+
   stage "build" {
     run "dotnet tool restore"
     run $"dotnet publish src -f net8.0 -c {config}"
     run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"
   }
+
   runIfOnlySpecified false
 }
 
