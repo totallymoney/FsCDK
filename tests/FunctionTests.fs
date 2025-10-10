@@ -112,34 +112,33 @@ let lambda_function_dsl_tests =
           }
 
           test "app synth succeeds with function all-common-properties" {
-              let lambdaStack =
-                  stack "LambdaStack" {
-                      lambda "my-fn" {
-                          constructId "MyFunction"
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                          environment [ ("A", "1"); ("B", "2") ]
-                          timeout 5.0
-                          memory 256
-                          description "Test function"
+              let application = App()
 
-                          // Post-creation operations that don't require extra packages
-                          functionUrl {
-                              authType FunctionUrlAuthType.NONE
+              stack "LambdaStack" application {
+                  lambda "my-fn" {
+                      constructId "MyFunction"
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      environment [ ("A", "1"); ("B", "2") ]
+                      timeout 5.0
+                      memory 256
+                      description "Test function"
 
-                              cors {
-                                  allowedOrigins [ "*" ]
-                                  allowedMethods [ HttpMethod.ALL ]
-                                  allowedHeaders [ "*" ]
-                                  allowCredentials false
-                                  maxAge (Duration.Seconds(300.0))
-                              }
+                      // Post-creation operations that don't require extra packages
+                      functionUrl {
+                          authType FunctionUrlAuthType.NONE
+
+                          cors {
+                              allowedOrigins [ "*" ]
+                              allowedMethods [ HttpMethod.ALL ]
+                              allowedHeaders [ "*" ]
+                              allowCredentials false
+                              maxAge (Duration.Seconds(300.0))
                           }
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
 
@@ -148,91 +147,87 @@ let lambda_function_dsl_tests =
           }
 
           test "app synth succeeds with addEventSourceMapping" {
-              let lambdaStack =
-                  stack "LambdaESM" {
-                      lambda "fn-esm" {
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+              let application = App()
 
-                          eventSourceMapping "SqsMapping" {
-                              eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
-                              batchSize 5
-                          }
+              stack "LambdaESM" application {
+                  lambda "fn-esm" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      eventSourceMapping "SqsMapping" {
+                          eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
+                          batchSize 5
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with addPermission" {
-              let lambdaStack =
-                  stack "LambdaPerm" {
-                      lambda "fn-perm" {
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+              let application = App()
 
-                          permission "ApiGwInvoke" {
-                              principal (ServicePrincipal("apigateway.amazonaws.com"))
-                              action "lambda:InvokeFunction"
-                              sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
-                          }
+              stack "LambdaPerm" application {
+                  lambda "fn-perm" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      permission "ApiGwInvoke" {
+                          principal (ServicePrincipal("apigateway.amazonaws.com"))
+                          action "lambda:InvokeFunction"
+                          sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with addToRolePolicy" {
-              let lambdaStack =
-                  stack "LambdaPolicy" {
-                      lambda "fn-policy" {
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+              let application = App()
 
-                          policyStatement {
-                              policyStatementProps {
-                                  effect Effect.ALLOW
-                                  actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
-                                  resources [ "*" ]
-                              }
+              stack "LambdaPolicy" application {
+                  lambda "fn-policy" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                              actions [ "dynamodb:Query"; "dynamodb:Scan" ]
-                              resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
+                      policyStatement {
+                          policyStatementProps {
+                              effect Effect.ALLOW
+                              actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                              resources [ "*" ]
                           }
+
+                          actions [ "dynamodb:Query"; "dynamodb:Scan" ]
+                          resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth succeeds with configureAsyncInvoke" {
-              let lambdaStack =
-                  stack "LambdaAsync" {
-                      lambda "fn-async" {
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+              let application = App()
 
-                          configureAsyncInvoke {
-                              maxEventAge (Duration.Minutes(1.0))
-                              retryAttempts 1
-                          }
+              stack "LambdaAsync" application {
+                  lambda "fn-async" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      configureAsyncInvoke {
+                          maxEventAge (Duration.Minutes(1.0))
+                          retryAttempts 1
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
@@ -257,27 +252,26 @@ let lambda_function_dsl_tests =
           }
 
           test "app synth succeeds with addToRolePolicy via builders" {
-              let lambdaStack =
-                  stack "LambdaPolicyBuilders" {
-                      lambda "fn-policy-b" {
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+              let application = App()
 
-                          policyStatement {
-                              policyStatementProps {
-                                  effect Effect.ALLOW
-                                  actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
-                                  resources [ "*" ]
-                              }
+              stack "LambdaPolicyBuilders" application {
+                  lambda "fn-policy-b" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                              actions [ "dynamodb:Query"; "dynamodb:Scan" ]
-                              resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
+                      policyStatement {
+                          policyStatementProps {
+                              effect Effect.ALLOW
+                              actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                              resources [ "*" ]
                           }
+
+                          actions [ "dynamodb:Query"; "dynamodb:Scan" ]
+                          resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"

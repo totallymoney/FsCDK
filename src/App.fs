@@ -1,37 +1,23 @@
 namespace FsCDK
 
 open Amazon.CDK
-open FsCDK.StackOperations
 open System.Collections.Generic
 
 type AppConfig =
-    { Stacks: StackSpec list
-      Context: (string * obj) list
+    { Context: (string * obj) list
       StackTraces: bool option
       DefaultStackSynthesizer: IReusableStackSynthesizer option }
 
 type AppBuilder() =
-    member _.Yield _ =
-        { Stacks = []
-          Context = []
-          StackTraces = None
-          DefaultStackSynthesizer = None }
-
-    member _.Yield(stackSpec: StackSpec) =
-        { Stacks = [ stackSpec ]
-          Context = []
-          StackTraces = None
-          DefaultStackSynthesizer = None }
-
     member _.Zero() =
-        { Stacks = []
-          Context = []
+        { Context = []
           StackTraces = None
           DefaultStackSynthesizer = None }
+
+    member this.Yield(_: unit) : AppConfig = this.Zero()
 
     member _.Combine(config1: AppConfig, config2: AppConfig) =
-        { Stacks = config1.Stacks @ config2.Stacks
-          Context = config1.Context @ config2.Context
+        { Context = config1.Context @ config2.Context
           StackTraces = config1.StackTraces |> Option.orElse config2.StackTraces
           DefaultStackSynthesizer = config1.DefaultStackSynthesizer |> Option.orElse config2.DefaultStackSynthesizer }
 
@@ -72,7 +58,7 @@ type AppBuilder() =
 
                     config.Context
                     |> List.rev // Reverse to process in declaration order
-                    |> List.iter (fun (k, v) -> contextDict.[k] <- v // Use indexer to allow overwriting
+                    |> List.iter (fun (k, v) -> contextDict[k] <- v // Use indexer to allow overwriting
                     )
 
                     props.Context <- contextDict
@@ -84,42 +70,12 @@ type AppBuilder() =
 
                 props
 
-        let app = if isNull appProps then App() else App(appProps)
+        if isNull appProps then App() else App(appProps)
 
-        for spec in config.Stacks do
-            let stack =
-                match spec.Props with
-                | Some p -> Stack(app, spec.Name, p)
-                | None -> Stack(app, spec.Name)
-
-            for op in spec.Operations do
-                processOperation stack op
-
-        app
-
-    member _.RunWithApp(config: AppConfig, app: App) =
-        for spec in config.Stacks do
-            let stack =
-                match spec.Props with
-                | Some p -> Stack(app, spec.Name, p)
-                | None -> Stack(app, spec.Name)
-
-            for op in spec.Operations do
-                processOperation stack op
-
-        app
-
-// ============================================================================
-// F# CDK DSL - Main Module
-// This module re-exports all the builders and helper functions from individual files
-// ============================================================================
-
-// Module with builder instances
 [<AutoOpen>]
 module Builders =
     let environment = EnvironmentBuilder()
     let stackProps = StackPropsBuilder()
-    let stack name = StackBuilder(name)
     let table name = TableBuilder(name)
     let lambda name = FunctionBuilder(name)
     let dockerImageFunction name = DockerImageFunctionBuilder(name)
@@ -148,4 +104,5 @@ module Builders =
     let efsFileSystem id = EfsFileSystemBuilder(id)
     let accessPointProps fs = AccessPointPropsBuilder(fs)
     let accessPoint id = AccessPointBuilder(id)
+    let stack name app = StackBuilder(name, app)
     let app = AppBuilder()

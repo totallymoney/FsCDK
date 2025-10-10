@@ -55,11 +55,21 @@ pipeline "ci" {
 
   stage "pack" { run $"dotnet pack {sln} -c {config} -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}" }
 
-  runIfOnlySpecified false
+  runIfOnlySpecified true
 }
 
 pipeline "docs" {
-  description "Run the documentation website"
+  description "Build the documentation (default)"
+  stage "build" {
+    run "dotnet tool restore"
+    run $"dotnet publish src -f net8.0 -c {config}"
+    run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"
+  }
+  runIfOnlySpecified false
+}
+
+pipeline "docs:watch" {
+  description "Watch and rebuild the documentation site"
   stage "build" { run $"dotnet publish src -f net8.0 -c {config}" }
   stage "watch" { run "dotnet fsdocs watch --eval --clean" }
   runIfOnlySpecified true

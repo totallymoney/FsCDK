@@ -22,95 +22,6 @@ type Operation =
     | SubscriptionOp of SubscriptionSpec
 
 // ============================================================================
-// Stack and App Configuration DSL
-// ============================================================================
-
-type StackConfig =
-    { Name: string
-      Props: StackProps option
-      Operations: Operation list }
-
-type StackSpec =
-    { Name: string
-      Props: StackProps option
-      Operations: Operation list }
-
-type StackBuilder(name) =
-
-    member _.Yield _ : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [] }
-
-    member _.Yield(tableSpec: TableSpec) : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [ TableOp tableSpec ] }
-
-    member _.Yield(funcSpec: FunctionSpec) : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [ FunctionOp funcSpec ] }
-
-    member _.Yield(dockerSpec: DockerImageFunctionSpec) : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [ DockerImageFunctionOp dockerSpec ] }
-
-    member _.Yield(grantSpec: GrantSpec) : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [ GrantOp grantSpec ] }
-
-    member _.Yield(topicSpec: TopicSpec) : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [ TopicOp topicSpec ] }
-
-    member _.Yield(queueSpec: QueueSpec) : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [ QueueOp queueSpec ] }
-
-    member _.Yield(bucketSpec: BucketSpec) : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [ BucketOp bucketSpec ] }
-
-    member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [ SubscriptionOp subSpec ] }
-
-    member _.Yield(props: StackProps) : StackConfig =
-        { Name = name
-          Props = Some props
-          Operations = [] }
-
-    member _.Zero() : StackConfig =
-        { Name = name
-          Props = None
-          Operations = [] }
-
-    member _.Combine(state1: StackConfig, state2: StackConfig) : StackConfig =
-        { Name = state1.Name
-          Props = if state1.Props.IsSome then state1.Props else state2.Props
-          Operations = state1.Operations @ state2.Operations }
-
-    member inline _.Delay([<InlineIfLambda>] f: unit -> StackConfig) : StackConfig = f ()
-
-    member inline x.For(config: StackConfig, [<InlineIfLambda>] f: unit -> StackConfig) : StackConfig =
-        let newConfig = f ()
-        x.Combine(config, newConfig)
-
-    member _.Run(config: StackConfig) : StackSpec =
-        let name = config.Name
-
-        { Name = name
-          Props = config.Props
-          Operations = config.Operations }
-
-// ============================================================================
 // Helper Functions - Process Operations in Stack
 // ============================================================================
 
@@ -174,3 +85,109 @@ module StackOperations =
         | BucketOp bucketSpec -> Bucket(stack, bucketSpec.ConstructId, bucketSpec.Props) |> ignore
 
         | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec
+
+
+// ============================================================================
+// Stack and App Configuration DSL
+// ============================================================================
+
+type StackConfig =
+    { Name: string
+      App: App
+      Props: StackProps option
+      Operations: Operation list }
+
+type StackBuilder(name: string, app: App) =
+
+    member _.Yield _ : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [] }
+
+    member _.Yield(tableSpec: TableSpec) : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [ TableOp tableSpec ] }
+
+    member _.Yield(funcSpec: FunctionSpec) : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [ FunctionOp funcSpec ] }
+
+    member _.Yield(dockerSpec: DockerImageFunctionSpec) : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [ DockerImageFunctionOp dockerSpec ] }
+
+    member _.Yield(grantSpec: GrantSpec) : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [ GrantOp grantSpec ] }
+
+    member _.Yield(topicSpec: TopicSpec) : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [ TopicOp topicSpec ] }
+
+    member _.Yield(queueSpec: QueueSpec) : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [ QueueOp queueSpec ] }
+
+    member _.Yield(bucketSpec: BucketSpec) : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [ BucketOp bucketSpec ] }
+
+    member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [ SubscriptionOp subSpec ] }
+
+    member _.Yield(props: StackProps) : StackConfig =
+        { Name = name
+          App = app
+          Props = Some props
+          Operations = [] }
+
+    member _.Zero() : StackConfig =
+        { Name = name
+          App = app
+          Props = None
+          Operations = [] }
+
+    member _.Combine(state1: StackConfig, state2: StackConfig) : StackConfig =
+        { Name = state1.Name
+          App = state1.App
+          Props = if state1.Props.IsSome then state1.Props else state2.Props
+          Operations = state1.Operations @ state2.Operations }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> StackConfig) : StackConfig = f ()
+
+    member inline x.For(config: StackConfig, [<InlineIfLambda>] f: unit -> StackConfig) : StackConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member this.Run(config: StackConfig) =
+        let stack =
+            match config.Props with
+            | Some props -> Stack(config.App, name, props)
+            | None -> Stack(config.App, name)
+
+        for op in config.Operations do
+            StackOperations.processOperation stack op
+
+
+
+// { Name = name
+//   Props = config.Props
+//   Operations = config.Operations }

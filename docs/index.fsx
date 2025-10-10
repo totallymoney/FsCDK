@@ -39,92 +39,87 @@ let prodEnv =
     region "us-east-1"
   }
 
+let app = App()
+
 // 2) A Dev stack you can actually work with
-let devStack =
-  stack "Dev" {
-    // Attach StackProps implicitly via nested builder
-    stackProps {
-      devEnv
-      description "Developer stack for feature work"
-      tags [ "service", "users"; "env", "dev" ]
-    }
-
-    // resources
-    table "users" {
-      partitionKey "id" AttributeType.STRING
-      billingMode BillingMode.PAY_PER_REQUEST
-      removalPolicy RemovalPolicy.DESTROY // fine for dev
-    }
-
-    lambda "users-api-dev" {
-      handler "Users::Handler::FunctionHandler"
-      runtime Runtime.DOTNET_8
-      code "./examples/lambdas/users" // any folder with your code bundle
-      memory 512
-      timeout 10.0
-      description "CRUD over the users table"
-    }
-
-    queue "users-dlq" {
-      messageRetention (7.0 * 24.0 * 3600.0) // 7 days
-    }
-
-    queue "users-queue" {
-      deadLetterQueue "users-dlq" 5
-      visibilityTimeout 30.0
-    }
-
-    topic "user-events" { displayName "User events" }
-
-    // wiring
-    subscription {
-      topic "user-events"
-      queue "users-queue"
-    }
-
-    grant {
-      table "users"
-      lambda "users-api-dev"
-      readWriteAccess
-    }
+stack "Dev" app {
+  // Attach StackProps implicitly via nested builder
+  stackProps {
+    devEnv
+    description "Developer stack for feature work"
+    tags [ "service", "users"; "env", "dev" ]
   }
+
+  // resources
+  table "users" {
+    partitionKey "id" AttributeType.STRING
+    billingMode BillingMode.PAY_PER_REQUEST
+    removalPolicy RemovalPolicy.DESTROY // fine for dev
+  }
+
+  lambda "users-api-dev" {
+    handler "Users::Handler::FunctionHandler"
+    runtime Runtime.DOTNET_8
+    code "./examples/lambdas/users" // any folder with your code bundle
+    memory 512
+    timeout 10.0
+    description "CRUD over the users table"
+  }
+
+  queue "users-dlq" {
+    messageRetention (7.0 * 24.0 * 3600.0) // 7 days
+  }
+
+  queue "users-queue" {
+    deadLetterQueue "users-dlq" 5
+    visibilityTimeout 30.0
+  }
+
+  topic "user-events" { displayName "User events" }
+
+  // wiring
+  subscription {
+    topic "user-events"
+    queue "users-queue"
+  }
+
+  grant {
+    table "users"
+    lambda "users-api-dev"
+    readWriteAccess
+  }
+}
 
 // 3) A production-leaning stack
-let prodStack =
-  stack "Prod" {
-    stackProps {
-      prodEnv
-      stackName "users-prod"
-      terminationProtection true
-      tags [ "service", "users"; "env", "prod" ]
-    }
-
-    table "users" {
-      partitionKey "id" AttributeType.STRING
-      billingMode BillingMode.PAY_PER_REQUEST
-      removalPolicy RemovalPolicy.RETAIN // keep data safe
-      pointInTimeRecovery true
-    }
-
-    lambda "users-api" {
-      handler "Users::Handler::FunctionHandler"
-      runtime Runtime.DOTNET_8
-      code "./examples/lambdas/users"
-      memory 1024
-      timeout 15.0
-      description "CRUD over the users table"
-    }
-
-    grant {
-      table "users"
-      lambda "users-api"
-      readWriteAccess
-    }
+stack "Prod" app {
+  stackProps {
+    prodEnv
+    stackName "users-prod"
+    terminationProtection true
+    tags [ "service", "users"; "env", "prod" ]
   }
 
-// 4) Build an in-memory CDK app (no deploy here). We create stacks into an App
-app {
-  // Build both stacks into the same app
-  devStack
-  prodStack
+  table "users" {
+    partitionKey "id" AttributeType.STRING
+    billingMode BillingMode.PAY_PER_REQUEST
+    removalPolicy RemovalPolicy.RETAIN // keep data safe
+    pointInTimeRecovery true
+  }
+
+  lambda "users-api" {
+    handler "Users::Handler::FunctionHandler"
+    runtime Runtime.DOTNET_8
+    code "./examples/lambdas/users"
+    memory 1024
+    timeout 15.0
+    description "CRUD over the users table"
+  }
+
+  grant {
+    table "users"
+    lambda "users-api"
+    readWriteAccess
+  }
 }
+
+// 4) Build an in-memory CDK app (no deploy here). We create stacks into an App

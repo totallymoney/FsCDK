@@ -11,8 +11,8 @@ let appTests =
     testList
         "FsCDK App Tests"
         [ test "App with no stacks" {
-              let app = app { () }
-              let cloudAssembly = app.Synth()
+              let application = App()
+              let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 0 "App should have no stacks"
           }
 
@@ -29,81 +29,79 @@ let appTests =
                       region "us-east-1"
                   }
 
-              // 2) A Dev stack you can actually work with
-              let devStack =
-                  stack "Dev" {
-                      stackProps {
-                          devEnv
-                          description "Developer stack for feature work"
-                          tags [ "service", "users"; "env", "dev" ]
-                      }
-
-                      table "users" {
-                          partitionKey "id" AttributeType.STRING
-                          billingMode BillingMode.PAY_PER_REQUEST
-                          removalPolicy RemovalPolicy.DESTROY // fine for dev
-                      }
-
-                      queue "users-dlq" {
-                          messageRetention (7.0 * 24.0 * 3600.0) // 7 days
-                      }
-
-                      queue "users-queue" {
-                          deadLetterQueue "users-dlq" 5
-                          visibilityTimeout 30.0
-                      }
-
-                      topic "user-events" { displayName "User events" }
-
-                      subscription {
-                          topic "user-events"
-                          queue "users-queue"
-                      }
-                  }
-
-              let prodStack =
-                  stack "Prod" {
-                      stackProps {
-                          prodEnv
-                          stackName "users-prod"
-                          terminationProtection true
-                          tags [ "service", "users"; "env", "prod" ]
-                      }
-
-                      table "users" {
-                          partitionKey "id" AttributeType.STRING
-                          billingMode BillingMode.PAY_PER_REQUEST
-                          removalPolicy RemovalPolicy.RETAIN // keep data safe
-                          pointInTimeRecovery true
-                      }
-                  }
-
-              let app =
+              let application =
                   app {
                       context "environment" "production"
                       context "feature-flag" true
                       context "version" "1.2.3"
-
-                      devStack
-                      prodStack
                   }
 
-              Expect.equal app.Account null "App account should be null"
+              // 2) A Dev stack you can actually work with
+              stack "Dev" application {
+                  stackProps {
+                      devEnv
+                      description "Developer stack for feature work"
+                      tags [ "service", "users"; "env", "dev" ]
+                  }
 
-              let cloudAssembly = app.Synth()
+                  table "users" {
+                      partitionKey "id" AttributeType.STRING
+                      billingMode BillingMode.PAY_PER_REQUEST
+                      removalPolicy RemovalPolicy.DESTROY // fine for dev
+                  }
+
+                  queue "users-dlq" {
+                      messageRetention (7.0 * 24.0 * 3600.0) // 7 days
+                  }
+
+                  queue "users-queue" {
+                      deadLetterQueue "users-dlq" 5
+                      visibilityTimeout 30.0
+                  }
+
+                  topic "user-events" { displayName "User events" }
+
+                  subscription {
+                      topic "user-events"
+                      queue "users-queue"
+                  }
+              }
+
+              stack "Prod" application {
+                  stackProps {
+                      prodEnv
+                      stackName "users-prod"
+                      terminationProtection true
+                      tags [ "service", "users"; "env", "prod" ]
+                  }
+
+                  table "users" {
+                      partitionKey "id" AttributeType.STRING
+                      billingMode BillingMode.PAY_PER_REQUEST
+                      removalPolicy RemovalPolicy.RETAIN // keep data safe
+                      pointInTimeRecovery true
+                  }
+              }
+
+              Expect.equal application.Account null "App account should be null"
+
+              let cloudAssembly = application.Synth()
 
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
               Expect.equal cloudAssembly.Stacks[0].DisplayName "Dev" "First spec should be Dev"
               Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod (users-prod)" "Second spec should be Prod"
 
               Expect.equal
-                  (app.Node.TryGetContext("environment"))
+                  (application.Node.TryGetContext("environment"))
                   "production"
                   "App context 'environment' should be 'production'"
 
-              Expect.equal (app.Node.TryGetContext("feature-flag")) true "App context 'feature-flag' should be true"
+              Expect.equal
+                  (application.Node.TryGetContext("feature-flag"))
+                  true
+                  "App context 'feature-flag' should be true"
 
-              Expect.equal (app.Node.TryGetContext("version")) "1.2.3" "App context 'version' should be '1.2.3'"
+              Expect.equal (application.Node.TryGetContext("version")) "1.2.3" "App context 'version' should be '1.2.3'"
           }
 
           test "app with implicit yields" {
@@ -120,25 +118,22 @@ let appTests =
                   }
 
               // Build app with implicit yields (no stacks wrapper)
-              let app =
-                  app {
-                      stackTraces true
+              let application = app { stackTraces true }
 
-                      stack "Dev" {
-                          devEnv
-                          stackProps { devEnv }
+              stack "Dev" application {
+                  devEnv
+                  stackProps { devEnv }
 
-                          table "users" { partitionKey "id" AttributeType.STRING }
-                      }
+                  table "users" { partitionKey "id" AttributeType.STRING }
+              }
 
-                      stack "Prod" {
-                          stackProps { prodEnv }
+              stack "Prod" application {
+                  stackProps { prodEnv }
 
-                          table "users" { partitionKey "id" AttributeType.STRING }
-                      }
-                  }
+                  table "users" { partitionKey "id" AttributeType.STRING }
+              }
 
-              let cloudAssembly = app.Synth()
+              let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
           } ]
     |> testSequenced

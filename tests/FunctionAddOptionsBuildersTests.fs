@@ -12,64 +12,61 @@ let lambda_add_options_builders_tests =
     testList
         "Lambda add* options builders"
         [ test "app synth with addEventSourceMapping via builder" {
-              let lambdaStack =
-                  stack "LambdaESMBuilder" {
-                      lambda "fn-esm-b" {
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+              let application = App()
 
-                          eventSourceMapping "SqsMapping" {
-                              eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
-                              batchSize 5
-                          }
+              stack "LambdaESMBuilder" application {
+                  lambda "fn-esm-b" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      eventSourceMapping "SqsMapping" {
+                          eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
+                          batchSize 5
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth with addPermission via builder" {
-              let lambdaStack =
-                  stack "LambdaPermBuilder" {
-                      lambda "fn-perm-b" {
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+              let application = App()
 
-                          permission "ApiGwInvoke" {
-                              principal (ServicePrincipal("apigateway.amazonaws.com"))
-                              action "lambda:InvokeFunction"
-                              sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
-                          }
+              stack "LambdaPermBuilder" application {
+                  lambda "fn-perm-b" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      permission "ApiGwInvoke" {
+                          principal (ServicePrincipal("apigateway.amazonaws.com"))
+                          action "lambda:InvokeFunction"
+                          sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
 
           test "app synth with configureAsyncInvoke via builder" {
-              let lambdaStack =
-                  stack "LambdaAsyncBuilder" {
-                      lambda "fn-async-b" {
-                          handler "Program::Handler"
-                          runtime Runtime.DOTNET_8
-                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+              let application = App()
 
-                          configureAsyncInvoke {
-                              maxEventAge (Duration.Minutes(1.0))
-                              retryAttempts 1
-                          }
+              stack "LambdaAsyncBuilder" application {
+                  lambda "fn-async-b" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                      configureAsyncInvoke {
+                          maxEventAge (Duration.Minutes(1.0))
+                          retryAttempts 1
                       }
                   }
-
-              let application = app { lambdaStack }
+              }
 
               let cloudAssembly = application.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
