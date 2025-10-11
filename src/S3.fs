@@ -324,3 +324,12 @@ type CorsRuleBuilder() =
 
     [<CustomOperation("maxAgeSeconds")>]
     member _.MaxAgeSeconds(config: CorsRuleConfig, seconds: int) = { config with MaxAge = Some seconds }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module S3Builders =
+    let bucket name = BucketBuilder(name)
+    let corsRule = CorsRuleBuilder()

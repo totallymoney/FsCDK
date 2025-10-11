@@ -38,12 +38,6 @@ module StackOperations =
                 action fn
 
         | DockerImageFunctionOp imageLambdaSpec ->
-            // Create code lazily to avoid JSII side effects during spec construction
-            imageLambdaSpec.Props.Code <- DockerImageCode.FromImageAsset(imageLambdaSpec.Code)
-            // Apply deferred timeout to avoid jsii in tests
-            if imageLambdaSpec.TimeoutSeconds.HasValue then
-                imageLambdaSpec.Props.Timeout <- Duration.Seconds(imageLambdaSpec.TimeoutSeconds.Value)
-
             DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
             |> ignore
 
@@ -194,6 +188,10 @@ type StackBuilder(name: string) =
         for op in config.Operations do
             StackOperations.processOperation stack op
 
-// { Name = name
-//   Props = config.Props
-//   Operations = config.Operations }
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module StackBuilders =
+    let stack name = StackBuilder(name)

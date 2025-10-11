@@ -1,6 +1,5 @@
 namespace FsCDK
 
-open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 open System.Collections.Generic
 open System
@@ -125,3 +124,11 @@ type DockerImageFunctionBuilder(name: string) =
 
     [<CustomOperation("description")>]
     member _.Description(config: DockerImageFunctionConfig, desc: string) = { config with Description = Some desc }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module DockerImageFunctionBuilders =
+    let dockerImageFunction name = DockerImageFunctionBuilder(name)

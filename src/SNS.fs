@@ -5,8 +5,6 @@ open Amazon.CDK.AWS.SNS
 open Amazon.CDK.AWS.SNS.Subscriptions
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.SQS
-open Constructs
-
 // ============================================================================
 // SNS Topic and Subscription Configuration DSL
 // ============================================================================
@@ -222,3 +220,12 @@ module SNS =
             ()
         with ex ->
             printfn $"Warning: Failed to create subscription: %s{ex.Message}"
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module SNSBuilders =
+    let topic name = TopicBuilder(name)
+    let subscription = SubscriptionBuilder()

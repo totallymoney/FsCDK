@@ -72,37 +72,10 @@ type AppBuilder() =
 
         if isNull appProps then App() else App(appProps)
 
+// ============================================================================
+// Builders
+// ============================================================================
+
 [<AutoOpen>]
-module Builders =
-    let environment = EnvironmentBuilder()
-    let stackProps = StackPropsBuilder()
-    let table name = TableBuilder(name)
-    let lambda name = FunctionBuilder(name)
-    let dockerImageFunction name = DockerImageFunctionBuilder(name)
-    let topic name = TopicBuilder(name)
-    let queue name = QueueBuilder(name)
-    let bucket name = BucketBuilder(name)
-    let subscription = SubscriptionBuilder()
-    let grant = GrantBuilder()
-    let importSource = ImportSourceBuilder()
-    let functionUrl = FunctionUrlOptionsBuilder()
-    let cors = FunctionUrlCorsOptionsBuilder()
-    let eventSourceMapping id = EventSourceMappingOptionsBuilder(id)
-    let permission id = PermissionBuilder(id)
-    let eventInvokeConfigOptions = EventInvokeConfigOptionsBuilder()
-    let configureAsyncInvoke = EventInvokeConfigOptionsBuilder()
-    let policyStatementProps = PolicyStatementPropsBuilder()
-    let policyStatement = PolicyStatementBuilder()
-    let corsRule = CorsRuleBuilder()
-    let lifecycleRule = LifecycleRuleBuilder()
-    let transition = TransitionBuilder()
-    let noncurrentVersionTransition = NoncurrentVersionTransitionBuilder()
-    let metrics = BucketMetricsBuilder()
-    let vpcSubnets = SubnetSelectionBuilder()
-    let versionOptions = VersionOptionsBuilder()
-    let lambdaFileSystem = LambdaFileSystemBuilder()
-    let efsFileSystem id = EfsFileSystemBuilder(id)
-    let accessPointProps fs = AccessPointPropsBuilder(fs)
-    let accessPoint id = AccessPointBuilder(id)
-    let stack name = StackBuilder(name)
+module AppBuilders =
     let app = AppBuilder()

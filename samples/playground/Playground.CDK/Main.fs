@@ -1,6 +1,5 @@
 ﻿module Playground.Main
 
-open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 open FsCDK
 open dotenv.net

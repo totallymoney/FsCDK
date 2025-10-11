@@ -95,3 +95,11 @@ module Grants =
             | Custom grantFunc -> grantFunc table lambda
         with _ ->
             () // Ignore if resources not found
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module GrantsBuilders =
+    let grant = GrantBuilder()

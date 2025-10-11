@@ -248,3 +248,12 @@ type TableBuilder(name: string) =
     member _.KinesisStream(config: TableConfig, stream: IStream) =
         { config with
             KinesisStream = Some stream }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module DynamoDBBuilders =
+    let table name = TableBuilder(name)
+    let importSource = ImportSourceBuilder()

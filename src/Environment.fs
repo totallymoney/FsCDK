@@ -7,7 +7,6 @@ open System.Collections.Generic
 // Environment and StackProps Configuration DSL
 // ============================================================================
 
-// Environment configuration DSL
 type EnvironmentConfig =
     { Account: string option
       Region: string option }
@@ -209,3 +208,12 @@ type StackPropsBuilder() =
     member _.Synthesizer(config: StackPropsConfig, synthesizer: IStackSynthesizer) =
         { config with
             Synthesizer = Some synthesizer }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module EnvironmentBuilders =
+    let environment = EnvironmentBuilder()
+    let stackProps = StackPropsBuilder()

@@ -1,9 +1,5 @@
 namespace FsCDK
 
-open Amazon.CDK
-open Amazon.CDK.AWS.SQS
-open System.Collections.Generic
-
 // ============================================================================
 // SQS Queue Configuration DSL
 // ============================================================================
@@ -122,3 +118,11 @@ type QueueBuilder(name: string) =
     member _.DelaySeconds(config: QueueConfig, seconds: int) =
         { config with
             DelaySeconds = Some seconds }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module SQSBuilders =
+    let queue name = QueueBuilder(name)

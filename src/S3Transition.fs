@@ -126,3 +126,12 @@ type NoncurrentVersionTransitionBuilder() =
     member _.NoncurrentVersionsToRetain(config: NoncurrentVersionTransitionConfig, count: float) =
         { config with
             NoncurrentVersionsToRetain = Some count }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module S3TransitionBuilders =
+    let transition = TransitionBuilder()
+    let noncurrentVersionTransition = NoncurrentVersionTransitionBuilder()

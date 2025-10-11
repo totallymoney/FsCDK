@@ -1,10 +1,8 @@
 module FsCDK.Tests.S3BucketMetricsTests
 
-open System.Collections.Generic
 open Expecto
 open FsCDK
 open Amazon.CDK
-open Amazon.CDK.AWS.S3
 
 [<Tests>]
 let s3_bucket_metrics_tests =

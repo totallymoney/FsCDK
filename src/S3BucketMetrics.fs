@@ -60,3 +60,11 @@ type BucketMetricsBuilder() =
 
     [<CustomOperation("tagFilters")>]
     member _.TagFilters(config: BucketMetricsConfig, filters: (string * obj) seq) = { config with TagFilters = filters }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module S3BucketMetricsBuilders =
+    let metrics = BucketMetricsBuilder()

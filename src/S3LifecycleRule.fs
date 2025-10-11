@@ -218,3 +218,11 @@ type LifecycleRuleBuilder() =
     member _.Transitions(config: LifecycleRuleConfig, transitions: ITransition list) =
         { config with
             Transitions = config.Transitions @ transitions }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module S3LifecycleRuleBuilders =
+    let lifecycleRule = LifecycleRuleBuilder()

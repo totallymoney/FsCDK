@@ -7,9 +7,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="DatadogConfig.fs" />
-      <Compile Include="DatadogLogsAspect.fs" />
       <Compile Include="Environment.fs" />
+      <Compile Include="PolicyStatement.fs" />
+      <Compile Include="SubnetSelection.fs" />
+      <Compile Include="FunctionVersion.fs" />
+      <Compile Include="LambdaFileSystem.fs" />
+      <Compile Include="EventInvokeConfig.fs" />
+      <Compile Include="EventSourceMapping.fs" />
+      <Compile Include="FunctionPermissions.fs" />
+      <Compile Include="FunctionUrl.fs" />
       <Compile Include="S3Transition.fs" />
       <Compile Include="S3LifecycleRule.fs" />
       <Compile Include="S3BucketMetrics.fs" />

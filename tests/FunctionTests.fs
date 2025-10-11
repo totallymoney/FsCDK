@@ -4,13 +4,10 @@ open Amazon.CDK
 open Amazon.CDK.AWS.EFS
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.IAM
-open Amazon.CDK.AWS.Logs
 open Amazon.CDK.AWS.EC2
 open Expecto
 open FsCDK
 open FsCdk.Tests.TestHelpers
-
-open FsCDK.Builders
 
 [<Tests>]
 let lambda_function_dsl_tests =
