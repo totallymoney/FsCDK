@@ -33,35 +33,33 @@ open FsCDK
 
 let config = Config.get () // Load Environment Variables
 
-let app =
+stack "MyFirstStack" {
     app {
-        stack "MyFirstStack" {
-            let stackEnv =
-                environment {
-                    account config.Account
-                    region config.Region
-                }
-
-            stackProps {
-                stackEnv
-                description "My first CDK stack in F#"
-                tags [ "project", "FsCDK"; "owner", "me" ]
-            }
-
-            lambda "Playground-SayHello" {
-                runtime Runtime.DOTNET_8
-                handler "Playground::Playground.Handlers::sayHello"
-                code "../Playground/bin/Release/net8.0/publish"
-                timeout 30.0
-                memory 256
-                description "A simple hello world lambda"
-            }
-        }
+        context "environment" "production"
+        context "feature-flag" true
+        context "version" "1.2.3"
     }
 
-app
-|> _.Synth()
-|> ignore
+    environment {
+        account config.Account
+        region config.Region
+    }
+    
+    stackProps {
+        stackEnv
+        description "My first CDK stack in F#"
+        tags [ "project", "FsCDK"; "owner", "me" ]
+    }
+
+    lambda "Playground-SayHello" {
+        runtime Runtime.DOTNET_8
+        handler "Playground::Playground.Handlers::sayHello"
+        code "../Playground/bin/Release/net8.0/publish"
+        timeout 30.0
+        memory 256
+        description "A simple hello world lambda"
+    }
+}
 ```
 
 1. Deploy your infrastructure:
