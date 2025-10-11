@@ -14,6 +14,8 @@ let s3_bucket_metrics_tests =
               let app = App()
 
               stack "S3StackMetricsBuilder" {
+                  app
+
                   bucket "my-bucket-metrics-builder" {
                       constructId "MyBucketMetricsBuilder"
 
@@ -30,6 +32,8 @@ let s3_bucket_metrics_tests =
               let app = App()
 
               stack "S3StackMetricsBuilder" {
+                  app
+
                   bucket "my-bucket-metrics-builder" {
                       constructId "MyBucketMetricsBuilder"
 

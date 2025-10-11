@@ -20,7 +20,6 @@ let main _ =
 
     let createStack envName =
         stack envName {
-            app
             stackProps { env }
 
             lambda $"playground-{envName}-sayHello" {

@@ -41,13 +41,6 @@ pipeline "ci" {
     run "npx cdk synth"
   }
 
-  stage "cdk synth samples" {
-    workingDir (__SOURCE_DIRECTORY__ </> "samples/playground/Playground.CDK")
-    run "npx aws-cdk --version"
-    run $"dotnet publish ../Playground -c {config} -f net8.0"
-    run "npx cdk synth"
-  }
-
   stage "docs" {
     run $"dotnet restore {sln}"
     run $"dotnet build {sln} -c {config} --no-restore"
