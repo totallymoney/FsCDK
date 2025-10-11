@@ -87,33 +87,84 @@ type QueueBuilder(name: string) =
           DeadLetterQueueName = config.DeadLetterQueueName
           MaxReceiveCount = config.MaxReceiveCount }
 
+    /// <summary>Sets the construct ID for the queue.</summary>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue" {
+    ///     constructId "MyQueueConstruct"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: QueueConfig, id: string) = { config with ConstructId = Some id }
 
+    /// <summary>Sets the visibility timeout for messages in the queue.</summary>
+    /// <param name="seconds">The visibility timeout in seconds.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue" {
+    ///     visibilityTimeout 30.0
+    /// }
+    /// </code>
     [<CustomOperation("visibilityTimeout")>]
     member _.VisibilityTimeout(config: QueueConfig, seconds: float) =
         { config with
             VisibilityTimeout = Some seconds }
 
+    /// <summary>Sets the message retention period for the queue.</summary>
+    /// <param name="seconds">The retention period in seconds.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue" {
+    ///     messageRetention 345600.0 // 4 days
+    /// }
+    /// </code>
     [<CustomOperation("messageRetention")>]
     member _.MessageRetention(config: QueueConfig, seconds: float) =
         { config with
             MessageRetention = Some seconds }
 
+    /// <summary>Configures the queue as a FIFO queue.</summary>
+    /// <param name="isFifo">Whether the queue is FIFO.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue.fifo" {
+    ///     fifo true
+    /// }
+    /// </code>
     [<CustomOperation("fifo")>]
     member _.Fifo(config: QueueConfig, isFifo: bool) = { config with FifoQueue = Some isFifo }
 
+    /// <summary>Enables content-based deduplication for FIFO queues.</summary>
+    /// <param name="enabled">Whether content-based deduplication is enabled.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue.fifo" {
+    ///     fifo true
+    ///     contentBasedDeduplication true
+    /// }
+    /// </code>
     [<CustomOperation("contentBasedDeduplication")>]
     member _.ContentBasedDeduplication(config: QueueConfig, enabled: bool) =
         { config with
             ContentBasedDeduplication = Some enabled }
 
+    /// <summary>Configures a dead-letter queue for the queue.</summary>
+    /// <param name="dlqName">The name of the dead-letter queue.</param>
+    /// <param name="maxReceiveCount">Maximum receives before sending to DLQ.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue" {
+    ///     deadLetterQueue "MyDLQ" 3
+    /// }
+    /// </code>
     [<CustomOperation("deadLetterQueue")>]
     member _.DeadLetterQueue(config: QueueConfig, dlqName: string, maxReceiveCount: int) =
         { config with
             DeadLetterQueueName = Some dlqName
             MaxReceiveCount = Some maxReceiveCount }
 
+    /// <summary>Sets the delay for all messages in the queue.</summary>
+    /// <param name="seconds">The delay in seconds.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue" {
+    ///     delaySeconds 15
+    /// }
+    /// </code>
     [<CustomOperation("delaySeconds")>]
     member _.DelaySeconds(config: QueueConfig, seconds: int) =
         { config with
@@ -125,4 +176,12 @@ type QueueBuilder(name: string) =
 
 [<AutoOpen>]
 module SQSBuilders =
+    /// <summary>Creates an SQS queue configuration.</summary>
+    /// <param name="name">The queue name.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue" {
+    ///     visibilityTimeout 30.0
+    ///     fifo true
+    /// }
+    /// </code>
     let queue name = QueueBuilder(name)

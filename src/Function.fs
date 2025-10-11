@@ -545,28 +545,80 @@ type FunctionBuilder(name: string) =
           Actions = actions }
 
     // Custom operations for primitive values
+    /// <summary>Sets the construct ID for the Lambda function.</summary>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     constructId "MyFunctionConstruct"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: FunctionConfig, id: string) = { config with ConstructId = Some id }
 
+    /// <summary>Sets the handler for the Lambda function.</summary>
+    /// <param name="handler">The handler name (e.g., "index.handler").</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     handler "index.handler"
+    /// }
+    /// </code>
     [<CustomOperation("handler")>]
     member _.Handler(config: FunctionConfig, handler: string) = { config with Handler = Some handler }
 
+    /// <summary>Sets the runtime for the Lambda function.</summary>
+    /// <param name="runtime">The Lambda runtime.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     runtime Runtime.NODEJS_18_X
+    /// }
+    /// </code>
     [<CustomOperation("runtime")>]
     member _.Runtime(config: FunctionConfig, runtime: Runtime) = { config with Runtime = Some runtime }
 
+    /// <summary>Sets the code source from a local asset.</summary>
+    /// <param name="path">The path to the code asset.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     code "./lambda"
+    /// }
+    /// </code>
     [<CustomOperation("code")>]
     member _.Code(config: FunctionConfig, path: string) =
         { config with
             CodePath = Some(Code.FromAsset(path)) }
 
+    /// <summary>Sets the code source from a local asset with options.</summary>
+    /// <param name="path">The path to the code asset.</param>
+    /// <param name="options">Asset options.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     code "./lambda" assetOptions
+    /// }
+    /// </code>
     [<CustomOperation("code")>]
     member _.Code(config: FunctionConfig, path: string, options: AssetOptions) =
         { config with
             CodePath = Some(Code.FromAsset(path, options)) }
 
+    /// <summary>Sets the code source from a Code object.</summary>
+    /// <param name="path">The Code object.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     code (Code.FromBucket myBucket "lambda.zip")
+    /// }
+    /// </code>
     [<CustomOperation("code")>]
     member _.Code(config: FunctionConfig, path: Code) = { config with CodePath = Some path }
 
+    /// <summary>Sets the code source from a Docker image.</summary>
+    /// <param name="directory">The directory containing the Dockerfile.</param>
+    /// <param name="cmd">Optional CMD for the Docker image.</param>
+    /// <param name="entrypoint">Optional ENTRYPOINT for the Docker image.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     dockerImageCode "./docker"
+    /// }
+    /// </code>
     [<CustomOperation("dockerImageCode")>]
     member _.DockerImageCode(config: FunctionConfig, directory: string, ?cmd: string[], ?entrypoint: string[]) =
         let props = AssetImageCodeProps()
@@ -576,25 +628,69 @@ type FunctionBuilder(name: string) =
         { config with
             CodePath = Some(Code.FromAssetImage(directory, props)) }
 
+    /// <summary>Sets inline code for the Lambda function.</summary>
+    /// <param name="code">The inline code string.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     inlineCode "exports.handler = async () => 'Hello World';"
+    /// }
+    /// </code>
     [<CustomOperation("inlineCode")>]
     member _.InlineCode(config: FunctionConfig, code: string) =
         { config with
             CodePath = Some(Code.FromInline(code)) }
 
+    /// <summary>Sets environment variables for the Lambda function.</summary>
+    /// <param name="env">List of key-value pairs for environment variables.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     environment [ "KEY1", "value1"; "KEY2", "value2" ]
+    /// }
+    /// </code>
     [<CustomOperation("environment")>]
     member _.Environment(config: FunctionConfig, env: (string * string) list) = { config with Environment = env }
 
+    /// <summary>Adds a single environment variable.</summary>
+    /// <param name="key">The environment variable key.</param>
+    /// <param name="value">The environment variable value.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     envVar "API_KEY" "secret-key"
+    ///     envVar "REGION" "us-east-1"
+    /// }
+    /// </code>
     [<CustomOperation("envVar")>]
     member _.EnvVar(config: FunctionConfig, key: string, value: string) =
         { config with
             Environment = Seq.append config.Environment [ (key, value) ] }
 
+    /// <summary>Sets the timeout for the Lambda function.</summary>
+    /// <param name="seconds">The timeout in seconds.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     timeout 30.0
+    /// }
+    /// </code>
     [<CustomOperation("timeout")>]
     member _.Timeout(config: FunctionConfig, seconds: float) = { config with Timeout = Some seconds }
 
+    /// <summary>Sets the memory allocation for the Lambda function.</summary>
+    /// <param name="mb">The memory size in megabytes.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     memory 512
+    /// }
+    /// </code>
     [<CustomOperation("memory")>]
     member _.Memory(config: FunctionConfig, mb: int) = { config with Memory = Some mb }
 
+    /// <summary>Sets the description for the Lambda function.</summary>
+    /// <param name="desc">The function description.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     description "Processes incoming orders"
+    /// }
+    /// </code>
     [<CustomOperation("description")>]
     member _.Description(config: FunctionConfig, desc: string) = { config with Description = Some desc }
 
@@ -825,4 +921,14 @@ type FunctionBuilder(name: string) =
 
 [<AutoOpen>]
 module FunctionBuilders =
+    /// <summary>Creates a Lambda function configuration.</summary>
+    /// <param name="name">The function name.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     handler "index.handler"
+    ///     runtime Runtime.NODEJS_18_X
+    ///     code "./lambda"
+    ///     timeout 30.0
+    /// }
+    /// </code>
     let lambda (name: string) = FunctionBuilder(name)

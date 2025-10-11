@@ -105,23 +105,65 @@ type DockerImageFunctionBuilder(name: string) =
              | None -> Nullable())
           Props = props }
 
+    /// <summary>Sets the construct ID for the Docker Lambda function.</summary>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// dockerImageFunction "MyFunction" {
+    ///     constructId "MyDockerFunctionConstruct"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: DockerImageFunctionConfig, id: string) = { config with ConstructId = Some id }
 
+    /// <summary>Sets the Docker image path for the function.</summary>
+    /// <param name="imagePath">The path to the Docker image directory.</param>
+    /// <code lang="fsharp">
+    /// dockerImageFunction "MyFunction" {
+    ///     code "./docker"
+    /// }
+    /// </code>
     // Use the same operation name as regular Lambda to keep DSL consistent
     [<CustomOperation("code")>]
     member _.ImageAsset(config: DockerImageFunctionConfig, imagePath: string) = { config with Code = Some imagePath }
 
+    /// <summary>Sets environment variables for the Docker Lambda function.</summary>
+    /// <param name="vars">Sequence of key-value pairs for environment variables.</param>
+    /// <code lang="fsharp">
+    /// dockerImageFunction "MyFunction" {
+    ///     environment [ "API_URL", "https://api.example.com"; "DEBUG", "true" ]
+    /// }
+    /// </code>
     [<CustomOperation("environment")>]
     member _.Environment(config: DockerImageFunctionConfig, vars: (string * string) seq) =
         { config with Environment = vars }
 
+    /// <summary>Sets the timeout for the Docker Lambda function.</summary>
+    /// <param name="seconds">The timeout in seconds.</param>
+    /// <code lang="fsharp">
+    /// dockerImageFunction "MyFunction" {
+    ///     timeout 60.0
+    /// }
+    /// </code>
     [<CustomOperation("timeout")>]
     member _.Timeout(config: DockerImageFunctionConfig, seconds: float) = { config with Timeout = Some seconds }
 
+    /// <summary>Sets the memory allocation for the Docker Lambda function.</summary>
+    /// <param name="mb">The memory size in megabytes.</param>
+    /// <code lang="fsharp">
+    /// dockerImageFunction "MyFunction" {
+    ///     memorySize 1024
+    /// }
+    /// </code>
     [<CustomOperation("memorySize")>]
     member _.MemorySize(config: DockerImageFunctionConfig, mb: int) = { config with Memory = Some mb }
 
+    /// <summary>Sets the description for the Docker Lambda function.</summary>
+    /// <param name="desc">The function description.</param>
+    /// <code lang="fsharp">
+    /// dockerImageFunction "MyFunction" {
+    ///     description "Image processing service"
+    /// }
+    /// </code>
     [<CustomOperation("description")>]
     member _.Description(config: DockerImageFunctionConfig, desc: string) = { config with Description = Some desc }
 
@@ -131,4 +173,13 @@ type DockerImageFunctionBuilder(name: string) =
 
 [<AutoOpen>]
 module DockerImageFunctionBuilders =
+    /// <summary>Creates a Lambda function from a Docker image.</summary>
+    /// <param name="name">The function name.</param>
+    /// <code lang="fsharp">
+    /// dockerImageFunction "MyDockerFunction" {
+    ///     code "./docker"
+    ///     timeout 60.0
+    ///     memorySize 1024
+    /// }
+    /// </code>
     let dockerImageFunction name = DockerImageFunctionBuilder(name)

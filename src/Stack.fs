@@ -194,4 +194,12 @@ type StackBuilder(name: string) =
 
 [<AutoOpen>]
 module StackBuilders =
+    /// <summary>Creates an AWS CDK Stack construct.</summary>
+    /// <param name="name">The name of the stack.</param>
+    /// <code lang="fsharp">
+    /// stack "MyStack" {
+    ///     lambda myFunction
+    ///     bucket myBucket
+    /// }
+    /// </code>
     let stack name = StackBuilder(name)

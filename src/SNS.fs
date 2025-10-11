@@ -74,17 +74,46 @@ type TopicBuilder(name: string) =
           ConstructId = constructId
           Props = props }
 
+    /// <summary>Sets the construct ID for the topic.</summary>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     constructId "MyTopicConstruct"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: TopicConfig, id: string) = { config with ConstructId = Some id }
 
+    /// <summary>Sets the display name for the topic.</summary>
+    /// <param name="displayName">The display name shown in email notifications.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     displayName "Order Notifications"
+    /// }
+    /// </code>
     [<CustomOperation("displayName")>]
     member _.DisplayName(config: TopicConfig, displayName: string) =
         { config with
             DisplayName = Some displayName }
 
+    /// <summary>Configures the topic as a FIFO topic.</summary>
+    /// <param name="isFifo">Whether the topic is FIFO.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic.fifo" {
+    ///     fifo true
+    /// }
+    /// </code>
     [<CustomOperation("fifo")>]
     member _.Fifo(config: TopicConfig, isFifo: bool) = { config with FifoTopic = Some isFifo }
 
+    /// <summary>Enables content-based deduplication for FIFO topics.</summary>
+    /// <param name="enabled">Whether content-based deduplication is enabled.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic.fifo" {
+    ///     fifo true
+    ///     contentBasedDeduplication true
+    /// }
+    /// </code>
     [<CustomOperation("contentBasedDeduplication")>]
     member _.ContentBasedDeduplication(config: TopicConfig, enabled: bool) =
         { config with
@@ -150,46 +179,120 @@ type SubscriptionBuilder() =
               DeadLetterQueue = config.DeadLetterQueue }
         | _ -> failwith "Subscription must specify topic and endpoint"
 
+    /// <summary>Sets the SNS topic for the subscription.</summary>
+    /// <param name="topicConstructId">The construct ID of the topic.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     lambda "MyFunction"
+    /// }
+    /// </code>
     [<CustomOperation("topic")>]
     member _.Topic(config: SubscriptionConfig, topicConstructId: string) =
         { config with
             TopicConstructId = Some topicConstructId }
 
+    /// <summary>Subscribes a Lambda function to the topic.</summary>
+    /// <param name="lambdaConstructId">The construct ID of the Lambda function.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     lambda "MyFunction"
+    /// }
+    /// </code>
     [<CustomOperation("lambda")>]
     member _.Lambda(config: SubscriptionConfig, lambdaConstructId: string) =
         { config with
             Endpoint = Some(LambdaEndpoint lambdaConstructId) }
 
+    /// <summary>Subscribes an SQS queue to the topic.</summary>
+    /// <param name="queueConstructId">The construct ID of the queue.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     queue "MyQueue"
+    /// }
+    /// </code>
     [<CustomOperation("queue")>]
     member _.Queue(config: SubscriptionConfig, queueConstructId: string) =
         { config with
             Endpoint = Some(QueueEndpoint queueConstructId) }
 
+    /// <summary>Subscribes an email address to the topic.</summary>
+    /// <param name="emailAddress">The email address.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     email "admin@example.com"
+    /// }
+    /// </code>
     [<CustomOperation("email")>]
     member _.Email(config: SubscriptionConfig, emailAddress: string) =
         { config with
             Endpoint = Some(EmailEndpoint emailAddress) }
 
+    /// <summary>Subscribes a phone number for SMS to the topic.</summary>
+    /// <param name="phoneNumber">The phone number.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     sms "+1234567890"
+    /// }
+    /// </code>
     [<CustomOperation("sms")>]
     member _.Sms(config: SubscriptionConfig, phoneNumber: string) =
         { config with
             Endpoint = Some(SmsEndpoint phoneNumber) }
 
+    /// <summary>Subscribes an HTTP endpoint to the topic.</summary>
+    /// <param name="url">The HTTP URL.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     http "http://example.com/webhook"
+    /// }
+    /// </code>
     [<CustomOperation("http")>]
     member _.Http(config: SubscriptionConfig, url: string) =
         { config with
             Endpoint = Some(HttpEndpoint url) }
 
+    /// <summary>Subscribes an HTTPS endpoint to the topic.</summary>
+    /// <param name="url">The HTTPS URL.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     https "https://example.com/webhook"
+    /// }
+    /// </code>
     [<CustomOperation("https")>]
     member _.Https(config: SubscriptionConfig, url: string) =
         { config with
             Endpoint = Some(HttpsEndpoint url) }
 
+    /// <summary>Sets a filter policy for the subscription.</summary>
+    /// <param name="policy">List of key-value pairs for the filter policy.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     lambda "MyFunction"
+    ///     filterPolicy [ "eventType", "order"; "priority", "high" ]
+    /// }
+    /// </code>
     [<CustomOperation("filterPolicy")>]
     member _.FilterPolicy(config: SubscriptionConfig, policy: (string * obj) list) =
         { config with
             FilterPolicy = Some(policy |> Map.ofList) }
 
+    /// <summary>Sets a dead-letter queue for the subscription.</summary>
+    /// <param name="queueConstructId">The construct ID of the dead-letter queue.</param>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     lambda "MyFunction"
+    ///     subscriptionDeadLetterQueue "MyDLQ"
+    /// }
+    /// </code>
     [<CustomOperation("subscriptionDeadLetterQueue")>]
     member _.SubscriptionDeadLetterQueue(config: SubscriptionConfig, queueConstructId: string) =
         { config with
@@ -227,5 +330,22 @@ module SNS =
 
 [<AutoOpen>]
 module SNSBuilders =
+    /// <summary>Creates an SNS topic configuration.</summary>
+    /// <param name="name">The topic name.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     displayName "My Notification Topic"
+    ///     fifo true
+    /// }
+    /// </code>
     let topic name = TopicBuilder(name)
+
+    /// <summary>Creates an SNS subscription configuration.</summary>
+    /// <code lang="fsharp">
+    /// subscription {
+    ///     topic "MyTopic"
+    ///     lambda "MyFunction"
+    ///     filterPolicy [ "eventType", "order" ]
+    /// }
+    /// </code>
     let subscription = SubscriptionBuilder()

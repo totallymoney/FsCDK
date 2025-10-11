@@ -56,25 +56,72 @@ type GrantBuilder() =
               Access = a }
         | _ -> failwith "Grant must specify table construct ID, lambda construct ID, and access type"
 
+    /// <summary>Sets the DynamoDB table for the grant.</summary>
+    /// <param name="tableConstructId">The construct ID of the table.</param>
+    /// <code lang="fsharp">
+    /// grant {
+    ///     table "MyTable"
+    /// }
+    /// </code>
     [<CustomOperation("table")>]
     member _.Table(config: GrantConfig, tableConstructId: string) =
         { config with
             TableConstructId = Some tableConstructId }
 
+    /// <summary>Sets the Lambda function for the grant.</summary>
+    /// <param name="lambdaConstructId">The construct ID of the Lambda function.</param>
+    /// <code lang="fsharp">
+    /// grant {
+    ///     lambda "MyFunction"
+    /// }
+    /// </code>
     [<CustomOperation("lambda")>]
     member _.Lambda(config: GrantConfig, lambdaConstructId: string) =
         { config with
             LambdaConstructId = Some lambdaConstructId }
 
+    /// <summary>Grants read access to the table.</summary>
+    /// <code lang="fsharp">
+    /// grant {
+    ///     table "MyTable"
+    ///     lambda "MyFunction"
+    ///     readAccess
+    /// }
+    /// </code>
     [<CustomOperation("readAccess")>]
     member _.ReadAccess(config: GrantConfig) = { config with Access = Some Read }
 
+    /// <summary>Grants write access to the table.</summary>
+    /// <code lang="fsharp">
+    /// grant {
+    ///     table "MyTable"
+    ///     lambda "MyFunction"
+    ///     writeAccess
+    /// }
+    /// </code>
     [<CustomOperation("writeAccess")>]
     member _.WriteAccess(config: GrantConfig) = { config with Access = Some Write }
 
+    /// <summary>Grants read and write access to the table.</summary>
+    /// <code lang="fsharp">
+    /// grant {
+    ///     table "MyTable"
+    ///     lambda "MyFunction"
+    ///     readWriteAccess
+    /// }
+    /// </code>
     [<CustomOperation("readWriteAccess")>]
     member _.ReadWriteAccess(config: GrantConfig) = { config with Access = Some ReadWrite }
 
+    /// <summary>Applies custom grant logic.</summary>
+    /// <param name="grantFunc">A function that takes the table and Lambda function to apply custom grants.</param>
+    /// <code lang="fsharp">
+    /// grant {
+    ///     table "MyTable"
+    ///     lambda "MyFunction"
+    ///     customAccess (fun table fn -> table.Grant(fn, "dynamodb:Query"))
+    /// }
+    /// </code>
     [<CustomOperation("customAccess")>]
     member _.CustomAccess(config: GrantConfig, grantFunc: Table -> Function -> unit) =
         { config with
@@ -102,4 +149,12 @@ module Grants =
 
 [<AutoOpen>]
 module GrantsBuilders =
+    /// <summary>Creates a grant configuration for permissions between resources.</summary>
+    /// <code lang="fsharp">
+    /// grant {
+    ///     table "MyTable"
+    ///     lambda "MyFunction"
+    ///     readWriteAccess
+    /// }
+    /// </code>
     let grant = GrantBuilder()
