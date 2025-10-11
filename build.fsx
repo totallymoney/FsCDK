@@ -49,13 +49,15 @@ pipeline "ci" {
   }
 
   stage "docs" {
-    run $"dotnet publish src -f net8.0 -c {config}"
+    run $"dotnet restore {sln}"
+    run $"dotnet build {sln} -c {config} --no-restore"
+    run $"dotnet publish src -c {config} -f net8.0 --no-build"
     run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"
   }
 
   stage "pack" { run $"dotnet pack {sln} -c {config} -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}" }
 
-  runIfOnlySpecified true
+  runIfOnlySpecified false
 }
 
 pipeline "docs" {
@@ -63,7 +65,9 @@ pipeline "docs" {
 
   stage "build" {
     run "dotnet tool restore"
-    run $"dotnet publish src -f net8.0 -c {config}"
+    run $"dotnet restore {sln}"
+    run $"dotnet build {sln} -c {config} --no-restore"
+    run $"dotnet publish src -c {config} -f net8.0 --no-build"
     run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"
   }
 
@@ -72,7 +76,13 @@ pipeline "docs" {
 
 pipeline "docs:watch" {
   description "Watch and rebuild the documentation site"
-  stage "build" { run $"dotnet publish src -f net8.0 -c {config}" }
+
+  stage "build" {
+    run $"dotnet restore {sln}"
+    run $"dotnet build {sln} -c {config} --no-restore"
+    run $"dotnet publish src -c {config} -f net8.0 --no-build"
+  }
+
   stage "watch" { run "dotnet fsdocs watch --eval --clean" }
   runIfOnlySpecified true
 }
