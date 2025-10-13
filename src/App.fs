@@ -66,34 +66,15 @@ type AppBuilder() =
             DefaultStackSynthesizer = Some synthesizer }
 
     member _.Run(config: AppConfig) =
-        let appProps =
-            if
-                config.Context.IsEmpty
-                && config.StackTraces.IsNone
-                && config.DefaultStackSynthesizer.IsNone
-            then
-                null
-            else
-                let props = AppProps()
+        let props =
+            AppProps(Context = (config.Context |> List.rev |> dict |> Dictionary<string, obj>))
 
-                if not config.Context.IsEmpty then
-                    let contextDict = Dictionary<string, obj>()
+        config.StackTraces |> Option.iter (fun v -> props.StackTraces <- v)
 
-                    config.Context
-                    |> List.rev // Reverse to process in declaration order
-                    |> List.iter (fun (k, v) -> contextDict[k] <- v // Use indexer to allow overwriting
-                    )
+        config.DefaultStackSynthesizer
+        |> Option.iter (fun v -> props.DefaultStackSynthesizer <- v)
 
-                    props.Context <- contextDict
-
-                config.StackTraces |> Option.iter (fun st -> props.StackTraces <- st)
-
-                config.DefaultStackSynthesizer
-                |> Option.iter (fun s -> props.DefaultStackSynthesizer <- s)
-
-                props
-
-        if isNull appProps then App() else App(appProps)
+        App(props)
 
 // ============================================================================
 // Builders
