@@ -4,7 +4,7 @@
 
 <div align="center">
 
-[![Build and Test CDK](https://github.com/edgarfgp/FsCdk/actions/workflows/build.yml/badge.svg)](https://github.com/edgarfgp/FsCDK/actions/workflows/build.yml)
+[![Build and Test CDK](https://github.com/totallymoney/FsCdk/actions/workflows/build.yml/badge.svg)](https://github.com/totallymoney/FsCDK/actions/workflows/build.yml)
 
 </div>
 
@@ -70,7 +70,7 @@ cdk deploy  # Deploy to AWS
 
 ## Documentation
 
-For detailed documentation, examples, and best practices, visit our [Documentation Site](https://edgarfgp.github.io/FsCDK/).
+For detailed documentation, examples, and best practices, visit our [Documentation Site](https://totallymoney.github.io/FsCDK/).
 
 ## Examples
 
