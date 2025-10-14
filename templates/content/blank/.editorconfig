@@ -1,4 +1,4 @@
-# top-most EditorConfig file
+# EditorConfig for projects scaffolded from this template
 root = true
 
 [*]
@@ -9,8 +9,6 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 max_line_length = 120
-
-auto_property_linebreaks = true
 
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = true

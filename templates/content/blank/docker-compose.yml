@@ -1,0 +1,47 @@
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    restart: unless-stopped
+    entrypoint: java
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+    ports:
+      - "9310:8000"
+
+  init-dynamo:
+    image: amazon/aws-cli:latest
+    platform: linux/amd64
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      sleep 5 && \
+      aws dynamodb create-table \
+        --table-name NewApp-dev-NewApp \
+        --attribute-definitions AttributeName=Id,AttributeType=S \
+        --key-schema AttributeName=Id,KeyType=HASH \
+        --provisioned-throughput ReadCapacityUnits=1,WriteCapacityUnits=1 \
+        --endpoint-url http://dynamodb:8000 || echo "Table may already exist" && \
+      echo "DynamoDB init complete"
+    environment:
+      - AWS_ACCESS_KEY_ID=dev
+      - AWS_SECRET_ACCESS_KEY=dev
+      - AWS_DEFAULT_REGION=eu-central-1
+    depends_on:
+      - dynamodb
+
+  integration_tests:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    working_dir: /code
+    volumes:
+      - ./:/code
+    environment:
+      - DYNAMODB_SERVICE_URL=http://dynamodb:8000
+    depends_on:
+      - dynamodb
+      - init-dynamo
+    command: >
+      bash -lc "dotnet restore && dotnet build -c Release && dotnet test tests -c Release --no-build"
+
+# Usage:
+#   docker compose up -d dynamodb init-dynamo
+#   docker compose run --rm integration_tests
+# Ports:
+#   - DynamoDB Local: http://localhost:9310 (maps to container 8000)

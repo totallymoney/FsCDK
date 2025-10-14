@@ -1,0 +1,17 @@
+<Project>
+  <ItemGroup>
+    <PackageVersion Include="FsCDK" Version="FsCDKPkgVersion" />
+    <PackageVersion Include="FSharp.Core" Version="FSharpCorePkgVersion" />
+    <PackageVersion Include="Amazon.Lambda.Core" Version="AmazonLambdaCorePkgVersion" />
+    <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="AmazonLambdaSerializationPkgVersion" />
+    <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="AmazonLambdaAPIGatewayEventsPkgVersion" />
+    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="AwsSdkDynamoDBv2PkgVersion" />
+    <PackageVersion Include="System.Text.Json" Version="SystemTextJsonPkgVersion" />
+    <PackageVersion Include="FSharp.SystemTextJson" Version="FSharpSystemTextJsonPkgVersion" />
+    <PackageVersion Include="FsToolkit.ErrorHandling" Version="FsToolkitErrorHandlingPkgVersion" />
+    <PackageVersion Include="AsyncWriterResult" Version="AsyncWriterResultPkgVersion" />
+    <PackageVersion Include="Expecto" Version="ExpectoPkgVersion" />
+    <PackageVersion Include="YoloDev.Expecto.TestSdk" Version="YoloDevExpectoTestSdkPkgVersion" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="MicrosoftNETTestSdkPkgVersion" />
+  </ItemGroup>
+</Project>
