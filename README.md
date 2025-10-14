@@ -4,7 +4,7 @@
 
 <div align="center">
 
-[![Build and Test CDK](https://github.com/totallymoney/FsCdk/actions/workflows/build.yml/badge.svg)](https://github.com/totallymoney/FsCDK/actions/workflows/build.yml)
+[![Build](https://github.com/totallymoney/FsCDK/actions/workflows/build.yml/badge.svg)](https://github.com/totallymoney/FsCDK/actions/workflows/build.yml)
 
 </div>
 
