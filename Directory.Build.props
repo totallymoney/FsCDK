@@ -1,14 +1,14 @@
 <Project>
 
   <PropertyGroup>
-    <RepositoryUrl>https://github.com/edgarfgp/FsCDK</RepositoryUrl>
-    <PackageProjectUrl>https://edgarfgp.github.io/FsCDK/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/totallymoney/FsCDK</RepositoryUrl>
+    <PackageProjectUrl>https://totallymoney.github.io/FsCDK/</PackageProjectUrl>
     <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
     <DisableImplicitSystemValueTupleReference>true</DisableImplicitSystemValueTupleReference>
     <!-- Example ultra-simple styling and generation settings for FsDocs default template-->
-    <FsDocsLogoLink>https://github.com/edgarfgp/FsCDK</FsDocsLogoLink>
-    <FsDocsLicenseLink>https://github.com/edgarfgp/FsCDK/blob/main/LICENSE</FsDocsLicenseLink>
-    <FsDocsReleaseNotesLink>https://github.com/edgarfgp/FsCDK/blob/main/CHANGELOG.md</FsDocsReleaseNotesLink>
+    <FsDocsLogoLink>https://github.com/totallymoney/FsCDK</FsDocsLogoLink>
+    <FsDocsLicenseLink>https://github.com/totallymoney/FsCDK/blob/main/LICENSE</FsDocsLicenseLink>
+    <FsDocsReleaseNotesLink>https://github.com/totallymoney/FsCDK/blob/main/CHANGELOG.md</FsDocsReleaseNotesLink>
   </PropertyGroup>
 
   <!-- Shared NuGet Package info -->

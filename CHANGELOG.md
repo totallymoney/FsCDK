@@ -11,5 +11,5 @@ _No unreleased changes_
 ## [0.1.0] - 2025-09-29
 - Initial release
 
-[unreleased]: https://github.com/edgarfgp/FsCDK/compare/0.1.0...HEAD
-[0.1.0]: https://github.com/edgarfgp/FsCDK/releases/tag/0.1.0
+[unreleased]: https://github.com/totallymoney/FsCDK/compare/0.1.0...HEAD
+[0.1.0]: https://github.com/totallymoney/FsCDK/releases/tag/0.1.0
