@@ -13,4 +13,8 @@
     <PackageReference Include="YoloDev.Expecto.TestSdk" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\NewApp\NewApp.fsproj" />
+  </ItemGroup>
 </Project>
