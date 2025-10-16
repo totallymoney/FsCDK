@@ -1,30 +1,22 @@
-# EditorConfig for projects scaffolded from this template
 root = true
 
 [*]
-charset = utf-8
-end_of_line = lf
-insert_final_newline = true
-trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
-max_line_length = 120
-
-dotnet_sort_system_directives_first = true
-dotnet_separate_import_directive_groups = true
-
-[*.{fs,fsx,fsi}]
-indent_size = 4
+charset = utf-8
+trim_trailing_whitespace = true
 insert_final_newline = true
 
-[*.{csproj,fsproj,props,targets,xml,config,nuspec}]
+[*.{fsproj,yml,js}]
 indent_size = 2
 
-[*.{json,jsonc}]
-indent_size = 2
-
-[*.yml]
-indent_size = 2
-
-[*.md]
-trim_trailing_whitespace = false
+[*.fs]
+# Fantomas settings
+#https://fsprojects.github.io/fantomas/docs/end-users/Configuration.html
+fsharp_max_if_then_else_short_width = 75
+fsharp_max_infix_operator_expression = 55
+fsharp_record_multiline_formatter = number_of_items
+fsharp_array_or_list_multiline_formatter = number_of_items
+fsharp_space_before_uppercase_invocation = true
+fsharp_space_before_member=true
+fsharp_align_function_signature_to_indentation=true
