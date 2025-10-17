@@ -24,5 +24,5 @@ module Program =
             }
         }
 
-        app.Synth ()
+        app.Synth()
         0
