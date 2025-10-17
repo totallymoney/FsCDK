@@ -655,7 +655,7 @@ type FunctionBuilder(name: string) =
     /// <param name="value">The environment variable value.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
-    ///     envVar "API_KEY" "secret-key"
+    ///     envVar "API_KEY" "example-secret"
     ///     envVar "REGION" "us-east-1"
     /// }
     /// </code>

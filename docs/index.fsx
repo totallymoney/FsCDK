@@ -28,91 +28,91 @@ open Amazon.CDK.AWS.Lambda
 
 // 1) Environments
 let devEnv =
-  environment {
-    account "123456789012"
-    region "us-east-1"
-  }
+    environment {
+        account "123456789012"
+        region "us-east-1"
+    }
 
 let prodEnv =
-  environment {
-    account "123456789012"
-    region "us-east-1"
-  }
+    environment {
+        account "123456789012"
+        region "us-east-1"
+    }
 
 // 2) A Dev stack you can actually work with
 stack "Dev" {
-  stackProps {
-    devEnv
-    description "Developer stack for feature work"
-    tags [ "service", "users"; "env", "dev" ]
-  }
+    stackProps {
+        devEnv
+        description "Developer stack for feature work"
+        tags [ "service", "users"; "env", "dev" ]
+    }
 
-  // resources
-  table "users" {
-    partitionKey "id" AttributeType.STRING
-    billingMode BillingMode.PAY_PER_REQUEST
-    removalPolicy RemovalPolicy.DESTROY
-  }
+    // resources
+    table "users" {
+        partitionKey "id" AttributeType.STRING
+        billingMode BillingMode.PAY_PER_REQUEST
+        removalPolicy RemovalPolicy.DESTROY
+    }
 
-  lambda "users-api-dev" {
-    handler "Users::Handler::FunctionHandler"
-    runtime Runtime.DOTNET_8
-    code "./examples/lambdas/users"
-    memory 512
-    timeout 10.0
-    description "CRUD over the users table"
-  }
+    lambda "users-api-dev" {
+        handler "Users::Handler::FunctionHandler"
+        runtime Runtime.DOTNET_8
+        code "./examples/lambdas/users"
+        memory 512
+        timeout 10.0
+        description "CRUD over the users table"
+    }
 
-  queue "users-dlq" {
-    messageRetention (7.0 * 24.0 * 3600.0) // 7 days
-  }
+    queue "users-dlq" {
+        messageRetention (7.0 * 24.0 * 3600.0) // 7 days
+    }
 
-  queue "users-queue" {
-    deadLetterQueue "users-dlq" 5
-    visibilityTimeout 30.0
-  }
+    queue "users-queue" {
+        deadLetterQueue "users-dlq" 5
+        visibilityTimeout 30.0
+    }
 
-  topic "user-events" { displayName "User events" }
+    topic "user-events" { displayName "User events" }
 
-  subscription {
-    topic "user-events"
-    queue "users-queue"
-  }
+    subscription {
+        topic "user-events"
+        queue "users-queue"
+    }
 
-  grant {
-    table "users"
-    lambda "users-api-dev"
-    readWriteAccess
-  }
+    grant {
+        table "users"
+        lambda "users-api-dev"
+        readWriteAccess
+    }
 }
 
 stack "Prod" {
-  stackProps {
-    prodEnv
-    stackName "users-prod"
-    terminationProtection true
-    tags [ "service", "users"; "env", "prod" ]
-  }
+    stackProps {
+        prodEnv
+        stackName "users-prod"
+        terminationProtection true
+        tags [ "service", "users"; "env", "prod" ]
+    }
 
-  table "users" {
-    partitionKey "id" AttributeType.STRING
-    billingMode BillingMode.PAY_PER_REQUEST
-    removalPolicy RemovalPolicy.RETAIN
-    pointInTimeRecovery true
-  }
+    table "users" {
+        partitionKey "id" AttributeType.STRING
+        billingMode BillingMode.PAY_PER_REQUEST
+        removalPolicy RemovalPolicy.RETAIN
+        pointInTimeRecovery true
+    }
 
-  lambda "users-api" {
-    handler "Users::Handler::FunctionHandler"
-    runtime Runtime.DOTNET_8
-    code "./examples/lambdas/users"
-    memory 1024
-    timeout 15.0
-    description "CRUD over the users table"
-  }
+    lambda "users-api" {
+        handler "Users::Handler::FunctionHandler"
+        runtime Runtime.DOTNET_8
+        code "./examples/lambdas/users"
+        memory 1024
+        timeout 15.0
+        description "CRUD over the users table"
+    }
 
-  grant {
-    table "users"
-    lambda "users-api"
-    readWriteAccess
-  }
+    grant {
+        table "users"
+        lambda "users-api"
+        readWriteAccess
+    }
 }

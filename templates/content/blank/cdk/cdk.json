@@ -1,0 +1,3 @@
+{
+  "app": "dotnet run -c Release --project NewApp.CDK/NewApp.CDK.fsproj"
+}

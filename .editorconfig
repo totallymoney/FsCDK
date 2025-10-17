@@ -1,32 +1,32 @@
-# EditorConfig is awesome: https://EditorConfig.org
-
+# top-most EditorConfig file
 root = true
 
 [*]
 charset = utf-8
-indent_style = space
-indent_size = 2
 end_of_line = lf
+insert_final_newline = true
 trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+max_line_length = 120
+
+auto_property_linebreaks = true
+
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = true
+
+[*.{fs,fsx,fsi}]
+indent_size = 4
 insert_final_newline = true
 
-[*.fs]
-indent_size = 4
-
-[*.fsproj]
-indent_size = 2
-
-[*.{cs,vb}]
-indent_size = 4
-
-[*.{yml,yaml}]
+[*.{csproj,fsproj,props,targets,xml,config,nuspec}]
 indent_size = 2
 
 [*.{json,jsonc}]
 indent_size = 2
 
+[*.yml]
+indent_size = 2
+
 [*.md]
 trim_trailing_whitespace = false
-
-[Makefile]
-indent_style = tab
