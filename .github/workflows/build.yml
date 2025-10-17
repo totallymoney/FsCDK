@@ -69,6 +69,7 @@ jobs:
 
       - name: Setup for testing templates
         run: |
+          dotnet nuget add source https://nuget.pkg.github.com/totallymoney/index.json -n github -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text
           LOCAL_NUGET_PATH=${PWD}/${NUPKG_FOLDER}
           dotnet nuget add source $LOCAL_NUGET_PATH --name local
           dotnet new install FsCDK.Templates::${NIGHTLY_VERSION}
