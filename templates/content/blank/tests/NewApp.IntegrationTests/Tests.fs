@@ -5,4 +5,4 @@ open Expecto
 module Sample =
     [<Tests>]
     let tests =
-        testList "integration" [ ptestCase "placeholder integration test" (fun _ -> ()) ]
+        testList "integration" [ testCase "placeholder integration test" (fun _ -> ()) ]

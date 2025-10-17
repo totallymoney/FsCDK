@@ -1,0 +1,114 @@
+{
+  "author": "FsCDK",
+  "classifications": ["AWS", "CDK", "Lambda", "F#"],
+  "name": "FsCDK Lambda App",
+  "groupIdentity": "FsCDK.Lambda.App",
+  "identity": "FsCDK.Lambda.Blank",
+  "shortName": "fscdk-lambda",
+  "tags": { "language": "F#", "type": "project" },
+  "sourceName": "NewApp",
+  "primaryOutputs": [
+    { "path": "cdk/NewApp.CDK/NewApp.CDK.fsproj" },
+    { "path": "src/NewApp/NewApp.fsproj" },
+    { "path": "tests/NewApp.UnitTests/NewApp.UnitTests.fsproj" }
+  ],
+  "defaultName": "NewApp",
+  "preferNameDirectory": "true",
+  "postActions": [],
+  "sources": [
+    {
+      "include": ["**/*"],
+      "exclude": [
+        ".template.config/**/*",
+        "[Bb]in/**/*",
+        "[Oo]bj/**/*",
+        "App.fs",
+        "NewApp.fsproj",
+        "Platform/**/*"
+      ]
+    }
+  ],
+  "guids": [
+    "0E9CB125-F04D-4E4A-8A20-7EB1FD9B43FB"
+  ],
+  "symbols": {
+    "FsCDKPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "FsCDKPkgVersion",
+      "defaultValue": "0.1.0-nightly-18502368690"
+    },
+    "FSharpCorePkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "FSharpCorePkgVersion",
+      "defaultValue": "8.0.403"
+    },
+    "AmazonLambdaCorePkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "AmazonLambdaCorePkgVersion",
+      "defaultValue": "2.7.0"
+    },
+    "AmazonLambdaAPIGatewayEventsPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "AmazonLambdaAPIGatewayEventsPkgVersion",
+      "defaultValue": "2.7.0"
+    },
+    "AmazonLambdaSerializationPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "AmazonLambdaSerializationPkgVersion",
+      "defaultValue": "2.4.4"
+    },
+    "AwsSdkDynamoDBv2PkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "AwsSdkDynamoDBv2PkgVersion",
+      "defaultValue": "4.0.6.1"
+    },
+    "SystemTextJsonPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "SystemTextJsonPkgVersion",
+      "defaultValue": "9.0.8"
+    },
+    "FSharpSystemTextJsonPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "FSharpSystemTextJsonPkgVersion",
+      "defaultValue": "1.4.36"
+    },
+    "FsToolkitErrorHandlingPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "FsToolkitErrorHandlingPkgVersion",
+      "defaultValue": "5.0.1"
+    },
+    "AsyncWriterResultPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "AsyncWriterResultPkgVersion",
+      "defaultValue": "1.0.53"
+    },
+    "ExpectoPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "ExpectoPkgVersion",
+      "defaultValue": "10.2.3"
+    },
+    "YoloDevExpectoTestSdkPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "YoloDevExpectoTestSdkPkgVersion",
+      "defaultValue": "0.15.4"
+    },
+    "MicrosoftNETTestSdkPkgVersion": {
+      "type": "parameter",
+      "dataType": "string",
+      "replaces": "MicrosoftNETTestSdkPkgVersion",
+      "defaultValue": "17.14.1"
+    }
+  }
+}

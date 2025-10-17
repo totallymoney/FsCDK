@@ -1,12 +1,13 @@
 namespace NewApp.CDK
 
+open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 open FsCDK
 
 module Program =
     [<EntryPoint>]
     let main _argv =
-        let app = app { }
+        let app = App()
 
         // Define a stack with a simple HelloWorld Lambda and a public Function URL
         stack "NewApp" {
@@ -20,7 +21,7 @@ module Program =
                 code "../src/NewApp/bin/Release/net8.0/publish"
 
                 // Public function URL (no auth) for quick testing
-                functionUrl (functionUrl { authType FunctionUrlAuthType.NONE })
+                functionUrl { authType FunctionUrlAuthType.NONE }
             }
         }
 
