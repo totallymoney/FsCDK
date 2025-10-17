@@ -19,7 +19,7 @@ let nightlyVersion =
 
 let versionProperty =
     match nightlyVersion with
-    | None -> String.Empty
+    | None -> "-p:Version=0.1.0"
     | Some nv -> $"-p:Version=%s{nv}"
 
 pipeline "ci" {
@@ -53,9 +53,6 @@ pipeline "ci" {
 
     stage "pack templates" {
         run
-            "bash -lc \"find templates -type f -name template.json -exec sed -i.bak 's/PKG_VERSION/0.1.0-nightly-18502368690/g' {} +\""
-
-        run
             $"dotnet pack %s{templateProj} -c {config} -p:IsNightlyBuild=true -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}"
     }
 
@@ -75,10 +72,13 @@ pipeline "ci" {
 
         // Test template
         run "rm -rf TemplateTest || true"
-        run "dotnet new fscdk-lambda -n TemplateTest"
 
-        run
-            "bash -lc \"if ! dotnet nuget list source | grep -qi '^ *github'; then sed -i.bak 's/0.1.0-nightly-18502368690/1.0.0/g' TemplateTest/Directory.Packages.props; fi\""
+        // Create project with the appropriate FsCDK version
+        run (
+            match nightlyVersion with
+            | Some nv -> $"dotnet new fscdk-lambda -n TemplateTest --FsCDKPkgVersion %s{nv}"
+            | None -> "dotnet new fscdk-lambda -n TemplateTest --FsCDKPkgVersion 0.1.0"
+        )
 
         run $"dotnet build TemplateTest -c {config}"
         run "rm -rf TemplateTest"
