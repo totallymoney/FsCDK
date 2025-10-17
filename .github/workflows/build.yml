@@ -9,6 +9,8 @@ permissions: write-all
 env:
   CONFIG: Release
   SLN_FILE: FsCDK.sln
+  NUPKG_FOLDER: nupkgs
+  TEMPLATE_PROJ: templates/FsCDK.Templates.proj
 
 jobs:
   build:
@@ -59,6 +61,22 @@ jobs:
 
       - name: Build
         run: dotnet fsi build.fsx
+
+      - name: Pack templates
+        run: |
+          find templates -type f -name template.json | xargs sed -ibak "s/PKG_VERSION/${NIGHTLY_VERSION}/g"
+          dotnet pack ${TEMPLATE_PROJ} -p:Version=${NIGHTLY_VERSION} -p:IsNightlyBuild=true -c ${CONFIG} --property PackageOutputPath=${PWD}/${NUPKG_FOLDER}
+
+      - name: Setup for testing templates
+        run: |
+          LOCAL_NUGET_PATH=${PWD}/${NUPKG_FOLDER}
+          dotnet nuget add source $LOCAL_NUGET_PATH --name local
+          dotnet new install FsCDK.Templates::${NIGHTLY_VERSION}
+
+      - name: Test single project template
+        run: |
+          dotnet new fscdk-lambda -n TemplateTest
+          dotnet build TemplateTest -c ${CONFIG}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

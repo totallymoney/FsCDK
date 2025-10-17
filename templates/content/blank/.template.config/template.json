@@ -36,7 +36,7 @@
       "type": "parameter",
       "dataType": "string",
       "replaces": "FsCDKPkgVersion",
-      "defaultValue": "PKG_VERSION"
+      "defaultValue": "0.1.0-nightly-18502368690"
     },
     "FSharpCorePkgVersion": {
       "type": "parameter",
