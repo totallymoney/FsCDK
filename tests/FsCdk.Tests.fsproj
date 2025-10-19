@@ -24,6 +24,7 @@
         <Compile Include="S3BucketMetricsTests.fs" />
         <Compile Include="S3CorsRuleBuilderTests.fs" />
         <Compile Include="S3Tests.fs" />
+        <Compile Include="VPCTests.fs" />
         <Compile Include="AppTests.fs" />
         <Compile Include="DockerImageFunctionTests.fs" />
         <Compile Include="FunctionTests.fs" />

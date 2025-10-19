@@ -6,6 +6,7 @@ open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.SNS
 open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.S3
+open Amazon.CDK.AWS.EC2
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -20,6 +21,8 @@ type Operation =
     | QueueOp of QueueSpec
     | BucketOp of BucketSpec
     | SubscriptionOp of SubscriptionSpec
+    | VpcOp of VpcSpec
+    | SecurityGroupOp of SecurityGroupSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -79,6 +82,10 @@ module StackOperations =
         | BucketOp bucketSpec -> Bucket(stack, bucketSpec.ConstructId, bucketSpec.Props) |> ignore
 
         | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec
+
+        | VpcOp vpcSpec -> Vpc(stack, vpcSpec.ConstructId, vpcSpec.Props) |> ignore
+
+        | SecurityGroupOp sgSpec -> SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props) |> ignore
 
 
 // ============================================================================
@@ -152,6 +159,18 @@ type StackBuilder(name: string) =
           App = None
           Props = None
           Operations = [ SubscriptionOp subSpec ] }
+
+    member _.Yield(vpcSpec: VpcSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ VpcOp vpcSpec ] }
+
+    member _.Yield(sgSpec: SecurityGroupSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ SecurityGroupOp sgSpec ] }
 
     member _.Yield(props: StackProps) : StackConfig =
         { Name = name
