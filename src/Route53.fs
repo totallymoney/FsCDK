@@ -9,15 +9,15 @@ open Amazon.CDK.AWS.EC2
 
 /// <summary>
 /// High-level Route 53 Hosted Zone builder following AWS best practices.
-/// 
+///
 /// **Default Settings:**
 /// - Query logging = disabled (opt-in via logging operation)
 /// - DNSSEC = disabled (opt-in, requires KMS key)
-/// 
+///
 /// **Rationale:**
 /// Hosted zones manage DNS records for your domain.
 /// DNSSEC and logging are opt-in features with additional costs.
-/// 
+///
 /// **Escape Hatch:**
 /// Access the underlying CDK HostedZone via the `HostedZone` property
 /// for advanced scenarios not covered by this builder.
@@ -30,10 +30,12 @@ type Route53HostedZoneConfig =
       Vpcs: IVpc list }
 
 type Route53HostedZoneResource =
-    { ZoneName: string
-      ConstructId: string
-      /// The underlying CDK HostedZone construct
-      HostedZone: HostedZone }
+    {
+        ZoneName: string
+        ConstructId: string
+        /// The underlying CDK HostedZone construct
+        HostedZone: HostedZone
+    }
 
 type Route53HostedZoneBuilder(zoneName: string) =
     member _.Yield _ : Route53HostedZoneConfig =
@@ -57,7 +59,11 @@ type Route53HostedZoneBuilder(zoneName: string) =
           QueryLogsLogGroupArn = state2.QueryLogsLogGroupArn |> Option.orElse state1.QueryLogsLogGroupArn
           Vpcs = if state2.Vpcs.IsEmpty then state1.Vpcs else state2.Vpcs }
 
-    member inline x.For(config: Route53HostedZoneConfig, [<InlineIfLambda>] f: unit -> Route53HostedZoneConfig) : Route53HostedZoneConfig =
+    member inline x.For
+        (
+            config: Route53HostedZoneConfig,
+            [<InlineIfLambda>] f: unit -> Route53HostedZoneConfig
+        ) : Route53HostedZoneConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -68,7 +74,10 @@ type Route53HostedZoneBuilder(zoneName: string) =
         let props = HostedZoneProps()
         props.ZoneName <- zoneName
         config.Comment |> Option.iter (fun v -> props.Comment <- v)
-        config.QueryLogsLogGroupArn |> Option.iter (fun v -> props.QueryLogsLogGroupArn <- v)
+
+        config.QueryLogsLogGroupArn
+        |> Option.iter (fun v -> props.QueryLogsLogGroupArn <- v)
+
         if not config.Vpcs.IsEmpty then
             props.Vpcs <- Array.ofList config.Vpcs
 
@@ -77,24 +86,22 @@ type Route53HostedZoneBuilder(zoneName: string) =
           HostedZone = null }
 
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: Route53HostedZoneConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: Route53HostedZoneConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("comment")>]
-    member _.Comment(config: Route53HostedZoneConfig, comment: string) =
-        { config with Comment = Some comment }
+    member _.Comment(config: Route53HostedZoneConfig, comment: string) = { config with Comment = Some comment }
 
     [<CustomOperation("queryLogsLogGroupArn")>]
     member _.QueryLogsLogGroupArn(config: Route53HostedZoneConfig, arn: string) =
-        { config with QueryLogsLogGroupArn = Some arn }
+        { config with
+            QueryLogsLogGroupArn = Some arn }
 
     [<CustomOperation("vpcs")>]
-    member _.Vpcs(config: Route53HostedZoneConfig, vpcs: IVpc list) =
-        { config with Vpcs = vpcs }
+    member _.Vpcs(config: Route53HostedZoneConfig, vpcs: IVpc list) = { config with Vpcs = vpcs }
 
 /// <summary>
 /// High-level Route 53 A Record builder.
-/// 
+///
 /// **Rationale:**
 /// A records map domain names to IP addresses or AWS resources.
 /// Supports alias records for AWS resources like ALB, CloudFront, etc.
@@ -108,10 +115,12 @@ type Route53ARecordConfig =
       Comment: string option }
 
 type Route53ARecordResource =
-    { RecordName: string
-      ConstructId: string
-      /// The underlying CDK ARecord construct
-      ARecord: ARecord }
+    {
+        RecordName: string
+        ConstructId: string
+        /// The underlying CDK ARecord construct
+        ARecord: ARecord
+    }
 
 type Route53ARecordBuilder(recordName: string) =
     member _.Yield _ : Route53ARecordConfig =
@@ -119,7 +128,7 @@ type Route53ARecordBuilder(recordName: string) =
           ConstructId = None
           Zone = None
           Target = None
-          Ttl = Some (Duration.Minutes(5.0))
+          Ttl = Some(Duration.Minutes(5.0))
           Comment = None }
 
     member _.Zero() : Route53ARecordConfig =
@@ -127,7 +136,7 @@ type Route53ARecordBuilder(recordName: string) =
           ConstructId = None
           Zone = None
           Target = None
-          Ttl = Some (Duration.Minutes(5.0))
+          Ttl = Some(Duration.Minutes(5.0))
           Comment = None }
 
     member _.Combine(state1: Route53ARecordConfig, state2: Route53ARecordConfig) : Route53ARecordConfig =
@@ -138,7 +147,11 @@ type Route53ARecordBuilder(recordName: string) =
           Ttl = state2.Ttl |> Option.orElse state1.Ttl
           Comment = state2.Comment |> Option.orElse state1.Comment }
 
-    member inline x.For(config: Route53ARecordConfig, [<InlineIfLambda>] f: unit -> Route53ARecordConfig) : Route53ARecordConfig =
+    member inline x.For
+        (
+            config: Route53ARecordConfig,
+            [<InlineIfLambda>] f: unit -> Route53ARecordConfig
+        ) : Route53ARecordConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -158,24 +171,19 @@ type Route53ARecordBuilder(recordName: string) =
           ARecord = null }
 
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: Route53ARecordConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: Route53ARecordConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("zone")>]
-    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone) =
-        { config with Zone = Some zone }
+    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone) = { config with Zone = Some zone }
 
     [<CustomOperation("target")>]
-    member _.Target(config: Route53ARecordConfig, target: RecordTarget) =
-        { config with Target = Some target }
+    member _.Target(config: Route53ARecordConfig, target: RecordTarget) = { config with Target = Some target }
 
     [<CustomOperation("ttl")>]
-    member _.Ttl(config: Route53ARecordConfig, ttl: Duration) =
-        { config with Ttl = Some ttl }
+    member _.Ttl(config: Route53ARecordConfig, ttl: Duration) = { config with Ttl = Some ttl }
 
     [<CustomOperation("comment")>]
-    member _.Comment(config: Route53ARecordConfig, comment: string) =
-        { config with Comment = Some comment }
+    member _.Comment(config: Route53ARecordConfig, comment: string) = { config with Comment = Some comment }
 
 /// <summary>
 /// Helper functions for creating Route 53 record targets
@@ -185,13 +193,13 @@ module Route53Helpers =
     /// Creates a record target for an Application Load Balancer
     /// </summary>
     let albTarget (alb: IApplicationLoadBalancer) =
-        RecordTarget.FromAlias(LoadBalancerTarget(alb))
+        RecordTarget.FromAlias(LoadBalancerTarget alb)
 
     /// <summary>
     /// Creates a record target for a CloudFront distribution
     /// </summary>
     let cloudFrontTarget (distribution: IDistribution) =
-        RecordTarget.FromAlias(CloudFrontTarget(distribution))
+        RecordTarget.FromAlias(CloudFrontTarget distribution)
 
 [<AutoOpen>]
 module Route53Builders =
@@ -199,10 +207,10 @@ module Route53Builders =
     /// Creates a new Route 53 hosted zone builder.
     /// Example: hostedZone "example.com" { comment "Production domain" }
     /// </summary>
-    let hostedZone zoneName = Route53HostedZoneBuilder(zoneName)
+    let hostedZone zoneName = Route53HostedZoneBuilder zoneName
 
     /// <summary>
     /// Creates a new Route 53 A record builder.
     /// Example: aRecord "www" { zone myZone; target myTarget }
     /// </summary>
-    let aRecord recordName = Route53ARecordBuilder(recordName)
+    let aRecord recordName = Route53ARecordBuilder recordName

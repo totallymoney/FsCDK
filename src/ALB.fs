@@ -6,19 +6,19 @@ open Amazon.CDK.AWS.EC2
 
 /// <summary>
 /// High-level Application Load Balancer builder following AWS security best practices.
-/// 
+///
 /// **Default Security Settings:**
 /// - Internet-facing = false (internal by default for security)
 /// - HTTP/2 = enabled
 /// - Deletion protection = false (can be enabled for production)
 /// - Drop invalid headers = true (security best practice)
-/// 
+///
 /// **Rationale:**
 /// These defaults follow AWS Well-Architected Framework:
 /// - Internal ALBs by default prevent accidental public exposure
 /// - HTTP/2 improves performance
 /// - Dropping invalid headers prevents header injection attacks
-/// 
+///
 /// **Escape Hatch:**
 /// Access the underlying CDK ApplicationLoadBalancer via the `LoadBalancer` property
 /// for advanced scenarios not covered by this builder.
@@ -35,10 +35,12 @@ type ALBConfig =
       DropInvalidHeaderFields: bool option }
 
 type ALBResource =
-    { LoadBalancerName: string
-      ConstructId: string
-      /// The underlying CDK ApplicationLoadBalancer construct
-      LoadBalancer: ApplicationLoadBalancer }
+    {
+        LoadBalancerName: string
+        ConstructId: string
+        /// The underlying CDK ApplicationLoadBalancer construct
+        LoadBalancer: ApplicationLoadBalancer
+    }
 
 type ALBBuilder(name: string) =
     member _.Yield _ : ALBConfig =
@@ -88,45 +90,52 @@ type ALBBuilder(name: string) =
         config.InternetFacing |> Option.iter (fun v -> props.InternetFacing <- v)
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
         config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
-        config.DeletionProtection |> Option.iter (fun v -> props.DeletionProtection <- v)
+
+        config.DeletionProtection
+        |> Option.iter (fun v -> props.DeletionProtection <- v)
+
         config.Http2Enabled |> Option.iter (fun v -> props.Http2Enabled <- v)
-        config.DropInvalidHeaderFields |> Option.iter (fun v -> props.DropInvalidHeaderFields <- v)
+
+        config.DropInvalidHeaderFields
+        |> Option.iter (fun v -> props.DropInvalidHeaderFields <- v)
 
         { LoadBalancerName = loadBalancerName
           ConstructId = constructId
           LoadBalancer = null }
 
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: ALBConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: ALBConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ALBConfig, vpc: IVpc) =
-        { config with Vpc = Some vpc }
+    member _.Vpc(config: ALBConfig, vpc: IVpc) = { config with Vpc = Some vpc }
 
     [<CustomOperation("internetFacing")>]
     member _.InternetFacing(config: ALBConfig, internetFacing: bool) =
-        { config with InternetFacing = Some internetFacing }
+        { config with
+            InternetFacing = Some internetFacing }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: ALBConfig, subnets: SubnetSelection) =
-        { config with VpcSubnets = Some subnets }
+        { config with
+            VpcSubnets = Some subnets }
 
     [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: ALBConfig, sg: ISecurityGroup) =
-        { config with SecurityGroup = Some sg }
+    member _.SecurityGroup(config: ALBConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     [<CustomOperation("deletionProtection")>]
     member _.DeletionProtection(config: ALBConfig, enabled: bool) =
-        { config with DeletionProtection = Some enabled }
+        { config with
+            DeletionProtection = Some enabled }
 
     [<CustomOperation("http2Enabled")>]
     member _.Http2Enabled(config: ALBConfig, enabled: bool) =
-        { config with Http2Enabled = Some enabled }
+        { config with
+            Http2Enabled = Some enabled }
 
     [<CustomOperation("dropInvalidHeaderFields")>]
     member _.DropInvalidHeaderFields(config: ALBConfig, drop: bool) =
-        { config with DropInvalidHeaderFields = Some drop }
+        { config with
+            DropInvalidHeaderFields = Some drop }
 
 [<AutoOpen>]
 module ALBBuilders =
@@ -134,4 +143,4 @@ module ALBBuilders =
     /// Creates a new Application Load Balancer builder with secure defaults.
     /// Example: applicationLoadBalancer "my-alb" { vpc myVpc; internetFacing true }
     /// </summary>
-    let applicationLoadBalancer name = ALBBuilder(name)
+    let applicationLoadBalancer name = ALBBuilder name

@@ -1,27 +1,25 @@
 namespace FsCDK
 
-#nowarn "44" // Suppress deprecation warnings from CDK API
-
 open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.IAM
 
 /// <summary>
 /// High-level EC2 Instance builder following AWS security best practices.
-/// 
+///
 /// **Default Security Settings:**
 /// - Instance type = t3.micro (cost-effective for dev/test)
 /// - Detailed monitoring = disabled (opt-in via monitoring operation)
 /// - IMDSv2 required = true (enhanced security for instance metadata)
 /// - EBS encryption = enabled by default
-/// 
+///
 /// **Rationale:**
 /// These defaults follow AWS Well-Architected Framework:
 /// - t3.micro provides good balance of compute/cost for many workloads
 /// - IMDSv2 prevents SSRF attacks against instance metadata
 /// - EBS encryption protects data at rest
 /// - Minimal IAM permissions follow least-privilege principle
-/// 
+///
 /// **Escape Hatch:**
 /// Access the underlying CDK Instance via the `Instance` property on the returned resource
 /// for advanced scenarios not covered by this builder.
@@ -42,17 +40,19 @@ type EC2InstanceConfig =
       BlockDevices: IBlockDevice list }
 
 type EC2InstanceResource =
-    { InstanceName: string
-      ConstructId: string
-      /// The underlying CDK Instance construct - use for advanced scenarios
-      Instance: Instance_ }
+    {
+        InstanceName: string
+        ConstructId: string
+        /// The underlying CDK Instance construct - use for advanced scenarios
+        Instance: Instance_
+    }
 
 type EC2InstanceBuilder(name: string) =
     member _.Yield _ : EC2InstanceConfig =
         { InstanceName = name
           ConstructId = None
-          InstanceType = Some (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
-          MachineImage = Some (MachineImage.LatestAmazonLinux2())
+          InstanceType = Some(InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
+          MachineImage = Some(MachineImage.LatestAmazonLinux2())
           Vpc = None
           VpcSubnets = None
           SecurityGroup = None
@@ -66,8 +66,8 @@ type EC2InstanceBuilder(name: string) =
     member _.Zero() : EC2InstanceConfig =
         { InstanceName = name
           ConstructId = None
-          InstanceType = Some (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
-          MachineImage = Some (MachineImage.LatestAmazonLinux2())
+          InstanceType = Some(InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
+          MachineImage = Some(MachineImage.LatestAmazonLinux2())
           Vpc = None
           VpcSubnets = None
           SecurityGroup = None
@@ -91,9 +91,17 @@ type EC2InstanceBuilder(name: string) =
           UserData = state2.UserData |> Option.orElse state1.UserData
           RequireImdsv2 = state2.RequireImdsv2 |> Option.orElse state1.RequireImdsv2
           DetailedMonitoring = state2.DetailedMonitoring |> Option.orElse state1.DetailedMonitoring
-          BlockDevices = if state2.BlockDevices.IsEmpty then state1.BlockDevices else state2.BlockDevices }
+          BlockDevices =
+            if state2.BlockDevices.IsEmpty then
+                state1.BlockDevices
+            else
+                state2.BlockDevices }
 
-    member inline x.For(config: EC2InstanceConfig, [<InlineIfLambda>] f: unit -> EC2InstanceConfig) : EC2InstanceConfig =
+    member inline x.For
+        (
+            config: EC2InstanceConfig,
+            [<InlineIfLambda>] f: unit -> EC2InstanceConfig
+        ) : EC2InstanceConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -102,7 +110,7 @@ type EC2InstanceBuilder(name: string) =
         let constructId = config.ConstructId |> Option.defaultValue instanceName
 
         let props = InstanceProps()
-        
+
         config.InstanceType |> Option.iter (fun v -> props.InstanceType <- v)
         config.MachineImage |> Option.iter (fun v -> props.MachineImage <- v)
         config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
@@ -112,8 +120,10 @@ type EC2InstanceBuilder(name: string) =
         config.Role |> Option.iter (fun v -> props.Role <- v)
         config.UserData |> Option.iter (fun v -> props.UserData <- v)
         config.RequireImdsv2 |> Option.iter (fun v -> props.RequireImdsv2 <- v)
-        config.DetailedMonitoring |> Option.iter (fun v -> props.DetailedMonitoring <- v)
-        
+
+        config.DetailedMonitoring
+        |> Option.iter (fun v -> props.DetailedMonitoring <- v)
+
         if not config.BlockDevices.IsEmpty then
             props.BlockDevices <- Array.ofList config.BlockDevices
 
@@ -122,36 +132,36 @@ type EC2InstanceBuilder(name: string) =
           Instance = null } // Will be created during stack construction
 
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: EC2InstanceConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: EC2InstanceConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("instanceType")>]
     member _.InstanceType(config: EC2InstanceConfig, instanceType: InstanceType) =
-        { config with InstanceType = Some instanceType }
+        { config with
+            InstanceType = Some instanceType }
 
     [<CustomOperation("machineImage")>]
     member _.MachineImage(config: EC2InstanceConfig, machineImage: IMachineImage) =
-        { config with MachineImage = Some machineImage }
+        { config with
+            MachineImage = Some machineImage }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: EC2InstanceConfig, vpc: IVpc) =
-        { config with Vpc = Some vpc }
+    member _.Vpc(config: EC2InstanceConfig, vpc: IVpc) = { config with Vpc = Some vpc }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: EC2InstanceConfig, subnets: SubnetSelection) =
-        { config with VpcSubnets = Some subnets }
+        { config with
+            VpcSubnets = Some subnets }
 
     [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: EC2InstanceConfig, sg: ISecurityGroup) =
-        { config with SecurityGroup = Some sg }
+    member _.SecurityGroup(config: EC2InstanceConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     [<CustomOperation("keyPair")>]
     member _.KeyPair(config: EC2InstanceConfig, keyPairName: string) =
-        { config with KeyName = Some keyPairName }
+        { config with
+            KeyName = Some keyPairName }
 
     [<CustomOperation("role")>]
-    member _.Role(config: EC2InstanceConfig, role: IRole) =
-        { config with Role = Some role }
+    member _.Role(config: EC2InstanceConfig, role: IRole) = { config with Role = Some role }
 
     [<CustomOperation("userData")>]
     member _.UserData(config: EC2InstanceConfig, userData: UserData) =
@@ -159,11 +169,13 @@ type EC2InstanceBuilder(name: string) =
 
     [<CustomOperation("requireImdsv2")>]
     member _.RequireImdsv2(config: EC2InstanceConfig, required: bool) =
-        { config with RequireImdsv2 = Some required }
+        { config with
+            RequireImdsv2 = Some required }
 
     [<CustomOperation("detailedMonitoring")>]
     member _.DetailedMonitoring(config: EC2InstanceConfig, enabled: bool) =
-        { config with DetailedMonitoring = Some enabled }
+        { config with
+            DetailedMonitoring = Some enabled }
 
     [<CustomOperation("blockDevices")>]
     member _.BlockDevices(config: EC2InstanceConfig, devices: IBlockDevice list) =
@@ -175,4 +187,4 @@ module EC2Builders =
     /// Creates a new EC2 instance builder with secure defaults.
     /// Example: ec2Instance "my-instance" { instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL)) }
     /// </summary>
-    let ec2Instance name = EC2InstanceBuilder(name)
+    let ec2Instance name = EC2InstanceBuilder name

@@ -11,7 +11,7 @@ open System.Collections.Generic
 
 /// <summary>
 /// High-level Lambda Function builder following AWS security best practices.
-/// 
+///
 /// **Default Settings:**
 /// - MemorySize = 512 MB (balanced performance/cost)
 /// - Timeout = 30 seconds
@@ -21,14 +21,14 @@ open System.Collections.Generic
 /// - Minimal IAM execution role with:
 ///   - CloudWatch Logs write permissions
 ///   - KMS decrypt for environment variables (when encryption enabled)
-/// 
+///
 /// **Rationale:**
 /// These defaults follow AWS Well-Architected Framework:
 /// - Environment variable encryption protects sensitive configuration
 /// - Log retention balances auditability with cost
 /// - Minimal IAM permissions follow least-privilege principle
 /// - Memory/timeout defaults work for most serverless workloads
-/// 
+///
 /// **Escape Hatch:**
 /// Access the underlying CDK Function via the `Function` property on the returned resource
 /// for advanced scenarios not covered by this builder.
@@ -50,12 +50,14 @@ type LambdaFunctionConfig =
       ReservedConcurrentExecutions: int option }
 
 type LambdaFunctionResource =
-    { FunctionName: string
-      ConstructId: string
-      /// The underlying CDK Function construct - use for advanced scenarios
-      Function: Function
-      /// The IAM execution role created for this function
-      Role: IRole }
+    {
+        FunctionName: string
+        ConstructId: string
+        /// The underlying CDK Function construct - use for advanced scenarios
+        Function: Function
+        /// The IAM execution role created for this function
+        Role: IRole
+    }
 
 type LambdaFunctionBuilder(name: string) =
     member _.Yield _ : LambdaFunctionConfig =
@@ -65,7 +67,7 @@ type LambdaFunctionBuilder(name: string) =
           Runtime = None
           Code = None
           MemorySize = Some 512
-          Timeout = Some (Duration.Seconds(30.0))
+          Timeout = Some(Duration.Seconds(30.0))
           Environment = Map.empty
           EnvironmentEncryption = None
           Tracing = Some Tracing.DISABLED
@@ -81,7 +83,7 @@ type LambdaFunctionBuilder(name: string) =
           Runtime = None
           Code = None
           MemorySize = Some 512
-          Timeout = Some (Duration.Seconds(30.0))
+          Timeout = Some(Duration.Seconds(30.0))
           Environment = Map.empty
           EnvironmentEncryption = None
           Tracing = Some Tracing.DISABLED
@@ -106,9 +108,15 @@ type LambdaFunctionBuilder(name: string) =
           LogRetention = state2.LogRetention |> Option.orElse state1.LogRetention
           Description = state2.Description |> Option.orElse state1.Description
           Role = state2.Role |> Option.orElse state1.Role
-          ReservedConcurrentExecutions = state2.ReservedConcurrentExecutions |> Option.orElse state1.ReservedConcurrentExecutions }
+          ReservedConcurrentExecutions =
+            state2.ReservedConcurrentExecutions
+            |> Option.orElse state1.ReservedConcurrentExecutions }
 
-    member inline x.For(config: LambdaFunctionConfig, [<InlineIfLambda>] f: unit -> LambdaFunctionConfig) : LambdaFunctionConfig =
+    member inline x.For
+        (
+            config: LambdaFunctionConfig,
+            [<InlineIfLambda>] f: unit -> LambdaFunctionConfig
+        ) : LambdaFunctionConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -122,19 +130,26 @@ type LambdaFunctionBuilder(name: string) =
         config.Handler |> Option.iter (fun v -> props.Handler <- v)
         config.Runtime |> Option.iter (fun v -> props.Runtime <- v)
         config.Code |> Option.iter (fun v -> props.Code <- v)
-        config.MemorySize |> Option.iter (fun v -> props.MemorySize <- System.Nullable<float>(float v))
+
+        config.MemorySize
+        |> Option.iter (fun v -> props.MemorySize <- System.Nullable<float>(float v))
+
         config.Timeout |> Option.iter (fun v -> props.Timeout <- v)
         config.Description |> Option.iter (fun v -> props.Description <- v)
         config.Tracing |> Option.iter (fun v -> props.Tracing <- v)
         config.Role |> Option.iter (fun v -> props.Role <- v)
-        config.ReservedConcurrentExecutions |> Option.iter (fun v -> props.ReservedConcurrentExecutions <- System.Nullable<float>(float v))
+
+        config.ReservedConcurrentExecutions
+        |> Option.iter (fun v -> props.ReservedConcurrentExecutions <- System.Nullable<float>(float v))
 
         if not (Map.isEmpty config.Environment) then
             let envDict = Dictionary<string, string>()
             config.Environment |> Map.iter (fun k v -> envDict.Add(k, v))
             props.Environment <- envDict
 
-        config.EnvironmentEncryption |> Option.iter (fun v -> props.EnvironmentEncryption <- v)
+        config.EnvironmentEncryption
+        |> Option.iter (fun v -> props.EnvironmentEncryption <- v)
+
         config.LogRetention |> Option.iter (fun v -> props.LogRetention <- v)
 
         { FunctionName = functionName
@@ -143,64 +158,63 @@ type LambdaFunctionBuilder(name: string) =
           Role = null }
 
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: LambdaFunctionConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: LambdaFunctionConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("handler")>]
-    member _.Handler(config: LambdaFunctionConfig, handler: string) =
-        { config with Handler = Some handler }
+    member _.Handler(config: LambdaFunctionConfig, handler: string) = { config with Handler = Some handler }
 
     [<CustomOperation("runtime")>]
-    member _.Runtime(config: LambdaFunctionConfig, runtime: Runtime) =
-        { config with Runtime = Some runtime }
+    member _.Runtime(config: LambdaFunctionConfig, runtime: Runtime) = { config with Runtime = Some runtime }
 
     [<CustomOperation("code")>]
-    member _.Code(config: LambdaFunctionConfig, code: Code) =
-        { config with Code = Some code }
+    member _.Code(config: LambdaFunctionConfig, code: Code) = { config with Code = Some code }
 
     [<CustomOperation("codePath")>]
     member _.CodePath(config: LambdaFunctionConfig, path: string) =
-        { config with Code = Some (Code.FromAsset(path)) }
+        { config with
+            Code = Some(Code.FromAsset(path)) }
 
     [<CustomOperation("memorySize")>]
-    member _.MemorySize(config: LambdaFunctionConfig, size: int) =
-        { config with MemorySize = Some size }
+    member _.MemorySize(config: LambdaFunctionConfig, size: int) = { config with MemorySize = Some size }
 
     [<CustomOperation("timeout")>]
     member _.Timeout(config: LambdaFunctionConfig, seconds: float) =
-        { config with Timeout = Some (Duration.Seconds(seconds)) }
+        { config with
+            Timeout = Some(Duration.Seconds(seconds)) }
 
     [<CustomOperation("environment")>]
     member _.Environment(config: LambdaFunctionConfig, env: (string * string) list) =
-        { config with Environment = env |> Map.ofList }
+        { config with
+            Environment = env |> Map.ofList }
 
     [<CustomOperation("environmentEncryption")>]
     member _.EnvironmentEncryption(config: LambdaFunctionConfig, key: IKey) =
-        { config with EnvironmentEncryption = Some key }
+        { config with
+            EnvironmentEncryption = Some key }
 
     [<CustomOperation("tracing")>]
-    member _.Tracing(config: LambdaFunctionConfig, tracing: Tracing) =
-        { config with Tracing = Some tracing }
+    member _.Tracing(config: LambdaFunctionConfig, tracing: Tracing) = { config with Tracing = Some tracing }
 
     [<CustomOperation("xrayEnabled")>]
     member _.XRayEnabled(config: LambdaFunctionConfig) =
-        { config with Tracing = Some Tracing.ACTIVE }
+        { config with
+            Tracing = Some Tracing.ACTIVE }
 
     [<CustomOperation("logRetention")>]
     member _.LogRetention(config: LambdaFunctionConfig, retention: RetentionDays) =
-        { config with LogRetention = Some retention }
+        { config with
+            LogRetention = Some retention }
 
     [<CustomOperation("description")>]
-    member _.Description(config: LambdaFunctionConfig, desc: string) =
-        { config with Description = Some desc }
+    member _.Description(config: LambdaFunctionConfig, desc: string) = { config with Description = Some desc }
 
     [<CustomOperation("role")>]
-    member _.Role(config: LambdaFunctionConfig, role: IRole) =
-        { config with Role = Some role }
+    member _.Role(config: LambdaFunctionConfig, role: IRole) = { config with Role = Some role }
 
     [<CustomOperation("reservedConcurrentExecutions")>]
     member _.ReservedConcurrentExecutions(config: LambdaFunctionConfig, count: int) =
-        { config with ReservedConcurrentExecutions = Some count }
+        { config with
+            ReservedConcurrentExecutions = Some count }
 
 [<AutoOpen>]
 module HighLevelLambdaBuilders =
@@ -208,4 +222,4 @@ module HighLevelLambdaBuilders =
     /// Creates a new Lambda function builder with secure defaults.
     /// Example: lambdaFunction "my-function" { handler "index.handler"; runtime Runtime.NODEJS_18_X }
     /// </summary>
-    let lambdaFunction name = LambdaFunctionBuilder(name)
+    let lambdaFunction name = LambdaFunctionBuilder name

@@ -1,4 +1,4 @@
-# Migrating from Farmer to FsCDK
+# Comparison with Azure (Farmer F#) to AWS (FsCDK)
 
 This guide helps developers familiar with [Farmer](https://compositionalit.github.io/farmer/) (the F# DSL for Azure) transition to FsCDK for AWS infrastructure.
 
@@ -18,23 +18,25 @@ Both Farmer and FsCDK share similar goals:
 |---------------|--------|-------------|-------|
 | **Storage** |
 | Blob Storage | `storageAccount` | S3 | `s3Bucket` |
-| Storage Queue | `storageQueue` | SQS | `queue` (existing) |
-| Table Storage | `table` | DynamoDB | `table` (existing) |
+| Storage Queue | `storageQueue` | SQS | `queue` |
+| Table Storage | `table` | DynamoDB | `table` |
 | **Compute** |
-| App Service | `webApp` | Elastic Beanstalk | (planned) |
+| App Service | `webApp` | Elastic Beanstalk | `eb` |
 | Azure Functions | `functions` | Lambda | `lambdaFunction` |
-| Container Instances | `containerGroup` | ECS/Fargate | (planned) |
+| Container Instances | `containerGroup` | ECS/Fargate | `ecs` |
+| Virtual Machine | `vm` | EC2 | `ec2` |
 | AKS | `aks` | EKS | (planned) |
 | **Database** |
-| Cosmos DB | `cosmosDb` | DynamoDB | `table` (existing) |
-| Azure SQL | `sqlServer` | RDS | `rds` (existing) |
-| PostgreSQL | `postgreSql` | RDS PostgreSQL | `rds` (existing) |
+| Cosmos DB | `cosmosDb` | DynamoDB | `table` |
+| Azure SQL | `sqlServer` | RDS | `rds` |
+| PostgreSQL | `postgreSql` | RDS PostgreSQL | `rds` |
 | **Networking** |
-| Virtual Network | `vnet` | VPC | `vpc` (existing) |
-| Load Balancer | `loadBalancer` | ALB/NLB | (planned) |
-| Application Gateway | `appGateway` | ALB | (planned) |
+| Virtual Network | `vnet` | VPC | `vpc` |
+| Load Balancer | `loadBalancer` | ALB/NLB | `applicationLoadBalancer` |
+| Application Gateway | `appGateway` | ALB | `applicationLoadBalancer` |
+| DNS | `dns` | Route53 | Route53 |
 | **Security** |
-| Key Vault | `keyVault` | Secrets Manager | (planned) |
+| Key Vault | `keyVault` | Secrets Manager | `secret` |
 | Managed Identity | `identity` | IAM Role | IAM helpers |
 | **Messaging** |
 | Event Hub | `eventHub` | Kinesis | (planned) |

@@ -6,18 +6,18 @@ open Amazon.CDK.AWS.KMS
 
 /// <summary>
 /// High-level Secrets Manager Secret builder following AWS security best practices.
-/// 
+///
 /// **Default Security Settings:**
 /// - Encryption = KMS with AWS managed key (aws/secretsmanager)
 /// - Automatic rotation = disabled (opt-in via rotation operation)
 /// - Removal policy = RETAIN (prevents accidental deletion)
-/// 
+///
 /// **Rationale:**
 /// These defaults follow AWS Well-Architected Framework:
 /// - KMS encryption provides enhanced security and audit trails
 /// - Secrets retained on stack deletion prevents data loss
 /// - Rotation is opt-in as it requires Lambda function setup
-/// 
+///
 /// **Escape Hatch:**
 /// Access the underlying CDK Secret via the `Secret` property on the returned resource
 /// for advanced scenarios not covered by this builder.
@@ -32,10 +32,12 @@ type SecretsManagerSecretConfig =
       GenerateSecretString: SecretStringGenerator option }
 
 type SecretsManagerSecretResource =
-    { SecretName: string
-      ConstructId: string
-      /// The underlying CDK Secret construct - use for advanced scenarios
-      Secret: Secret }
+    {
+        SecretName: string
+        ConstructId: string
+        /// The underlying CDK Secret construct - use for advanced scenarios
+        Secret: Secret
+    }
 
 type SecretsManagerSecretBuilder(name: string) =
     member _.Yield _ : SecretsManagerSecretConfig =
@@ -56,7 +58,11 @@ type SecretsManagerSecretBuilder(name: string) =
           SecretStringValue = None
           GenerateSecretString = None }
 
-    member _.Combine(state1: SecretsManagerSecretConfig, state2: SecretsManagerSecretConfig) : SecretsManagerSecretConfig =
+    member _.Combine
+        (
+            state1: SecretsManagerSecretConfig,
+            state2: SecretsManagerSecretConfig
+        ) : SecretsManagerSecretConfig =
         { SecretName = state2.SecretName
           ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
           Description = state2.Description |> Option.orElse state1.Description
@@ -65,7 +71,11 @@ type SecretsManagerSecretBuilder(name: string) =
           SecretStringValue = state2.SecretStringValue |> Option.orElse state1.SecretStringValue
           GenerateSecretString = state2.GenerateSecretString |> Option.orElse state1.GenerateSecretString }
 
-    member inline x.For(config: SecretsManagerSecretConfig, [<InlineIfLambda>] f: unit -> SecretsManagerSecretConfig) : SecretsManagerSecretConfig =
+    member inline x.For
+        (
+            config: SecretsManagerSecretConfig,
+            [<InlineIfLambda>] f: unit -> SecretsManagerSecretConfig
+        ) : SecretsManagerSecretConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
@@ -79,19 +89,21 @@ type SecretsManagerSecretBuilder(name: string) =
         config.EncryptionKey |> Option.iter (fun v -> props.EncryptionKey <- v)
         config.RemovalPolicy |> Option.iter (fun v -> props.RemovalPolicy <- v)
         config.SecretStringValue |> Option.iter (fun v -> props.SecretStringValue <- v)
-        config.GenerateSecretString |> Option.iter (fun v -> props.GenerateSecretString <- v)
+
+        config.GenerateSecretString
+        |> Option.iter (fun v -> props.GenerateSecretString <- v)
 
         { SecretName = secretName
           ConstructId = constructId
           Secret = null }
 
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: SecretsManagerSecretConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: SecretsManagerSecretConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("description")>]
     member _.Description(config: SecretsManagerSecretConfig, description: string) =
-        { config with Description = Some description }
+        { config with
+            Description = Some description }
 
     [<CustomOperation("encryptionKey")>]
     member _.EncryptionKey(config: SecretsManagerSecretConfig, key: IKey) =
@@ -99,15 +111,18 @@ type SecretsManagerSecretBuilder(name: string) =
 
     [<CustomOperation("removalPolicy")>]
     member _.RemovalPolicy(config: SecretsManagerSecretConfig, policy: RemovalPolicy) =
-        { config with RemovalPolicy = Some policy }
+        { config with
+            RemovalPolicy = Some policy }
 
     [<CustomOperation("secretStringValue")>]
     member _.SecretStringValue(config: SecretsManagerSecretConfig, value: SecretValue) =
-        { config with SecretStringValue = Some value }
+        { config with
+            SecretStringValue = Some value }
 
     [<CustomOperation("generateSecretString")>]
     member _.GenerateSecretString(config: SecretsManagerSecretConfig, generator: SecretStringGenerator) =
-        { config with GenerateSecretString = Some generator }
+        { config with
+            GenerateSecretString = Some generator }
 
 /// <summary>
 /// Helper functions for creating secret string generators
@@ -141,4 +156,4 @@ module SecretsManagerBuilders =
     /// Creates a new Secrets Manager secret builder with secure defaults.
     /// Example: secret "my-api-key" { description "API key for external service" }
     /// </summary>
-    let secret name = SecretsManagerSecretBuilder(name)
+    let secret name = SecretsManagerSecretBuilder name

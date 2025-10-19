@@ -5,13 +5,13 @@ open Constructs
 
 /// <summary>
 /// Global tagging helpers for consistent resource tagging across stacks.
-/// 
+///
 /// **Rationale:**
 /// - Tags enable cost allocation and resource organization
 /// - Consistent tagging simplifies governance and compliance
 /// - Tags help with automation and resource discovery
 /// - Standard tags improve operational visibility
-/// 
+///
 /// **Best Practices:**
 /// - Apply tags at stack level for inheritance
 /// - Use consistent tag names across organization
@@ -19,7 +19,7 @@ open Constructs
 /// - Avoid PII or sensitive data in tags
 /// </summary>
 module Tags =
-    
+
     /// <summary>
     /// Standard tag set for FsCDK resources
     /// </summary>
@@ -30,7 +30,7 @@ module Tags =
           CreatedBy: string
           CostCenter: string option
           ManagedBy: string }
-    
+
     /// <summary>
     /// Default tags applied to all FsCDK resources
     /// </summary>
@@ -41,24 +41,30 @@ module Tags =
           CreatedBy = "FsCDK"
           CostCenter = None
           ManagedBy = "FsCDK" }
-    
+
     /// <summary>
     /// Applies standard tags to a construct (stack or resource)
     /// </summary>
     let applyStandardTags (construct: IConstruct) (tags: StandardTags) =
         tags.Project |> Option.iter (fun v -> Tags.Of(construct).Add("Project", v))
-        tags.Environment |> Option.iter (fun v -> Tags.Of(construct).Add("Environment", v))
+
+        tags.Environment
+        |> Option.iter (fun v -> Tags.Of(construct).Add("Environment", v))
+
         tags.Owner |> Option.iter (fun v -> Tags.Of(construct).Add("Owner", v))
         Tags.Of(construct).Add("CreatedBy", tags.CreatedBy)
-        tags.CostCenter |> Option.iter (fun v -> Tags.Of(construct).Add("CostCenter", v))
+
+        tags.CostCenter
+        |> Option.iter (fun v -> Tags.Of(construct).Add("CostCenter", v))
+
         Tags.Of(construct).Add("ManagedBy", tags.ManagedBy)
-    
+
     /// <summary>
     /// Applies custom tags to a construct
     /// </summary>
     let applyCustomTags (construct: IConstruct) (tags: (string * string) list) =
         tags |> List.iter (fun (key, value) -> Tags.Of(construct).Add(key, value))
-    
+
     /// <summary>
     /// Creates standard tags from environment and project info
     /// </summary>
@@ -67,20 +73,19 @@ module Tags =
             Project = Some project
             Environment = Some environment
             Owner = owner }
-    
+
     /// <summary>
     /// Applies tags to a stack with standard conventions
     /// </summary>
     let tagStack (stack: Stack) (project: string) (environment: string) (owner: string option) =
         let tags = createTags project environment owner
         applyStandardTags stack tags
-    
+
     /// <summary>
     /// Removes a tag from a construct
     /// </summary>
-    let removeTag (construct: IConstruct) (key: string) =
-        Tags.Of(construct).Remove(key)
-    
+    let removeTag (construct: IConstruct) (key: string) = Tags.Of(construct).Remove(key)
+
     /// <summary>
     /// Removes all FsCDK standard tags from a construct
     /// </summary>
@@ -101,35 +106,36 @@ type TagBuilder() =
     let mutable owner: string option = None
     let mutable costCenter: string option = None
     let mutable customTags: (string * string) list = []
-    
+
     member _.Project(p: string) =
         project <- Some p
         ()
-    
+
     member _.Environment(e: string) =
         environment <- Some e
         ()
-    
+
     member _.Owner(o: string) =
         owner <- Some o
         ()
-    
+
     member _.CostCenter(cc: string) =
         costCenter <- Some cc
         ()
-    
+
     member _.AddTag(key: string, value: string) =
         customTags <- (key, value) :: customTags
         ()
-    
+
     member _.Build() =
         { Tags.StandardTags.Project = project
           Tags.StandardTags.Environment = environment
           Tags.StandardTags.Owner = owner
           Tags.StandardTags.CreatedBy = "FsCDK"
           Tags.StandardTags.CostCenter = costCenter
-          Tags.StandardTags.ManagedBy = "FsCDK" }, customTags
-    
+          Tags.StandardTags.ManagedBy = "FsCDK" },
+        customTags
+
     member this.ApplyTo(construct: IConstruct) =
         let standardTags, custom = this.Build()
         Tags.applyStandardTags construct standardTags
