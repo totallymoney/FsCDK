@@ -25,6 +25,7 @@ type VpcSpec =
       Props: VpcProps }
 
 type VpcBuilder(name: string) =
+
     member _.Yield _ : VpcConfig =
         { VpcName = name
           ConstructId = None
@@ -55,49 +56,41 @@ type VpcBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Combine(state1: VpcConfig, state2: VpcConfig) : VpcConfig =
-        { VpcName = state1.VpcName
+    member _.Combine(a: VpcConfig, b: VpcConfig) : VpcConfig =
+        { VpcName = a.VpcName
           ConstructId =
-            if state1.ConstructId.IsSome then
-                state1.ConstructId
-            else
-                state2.ConstructId
+            match a.ConstructId with
+            | Some _ -> a.ConstructId
+            | None -> b.ConstructId
           MaxAzs =
-            if state1.MaxAzs.IsSome then
-                state1.MaxAzs
-            else
-                state2.MaxAzs
+            match a.MaxAzs with
+            | Some _ -> a.MaxAzs
+            | None -> b.MaxAzs
           NatGateways =
-            if state1.NatGateways.IsSome then
-                state1.NatGateways
-            else
-                state2.NatGateways
-          SubnetConfiguration = state1.SubnetConfiguration @ state2.SubnetConfiguration
+            match a.NatGateways with
+            | Some _ -> a.NatGateways
+            | None -> b.NatGateways
+          SubnetConfiguration = a.SubnetConfiguration @ b.SubnetConfiguration
           EnableDnsHostnames =
-            if state1.EnableDnsHostnames.IsSome then
-                state1.EnableDnsHostnames
-            else
-                state2.EnableDnsHostnames
+            match a.EnableDnsHostnames with
+            | Some _ -> a.EnableDnsHostnames
+            | None -> b.EnableDnsHostnames
           EnableDnsSupport =
-            if state1.EnableDnsSupport.IsSome then
-                state1.EnableDnsSupport
-            else
-                state2.EnableDnsSupport
+            match a.EnableDnsSupport with
+            | Some _ -> a.EnableDnsSupport
+            | None -> b.EnableDnsSupport
           DefaultInstanceTenancy =
-            if state1.DefaultInstanceTenancy.IsSome then
-                state1.DefaultInstanceTenancy
-            else
-                state2.DefaultInstanceTenancy
+            match a.DefaultInstanceTenancy with
+            | Some _ -> a.DefaultInstanceTenancy
+            | None -> b.DefaultInstanceTenancy
           IpAddresses =
-            if state1.IpAddresses.IsSome then
-                state1.IpAddresses
-            else
-                state2.IpAddresses
+            match a.IpAddresses with
+            | Some _ -> a.IpAddresses
+            | None -> b.IpAddresses
           RemovalPolicy =
-            if state1.RemovalPolicy.IsSome then
-                state1.RemovalPolicy
-            else
-                state2.RemovalPolicy }
+            match a.RemovalPolicy with
+            | Some _ -> a.RemovalPolicy
+            | None -> b.RemovalPolicy }
 
     member _.Run(config: VpcConfig) : VpcSpec =
         let props = VpcProps()
@@ -114,19 +107,11 @@ type VpcBuilder(name: string) =
         props.EnableDnsHostnames <- config.EnableDnsHostnames |> Option.defaultValue true
         props.EnableDnsSupport <- config.EnableDnsSupport |> Option.defaultValue true
 
-        // AWS Best Practice: Default subnet configuration with public and private subnets
+        // Default subnet configuration with public and private subnets
         if config.SubnetConfiguration.IsEmpty then
             props.SubnetConfiguration <-
-                [| SubnetConfiguration(
-                       Name = "Public",
-                       SubnetType = SubnetType.PUBLIC,
-                       CidrMask = 24
-                   )
-                   SubnetConfiguration(
-                       Name = "Private",
-                       SubnetType = SubnetType.PRIVATE_WITH_EGRESS,
-                       CidrMask = 24
-                   ) |]
+                [| SubnetConfiguration(Name = "Public", SubnetType = SubnetType.PUBLIC, CidrMask = 24)
+                   SubnetConfiguration(Name = "Private", SubnetType = SubnetType.PRIVATE_WITH_EGRESS, CidrMask = 24) |]
         else
             props.SubnetConfiguration <- config.SubnetConfiguration |> List.toArray
 
@@ -216,6 +201,7 @@ type SecurityGroupSpec =
       Props: SecurityGroupProps }
 
 type SecurityGroupBuilder(name: string) =
+
     member _.Yield _ : SecurityGroupConfig =
         { SecurityGroupName = name
           ConstructId = None
@@ -234,33 +220,36 @@ type SecurityGroupBuilder(name: string) =
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> SecurityGroupConfig) : SecurityGroupConfig = f ()
 
-    member inline x.For(config: SecurityGroupConfig, [<InlineIfLambda>] f: unit -> SecurityGroupConfig) : SecurityGroupConfig =
+    member inline x.For
+        (
+            config: SecurityGroupConfig,
+            [<InlineIfLambda>] f: unit -> SecurityGroupConfig
+        ) : SecurityGroupConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Combine(state1: SecurityGroupConfig, state2: SecurityGroupConfig) : SecurityGroupConfig =
-        { SecurityGroupName = state1.SecurityGroupName
+    member _.Combine(a: SecurityGroupConfig, b: SecurityGroupConfig) : SecurityGroupConfig =
+        { SecurityGroupName = a.SecurityGroupName
           ConstructId =
-            if state1.ConstructId.IsSome then
-                state1.ConstructId
-            else
-                state2.ConstructId
-          Vpc = if state1.Vpc.IsSome then state1.Vpc else state2.Vpc
+            match a.ConstructId with
+            | Some _ -> a.ConstructId
+            | None -> b.ConstructId
+          Vpc =
+            match a.Vpc with
+            | Some _ -> a.Vpc
+            | None -> b.Vpc
           Description =
-            if state1.Description.IsSome then
-                state1.Description
-            else
-                state2.Description
+            match a.Description with
+            | Some _ -> a.Description
+            | None -> b.Description
           AllowAllOutbound =
-            if state1.AllowAllOutbound.IsSome then
-                state1.AllowAllOutbound
-            else
-                state2.AllowAllOutbound
+            match a.AllowAllOutbound with
+            | Some _ -> a.AllowAllOutbound
+            | None -> b.AllowAllOutbound
           DisableInlineRules =
-            if state1.DisableInlineRules.IsSome then
-                state1.DisableInlineRules
-            else
-                state2.DisableInlineRules }
+            match a.DisableInlineRules with
+            | Some _ -> a.DisableInlineRules
+            | None -> b.DisableInlineRules }
 
     member _.Run(config: SecurityGroupConfig) : SecurityGroupSpec =
         let props = SecurityGroupProps()
@@ -270,14 +259,13 @@ type SecurityGroupBuilder(name: string) =
         props.Vpc <-
             match config.Vpc with
             | Some vpc -> vpc
-            | None -> failwith "VPC is required for Security Group"
+            | None -> invalidArg "vpc" "VPC is required for Security Group"
 
         // AWS Best Practice: Least privilege - don't allow all outbound by default
         // Users should explicitly allow what they need
         props.AllowAllOutbound <- config.AllowAllOutbound |> Option.defaultValue false
 
-        config.Description
-        |> Option.iter (fun desc -> props.Description <- desc)
+        config.Description |> Option.iter (fun desc -> props.Description <- desc)
 
         config.DisableInlineRules
         |> Option.iter (fun d -> props.DisableInlineRules <- d)
@@ -289,8 +277,7 @@ type SecurityGroupBuilder(name: string) =
     /// <summary>Sets the construct ID for the Security Group.</summary>
     /// <param name="id">The construct ID.</param>
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: SecurityGroupConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: SecurityGroupConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the VPC for the Security Group.</summary>
     /// <param name="vpc">The VPC.</param>

@@ -17,8 +17,7 @@ let rds_instance_dsl_tests =
           }
 
           test "fails when engine is missing" {
-              let thrower () =
-                  rdsInstance "MyDB" { () } |> ignore
+              let thrower () = rdsInstance "MyDB" { () } |> ignore
 
               Expect.throws thrower "RDS Instance builder should throw when engine is missing"
           }

@@ -43,6 +43,7 @@ type DatabaseInstanceSpec =
       Props: DatabaseInstanceProps }
 
 type DatabaseInstanceBuilder(name: string) =
+
     member _.Yield _ : DatabaseInstanceConfig =
         { DatabaseName = name
           ConstructId = None
@@ -103,134 +104,117 @@ type DatabaseInstanceBuilder(name: string) =
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> DatabaseInstanceConfig) : DatabaseInstanceConfig = f ()
 
-    member inline x.For(config: DatabaseInstanceConfig, [<InlineIfLambda>] f: unit -> DatabaseInstanceConfig) : DatabaseInstanceConfig =
+    member inline x.For
+        (
+            config: DatabaseInstanceConfig,
+            [<InlineIfLambda>] f: unit -> DatabaseInstanceConfig
+        ) : DatabaseInstanceConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Combine(state1: DatabaseInstanceConfig, state2: DatabaseInstanceConfig) : DatabaseInstanceConfig =
-        { DatabaseName = state1.DatabaseName
+    member _.Combine(a: DatabaseInstanceConfig, b: DatabaseInstanceConfig) : DatabaseInstanceConfig =
+        { DatabaseName = a.DatabaseName
           ConstructId =
-            if state1.ConstructId.IsSome then
-                state1.ConstructId
-            else
-                state2.ConstructId
+            match a.ConstructId with
+            | Some _ -> a.ConstructId
+            | None -> b.ConstructId
           Engine =
-            if state1.Engine.IsSome then
-                state1.Engine
-            else
-                state2.Engine
+            match a.Engine with
+            | Some _ -> a.Engine
+            | None -> b.Engine
           InstanceType =
-            if state1.InstanceType.IsSome then
-                state1.InstanceType
-            else
-                state2.InstanceType
-          Vpc = if state1.Vpc.IsSome then state1.Vpc else state2.Vpc
+            match a.InstanceType with
+            | Some _ -> a.InstanceType
+            | None -> b.InstanceType
+          Vpc =
+            match a.Vpc with
+            | Some _ -> a.Vpc
+            | None -> b.Vpc
           VpcSubnets =
-            if state1.VpcSubnets.IsSome then
-                state1.VpcSubnets
-            else
-                state2.VpcSubnets
-          SecurityGroups = state1.SecurityGroups @ state2.SecurityGroups
+            match a.VpcSubnets with
+            | Some _ -> a.VpcSubnets
+            | None -> b.VpcSubnets
+          SecurityGroups = a.SecurityGroups @ b.SecurityGroups
           AllocatedStorage =
-            if state1.AllocatedStorage.IsSome then
-                state1.AllocatedStorage
-            else
-                state2.AllocatedStorage
+            match a.AllocatedStorage with
+            | Some _ -> a.AllocatedStorage
+            | None -> b.AllocatedStorage
           StorageType =
-            if state1.StorageType.IsSome then
-                state1.StorageType
-            else
-                state2.StorageType
+            match a.StorageType with
+            | Some _ -> a.StorageType
+            | None -> b.StorageType
           BackupRetention =
-            if state1.BackupRetention.IsSome then
-                state1.BackupRetention
-            else
-                state2.BackupRetention
+            match a.BackupRetention with
+            | Some _ -> a.BackupRetention
+            | None -> b.BackupRetention
           DeleteAutomatedBackups =
-            if state1.DeleteAutomatedBackups.IsSome then
-                state1.DeleteAutomatedBackups
-            else
-                state2.DeleteAutomatedBackups
+            match a.DeleteAutomatedBackups with
+            | Some _ -> a.DeleteAutomatedBackups
+            | None -> b.DeleteAutomatedBackups
           RemovalPolicy =
-            if state1.RemovalPolicy.IsSome then
-                state1.RemovalPolicy
-            else
-                state2.RemovalPolicy
+            match a.RemovalPolicy with
+            | Some _ -> a.RemovalPolicy
+            | None -> b.RemovalPolicy
           DeletionProtection =
-            if state1.DeletionProtection.IsSome then
-                state1.DeletionProtection
-            else
-                state2.DeletionProtection
+            match a.DeletionProtection with
+            | Some _ -> a.DeletionProtection
+            | None -> b.DeletionProtection
           MultiAz =
-            if state1.MultiAz.IsSome then
-                state1.MultiAz
-            else
-                state2.MultiAz
+            match a.MultiAz with
+            | Some _ -> a.MultiAz
+            | None -> b.MultiAz
           PubliclyAccessible =
-            if state1.PubliclyAccessible.IsSome then
-                state1.PubliclyAccessible
-            else
-                state2.PubliclyAccessible
+            match a.PubliclyAccessible with
+            | Some _ -> a.PubliclyAccessible
+            | None -> b.PubliclyAccessible
           ParameterGroup =
-            if state1.ParameterGroup.IsSome then
-                state1.ParameterGroup
-            else
-                state2.ParameterGroup
+            match a.ParameterGroup with
+            | Some _ -> a.ParameterGroup
+            | None -> b.ParameterGroup
           DatabaseName_ =
-            if state1.DatabaseName_.IsSome then
-                state1.DatabaseName_
-            else
-                state2.DatabaseName_
+            match a.DatabaseName_ with
+            | Some _ -> a.DatabaseName_
+            | None -> b.DatabaseName_
           MasterUsername =
-            if state1.MasterUsername.IsSome then
-                state1.MasterUsername
-            else
-                state2.MasterUsername
+            match a.MasterUsername with
+            | Some _ -> a.MasterUsername
+            | None -> b.MasterUsername
           Credentials =
-            if state1.Credentials.IsSome then
-                state1.Credentials
-            else
-                state2.Credentials
+            match a.Credentials with
+            | Some _ -> a.Credentials
+            | None -> b.Credentials
           PreferredBackupWindow =
-            if state1.PreferredBackupWindow.IsSome then
-                state1.PreferredBackupWindow
-            else
-                state2.PreferredBackupWindow
+            match a.PreferredBackupWindow with
+            | Some _ -> a.PreferredBackupWindow
+            | None -> b.PreferredBackupWindow
           PreferredMaintenanceWindow =
-            if state1.PreferredMaintenanceWindow.IsSome then
-                state1.PreferredMaintenanceWindow
-            else
-                state2.PreferredMaintenanceWindow
+            match a.PreferredMaintenanceWindow with
+            | Some _ -> a.PreferredMaintenanceWindow
+            | None -> b.PreferredMaintenanceWindow
           StorageEncrypted =
-            if state1.StorageEncrypted.IsSome then
-                state1.StorageEncrypted
-            else
-                state2.StorageEncrypted
+            match a.StorageEncrypted with
+            | Some _ -> a.StorageEncrypted
+            | None -> b.StorageEncrypted
           MonitoringInterval =
-            if state1.MonitoringInterval.IsSome then
-                state1.MonitoringInterval
-            else
-                state2.MonitoringInterval
+            match a.MonitoringInterval with
+            | Some _ -> a.MonitoringInterval
+            | None -> b.MonitoringInterval
           EnablePerformanceInsights =
-            if state1.EnablePerformanceInsights.IsSome then
-                state1.EnablePerformanceInsights
-            else
-                state2.EnablePerformanceInsights
+            match a.EnablePerformanceInsights with
+            | Some _ -> a.EnablePerformanceInsights
+            | None -> b.EnablePerformanceInsights
           PerformanceInsightRetention =
-            if state1.PerformanceInsightRetention.IsSome then
-                state1.PerformanceInsightRetention
-            else
-                state2.PerformanceInsightRetention
+            match a.PerformanceInsightRetention with
+            | Some _ -> a.PerformanceInsightRetention
+            | None -> b.PerformanceInsightRetention
           AutoMinorVersionUpgrade =
-            if state1.AutoMinorVersionUpgrade.IsSome then
-                state1.AutoMinorVersionUpgrade
-            else
-                state2.AutoMinorVersionUpgrade
+            match a.AutoMinorVersionUpgrade with
+            | Some _ -> a.AutoMinorVersionUpgrade
+            | None -> b.AutoMinorVersionUpgrade
           IamAuthentication =
-            if state1.IamAuthentication.IsSome then
-                state1.IamAuthentication
-            else
-                state2.IamAuthentication }
+            match a.IamAuthentication with
+            | Some _ -> a.IamAuthentication
+            | None -> b.IamAuthentication }
 
     member _.Run(config: DatabaseInstanceConfig) : DatabaseInstanceSpec =
         let props = DatabaseInstanceProps()
@@ -240,13 +224,12 @@ type DatabaseInstanceBuilder(name: string) =
         props.Vpc <-
             match config.Vpc with
             | Some vpc -> vpc
-            | None -> failwith "VPC is required for RDS Database Instance"
+            | None -> invalidArg "vpc" "VPC is required for RDS Database Instance"
 
-        // Engine is required
         props.Engine <-
             match config.Engine with
             | Some engine -> engine
-            | None -> failwith "Database engine is required for RDS Database Instance"
+            | None -> invalidArg "engine" "Database engine is required for RDS Database Instance"
 
         // AWS Best Practice: Default to t3.micro for cost optimization in dev/test
         // Users should explicitly choose larger instances for production
@@ -255,12 +238,10 @@ type DatabaseInstanceBuilder(name: string) =
             |> Option.defaultValue (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
 
         // AWS Best Practice: Enable automated backups with 7-day retention
-        props.BackupRetention <-
-            config.BackupRetention |> Option.defaultValue (Duration.Days(7.0))
+        props.BackupRetention <- config.BackupRetention |> Option.defaultValue (Duration.Days(7.0))
 
         // AWS Best Practice: Delete automated backups when instance is deleted
-        props.DeleteAutomatedBackups <-
-            config.DeleteAutomatedBackups |> Option.defaultValue true
+        props.DeleteAutomatedBackups <- config.DeleteAutomatedBackups |> Option.defaultValue true
 
         // AWS Best Practice: Enable Multi-AZ for production databases
         // Default to false for cost optimization in dev/test
@@ -277,8 +258,7 @@ type DatabaseInstanceBuilder(name: string) =
         props.DeletionProtection <- config.DeletionProtection |> Option.defaultValue false
 
         // AWS Best Practice: Enable auto minor version upgrades
-        props.AutoMinorVersionUpgrade <-
-            config.AutoMinorVersionUpgrade |> Option.defaultValue true
+        props.AutoMinorVersionUpgrade <- config.AutoMinorVersionUpgrade |> Option.defaultValue true
 
         config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
 
@@ -289,16 +269,9 @@ type DatabaseInstanceBuilder(name: string) =
         |> Option.iter (fun s -> props.AllocatedStorage <- float s)
 
         config.StorageType |> Option.iter (fun t -> props.StorageType <- t)
-
-        config.RemovalPolicy
-        |> Option.iter (fun r -> props.RemovalPolicy <- r)
-
-        config.ParameterGroup
-        |> Option.iter (fun p -> props.ParameterGroup <- p)
-
-        config.DatabaseName_
-        |> Option.iter (fun d -> props.DatabaseName <- d)
-
+        config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
+        config.ParameterGroup |> Option.iter (fun p -> props.ParameterGroup <- p)
+        config.DatabaseName_ |> Option.iter (fun d -> props.DatabaseName <- d)
         config.Credentials |> Option.iter (fun c -> props.Credentials <- c)
 
         config.PreferredBackupWindow
@@ -316,8 +289,7 @@ type DatabaseInstanceBuilder(name: string) =
         config.PerformanceInsightRetention
         |> Option.iter (fun r -> props.PerformanceInsightRetention <- r)
 
-        config.IamAuthentication
-        |> Option.iter (fun i -> props.IamAuthentication <- i)
+        config.IamAuthentication |> Option.iter (fun i -> props.IamAuthentication <- i)
 
         { DatabaseName = config.DatabaseName
           ConstructId = constructId
@@ -325,18 +297,17 @@ type DatabaseInstanceBuilder(name: string) =
 
     /// <summary>Sets the construct ID for the database instance.</summary>
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: DatabaseInstanceConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: DatabaseInstanceConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the database engine.</summary>
     [<CustomOperation("engine")>]
-    member _.Engine(config: DatabaseInstanceConfig, engine: IInstanceEngine) =
-        { config with Engine = Some engine }
+    member _.Engine(config: DatabaseInstanceConfig, engine: IInstanceEngine) = { config with Engine = Some engine }
 
     /// <summary>Sets PostgreSQL as the database engine with specific version.</summary>
     [<CustomOperation("postgresEngine")>]
     member _.PostgresEngine(config: DatabaseInstanceConfig, ?version: PostgresEngineVersion) =
         let pgVersion = version |> Option.defaultValue PostgresEngineVersion.VER_15
+
         { config with
             Engine = Some(DatabaseInstanceEngine.Postgres(PostgresInstanceEngineProps(Version = pgVersion))) }
 
@@ -400,8 +371,7 @@ type DatabaseInstanceBuilder(name: string) =
 
     /// <summary>Enables or disables Multi-AZ deployment.</summary>
     [<CustomOperation("multiAz")>]
-    member _.MultiAz(config: DatabaseInstanceConfig, enabled: bool) =
-        { config with MultiAz = Some enabled }
+    member _.MultiAz(config: DatabaseInstanceConfig, enabled: bool) = { config with MultiAz = Some enabled }
 
     /// <summary>Sets whether the database is publicly accessible.</summary>
     [<CustomOperation("publiclyAccessible")>]
@@ -412,9 +382,10 @@ type DatabaseInstanceBuilder(name: string) =
     /// <summary>Sets the database name.</summary>
     [<CustomOperation("databaseName")>]
     member _.DatabaseName(config: DatabaseInstanceConfig, dbName: string) =
-        { config with DatabaseName_ = Some dbName }
+        { config with
+            DatabaseName_ = Some dbName }
 
-    /// <summary>Sets the master username.</summary>
+    /// <summary>Sets the master username (note: credentials typically encapsulate username/password/secret).</summary>
     [<CustomOperation("masterUsername")>]
     member _.MasterUsername(config: DatabaseInstanceConfig, username: string) =
         { config with
@@ -444,11 +415,29 @@ type DatabaseInstanceBuilder(name: string) =
         { config with
             StorageEncrypted = Some encrypted }
 
+    /// <summary>Sets the CloudWatch monitoring interval.</summary>
+    [<CustomOperation("monitoringInterval")>]
+    member _.MonitoringInterval(config: DatabaseInstanceConfig, interval: Duration) =
+        { config with
+            MonitoringInterval = Some interval }
+
     /// <summary>Enables performance insights.</summary>
     [<CustomOperation("enablePerformanceInsights")>]
     member _.EnablePerformanceInsights(config: DatabaseInstanceConfig, enabled: bool) =
         { config with
             EnablePerformanceInsights = Some enabled }
+
+    /// <summary>Sets performance insights retention.</summary>
+    [<CustomOperation("performanceInsightRetention")>]
+    member _.PerformanceInsightRetention(config: DatabaseInstanceConfig, retention: PerformanceInsightRetention) =
+        { config with
+            PerformanceInsightRetention = Some retention }
+
+    /// <summary>Enables or disables auto minor version upgrades.</summary>
+    [<CustomOperation("autoMinorVersionUpgrade")>]
+    member _.AutoMinorVersionUpgrade(config: DatabaseInstanceConfig, enabled: bool) =
+        { config with
+            AutoMinorVersionUpgrade = Some enabled }
 
     /// <summary>Enables IAM authentication.</summary>
     [<CustomOperation("iamAuthentication")>]

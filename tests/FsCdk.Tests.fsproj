@@ -26,6 +26,8 @@
         <Compile Include="S3Tests.fs" />
         <Compile Include="VPCTests.fs" />
         <Compile Include="RDSTests.fs" />
+        <Compile Include="CloudFrontTests.fs" />
+        <Compile Include="CognitoTests.fs" />
         <Compile Include="AppTests.fs" />
         <Compile Include="DockerImageFunctionTests.fs" />
         <Compile Include="FunctionTests.fs" />

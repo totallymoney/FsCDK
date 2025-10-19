@@ -31,6 +31,7 @@ type UserPoolSpec =
       Props: UserPoolProps }
 
 type UserPoolBuilder(name: string) =
+
     member _.Yield _ : UserPoolConfig =
         { UserPoolName = name
           ConstructId = None
@@ -73,79 +74,65 @@ type UserPoolBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Combine(state1: UserPoolConfig, state2: UserPoolConfig) : UserPoolConfig =
-        { UserPoolName = state1.UserPoolName
+    member _.Combine(a: UserPoolConfig, b: UserPoolConfig) : UserPoolConfig =
+        { UserPoolName = a.UserPoolName
           ConstructId =
-            if state1.ConstructId.IsSome then
-                state1.ConstructId
-            else
-                state2.ConstructId
+            match a.ConstructId with
+            | Some _ -> a.ConstructId
+            | None -> b.ConstructId
           UserPoolName_ =
-            if state1.UserPoolName_.IsSome then
-                state1.UserPoolName_
-            else
-                state2.UserPoolName_
+            match a.UserPoolName_ with
+            | Some _ -> a.UserPoolName_
+            | None -> b.UserPoolName_
           SelfSignUpEnabled =
-            if state1.SelfSignUpEnabled.IsSome then
-                state1.SelfSignUpEnabled
-            else
-                state2.SelfSignUpEnabled
+            match a.SelfSignUpEnabled with
+            | Some _ -> a.SelfSignUpEnabled
+            | None -> b.SelfSignUpEnabled
           SignInAliases =
-            if state1.SignInAliases.IsSome then
-                state1.SignInAliases
-            else
-                state2.SignInAliases
+            match a.SignInAliases with
+            | Some _ -> a.SignInAliases
+            | None -> b.SignInAliases
           AutoVerify =
-            if state1.AutoVerify.IsSome then
-                state1.AutoVerify
-            else
-                state2.AutoVerify
+            match a.AutoVerify with
+            | Some _ -> a.AutoVerify
+            | None -> b.AutoVerify
           StandardAttributes =
-            if state1.StandardAttributes.IsSome then
-                state1.StandardAttributes
-            else
-                state2.StandardAttributes
-          CustomAttributes = state1.CustomAttributes @ state2.CustomAttributes
+            match a.StandardAttributes with
+            | Some _ -> a.StandardAttributes
+            | None -> b.StandardAttributes
+          CustomAttributes = a.CustomAttributes @ b.CustomAttributes
           PasswordPolicy =
-            if state1.PasswordPolicy.IsSome then
-                state1.PasswordPolicy
-            else
-                state2.PasswordPolicy
+            match a.PasswordPolicy with
+            | Some _ -> a.PasswordPolicy
+            | None -> b.PasswordPolicy
           MfaConfiguration =
-            if state1.MfaConfiguration.IsSome then
-                state1.MfaConfiguration
-            else
-                state2.MfaConfiguration
+            match a.MfaConfiguration with
+            | Some _ -> a.MfaConfiguration
+            | None -> b.MfaConfiguration
           MfaSecondFactor =
-            if state1.MfaSecondFactor.IsSome then
-                state1.MfaSecondFactor
-            else
-                state2.MfaSecondFactor
+            match a.MfaSecondFactor with
+            | Some _ -> a.MfaSecondFactor
+            | None -> b.MfaSecondFactor
           AccountRecovery =
-            if state1.AccountRecovery.IsSome then
-                state1.AccountRecovery
-            else
-                state2.AccountRecovery
+            match a.AccountRecovery with
+            | Some _ -> a.AccountRecovery
+            | None -> b.AccountRecovery
           EmailSettings =
-            if state1.EmailSettings.IsSome then
-                state1.EmailSettings
-            else
-                state2.EmailSettings
+            match a.EmailSettings with
+            | Some _ -> a.EmailSettings
+            | None -> b.EmailSettings
           SmsRole =
-            if state1.SmsRole.IsSome then
-                state1.SmsRole
-            else
-                state2.SmsRole
+            match a.SmsRole with
+            | Some _ -> a.SmsRole
+            | None -> b.SmsRole
           LambdaTriggers =
-            if state1.LambdaTriggers.IsSome then
-                state1.LambdaTriggers
-            else
-                state2.LambdaTriggers
+            match a.LambdaTriggers with
+            | Some _ -> a.LambdaTriggers
+            | None -> b.LambdaTriggers
           RemovalPolicy =
-            if state1.RemovalPolicy.IsSome then
-                state1.RemovalPolicy
-            else
-                state2.RemovalPolicy }
+            match a.RemovalPolicy with
+            | Some _ -> a.RemovalPolicy
+            | None -> b.RemovalPolicy }
 
     member _.Run(config: UserPoolConfig) : UserPoolSpec =
         let props = UserPoolProps()
@@ -157,8 +144,7 @@ type UserPoolBuilder(name: string) =
             |> Option.defaultValue (SignInAliases(Email = true, Username = true))
 
         // AWS Best Practice: Auto-verify email by default
-        props.AutoVerify <-
-            config.AutoVerify |> Option.defaultValue (AutoVerifiedAttrs(Email = true))
+        props.AutoVerify <- config.AutoVerify |> Option.defaultValue (AutoVerifiedAttrs(Email = true))
 
         // AWS Best Practice: Strong password policy by default
         props.PasswordPolicy <-
@@ -174,15 +160,12 @@ type UserPoolBuilder(name: string) =
             )
 
         // AWS Best Practice: Account recovery via email by default
-        props.AccountRecovery <-
-            config.AccountRecovery |> Option.defaultValue AccountRecovery.EMAIL_ONLY
+        props.AccountRecovery <- config.AccountRecovery |> Option.defaultValue AccountRecovery.EMAIL_ONLY
 
-        // AWS Best Practice: Disable self sign-up by default for security
-        // Applications should explicitly enable if needed
+        // AWS Best Practice: Disable self sign-up by default
         props.SelfSignUpEnabled <- config.SelfSignUpEnabled |> Option.defaultValue false
 
-        config.UserPoolName_
-        |> Option.iter (fun n -> props.UserPoolName <- n)
+        config.UserPoolName_ |> Option.iter (fun n -> props.UserPoolName <- n)
 
         config.StandardAttributes
         |> Option.iter (fun a -> props.StandardAttributes <- a)
@@ -191,27 +174,17 @@ type UserPoolBuilder(name: string) =
             let attrDict = System.Collections.Generic.Dictionary<string, ICustomAttribute>()
 
             for attr in config.CustomAttributes do
-                // Custom attributes need unique keys - using their type name as key
+                // Note: Using type name as key; for precise control, set the dictionary directly upstream if needed
                 attrDict.Add(attr.GetType().Name, attr)
 
             props.CustomAttributes <- attrDict
 
-        config.MfaConfiguration
-        |> Option.iter (fun m -> props.Mfa <- m)
-
-        config.MfaSecondFactor
-        |> Option.iter (fun m -> props.MfaSecondFactor <- m)
-
-        config.EmailSettings
-        |> Option.iter (fun e -> props.Email <- e)
-
+        config.MfaConfiguration |> Option.iter (fun m -> props.Mfa <- m)
+        config.MfaSecondFactor |> Option.iter (fun m -> props.MfaSecondFactor <- m)
+        config.EmailSettings |> Option.iter (fun e -> props.Email <- e)
         config.SmsRole |> Option.iter (fun r -> props.SmsRole <- r)
-
-        config.LambdaTriggers
-        |> Option.iter (fun t -> props.LambdaTriggers <- t)
-
-        config.RemovalPolicy
-        |> Option.iter (fun r -> props.RemovalPolicy <- r)
+        config.LambdaTriggers |> Option.iter (fun t -> props.LambdaTriggers <- t)
+        config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
 
         { UserPoolName = config.UserPoolName
           ConstructId = constructId
@@ -219,8 +192,7 @@ type UserPoolBuilder(name: string) =
 
     /// <summary>Sets the construct ID for the user pool.</summary>
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: UserPoolConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: UserPoolConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the user pool name.</summary>
     [<CustomOperation("userPoolName")>]
@@ -254,14 +226,19 @@ type UserPoolBuilder(name: string) =
 
     /// <summary>Sets auto-verification attributes.</summary>
     [<CustomOperation("autoVerify")>]
-    member _.AutoVerify(config: UserPoolConfig, attrs: IAutoVerifiedAttrs) =
-        { config with AutoVerify = Some attrs }
+    member _.AutoVerify(config: UserPoolConfig, attrs: IAutoVerifiedAttrs) = { config with AutoVerify = Some attrs }
 
     /// <summary>Sets standard attributes.</summary>
     [<CustomOperation("standardAttributes")>]
     member _.StandardAttributes(config: UserPoolConfig, attrs: IStandardAttributes) =
         { config with
             StandardAttributes = Some attrs }
+
+    /// <summary>Add a custom attribute (key derived from attribute type name).</summary>
+    [<CustomOperation("customAttribute")>]
+    member _.CustomAttribute(config: UserPoolConfig, attr: ICustomAttribute) =
+        { config with
+            CustomAttributes = attr :: config.CustomAttributes }
 
     /// <summary>Sets password policy.</summary>
     [<CustomOperation("passwordPolicy")>]
@@ -271,7 +248,15 @@ type UserPoolBuilder(name: string) =
 
     /// <summary>Sets MFA configuration.</summary>
     [<CustomOperation("mfa")>]
-    member _.Mfa(config: UserPoolConfig, mfa: Mfa) = { config with MfaConfiguration = Some mfa }
+    member _.Mfa(config: UserPoolConfig, mfa: Mfa) =
+        { config with
+            MfaConfiguration = Some mfa }
+
+    /// <summary>Sets MFA second factor configuration.</summary>
+    [<CustomOperation("mfaSecondFactor")>]
+    member _.MfaSecondFactor(config: UserPoolConfig, secondFactor: IMfaSecondFactor) =
+        { config with
+            MfaSecondFactor = Some secondFactor }
 
     /// <summary>Sets account recovery method.</summary>
     [<CustomOperation("accountRecovery")>]
@@ -284,6 +269,22 @@ type UserPoolBuilder(name: string) =
     member _.EmailSettings(config: UserPoolConfig, settings: UserPoolEmail) =
         { config with
             EmailSettings = Some settings }
+
+    /// <summary>Sets the SMS role for the user pool.</summary>
+    [<CustomOperation("smsRole")>]
+    member _.SmsRole(config: UserPoolConfig, role: Amazon.CDK.AWS.IAM.IRole) = { config with SmsRole = Some role }
+
+    /// <summary>Sets Lambda triggers for the user pool.</summary>
+    [<CustomOperation("lambdaTriggers")>]
+    member _.LambdaTriggers(config: UserPoolConfig, triggers: IUserPoolTriggers) =
+        { config with
+            LambdaTriggers = Some triggers }
+
+    /// <summary>Sets the removal policy for the user pool.</summary>
+    [<CustomOperation("removalPolicy")>]
+    member _.RemovalPolicy(config: UserPoolConfig, policy: RemovalPolicy) =
+        { config with
+            RemovalPolicy = Some policy }
 
 // ============================================================================
 // Cognito User Pool Client Configuration DSL
@@ -308,6 +309,7 @@ type UserPoolClientSpec =
       Props: UserPoolClientProps }
 
 type UserPoolClientBuilder(name: string) =
+
     member _.Yield _ : UserPoolClientConfig =
         { ClientName = name
           ConstructId = None
@@ -336,58 +338,53 @@ type UserPoolClientBuilder(name: string) =
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> UserPoolClientConfig) : UserPoolClientConfig = f ()
 
-    member inline x.For(config: UserPoolClientConfig, [<InlineIfLambda>] f: unit -> UserPoolClientConfig) : UserPoolClientConfig =
+    member inline x.For
+        (
+            config: UserPoolClientConfig,
+            [<InlineIfLambda>] f: unit -> UserPoolClientConfig
+        ) : UserPoolClientConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Combine(state1: UserPoolClientConfig, state2: UserPoolClientConfig) : UserPoolClientConfig =
-        { ClientName = state1.ClientName
+    member _.Combine(a: UserPoolClientConfig, b: UserPoolClientConfig) : UserPoolClientConfig =
+        { ClientName = a.ClientName
           ConstructId =
-            if state1.ConstructId.IsSome then
-                state1.ConstructId
-            else
-                state2.ConstructId
+            match a.ConstructId with
+            | Some _ -> a.ConstructId
+            | None -> b.ConstructId
           UserPool =
-            if state1.UserPool.IsSome then
-                state1.UserPool
-            else
-                state2.UserPool
+            match a.UserPool with
+            | Some _ -> a.UserPool
+            | None -> b.UserPool
           GenerateSecret =
-            if state1.GenerateSecret.IsSome then
-                state1.GenerateSecret
-            else
-                state2.GenerateSecret
+            match a.GenerateSecret with
+            | Some _ -> a.GenerateSecret
+            | None -> b.GenerateSecret
           AuthFlows =
-            if state1.AuthFlows.IsSome then
-                state1.AuthFlows
-            else
-                state2.AuthFlows
+            match a.AuthFlows with
+            | Some _ -> a.AuthFlows
+            | None -> b.AuthFlows
           OAuth =
-            if state1.OAuth.IsSome then
-                state1.OAuth
-            else
-                state2.OAuth
+            match a.OAuth with
+            | Some _ -> a.OAuth
+            | None -> b.OAuth
           PreventUserExistenceErrors =
-            if state1.PreventUserExistenceErrors.IsSome then
-                state1.PreventUserExistenceErrors
-            else
-                state2.PreventUserExistenceErrors
-          SupportedIdentityProviders = state1.SupportedIdentityProviders @ state2.SupportedIdentityProviders
+            match a.PreventUserExistenceErrors with
+            | Some _ -> a.PreventUserExistenceErrors
+            | None -> b.PreventUserExistenceErrors
+          SupportedIdentityProviders = a.SupportedIdentityProviders @ b.SupportedIdentityProviders
           RefreshTokenValidity =
-            if state1.RefreshTokenValidity.IsSome then
-                state1.RefreshTokenValidity
-            else
-                state2.RefreshTokenValidity
+            match a.RefreshTokenValidity with
+            | Some _ -> a.RefreshTokenValidity
+            | None -> b.RefreshTokenValidity
           AccessTokenValidity =
-            if state1.AccessTokenValidity.IsSome then
-                state1.AccessTokenValidity
-            else
-                state2.AccessTokenValidity
+            match a.AccessTokenValidity with
+            | Some _ -> a.AccessTokenValidity
+            | None -> b.AccessTokenValidity
           IdTokenValidity =
-            if state1.IdTokenValidity.IsSome then
-                state1.IdTokenValidity
-            else
-                state2.IdTokenValidity }
+            match a.IdTokenValidity with
+            | Some _ -> a.IdTokenValidity
+            | None -> b.IdTokenValidity }
 
     member _.Run(config: UserPoolClientConfig) : UserPoolClientSpec =
         let props = UserPoolClientProps()
@@ -397,16 +394,15 @@ type UserPoolClientBuilder(name: string) =
         props.UserPool <-
             match config.UserPool with
             | Some pool -> pool
-            | None -> failwith "User Pool is required for User Pool Client"
+            | None -> invalidArg "userPool" "User Pool is required for User Pool Client"
 
         // AWS Best Practice: Prevent user existence errors for security
-        props.PreventUserExistenceErrors <-
-            config.PreventUserExistenceErrors |> Option.defaultValue true
+        props.PreventUserExistenceErrors <- config.PreventUserExistenceErrors |> Option.defaultValue true
 
         // AWS Best Practice: Don't generate secret for public clients (web/mobile)
         props.GenerateSecret <- config.GenerateSecret |> Option.defaultValue false
 
-        // AWS Best Practice: Enable SRP auth flow by default
+        // AWS Best Practice: Enable SRP and password auth flow by default
         props.AuthFlows <-
             config.AuthFlows
             |> Option.defaultValue (AuthFlow(UserSrp = true, UserPassword = true))
@@ -414,8 +410,7 @@ type UserPoolClientBuilder(name: string) =
         config.OAuth |> Option.iter (fun o -> props.OAuth <- o)
 
         if not (List.isEmpty config.SupportedIdentityProviders) then
-            props.SupportedIdentityProviders <-
-                config.SupportedIdentityProviders |> List.toArray
+            props.SupportedIdentityProviders <- config.SupportedIdentityProviders |> List.toArray
 
         config.RefreshTokenValidity
         |> Option.iter (fun t -> props.RefreshTokenValidity <- t)
@@ -423,8 +418,7 @@ type UserPoolClientBuilder(name: string) =
         config.AccessTokenValidity
         |> Option.iter (fun t -> props.AccessTokenValidity <- t)
 
-        config.IdTokenValidity
-        |> Option.iter (fun t -> props.IdTokenValidity <- t)
+        config.IdTokenValidity |> Option.iter (fun t -> props.IdTokenValidity <- t)
 
         { ClientName = config.ClientName
           ConstructId = constructId
@@ -432,13 +426,11 @@ type UserPoolClientBuilder(name: string) =
 
     /// <summary>Sets the construct ID.</summary>
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: UserPoolClientConfig, id: string) =
-        { config with ConstructId = Some id }
+    member _.ConstructId(config: UserPoolClientConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the user pool.</summary>
     [<CustomOperation("userPool")>]
-    member _.UserPool(config: UserPoolClientConfig, pool: IUserPool) =
-        { config with UserPool = Some pool }
+    member _.UserPool(config: UserPoolClientConfig, pool: IUserPool) = { config with UserPool = Some pool }
 
     /// <summary>Enables or disables secret generation.</summary>
     [<CustomOperation("generateSecret")>]
@@ -448,13 +440,23 @@ type UserPoolClientBuilder(name: string) =
 
     /// <summary>Sets authentication flows.</summary>
     [<CustomOperation("authFlows")>]
-    member _.AuthFlows(config: UserPoolClientConfig, flows: IAuthFlow) =
-        { config with AuthFlows = Some flows }
+    member _.AuthFlows(config: UserPoolClientConfig, flows: IAuthFlow) = { config with AuthFlows = Some flows }
 
     /// <summary>Sets OAuth settings.</summary>
     [<CustomOperation("oAuth")>]
-    member _.OAuth(config: UserPoolClientConfig, settings: IOAuthSettings) =
-        { config with OAuth = Some settings }
+    member _.OAuth(config: UserPoolClientConfig, settings: IOAuthSettings) = { config with OAuth = Some settings }
+
+    /// <summary>Sets whether to prevent user existence errors.</summary>
+    [<CustomOperation("preventUserExistenceErrors")>]
+    member _.PreventUserExistenceErrors(config: UserPoolClientConfig, prevent: bool) =
+        { config with
+            PreventUserExistenceErrors = Some prevent }
+
+    /// <summary>Add one supported identity provider.</summary>
+    [<CustomOperation("supportedIdentityProvider")>]
+    member _.SupportedIdentityProvider(config: UserPoolClientConfig, provider: UserPoolClientIdentityProvider) =
+        { config with
+            SupportedIdentityProviders = provider :: config.SupportedIdentityProviders }
 
     /// <summary>Sets token validities.</summary>
     [<CustomOperation("tokenValidities")>]
@@ -485,7 +487,7 @@ module CognitoBuilders =
     ///     mfa Mfa.OPTIONAL
     /// }
     /// </code>
-    let userPool (name: string) = UserPoolBuilder(name)
+    let userPool (name: string) = UserPoolBuilder name
 
     /// <summary>Creates a Cognito User Pool Client.</summary>
     /// <param name="name">The client name.</param>
@@ -495,4 +497,4 @@ module CognitoBuilders =
     ///     generateSecret false
     /// }
     /// </code>
-    let userPoolClient (name: string) = UserPoolClientBuilder(name)
+    let userPoolClient (name: string) = UserPoolClientBuilder name
