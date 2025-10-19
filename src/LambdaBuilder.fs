@@ -1,4 +1,6 @@
-namespace FsCDK.Compute
+namespace FsCDK
+
+#nowarn "44" // Suppress deprecation warning for LogRetention
 
 open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
@@ -201,7 +203,7 @@ type LambdaFunctionBuilder(name: string) =
         { config with ReservedConcurrentExecutions = Some count }
 
 [<AutoOpen>]
-module LambdaBuilders =
+module HighLevelLambdaBuilders =
     /// <summary>
     /// Creates a new Lambda function builder with secure defaults.
     /// Example: lambdaFunction "my-function" { handler "index.handler"; runtime Runtime.NODEJS_18_X }

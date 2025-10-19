@@ -1,4 +1,4 @@
-namespace FsCDK.Storage
+namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.S3
@@ -186,7 +186,7 @@ module LifecycleRuleHelpers =
         )
 
 [<AutoOpen>]
-module S3Builders =
+module HighLevelS3Builders =
     /// <summary>
     /// Creates a new S3 bucket builder with secure defaults.
     /// Example: s3Bucket "my-bucket" { versioned true }

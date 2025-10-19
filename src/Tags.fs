@@ -1,4 +1,4 @@
-namespace FsCDK.Meta
+namespace FsCDK
 
 open Amazon.CDK
 open Constructs

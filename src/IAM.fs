@@ -1,4 +1,4 @@
-namespace FsCDK.Security
+namespace FsCDK
 
 open Amazon.CDK.AWS.IAM
 open System.Text.RegularExpressions
@@ -127,9 +127,9 @@ module IAM =
         role
 
 /// <summary>
-/// Policy statement builder for creating inline IAM policies
+/// Policy statement builder for creating inline IAM policies (high-level API)
 /// </summary>
-type PolicyStatementBuilder() =
+type IAMPolicyStatementBuilder() =
     let mutable actions: string list = []
     let mutable resources: string list = []
     let mutable effect: Effect = Effect.ALLOW

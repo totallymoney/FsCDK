@@ -1,4 +1,4 @@
-namespace FsCDK.Observability
+namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.CloudWatch
