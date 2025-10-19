@@ -38,6 +38,13 @@
       <Compile Include="S3Builder.fs" />
       <Compile Include="LambdaBuilder.fs" />
       <Compile Include="Observability.fs" />
+      <!-- New service builders -->
+      <Compile Include="EC2.fs" />
+      <Compile Include="ECS.fs" />
+      <Compile Include="ALB.fs" />
+      <Compile Include="SecretsManager.fs" />
+      <Compile Include="ElasticBeanstalk.fs" />
+      <Compile Include="Route53.fs" />
     </ItemGroup>
 
   <ItemGroup>
