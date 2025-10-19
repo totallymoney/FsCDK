@@ -38,8 +38,8 @@ pipeline "ci" {
 
     stage "cdk synth tests" {
         workingDir (__SOURCE_DIRECTORY__ </> "tests")
-        run "npx aws-cdk --version"
-        run "npx cdk synth"
+        run "npx aws-cdk --version --yes"
+        run "npx cdk synth --yes"
     }
 
     stage "docs" {
@@ -57,6 +57,11 @@ pipeline "ci" {
     }
 
     stage "test templates" {
+
+        // Note: This will probably fail on Windows because there is no bash.
+        // There could be bash under git directory (something like c:\Program Files\Git\bin\ that may or may not be in PATH variable).
+        // But also "rm" is a bit different command.
+
         // Clean up NuGet sources
         run "bash -lc \"dotnet nuget remove source github >/dev/null 2>&1 || true\""
 
