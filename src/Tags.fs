@@ -105,7 +105,7 @@ module Tags =
         removeTag construct "ManagedBy"
 
 /// <summary>
-/// Immutable tag builder state for fluent tag creation
+/// Tag builder for fluent tag creation
 /// </summary>
 type TagBuilderState =
     { Project: string option

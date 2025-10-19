@@ -1,7 +1,5 @@
 namespace FsCDK
 
-#nowarn "44" // Suppress deprecation warnings for backward compatibility (KeyName property)
-
 open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.IAM
@@ -125,8 +123,8 @@ type EC2InstanceBuilder(name: string) =
         // Use KeyPair if provided, otherwise fall back to KeyPairName (for backward compatibility)
         match config.KeyPair, config.KeyPairName with
         | Some kp, _ -> props.KeyPair <- kp
-        | None, Some name -> props.KeyName <- name // Using deprecated property for backward compatibility
-        | None, None -> ()
+        //| None, Some name -> props.KeyName <- name // Using deprecated property for backward compatibility
+        | _, _ -> ()
 
         config.Role |> Option.iter (fun v -> props.Role <- v)
         config.UserData |> Option.iter (fun v -> props.UserData <- v)

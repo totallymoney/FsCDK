@@ -137,7 +137,7 @@ module IAM =
         role
 
 /// <summary>
-/// Immutable policy statement builder state
+/// Policy statement builder for creating inline IAM policies (high-level API)
 /// </summary>
 type IAMPolicyStatementBuilderState =
     { Actions: string list
