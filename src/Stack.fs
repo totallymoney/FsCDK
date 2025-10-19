@@ -8,6 +8,7 @@ open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.RDS
+open Amazon.CDK.AWS.CloudFront
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -25,6 +26,7 @@ type Operation =
     | VpcOp of VpcSpec
     | SecurityGroupOp of SecurityGroupSpec
     | RdsInstanceOp of DatabaseInstanceSpec
+    | CloudFrontDistributionOp of DistributionSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -37,13 +39,13 @@ module StackOperations =
         | TableOp tableSpec -> Table(stack, tableSpec.ConstructId, tableSpec.Props) |> ignore
 
         | FunctionOp lambdaSpec ->
-            let fn = Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
+            let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
 
             for action in lambdaSpec.Actions do
                 action fn
 
         | DockerImageFunctionOp imageLambdaSpec ->
-            DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
+            AWS.Lambda.DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
             |> ignore
 
         | GrantOp grantSpec -> Grants.processGrant stack grantSpec
@@ -91,6 +93,9 @@ module StackOperations =
 
         | RdsInstanceOp rdsSpec ->
             DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
+
+        | CloudFrontDistributionOp cfSpec ->
+            Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
 
 
 // ============================================================================
@@ -182,6 +187,12 @@ type StackBuilder(name: string) =
           App = None
           Props = None
           Operations = [ RdsInstanceOp rdsSpec ] }
+
+    member _.Yield(cfSpec: DistributionSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ CloudFrontDistributionOp cfSpec ] }
 
     member _.Yield(props: StackProps) : StackConfig =
         { Name = name
