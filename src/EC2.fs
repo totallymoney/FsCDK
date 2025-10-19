@@ -127,6 +127,7 @@ type EC2InstanceBuilder(name: string) =
         | Some kp, _ -> props.KeyPair <- kp
         | None, Some name -> props.KeyName <- name // Using deprecated property for backward compatibility
         | None, None -> ()
+
         config.Role |> Option.iter (fun v -> props.Role <- v)
         config.UserData |> Option.iter (fun v -> props.UserData <- v)
         config.RequireImdsv2 |> Option.iter (fun v -> props.RequireImdsv2 <- v)

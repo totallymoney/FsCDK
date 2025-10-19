@@ -127,16 +127,23 @@ type TagBuilder(state: TagBuilderState) =
               CustomTags = [] }
         )
 
-    member _.Project(p: string) = TagBuilder({ state with Project = Some p })
+    member _.Project(p: string) =
+        TagBuilder({ state with Project = Some p })
 
-    member _.Environment(e: string) = TagBuilder({ state with Environment = Some e })
+    member _.Environment(e: string) =
+        TagBuilder({ state with Environment = Some e })
 
-    member _.Owner(o: string) = TagBuilder({ state with Owner = Some o })
+    member _.Owner(o: string) =
+        TagBuilder({ state with Owner = Some o })
 
-    member _.CostCenter(cc: string) = TagBuilder({ state with CostCenter = Some cc })
+    member _.CostCenter(cc: string) =
+        TagBuilder({ state with CostCenter = Some cc })
 
     member _.AddTag(key: string, value: string) =
-        TagBuilder({ state with CustomTags = (key, value) :: state.CustomTags })
+        TagBuilder(
+            { state with
+                CustomTags = (key, value) :: state.CustomTags }
+        )
 
     member _.Build() =
         { Tags.StandardTags.Project = state.Project

@@ -203,12 +203,10 @@ module ElasticBeanstalkBuilders =
     /// Creates a new Elastic Beanstalk application builder.
     /// Example: ebApplication "my-app" { description "My web application" }
     /// </summary>
-    let ebApplication name =
-        ElasticBeanstalkApplicationBuilder name
+    let ebApplication name = ElasticBeanstalkApplicationBuilder name
 
     /// <summary>
     /// Creates a new Elastic Beanstalk environment builder.
     /// Example: ebEnvironment "my-env" { applicationName "my-app"; solutionStackName "64bit Amazon Linux 2 v5.8.0 running Node.js 18" }
     /// </summary>
-    let ebEnvironment name =
-        ElasticBeanstalkEnvironmentBuilder name
+    let ebEnvironment name = ElasticBeanstalkEnvironmentBuilder name

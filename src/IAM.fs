@@ -26,8 +26,7 @@ module IAM =
     /// Sanitizes a name for IAM resource naming (removes invalid characters)
     /// IAM names can contain alphanumeric characters, hyphens, and underscores
     /// </summary>
-    let sanitizeName (name: string) =
-        regName.Replace(name, "-")
+    let sanitizeName (name: string) = regName.Replace(name, "-")
 
     /// <summary>
     /// Creates a basic IAM role with a trust policy for the specified service principal
@@ -156,10 +155,14 @@ type IAMPolicyStatementBuilder(state: IAMPolicyStatementBuilderState) =
               Effect = Effect.ALLOW }
         )
 
-    member _.Actions(acts: string list) = IAMPolicyStatementBuilder({ state with Actions = acts })
+    member _.Actions(acts: string list) =
+        IAMPolicyStatementBuilder({ state with Actions = acts })
 
-    member _.Resources(res: string list) = IAMPolicyStatementBuilder({ state with Resources = res })
+    member _.Resources(res: string list) =
+        IAMPolicyStatementBuilder({ state with Resources = res })
 
-    member _.Effect(eff: Effect) = IAMPolicyStatementBuilder({ state with Effect = eff })
+    member _.Effect(eff: Effect) =
+        IAMPolicyStatementBuilder({ state with Effect = eff })
 
-    member _.Build() = IAM.createPolicyStatement state.Actions state.Resources state.Effect
+    member _.Build() =
+        IAM.createPolicyStatement state.Actions state.Resources state.Effect

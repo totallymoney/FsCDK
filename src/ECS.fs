@@ -67,7 +67,9 @@ type ECSClusterBuilder(name: string) =
         let props = ClusterProps()
         props.ClusterName <- clusterName
         config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
-        config.ContainerInsights |> Option.iter (fun v -> props.ContainerInsightsV2 <- v)
+
+        config.ContainerInsights
+        |> Option.iter (fun v -> props.ContainerInsightsV2 <- v)
 
         config.EnableFargateCapacityProviders
         |> Option.iter (fun v -> props.EnableFargateCapacityProviders <- v)
