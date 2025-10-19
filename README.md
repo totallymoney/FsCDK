@@ -32,6 +32,52 @@ FsCDK is a robust F# library for AWS Cloud Development Kit (CDK), enabling you t
 
 ## Quick Start
 
+### New High-Level Builders (Recommended)
+
+FsCDK now includes enhanced builders with security defaults following AWS Well-Architected Framework:
+
+```fsharp
+open FsCDK
+open FsCDK.Storage
+open FsCDK.Compute
+
+let config = Config.get ()
+
+stack "MyStack" {
+    app {
+        context "environment" "production"
+    }
+
+    environment {
+        account config.Account
+        region config.Region
+    }
+    
+    stackProps {
+        stackEnv
+        description "My secure infrastructure"
+    }
+
+    // S3 bucket with KMS encryption and blocked public access (defaults)
+    s3Bucket "my-secure-bucket" {
+        versioned true
+        LifecycleRuleHelpers.expireAfter 30 "cleanup-old-data"
+    }
+
+    // Lambda with encrypted env vars and minimal IAM permissions (defaults)
+    lambdaFunction "my-function" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_20_X
+        codePath "./code"
+        memorySize 512
+        timeout 30.0
+        environment [ "KEY", "value" ]
+    }
+}
+```
+
+### Original Builders (Still Supported)
+
 1. Install the package:
 ```fsharp
 dotnet add package FsCDK
@@ -145,6 +191,13 @@ FsCDK follows AWS Well-Architected Framework principles with sensible defaults:
 - **Monitoring ready**: Performance Insights support for RDS
 
 ## Examples
+
+### Quickstart Examples
+
+- **[S3 Quickstart](./examples/s3-quickstart/)**: Create secure S3 buckets with encryption, lifecycle rules, and versioning
+- **[Lambda Quickstart](./examples/lambda-quickstart/)**: Deploy Lambda functions with encrypted environment variables and minimal IAM permissions
+
+### Additional Examples
 
 Check out the [samples directory](./samples) for complete examples of common infrastructure patterns implemented with FsCDK.
 
