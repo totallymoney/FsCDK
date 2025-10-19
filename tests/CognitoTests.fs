@@ -16,7 +16,7 @@ let tests =
 
           testCase "userPool applies secure defaults"
           <| fun _ ->
-              let spec = userPool "Pool" { }
+              let spec = userPool "Pool" { () }
 
               // Sign-in aliases default to email + username
               Expect.isTrue spec.Props.SignInAliases.Email.HasValue "Email sign-in should be enabled by default"
@@ -72,7 +72,7 @@ let tests =
               let mutable ex: exn option = None
 
               try
-                  let _ = userPoolClient "Client" { }
+                  let _ = userPoolClient "Client" { () }
                   ()
               with e ->
                   ex <- Some e

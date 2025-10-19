@@ -94,16 +94,13 @@ module StackOperations =
 
         | SecurityGroupOp sgSpec -> SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props) |> ignore
 
-        | RdsInstanceOp rdsSpec ->
-            DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
+        | RdsInstanceOp rdsSpec -> DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
 
-        | CloudFrontDistributionOp cfSpec ->
-            Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
+        | CloudFrontDistributionOp cfSpec -> Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
 
         | UserPoolOp upSpec -> UserPool(stack, upSpec.ConstructId, upSpec.Props) |> ignore
 
-        | UserPoolClientOp upcSpec ->
-            UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
+        | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
 
 
 // ============================================================================
