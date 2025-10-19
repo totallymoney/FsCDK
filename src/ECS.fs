@@ -1,5 +1,7 @@
 namespace FsCDK
 
+#nowarn "44" // Suppress deprecation warnings from CDK API
+
 open Amazon.CDK
 open Amazon.CDK.AWS.ECS
 open Amazon.CDK.AWS.EC2

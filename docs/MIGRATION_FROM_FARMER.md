@@ -63,7 +63,6 @@ let deployment = arm {
 **FsCDK (AWS S3):**
 ```fsharp
 open FsCDK
-open FsCDK.Storage
 
 stack "MyStack" {
     s3Bucket "my-bucket" {
@@ -89,7 +88,7 @@ let myFunction = functions {
 
 **FsCDK (AWS Lambda):**
 ```fsharp
-open FsCDK.Compute
+open FsCDK
 
 lambdaFunction "my-function" {
     handler "MyApp::MyApp.Handler::FunctionHandler"
@@ -171,7 +170,7 @@ let webApp = webApp {
 
 **FsCDK (IAM Role):**
 ```fsharp
-open FsCDK.Security
+open FsCDK
 
 // Create execution role for Lambda
 let role = IAM.createLambdaExecutionRole "my-function" true
@@ -319,7 +318,7 @@ let deployment = arm {
 
 **FsCDK:**
 ```fsharp
-open FsCDK.Meta
+open FsCDK
 
 stack "MyStack" {
     Tags.tagStack this "my-project" "production" (Some "team@example.com")

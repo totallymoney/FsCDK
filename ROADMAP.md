@@ -45,7 +45,7 @@ Core infrastructure builders with security best practices:
 
 ### Phase 2: Extended AWS Services
 
-**Priority: High** | **Status: Planned**
+**Priority: High** | **Status: In Progress**
 
 Expand coverage to additional AWS services:
 
@@ -55,11 +55,23 @@ Expand coverage to additional AWS services:
   - [ ] Transit Gateway support
   - [ ] Network ACLs with templates
   
-- [ ] **Container Services**
-  - [ ] ECS/Fargate task definitions
+- [x] **Container Services**
+  - [x] ECS/Fargate task definitions
+  - [x] Application Load Balancer (ALB)
   - [ ] EKS cluster with node groups
   - [ ] ECR repositories with lifecycle policies
   - [ ] App Runner services
+
+- [x] **Compute**
+  - [x] EC2 instances with secure defaults (IMDSv2, EBS encryption)
+  - [x] Elastic Beanstalk applications and environments
+  
+- [x] **Security & Secrets**
+  - [x] Secrets Manager with KMS encryption
+  
+- [x] **DNS & Networking**
+  - [x] Route 53 hosted zones and record sets
+  - [x] ALB target helpers for Route 53
   
 - [ ] **API Gateway**
   - [ ] REST API builder
