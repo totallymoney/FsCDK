@@ -1,7 +1,7 @@
 open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.Logs
-open FsCDK.Compute
+open FsCDK
 
 [<EntryPoint>]
 let main _ =

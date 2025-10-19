@@ -1,6 +1,5 @@
 open Amazon.CDK
 open FsCDK
-open FsCDK.Storage
 
 [<EntryPoint>]
 let main _ =
