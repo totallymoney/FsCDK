@@ -32,6 +32,12 @@
       <Compile Include="Grants.fs" />
       <Compile Include="Stack.fs" />
       <Compile Include="App.fs" />
+      <!-- New modular builders -->
+      <Compile Include="FsCDK/Meta/Tags.fs" />
+      <Compile Include="FsCDK/Security/IAM.fs" />
+      <Compile Include="FsCDK/Storage/S3.fs" />
+      <Compile Include="FsCDK/Compute/Lambda.fs" />
+      <Compile Include="FsCDK/Observability/Observability.fs" />
     </ItemGroup>
 
   <ItemGroup>
