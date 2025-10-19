@@ -1,5 +1,7 @@
 namespace FsCDK
 
+#nowarn "44" // Suppress deprecation warnings for backward compatibility (KeyName property)
+
 open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.IAM
@@ -32,7 +34,8 @@ type EC2InstanceConfig =
       Vpc: IVpc option
       VpcSubnets: SubnetSelection option
       SecurityGroup: ISecurityGroup option
-      KeyName: string option
+      KeyPair: IKeyPair option
+      KeyPairName: string option
       Role: IRole option
       UserData: UserData option
       RequireImdsv2: bool option
@@ -56,7 +59,8 @@ type EC2InstanceBuilder(name: string) =
           Vpc = None
           VpcSubnets = None
           SecurityGroup = None
-          KeyName = None
+          KeyPair = None
+          KeyPairName = None
           Role = None
           UserData = None
           RequireImdsv2 = Some true
@@ -71,7 +75,8 @@ type EC2InstanceBuilder(name: string) =
           Vpc = None
           VpcSubnets = None
           SecurityGroup = None
-          KeyName = None
+          KeyPair = None
+          KeyPairName = None
           Role = None
           UserData = None
           RequireImdsv2 = Some true
@@ -86,7 +91,8 @@ type EC2InstanceBuilder(name: string) =
           Vpc = state2.Vpc |> Option.orElse state1.Vpc
           VpcSubnets = state2.VpcSubnets |> Option.orElse state1.VpcSubnets
           SecurityGroup = state2.SecurityGroup |> Option.orElse state1.SecurityGroup
-          KeyName = state2.KeyName |> Option.orElse state1.KeyName
+          KeyPair = state2.KeyPair |> Option.orElse state1.KeyPair
+          KeyPairName = state2.KeyPairName |> Option.orElse state1.KeyPairName
           Role = state2.Role |> Option.orElse state1.Role
           UserData = state2.UserData |> Option.orElse state1.UserData
           RequireImdsv2 = state2.RequireImdsv2 |> Option.orElse state1.RequireImdsv2
@@ -116,7 +122,11 @@ type EC2InstanceBuilder(name: string) =
         config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
         config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
-        config.KeyName |> Option.iter (fun v -> props.KeyName <- v)
+        // Use KeyPair if provided, otherwise fall back to KeyPairName (for backward compatibility)
+        match config.KeyPair, config.KeyPairName with
+        | Some kp, _ -> props.KeyPair <- kp
+        | None, Some name -> props.KeyName <- name // Using deprecated property for backward compatibility
+        | None, None -> ()
         config.Role |> Option.iter (fun v -> props.Role <- v)
         config.UserData |> Option.iter (fun v -> props.UserData <- v)
         config.RequireImdsv2 |> Option.iter (fun v -> props.RequireImdsv2 <- v)
@@ -156,9 +166,12 @@ type EC2InstanceBuilder(name: string) =
     member _.SecurityGroup(config: EC2InstanceConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     [<CustomOperation("keyPair")>]
-    member _.KeyPair(config: EC2InstanceConfig, keyPairName: string) =
+    member _.KeyPair(config: EC2InstanceConfig, keyPair: IKeyPair) = { config with KeyPair = Some keyPair }
+
+    [<CustomOperation("keyPairName")>]
+    member _.KeyPairName(config: EC2InstanceConfig, keyPairName: string) =
         { config with
-            KeyName = Some keyPairName }
+            KeyPairName = Some keyPairName }
 
     [<CustomOperation("role")>]
     member _.Role(config: EC2InstanceConfig, role: IRole) = { config with Role = Some role }

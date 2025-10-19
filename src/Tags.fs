@@ -46,16 +46,23 @@ module Tags =
     /// Applies standard tags to a construct (stack or resource)
     /// </summary>
     let applyStandardTags (construct: IConstruct) (tags: StandardTags) =
-        tags.Project |> Option.iter (fun v -> Tags.Of(construct).Add("Project", v))
+        match tags.Project with
+        | Some v -> Tags.Of(construct).Add("Project", v)
+        | None -> ()
 
-        tags.Environment
-        |> Option.iter (fun v -> Tags.Of(construct).Add("Environment", v))
+        match tags.Environment with
+        | Some v -> Tags.Of(construct).Add("Environment", v)
+        | None -> ()
 
-        tags.Owner |> Option.iter (fun v -> Tags.Of(construct).Add("Owner", v))
+        match tags.Owner with
+        | Some v -> Tags.Of(construct).Add("Owner", v)
+        | None -> ()
+
         Tags.Of(construct).Add("CreatedBy", tags.CreatedBy)
 
-        tags.CostCenter
-        |> Option.iter (fun v -> Tags.Of(construct).Add("CostCenter", v))
+        match tags.CostCenter with
+        | Some v -> Tags.Of(construct).Add("CostCenter", v)
+        | None -> ()
 
         Tags.Of(construct).Add("ManagedBy", tags.ManagedBy)
 
@@ -98,43 +105,47 @@ module Tags =
         removeTag construct "ManagedBy"
 
 /// <summary>
-/// Tag builder for fluent tag creation
+/// Immutable tag builder state for fluent tag creation
 /// </summary>
-type TagBuilder() =
-    let mutable project: string option = None
-    let mutable environment: string option = None
-    let mutable owner: string option = None
-    let mutable costCenter: string option = None
-    let mutable customTags: (string * string) list = []
+type TagBuilderState =
+    { Project: string option
+      Environment: string option
+      Owner: string option
+      CostCenter: string option
+      CustomTags: (string * string) list }
 
-    member _.Project(p: string) =
-        project <- Some p
-        ()
+/// <summary>
+/// Tag builder for fluent tag creation using immutable state
+/// </summary>
+type TagBuilder(state: TagBuilderState) =
+    new() =
+        TagBuilder(
+            { Project = None
+              Environment = None
+              Owner = None
+              CostCenter = None
+              CustomTags = [] }
+        )
 
-    member _.Environment(e: string) =
-        environment <- Some e
-        ()
+    member _.Project(p: string) = TagBuilder({ state with Project = Some p })
 
-    member _.Owner(o: string) =
-        owner <- Some o
-        ()
+    member _.Environment(e: string) = TagBuilder({ state with Environment = Some e })
 
-    member _.CostCenter(cc: string) =
-        costCenter <- Some cc
-        ()
+    member _.Owner(o: string) = TagBuilder({ state with Owner = Some o })
+
+    member _.CostCenter(cc: string) = TagBuilder({ state with CostCenter = Some cc })
 
     member _.AddTag(key: string, value: string) =
-        customTags <- (key, value) :: customTags
-        ()
+        TagBuilder({ state with CustomTags = (key, value) :: state.CustomTags })
 
     member _.Build() =
-        { Tags.StandardTags.Project = project
-          Tags.StandardTags.Environment = environment
-          Tags.StandardTags.Owner = owner
+        { Tags.StandardTags.Project = state.Project
+          Tags.StandardTags.Environment = state.Environment
+          Tags.StandardTags.Owner = state.Owner
           Tags.StandardTags.CreatedBy = "FsCDK"
-          Tags.StandardTags.CostCenter = costCenter
+          Tags.StandardTags.CostCenter = state.CostCenter
           Tags.StandardTags.ManagedBy = "FsCDK" },
-        customTags
+        state.CustomTags
 
     member this.ApplyTo(construct: IConstruct) =
         let standardTags, custom = this.Build()

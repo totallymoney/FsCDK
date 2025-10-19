@@ -1,0 +1,42 @@
+  Playground -> /home/runner/work/FsCDK/FsCDK/samples/playground/Playground/bin/Release/net8.0/Playground.dll
+  FsCDK -> /home/runner/work/FsCDK/FsCDK/src/bin/Release/net8.0/FsCDK.dll
+  Playground.CDK -> /home/runner/work/FsCDK/FsCDK/samples/playground/Playground.CDK/bin/Release/net8.0/Playground.CDK.dll
+/home/runner/work/FsCDK/FsCDK/tests/CloudFrontTests.fs(24,27): error FS0003: This value is not a function and cannot be applied. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(19,26): error FS0003: This value is not a function and cannot be applied. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(22,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SignInAliases'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(23,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SignInAliases'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(24,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SignInAliases'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(25,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SignInAliases'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(28,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'AutoVerify'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(29,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'AutoVerify'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(32,39): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(33,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(34,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(35,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(36,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(40,30): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'AccountRecovery'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(44,41): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SelfSignUpEnabled'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(75,27): error FS0003: This value is not a function and cannot be applied. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+
+Build FAILED.
+
+/home/runner/work/FsCDK/FsCDK/tests/CloudFrontTests.fs(24,27): error FS0003: This value is not a function and cannot be applied. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(19,26): error FS0003: This value is not a function and cannot be applied. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(22,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SignInAliases'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(23,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SignInAliases'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(24,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SignInAliases'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(25,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SignInAliases'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(28,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'AutoVerify'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(29,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'AutoVerify'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(32,39): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(33,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(34,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(35,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(36,40): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'PasswordPolicy'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(40,30): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'AccountRecovery'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(44,41): error FS0039: The type 'Option<_>' does not define the field, constructor or member 'SelfSignUpEnabled'. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+/home/runner/work/FsCDK/FsCDK/tests/CognitoTests.fs(75,27): error FS0003: This value is not a function and cannot be applied. [/home/runner/work/FsCDK/FsCDK/tests/FsCdk.Tests.fsproj]
+    0 Warning(s)
+    16 Error(s)
+
+Time Elapsed 00:00:03.63

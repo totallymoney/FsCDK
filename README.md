@@ -163,7 +163,7 @@ stack "MyFirstStack" {
     // ECS cluster for container orchestration
     ecsCluster "MyCluster" {
         vpc myVpc
-        containerInsights true
+        containerInsights ContainerInsights.ENABLED
     }
     
     // Application Load Balancer

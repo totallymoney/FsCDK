@@ -10,17 +10,18 @@ open Amazon.CDK.AWS.ElasticLoadBalancingV2
 /// High-level ECS Cluster builder following AWS best practices.
 ///
 /// **Default Settings:**
-/// - Container Insights = enabled (monitoring and observability)
+/// - Container Insights = ENABLED (monitoring and observability)
 /// - Execute command logging = enabled (for debugging)
 ///
 /// **Rationale:**
 /// Container Insights provides metrics and logs for troubleshooting.
+/// Use ContainerInsights.ENHANCED for more detailed monitoring.
 /// </summary>
 type ECSClusterConfig =
     { ClusterName: string
       ConstructId: string option
       Vpc: IVpc option
-      ContainerInsights: bool option
+      ContainerInsights: ContainerInsights option
       EnableFargateCapacityProviders: bool option }
 
 type ECSClusterResource =
@@ -36,14 +37,14 @@ type ECSClusterBuilder(name: string) =
         { ClusterName = name
           ConstructId = None
           Vpc = None
-          ContainerInsights = Some true
+          ContainerInsights = Some ContainerInsights.ENABLED
           EnableFargateCapacityProviders = Some true }
 
     member _.Zero() : ECSClusterConfig =
         { ClusterName = name
           ConstructId = None
           Vpc = None
-          ContainerInsights = Some true
+          ContainerInsights = Some ContainerInsights.ENABLED
           EnableFargateCapacityProviders = Some true }
 
     member _.Combine(state1: ECSClusterConfig, state2: ECSClusterConfig) : ECSClusterConfig =
@@ -66,7 +67,7 @@ type ECSClusterBuilder(name: string) =
         let props = ClusterProps()
         props.ClusterName <- clusterName
         config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
-        config.ContainerInsights |> Option.iter (fun v -> props.ContainerInsights <- v)
+        config.ContainerInsights |> Option.iter (fun v -> props.ContainerInsightsV2 <- v)
 
         config.EnableFargateCapacityProviders
         |> Option.iter (fun v -> props.EnableFargateCapacityProviders <- v)
@@ -82,9 +83,9 @@ type ECSClusterBuilder(name: string) =
     member _.Vpc(config: ECSClusterConfig, vpc: IVpc) = { config with Vpc = Some vpc }
 
     [<CustomOperation("containerInsights")>]
-    member _.ContainerInsights(config: ECSClusterConfig, enabled: bool) =
+    member _.ContainerInsights(config: ECSClusterConfig, insights: ContainerInsights) =
         { config with
-            ContainerInsights = Some enabled }
+            ContainerInsights = Some insights }
 
     [<CustomOperation("enableFargateCapacityProviders")>]
     member _.EnableFargateCapacityProviders(config: ECSClusterConfig, enabled: bool) =

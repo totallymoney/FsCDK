@@ -138,24 +138,28 @@ module IAM =
         role
 
 /// <summary>
-/// Policy statement builder for creating inline IAM policies (high-level API)
+/// Immutable policy statement builder state
 /// </summary>
-type IAMPolicyStatementBuilder() =
-    let mutable actions: string list = []
-    let mutable resources: string list = []
-    let mutable effect: Effect = Effect.ALLOW
+type IAMPolicyStatementBuilderState =
+    { Actions: string list
+      Resources: string list
+      Effect: Effect }
 
-    member _.Actions(acts: string list) =
-        actions <- acts
-        ()
+/// <summary>
+/// Policy statement builder for creating inline IAM policies (high-level API) using immutable state
+/// </summary>
+type IAMPolicyStatementBuilder(state: IAMPolicyStatementBuilderState) =
+    new() =
+        IAMPolicyStatementBuilder(
+            { Actions = []
+              Resources = []
+              Effect = Effect.ALLOW }
+        )
 
-    member _.Resources(res: string list) =
-        resources <- res
-        ()
+    member _.Actions(acts: string list) = IAMPolicyStatementBuilder({ state with Actions = acts })
 
-    member _.Effect(eff: Effect) =
-        effect <- eff
-        ()
+    member _.Resources(res: string list) = IAMPolicyStatementBuilder({ state with Resources = res })
 
-    member _.Build() =
-        IAM.createPolicyStatement actions resources effect
+    member _.Effect(eff: Effect) = IAMPolicyStatementBuilder({ state with Effect = eff })
+
+    member _.Build() = IAM.createPolicyStatement state.Actions state.Resources state.Effect

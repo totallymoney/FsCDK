@@ -21,7 +21,7 @@ let tests =
               let mutable ex: exn option = None
 
               try
-                  let _ = cloudFrontDistribution "MissingDefault" { }
+                  let _ = cloudFrontDistribution "MissingDefault" { () }
                   ()
               with e ->
                   ex <- Some e
