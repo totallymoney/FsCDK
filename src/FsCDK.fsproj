@@ -11,6 +11,7 @@
       <Compile Include="PolicyStatement.fs" />
       <Compile Include="SubnetSelection.fs" />
       <Compile Include="VPC.fs" />
+      <Compile Include="RDS.fs" />
       <Compile Include="FunctionVersion.fs" />
       <Compile Include="LambdaFileSystem.fs" />
       <Compile Include="EventInvokeConfig.fs" />
