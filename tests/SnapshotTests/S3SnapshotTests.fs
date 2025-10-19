@@ -1,7 +1,7 @@
 module FsCDK.Tests.S3SnapshotTests
 
 open Expecto
-open FsCDK.Storage
+open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.S3
 

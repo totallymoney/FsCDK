@@ -21,13 +21,18 @@ FsCDK is a robust F# library for AWS Cloud Development Kit (CDK), enabling you t
 
 ### Supported AWS Services
 
-- **Compute**: Lambda functions (including Docker), Lambda layers
+- **Compute**: Lambda functions (including Docker), Lambda layers, EC2 instances
+- **Containers**: ECS clusters, Fargate services
+- **Load Balancing**: Application Load Balancer (ALB)
 - **Storage**: S3 buckets with lifecycle rules, versioning, and CORS
 - **Database**: DynamoDB tables, RDS PostgreSQL with automated backups and encryption
 - **Networking**: VPC with multi-AZ support, Security Groups with least-privilege defaults
 - **CDN**: CloudFront distributions with HTTP/2 and IPv6
 - **Authentication**: Cognito User Pools and Clients with MFA support
 - **Messaging**: SNS topics, SQS queues with dead-letter queue support
+- **Secrets**: Secrets Manager for secure credential storage
+- **DNS**: Route 53 hosted zones and record sets
+- **Platform**: Elastic Beanstalk applications and environments
 - **IAM**: Policy statements and permission management
 
 ## Quick Start
@@ -146,6 +151,36 @@ stack "MyFirstStack" {
         signInWithEmail
         selfSignUpEnabled true
         mfa Mfa.OPTIONAL
+    }
+    
+    // EC2 instance (virtual machine)
+    ec2Instance "MyWebServer" {
+        instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
+        machineImage (MachineImage.LatestAmazonLinux2())
+        vpc myVpc
+    }
+    
+    // ECS cluster for container orchestration
+    ecsCluster "MyCluster" {
+        vpc myVpc
+        containerInsights true
+    }
+    
+    // Application Load Balancer
+    applicationLoadBalancer "MyALB" {
+        vpc myVpc
+        internetFacing true
+    }
+    
+    // Secrets Manager secret
+    secret "MyApiKey" {
+        description "API key for external service"
+        generateSecretString (SecretsManagerHelpers.generatePassword 32 None)
+    }
+    
+    // Route 53 DNS zone
+    hostedZone "example.com" {
+        comment "Production domain"
     }
 }
 ```

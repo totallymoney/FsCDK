@@ -1,7 +1,7 @@
 module FsCDK.Tests.LambdaSnapshotTests
 
 open Expecto
-open FsCDK.Compute
+open FsCDK
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.Logs
 
