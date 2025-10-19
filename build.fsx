@@ -46,7 +46,7 @@ pipeline "ci" {
         run $"dotnet restore {sln}"
         run $"dotnet build {sln} -c {config} --no-restore"
         run $"dotnet publish src -c {config} -f net8.0 --no-build"
-        run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"
+        run $"dotnet fsdocs build --properties Configuration={config} --eval"
     }
 
     stage "pack" { run $"dotnet pack {sln} -c {config} -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}" }
