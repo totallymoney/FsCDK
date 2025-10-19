@@ -21,16 +21,67 @@ FsCDK is a robust F# library for AWS Cloud Development Kit (CDK), enabling you t
 
 ### Supported AWS Services
 
-- **Compute**: Lambda functions (including Docker), Lambda layers
+- **Compute**: Lambda functions (including Docker), Lambda layers, EC2 instances
+- **Containers**: ECS clusters, Fargate services
+- **Load Balancing**: Application Load Balancer (ALB)
 - **Storage**: S3 buckets with lifecycle rules, versioning, and CORS
 - **Database**: DynamoDB tables, RDS PostgreSQL with automated backups and encryption
 - **Networking**: VPC with multi-AZ support, Security Groups with least-privilege defaults
 - **CDN**: CloudFront distributions with HTTP/2 and IPv6
 - **Authentication**: Cognito User Pools and Clients with MFA support
 - **Messaging**: SNS topics, SQS queues with dead-letter queue support
+- **Secrets**: Secrets Manager for secure credential storage
+- **DNS**: Route 53 hosted zones and record sets
+- **Platform**: Elastic Beanstalk applications and environments
 - **IAM**: Policy statements and permission management
 
 ## Quick Start
+
+### New High-Level Builders (Recommended)
+
+FsCDK now includes enhanced builders with security defaults following AWS Well-Architected Framework:
+
+```fsharp
+open FsCDK
+open FsCDK.Storage
+open FsCDK.Compute
+
+let config = Config.get ()
+
+stack "MyStack" {
+    app {
+        context "environment" "production"
+    }
+
+    environment {
+        account config.Account
+        region config.Region
+    }
+    
+    stackProps {
+        stackEnv
+        description "My secure infrastructure"
+    }
+
+    // S3 bucket with KMS encryption and blocked public access (defaults)
+    s3Bucket "my-secure-bucket" {
+        versioned true
+        LifecycleRuleHelpers.expireAfter 30 "cleanup-old-data"
+    }
+
+    // Lambda with encrypted env vars and minimal IAM permissions (defaults)
+    lambdaFunction "my-function" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_20_X
+        codePath "./code"
+        memorySize 512
+        timeout 30.0
+        environment [ "KEY", "value" ]
+    }
+}
+```
+
+### Original Builders (Still Supported)
 
 1. Install the package:
 ```fsharp
@@ -101,6 +152,36 @@ stack "MyFirstStack" {
         selfSignUpEnabled true
         mfa Mfa.OPTIONAL
     }
+    
+    // EC2 instance (virtual machine)
+    ec2Instance "MyWebServer" {
+        instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
+        machineImage (MachineImage.LatestAmazonLinux2())
+        vpc myVpc
+    }
+    
+    // ECS cluster for container orchestration
+    ecsCluster "MyCluster" {
+        vpc myVpc
+        containerInsights ContainerInsights.ENABLED
+    }
+    
+    // Application Load Balancer
+    applicationLoadBalancer "MyALB" {
+        vpc myVpc
+        internetFacing true
+    }
+    
+    // Secrets Manager secret
+    secret "MyApiKey" {
+        description "API key for external service"
+        generateSecretString (SecretsManagerHelpers.generatePassword 32 None)
+    }
+    
+    // Route 53 DNS zone
+    hostedZone "example.com" {
+        comment "Production domain"
+    }
 }
 ```
 
@@ -145,6 +226,13 @@ FsCDK follows AWS Well-Architected Framework principles with sensible defaults:
 - **Monitoring ready**: Performance Insights support for RDS
 
 ## Examples
+
+### Quickstart Examples
+
+- **[S3 Quickstart](./examples/s3-quickstart/)**: Create secure S3 buckets with encryption, lifecycle rules, and versioning
+- **[Lambda Quickstart](./examples/lambda-quickstart/)**: Deploy Lambda functions with encrypted environment variables and minimal IAM permissions
+
+### Additional Examples
 
 Check out the [samples directory](./samples) for complete examples of common infrastructure patterns implemented with FsCDK.
 

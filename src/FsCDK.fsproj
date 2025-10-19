@@ -32,6 +32,19 @@
       <Compile Include="Grants.fs" />
       <Compile Include="Stack.fs" />
       <Compile Include="App.fs" />
+      <!-- High-level builders with best practices -->
+      <Compile Include="Tags.fs" />
+      <Compile Include="IAM.fs" />
+      <Compile Include="S3Builder.fs" />
+      <Compile Include="LambdaBuilder.fs" />
+      <Compile Include="Observability.fs" />
+      <!-- New service builders -->
+      <Compile Include="EC2.fs" />
+      <Compile Include="ECS.fs" />
+      <Compile Include="ALB.fs" />
+      <Compile Include="SecretsManager.fs" />
+      <Compile Include="ElasticBeanstalk.fs" />
+      <Compile Include="Route53.fs" />
     </ItemGroup>
 
   <ItemGroup>

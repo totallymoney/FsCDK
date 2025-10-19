@@ -1,0 +1,133 @@
+# EC2 and ECS Example
+
+This example demonstrates how to create EC2 instances and ECS services using FsCDK.
+
+## EC2 Instance (Virtual Machine)
+
+```fsharp
+open Amazon.CDK
+open Amazon.CDK.AWS.EC2
+open FsCDK
+
+let config = Config.get ()
+
+stack "EC2Stack" {
+    app {
+        context "environment" "production"
+    }
+
+    environment {
+        account config.Account
+        region config.Region
+    }
+    
+    stackProps {
+        stackEnv
+        description "EC2 instance example"
+    }
+
+    // Create VPC first
+    let myVpc = vpc "MyVpc" {
+        maxAzs 2
+        natGateways 1
+        cidr "10.0.0.0/16"
+    }
+
+    // Create EC2 instance with secure defaults
+    ec2Instance "MyWebServer" {
+        instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
+        machineImage (MachineImage.LatestAmazonLinux2())
+        vpc myVpc.Vpc
+        requireImdsv2 true  // IMDSv2 for enhanced security
+        detailedMonitoring false
+    }
+}
+```
+
+## ECS Cluster and Fargate Service
+
+```fsharp
+open Amazon.CDK
+open Amazon.CDK.AWS.ECS
+open Amazon.CDK.AWS.EC2
+open FsCDK
+
+let config = Config.get ()
+
+stack "ECSStack" {
+    app {
+        context "environment" "production"
+    }
+
+    environment {
+        account config.Account
+        region config.Region
+    }
+    
+    stackProps {
+        stackEnv
+        description "ECS cluster with Fargate service"
+    }
+
+    // Create VPC
+    let myVpc = vpc "MyVpc" {
+        maxAzs 2
+        natGateways 1
+        cidr "10.0.0.0/16"
+    }
+
+    // Create ECS cluster
+    let myCluster = ecsCluster "MyCluster" {
+        vpc myVpc.Vpc
+        containerInsights ContainerInsights.ENABLED
+        enableFargateCapacityProviders true
+    }
+
+    // Create Fargate service
+    // Note: Requires a task definition to be created first
+    // ecsFargateService "MyService" {
+    //     cluster myCluster.Cluster
+    //     desiredCount 2
+    //     assignPublicIp false
+    // }
+}
+```
+
+## Key Features
+
+### EC2 (Virtual Machines)
+- **IMDSv2 Required**: Enhanced security for instance metadata by default
+- **EBS Encryption**: Enabled by default for data-at-rest protection
+- **Cost-Effective Defaults**: t3.micro instance type for dev/test workloads
+- **Flexible Configuration**: Support for custom instance types, AMIs, and user data
+
+### ECS (Container Orchestration)
+- **Container Insights**: Enabled by default for monitoring and observability
+- **Fargate Support**: Serverless container execution
+- **Private by Default**: Services don't get public IPs unless explicitly configured
+- **Best Practices**: Follows AWS Well-Architected Framework principles
+
+## Security Best Practices
+
+1. **EC2 Instances**:
+   - IMDSv2 is required by default to prevent SSRF attacks
+   - EBS volumes are encrypted by default
+   - Detailed monitoring is opt-in to control costs
+
+2. **ECS Services**:
+   - Services are private by default (no public IP)
+   - Container Insights enabled for security monitoring
+   - Follows principle of least privilege
+
+## Deployment
+
+```bash
+# Synthesize CloudFormation template
+cdk synth
+
+# Deploy to AWS
+cdk deploy
+
+# Destroy resources when done
+cdk destroy
+```
