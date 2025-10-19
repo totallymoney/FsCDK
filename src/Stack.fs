@@ -9,6 +9,7 @@ open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.RDS
 open Amazon.CDK.AWS.CloudFront
+open Amazon.CDK.AWS.Cognito
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -27,6 +28,8 @@ type Operation =
     | SecurityGroupOp of SecurityGroupSpec
     | RdsInstanceOp of DatabaseInstanceSpec
     | CloudFrontDistributionOp of DistributionSpec
+    | UserPoolOp of UserPoolSpec
+    | UserPoolClientOp of UserPoolClientSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -96,6 +99,11 @@ module StackOperations =
 
         | CloudFrontDistributionOp cfSpec ->
             Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
+
+        | UserPoolOp upSpec -> UserPool(stack, upSpec.ConstructId, upSpec.Props) |> ignore
+
+        | UserPoolClientOp upcSpec ->
+            UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
 
 
 // ============================================================================
@@ -193,6 +201,18 @@ type StackBuilder(name: string) =
           App = None
           Props = None
           Operations = [ CloudFrontDistributionOp cfSpec ] }
+
+    member _.Yield(upSpec: UserPoolSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ UserPoolOp upSpec ] }
+
+    member _.Yield(upcSpec: UserPoolClientSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ UserPoolClientOp upcSpec ] }
 
     member _.Yield(props: StackProps) : StackConfig =
         { Name = name

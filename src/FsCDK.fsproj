@@ -13,6 +13,7 @@
       <Compile Include="VPC.fs" />
       <Compile Include="RDS.fs" />
       <Compile Include="CloudFront.fs" />
+      <Compile Include="Cognito.fs" />
       <Compile Include="FunctionVersion.fs" />
       <Compile Include="LambdaFileSystem.fs" />
       <Compile Include="EventInvokeConfig.fs" />
