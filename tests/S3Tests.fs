@@ -43,5 +43,33 @@ let s3_bucket_happy_path_tests =
 
               // Basic assertion: we produced exactly one stack in this app
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
+          }
+          
+          test "app synth succeeds with bucket using secure defaults" {
+              let app = App()
+
+              stack "S3DefaultsStack" {
+                  app
+                  // Uses secure defaults:
+                  // - BlockPublicAccess = BLOCK_ALL
+                  // - Encryption = KMS_MANAGED
+                  // - EnforceSSL = true
+                  // - Versioned = false
+                  bucket "secure-bucket" { () }
+              }
+
+              let cloudAssembly = app.Synth()
+
+              // Basic assertion: we produced exactly one stack in this app
+              Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack with secure defaults"
+          }
+          
+          test "bucket and s3Bucket are aliases" {
+              let bucketResult = bucket "test-bucket" { () }
+              let s3BucketResult = s3Bucket "test-bucket" { () }
+
+              // Both should have the same properties
+              Expect.equal bucketResult.BucketName s3BucketResult.BucketName "Bucket names should match"
+              Expect.equal bucketResult.ConstructId s3BucketResult.ConstructId "Construct IDs should match"
           } ]
     |> testSequenced
