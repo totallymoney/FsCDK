@@ -79,10 +79,20 @@ open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.Logs
 
-lambdaFunction "my-function" {
+// Use environment variables or defaults for AWS account/region
+let account = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
+    |> Option.ofObj 
+    |> Option.defaultValue "000000000000"
+let region = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
+    |> Option.ofObj 
+    |> Option.defaultValue "us-east-1"
+
+lambda "my-function" {
     handler "index.handler"
     runtime Runtime.NODEJS_18_X
-    codePath "./lambda-code"
+    code "./lambda-code"
 }
 
 (**
@@ -91,11 +101,11 @@ Creates a function with all defaults.
 ### Example 2: Custom Memory and Timeout
 *)
 
-lambdaFunction "heavy-function" {
+lambda "heavy-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
-    codePath "./lambda-code"
-    memorySize 1024
+    code "./lambda-code"
+    memory 1024
     timeout 120.0
 }
 
@@ -105,10 +115,10 @@ Adjusts memory and timeout for compute-intensive workloads.
 ### Example 3: Environment Variables
 *)
 
-lambdaFunction "api-function" {
+lambda "api-function" {
     handler "index.handler"
     runtime Runtime.DOTNET_8
-    codePath "./publish"
+    code "./publish"
     environment [
         "DATABASE_URL", "postgres://localhost/mydb"
         "API_KEY", "secret-key"
@@ -122,10 +132,10 @@ lambdaFunction "api-function" {
 ### Example 4: X-Ray Tracing
 *)
 
-lambdaFunction "traced-function" {
+lambda "traced-function" {
     handler "index.handler"
     runtime Runtime.NODEJS_20_X
-    codePath "./lambda-code"
+    code "./lambda-code"
     xrayEnabled
     description "Function with X-Ray tracing for debugging"
 }
@@ -136,10 +146,10 @@ Enables AWS X-Ray for distributed tracing.
 ### Example 5: Custom Log Retention
 *)
 
-lambdaFunction "short-lived-function" {
+lambda "short-lived-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
-    codePath "./lambda-code"
+    code "./lambda-code"
     logRetention RetentionDays.ONE_WEEK
 }
 
@@ -149,12 +159,10 @@ Reduces log retention for cost savings.
 ## Complete Example Stack
 *)
 
-let config = Config.get ()
-
 stack "LambdaQuickstartStack" {
     environment {
-        account config.Account
-        region config.Region
+        account account
+        region region
     }
     
     stackProps {
@@ -168,65 +176,65 @@ stack "LambdaQuickstartStack" {
     }
 
     // Example 1: Basic function with all defaults
-    lambdaFunction "basic-function" {
+    lambda "basic-function" {
         handler "index.handler"
         runtime Runtime.NODEJS_18_X
-        codePath "./dummy-code"
+        code "./dummy-code"
         description "Basic Lambda function with secure defaults"
         // Uses defaults:
-        // - memorySize = 512 MB
+        // - memory = 512 MB
         // - timeout = 30 seconds
         // - logRetention = 90 days
         // - environment encryption = KMS
     }
     
     // Example 2: Function with custom memory and timeout
-    lambdaFunction "compute-intensive-function" {
+    lambda "compute-intensive-function" {
         handler "process.handler"
         runtime Runtime.PYTHON_3_11
-        codePath "./dummy-code"
-        memorySize 2048
+        code "./dummy-code"
+        memory 2048
         timeout 300.0
         description "Compute-intensive function with higher memory and timeout"
     }
     
     // Example 3: Function with environment variables (encrypted by default)
-    lambdaFunction "api-handler-function" {
+    lambda "api-handler-function" {
         handler "api.handler"
         runtime Runtime.NODEJS_20_X
-        codePath "./dummy-code"
+        code "./dummy-code"
         environment [
             "LOG_LEVEL", "INFO"
             "API_VERSION", "v1"
-            "REGION", config.Region
+            "REGION", region
         ]
         description "API handler with encrypted environment variables"
     }
     
     // Example 4: Function with X-Ray tracing enabled
-    lambdaFunction "traced-function" {
+    lambda "traced-function" {
         handler "traced.handler"
         runtime Runtime.PYTHON_3_11
-        codePath "./dummy-code"
+        code "./dummy-code"
         xrayEnabled
         description "Function with X-Ray tracing for debugging"
     }
     
     // Example 5: Function with custom log retention
-    lambdaFunction "dev-function" {
+    lambda "dev-function" {
         handler "dev.handler"
         runtime Runtime.DOTNET_8
-        codePath "./dummy-code"
+        code "./dummy-code"
         logRetention RetentionDays.ONE_WEEK
         timeout 60.0
         description "Development function with shorter log retention"
     }
     
     // Example 6: Function with reserved concurrency
-    lambdaFunction "rate-limited-function" {
+    lambda "rate-limited-function" {
         handler "ratelimited.handler"
         runtime Runtime.NODEJS_18_X
-        codePath "./dummy-code"
+        code "./dummy-code"
         reservedConcurrentExecutions 10
         description "Function with reserved concurrent executions for rate limiting"
     }
@@ -260,10 +268,10 @@ open FsCDK.Security
 
 let customRole = IAM.createLambdaExecutionRole "my-function" true
 
-lambdaFunction "my-function" {
+lambda "my-function" {
     handler "index.handler"
     runtime Runtime.NODEJS_18_X
-    codePath "./code"
+    code "./code"
     role customRole
 }
 
@@ -327,17 +335,16 @@ Set timeout based on expected execution time:
 
 ## Escape Hatch
 
-For advanced scenarios not covered by the builder:
+For advanced scenarios not covered by the builder, FunctionSpec provides access to the underlying props:
 *)
 
-let funcResource = lambdaFunction "my-function" { 
+let funcSpec = lambda "my-function" { 
     handler "index.handler"
     runtime Runtime.NODEJS_18_X
-    codePath "./code"
+    code "./code"
 }
-// Access underlying CDK construct
-let cdkFunction = funcResource.Function
-// Use any CDK Function methods...
+// Access props to see configuration
+// The actual Function is created by the stack builder
 
 (**
 ## Next Steps

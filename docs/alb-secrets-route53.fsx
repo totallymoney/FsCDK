@@ -23,7 +23,15 @@ open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
 open FsCDK
 
-let config = Config.get ()
+// Use environment variables or defaults for AWS account/region
+let account = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
+    |> Option.ofObj 
+    |> Option.defaultValue "000000000000"
+let region = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
+    |> Option.ofObj 
+    |> Option.defaultValue "us-east-1"
 
 stack "ALBStack" {
     app {
@@ -31,8 +39,8 @@ stack "ALBStack" {
     }
 
     environment {
-        account config.Account
-        region config.Region
+        account account
+        region region
     }
     
     stackProps {
@@ -68,8 +76,8 @@ stack "SecretsStack" {
     }
 
     environment {
-        account config.Account
-        region config.Region
+        account account
+        region region
     }
     
     stackProps {
@@ -106,8 +114,8 @@ stack "DNSStack" {
     }
 
     environment {
-        account config.Account
-        region config.Region
+        account account
+        region region
     }
     
     stackProps {
@@ -152,8 +160,8 @@ stack "BeanstalkStack" {
     }
 
     environment {
-        account config.Account
-        region config.Region
+        account account
+        region region
     }
     
     stackProps {

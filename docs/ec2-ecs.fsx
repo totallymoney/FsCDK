@@ -22,7 +22,15 @@ open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open FsCDK
 
-let config = Config.get ()
+// Use environment variables or defaults for AWS account/region
+let account = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
+    |> Option.ofObj 
+    |> Option.defaultValue "000000000000"
+let region = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
+    |> Option.ofObj 
+    |> Option.defaultValue "us-east-1"
 
 stack "EC2Stack" {
     app {
@@ -30,8 +38,8 @@ stack "EC2Stack" {
     }
 
     environment {
-        account config.Account
-        region config.Region
+        account account
+        region region
     }
     
     stackProps {
@@ -64,14 +72,24 @@ stack "EC2Stack" {
 
 open Amazon.CDK.AWS.ECS
 
+// Use environment variables or defaults for AWS account/region
+let account = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
+    |> Option.ofObj 
+    |> Option.defaultValue "000000000000"
+let region = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
+    |> Option.ofObj 
+    |> Option.defaultValue "us-east-1"
+
 stack "ECSStack" {
     app {
         context "environment" "production"
     }
 
     environment {
-        account config.Account
-        region config.Region
+        account account
+        region region
     }
     
     stackProps {

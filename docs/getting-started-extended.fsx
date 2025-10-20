@@ -141,12 +141,20 @@ open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.Lambda
 
-let config = Config.get ()
+// Use environment variables or defaults for AWS account/region
+let account = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
+    |> Option.ofObj 
+    |> Option.defaultValue "000000000000"
+let region = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
+    |> Option.ofObj 
+    |> Option.defaultValue "us-east-1"
 
 stack "ProductionApp" {
     environment {
-        account config.Account
-        region config.Region
+        account account
+        region region
     }
     
     stackProps {
