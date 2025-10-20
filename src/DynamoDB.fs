@@ -16,7 +16,7 @@ open Amazon.CDK.AWS.S3
 type ImportSourceSpec = { Source: IImportSourceSpecification }
 
 type ImportSourceConfig =
-    { Bucket: IBucket option
+    { Bucket: BucketRef option
       InputFormat: InputFormat option
       BucketOwner: string option
       CompressionType: InputCompressionType option
@@ -67,7 +67,11 @@ type ImportSourceBuilder() =
             | Some i -> i
             | None -> failwith "ImportSource.inputFormat is required"
 
-        spec.Bucket <- bucket
+        spec.Bucket <-
+            match bucket with
+            | BucketRef.BucketInterface b -> b
+            | BucketRef.BucketSpecRef b -> b.Bucket
+
         spec.InputFormat <- input
 
         config.BucketOwner |> Option.iter (fun o -> spec.BucketOwner <- o)
@@ -84,7 +88,14 @@ type ImportSourceBuilder() =
     /// }
     /// </code>
     [<CustomOperation("bucket")>]
-    member _.Bucket(config: ImportSourceConfig, bucket: IBucket) = { config with Bucket = Some bucket }
+    member _.Bucket(config: ImportSourceConfig, bucket: IBucket) =
+        { config with
+            Bucket = Some(BucketRef.BucketInterface bucket) }
+
+    [<CustomOperation("bucket")>]
+    member _.Bucket(config: ImportSourceConfig, bucket: BucketSpec) =
+        { config with
+            Bucket = Some(BucketRef.BucketSpecRef bucket) }
 
     /// <summary>Sets the input format for the import.</summary>
     /// <param name="input">The input format (e.g., CSV, DynamoDB JSON, ION).</param>

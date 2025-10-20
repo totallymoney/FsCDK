@@ -23,7 +23,7 @@ type DistributionConfig =
       DomainNames: string list
       EnableIpv6: bool option
       EnableLogging: bool option
-      LogBucket: IBucket option
+      LogBucket: BucketRef option
       LogFilePrefix: string option
       LogIncludesCookies: bool option
       GeoRestriction: GeoRestriction option
@@ -198,7 +198,14 @@ type DistributionBuilder(name: string) =
             props.DomainNames <- config.DomainNames |> List.rev |> List.toArray
 
         config.EnableLogging |> Option.iter (fun v -> props.EnableLogging <- v)
-        config.LogBucket |> Option.iter (fun v -> props.LogBucket <- v)
+
+        config.LogBucket
+        |> Option.iter (fun v ->
+            props.LogBucket <-
+                match v with
+                | BucketRef.BucketInterface b -> b
+                | BucketRef.BucketSpecRef b -> b.Bucket)
+
         config.LogFilePrefix |> Option.iter (fun v -> props.LogFilePrefix <- v)
 
         config.LogIncludesCookies
@@ -463,7 +470,16 @@ type DistributionBuilder(name: string) =
     member _.EnableLogging(config: DistributionConfig, bucket: IBucket, ?prefix: string, ?includeCookies: bool) =
         { config with
             EnableLogging = Some true
-            LogBucket = Some bucket
+            LogBucket = Some(BucketRef.BucketInterface bucket)
+            LogFilePrefix = prefix
+            LogIncludesCookies = includeCookies }
+
+    /// <summary>Enables logging to an S3 bucket (optionally with a prefix and cookies flag).</summary>
+    [<CustomOperation("enableLogging")>]
+    member _.EnableLogging(config: DistributionConfig, bucket: BucketSpec, ?prefix: string, ?includeCookies: bool) =
+        { config with
+            EnableLogging = Some true
+            LogBucket = Some(BucketRef.BucketSpecRef bucket)
             LogFilePrefix = prefix
             LogIncludesCookies = includeCookies }
 

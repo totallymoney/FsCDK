@@ -8,6 +8,19 @@ open Amazon.CDK.AWS.KMS
 // S3 Bucket Configuration DSL
 // ============================================================================
 
+type BucketSpec =
+    {
+        BucketName: string
+        ConstructId: string
+        Props: BucketProps
+        /// The underlying CDK Bucket construct - use for advanced scenarios
+        Bucket: Bucket
+    }
+
+type BucketRef =
+    | BucketInterface of IBucket // AWS class
+    | BucketSpecRef of BucketSpec // FsCDK class
+
 /// <summary>
 /// High-level S3 Bucket builder following AWS security best practices.
 ///
@@ -37,7 +50,7 @@ type BucketConfig =
       EnforceSSL: bool option
       Versioned: bool option
       RemovalPolicy: RemovalPolicy option
-      ServerAccessLogsBucket: IBucket option
+      ServerAccessLogsBucket: BucketRef option
       ServerAccessLogsPrefix: string option
       AutoDeleteObjects: bool option
       WebsiteIndexDocument: string option
@@ -45,13 +58,6 @@ type BucketConfig =
       LifecycleRules: ILifecycleRule list
       Cors: ICorsRule list
       Metrics: IBucketMetrics list }
-
-type BucketSpec =
-    { BucketName: string
-      ConstructId: string
-      Props: BucketProps
-      /// The underlying CDK Bucket construct - use for advanced scenarios
-      Bucket: Bucket }
 
 type BucketBuilder(name: string) =
     member _.Yield _ : BucketConfig =
@@ -185,7 +191,11 @@ type BucketBuilder(name: string) =
         |> Option.iter (fun v -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(v))
 
         config.ServerAccessLogsBucket
-        |> Option.iter (fun v -> props.ServerAccessLogsBucket <- v)
+        |> Option.iter (fun v ->
+            props.ServerAccessLogsBucket <-
+                match v with
+                | BucketRef.BucketInterface b -> b
+                | BucketRef.BucketSpecRef b -> b.Bucket)
 
         config.ServerAccessLogsPrefix
         |> Option.iter (fun v -> props.ServerAccessLogsPrefix <- v)
@@ -241,7 +251,12 @@ type BucketBuilder(name: string) =
     [<CustomOperation("serverAccessLogsBucket")>]
     member _.ServerAccessLogsBucket(config: BucketConfig, bucket: IBucket) =
         { config with
-            ServerAccessLogsBucket = Some bucket }
+            ServerAccessLogsBucket = Some(BucketRef.BucketInterface bucket) }
+
+    [<CustomOperation("serverAccessLogsBucket")>]
+    member _.ServerAccessLogsBucket(config: BucketConfig, bucket: BucketSpec) =
+        { config with
+            ServerAccessLogsBucket = Some(BucketRef.BucketSpecRef bucket) }
 
     [<CustomOperation("serverAccessLogsPrefix")>]
     member _.ServerAccessLogsPrefix(config: BucketConfig, prefix: string) =

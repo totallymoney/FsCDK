@@ -111,11 +111,11 @@ let myFunction = functions {
 
 open Amazon.CDK.AWS.Lambda
 
-lambdaFunction "my-function" {
+lambda "my-function" {
     handler "MyApp::MyApp.Handler::FunctionHandler"
     runtime Runtime.DOTNET_8
-    codePath "./publish"
-    memorySize 512
+    code "./publish"
+    memory 512
     timeout 30.0
     environment [ "KEY", "value" ]
 }
@@ -328,13 +328,14 @@ let deployment = arm {
 **FsCDK:**
 *)
 
-stack "MyStack" {
-    let bucket = s3Bucket "my-bucket" { }
 
-    lambdaFunction "my-function" {
+stack "MyStack" {
+    let bucket = s3Bucket "my-bucket" { () }
+
+    lambda "my-function" {
         handler "index.handler"
         runtime Runtime.NODEJS_18_X
-        codePath "./code"
+        code "./code"
     // Lambda can read from bucket (configure IAM separately)
     }
 }
@@ -396,3 +397,5 @@ When FsCDK builders don't cover your use case, access underlying CDK constructs.
 
 Welcome to FsCDK! We're excited to have Farmer users in the community. 🎉
 *)
+
+()

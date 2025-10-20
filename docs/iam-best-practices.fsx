@@ -362,8 +362,8 @@ lambda "PrivateFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
-    securityGroups [ restrictedSecurityGroup ]
+    vpcSubnets { yield SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) }
+    securityGroups [ lambdaSecurityGroup ]
 }
 
 (**

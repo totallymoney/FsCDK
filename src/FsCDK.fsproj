@@ -12,6 +12,10 @@
       <Compile Include="SubnetSelection.fs" />
       <Compile Include="VPC.fs" />
       <Compile Include="RDS.fs" />
+      <Compile Include="S3Transition.fs" />
+      <Compile Include="S3LifecycleRule.fs" />
+      <Compile Include="S3BucketMetrics.fs" />
+      <Compile Include="S3.fs" />
       <Compile Include="CloudFront.fs" />
       <Compile Include="Cognito.fs" />
       <Compile Include="FunctionVersion.fs" />
@@ -20,10 +24,6 @@
       <Compile Include="EventSourceMapping.fs" />
       <Compile Include="FunctionPermissions.fs" />
       <Compile Include="FunctionUrl.fs" />
-      <Compile Include="S3Transition.fs" />
-      <Compile Include="S3LifecycleRule.fs" />
-      <Compile Include="S3BucketMetrics.fs" />
-      <Compile Include="S3.fs" />
       <Compile Include="DynamoDB.fs" />
       <Compile Include="DockerImageFunction.fs" />
       <Compile Include="Function.fs" />

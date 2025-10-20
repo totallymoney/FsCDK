@@ -257,51 +257,49 @@ FsCDK automatically applies AWS best practices:
 
 ### Pattern 1: Web Application with Auth
 *)
-let example1 =
-    stack "WebApp" {
-        vpc "WebVpc" { }
+stack "WebApp" {
+    vpc "WebVpc" { () }
 
-        userPool "Users" {
-            signInWithEmail
-            selfSignUpEnabled true
-        }
-
-        lambda "Api" {
-            runtime Runtime.DOTNET_8
-            handler "Api::Handler"
-            code "./publish"
-        }
-
-        bucket "Assets" { versioned true }
+    userPool "Users" {
+        signInWithEmail
+        selfSignUpEnabled true
     }
+
+    lambda "Api" {
+        runtime Runtime.DOTNET_8
+        handler "Api::Handler"
+        code "./publish"
+    }
+
+    bucket "Assets" { versioned true }
+}
 
 (**
 ### Pattern 2: Data Processing Pipeline
 *)
 
-let example2 =
-    stack "DataPipeline" {
-        let myVpc = vpc "DataVpc" { }
+stack "DataPipeline" {
+    let myVpc = vpc "DataVpc" { () }
 
-        rdsInstance "DataWarehouse" {
-            vpc myVpc
-            postgresEngine
-            multiAz true
-        }
-
-        lambda "Processor" {
-            runtime Runtime.DOTNET_8
-            handler "Processor::Handler"
-            code "./publish"
-            timeout 300.0 // 5 minutes for data processing
-            memory 1024 // More memory for processing
-        }
-
-        bucket "DataLake" {
-            versioned true
-        // lifecycleRules [ /* ... */ ]
-        }
+    rdsInstance "DataWarehouse" {
+        vpc myVpc
+        postgresEngine
+        multiAz true
     }
+
+    lambda "Processor" {
+        runtime Runtime.DOTNET_8
+        handler "Processor::Handler"
+        code "./publish"
+        timeout 300.0 // 5 minutes for data processing
+        memory 1024 // More memory for processing
+    }
+
+    bucket "DataLake" {
+        versioned true
+    // lifecycleRules [ /* ... */ ]
+    }
+}
 
 (**
 ### Pattern 3: Serverless API with CDN
@@ -313,27 +311,26 @@ open Amazon.CDK.AWS.DynamoDB
 let apiOrigin =
     CloudFrontBehaviors.httpBehaviorDefault "origin.example.com" (Some true)
 
-let example3 =
-    stack "ServerlessApi" {
-        lambda "GetUsers" {
-            runtime Runtime.DOTNET_8
-            handler "Api::GetUsers"
-            code "./publish"
-        }
-
-        lambda "CreateUser" {
-            runtime Runtime.DOTNET_8
-            handler "Api::CreateUser"
-            code "./publish"
-        }
-
-        table "Users" {
-            partitionKey "userId" AttributeType.STRING
-            billingMode BillingMode.PAY_PER_REQUEST
-        }
-
-        cloudFrontDistribution "ApiCDN" { defaultBehavior apiOrigin }
+stack "ServerlessApi" {
+    lambda "GetUsers" {
+        runtime Runtime.DOTNET_8
+        handler "Api::GetUsers"
+        code "./publish"
     }
+
+    lambda "CreateUser" {
+        runtime Runtime.DOTNET_8
+        handler "Api::CreateUser"
+        code "./publish"
+    }
+
+    table "Users" {
+        partitionKey "userId" AttributeType.STRING
+        billingMode BillingMode.PAY_PER_REQUEST
+    }
+
+    cloudFrontDistribution "ApiCDN" { defaultBehavior apiOrigin }
+}
 
 (**
 ## Migration from Existing FsCDK
@@ -342,37 +339,35 @@ Good news! **No breaking changes!** Your existing code continues to work:
 *)
 
 // Your existing code still works!
-let example5 =
-    stack "MyStack" {
-        lambda "MyFunction" {
-            runtime Runtime.DOTNET_8
-            handler "index.handler"
-            code "./lambda"
-        }
-
-        table "MyTable" { partitionKey "id" AttributeType.STRING }
+stack "MyStack" {
+    lambda "MyFunction" {
+        runtime Runtime.DOTNET_8
+        handler "index.handler"
+        code "./lambda"
     }
+
+    table "MyTable" { partitionKey "id" AttributeType.STRING }
+}
 
 // Just add new features when you need them
-let example6 =
-    stack "EnhancedStack" {
-        // Existing services
-        lambda "MyFunction" {
-            runtime Runtime.DOTNET_8
-            handler "index.handler"
-            code "./lambda"
-        }
-
-        // New services
-        let myVpc = vpc "MyVpc" { }
-
-        rdsInstance "MyDB" {
-            vpc myVpc
-            postgresEngine
-        }
-
-        userPool "MyAuth" { signInWithEmail }
+stack "EnhancedStack" {
+    // Existing services
+    lambda "MyFunction" {
+        runtime Runtime.DOTNET_8
+        handler "index.handler"
+        code "./lambda"
     }
+
+    // New services
+    let myVpc = vpc "MyVpc" { () }
+
+    rdsInstance "MyDB" {
+        vpc myVpc
+        postgresEngine
+    }
+
+    userPool "MyAuth" { signInWithEmail }
+}
 
 (**
 ## Learning Resources

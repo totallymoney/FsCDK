@@ -60,6 +60,16 @@ let regionName =
     |> Option.ofObj
     |> Option.defaultValue "us-east-1"
 
+(*** hide ***)
+let staticAssetsBucket =
+    bucket "CloudFrontLogs" {
+        blockPublicAccess BlockPublicAccess.BLOCK_ALL
+        encryption BucketEncryption.S3_MANAGED
+        enforceSSL true
+        versioned false
+        removalPolicy RemovalPolicy.RETAIN
+    }
+
 stack "MultiTierApp" {
     app {
         context "environment" "production"
@@ -138,20 +148,21 @@ stack "MultiTierApp" {
         autoDeleteObjects false
 
         // Lifecycle rules for cost optimization
-        lifecycleRules
-            [ lifecycleRule {
-                  enabled true
+        yield
+            lifecycleRule {
 
-                  transitions
-                      [ transition {
-                            storageClass StorageClass.INFREQUENT_ACCESS
-                            transitionAfter 30.0
-                        }
-                        transition {
-                            storageClass StorageClass.GLACIER
-                            transitionAfter 90.0
-                        } ]
-              } ]
+                enabled true
+
+                transitions
+                    [ transition {
+                          storageClass StorageClass.INFREQUENT_ACCESS
+                          transitionAfter (Duration.Minutes 30.0)
+                      }
+                      transition {
+                          storageClass StorageClass.GLACIER
+                          transitionAfter (Duration.Days 90.0)
+                      } ]
+            }
     }
 
     // Step 6: Create Cognito User Pool for authentication
@@ -199,7 +210,8 @@ stack "MultiTierApp" {
         description "API handler for the web application"
 
         // VPC configuration for database access
-        vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
+        vpcSubnets { yield SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) }
+
         securityGroups [ lambdaSecurityGroup ]
 
         // Environment variables
