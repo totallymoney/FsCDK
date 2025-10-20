@@ -22,20 +22,22 @@ open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open FsCDK
 
-let config = Config.get ()
+// Use environment variables or defaults for AWS account/region
+let accountId = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
+    |> Option.ofObj 
+    |> Option.defaultValue "000000000000"
+let regionName = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
+    |> Option.ofObj 
+    |> Option.defaultValue "us-east-1"
 
 stack "EC2Stack" {
     app {
         context "environment" "production"
     }
-
-    environment {
-        account config.Account
-        region config.Region
-    }
     
     stackProps {
-        stackEnv
         description "EC2 instance example"
     }
 
@@ -50,10 +52,12 @@ stack "EC2Stack" {
     ec2Instance "MyWebServer" {
         instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
         machineImage (MachineImage.LatestAmazonLinux2())
-        vpc myVpc.Vpc
+        vpc myVpc
         requireImdsv2 true  // IMDSv2 for enhanced security
         detailedMonitoring false
     }
+
+    ()  // Return unit to satisfy F# requirement
 }
 
 (**
@@ -62,18 +66,22 @@ stack "EC2Stack" {
 
 open Amazon.CDK.AWS.ECS
 
+// Use environment variables or defaults for AWS account/region
+let accountId = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
+    |> Option.ofObj 
+    |> Option.defaultValue "000000000000"
+let regionName = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
+    |> Option.ofObj 
+    |> Option.defaultValue "us-east-1"
+
 stack "ECSStack" {
     app {
         context "environment" "production"
     }
-
-    environment {
-        account config.Account
-        region config.Region
-    }
     
     stackProps {
-        stackEnv
         description "ECS cluster with Fargate service"
     }
 
@@ -86,18 +94,12 @@ stack "ECSStack" {
 
     // Create ECS cluster
     let myCluster = ecsCluster "MyCluster" {
-        vpc myVpc.Vpc
+        vpc myVpc
         containerInsights ContainerInsights.ENABLED
         enableFargateCapacityProviders true
     }
 
-    // Create Fargate service
-    // Note: Requires a task definition to be created first
-    // ecsFargateService "MyService" {
-    //     cluster myCluster.Cluster
-    //     desiredCount 2
-    //     assignPublicIp false
-    // }
+    ()  // Return unit to satisfy F# requirement
 }
 
 (**

@@ -4,6 +4,38 @@ open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 
 // ============================================================================
+// Resource Reference Types - for cross-referencing resources in the same stack
+// ============================================================================
+
+/// Represents a reference to a VPC that can be resolved later
+type VpcRef =
+    | VpcInterface of IVpc
+    | VpcSpecRef of VpcSpec
+
+// Forward declaration - VpcSpec is defined below
+and VpcSpec =
+    { VpcName: string
+      ConstructId: string
+      Props: VpcProps
+      mutable Vpc: IVpc option }
+    
+    /// Gets the underlying IVpc resource. Must be called after the stack is built.
+    member this.Resource =
+        match this.Vpc with
+        | Some vpc -> vpc
+        | None -> failwith $"VPC '{this.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+module VpcHelpers =
+    /// Resolves a VPC reference to an IVpc
+    let resolveVpcRef (ref: VpcRef) =
+        match ref with
+        | VpcInterface vpc -> vpc
+        | VpcSpecRef spec -> 
+            match spec.Vpc with
+            | Some vpc -> vpc
+            | None -> failwith $"VPC '{spec.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+// ============================================================================
 // VPC Configuration DSL
 // ============================================================================
 
@@ -18,11 +50,6 @@ type VpcConfig =
       DefaultInstanceTenancy: DefaultInstanceTenancy option
       IpAddresses: IIpAddresses option
       RemovalPolicy: RemovalPolicy option }
-
-type VpcSpec =
-    { VpcName: string
-      ConstructId: string
-      Props: VpcProps }
 
 type VpcBuilder(name: string) =
 
@@ -122,7 +149,8 @@ type VpcBuilder(name: string) =
 
         { VpcName = config.VpcName
           ConstructId = constructId
-          Props = props }
+          Props = props
+          Vpc = None }
 
     /// <summary>Sets the construct ID for the VPC.</summary>
     /// <param name="id">The construct ID.</param>
@@ -190,7 +218,7 @@ type VpcBuilder(name: string) =
 type SecurityGroupConfig =
     { SecurityGroupName: string
       ConstructId: string option
-      Vpc: IVpc option
+      Vpc: VpcRef option
       Description: string option
       AllowAllOutbound: bool option
       DisableInlineRules: bool option }
@@ -258,7 +286,7 @@ type SecurityGroupBuilder(name: string) =
         // VPC is required
         props.Vpc <-
             match config.Vpc with
-            | Some vpc -> vpc
+            | Some vpcRef -> VpcHelpers.resolveVpcRef vpcRef
             | None -> invalidArg "vpc" "VPC is required for Security Group"
 
         // AWS Best Practice: Least privilege - don't allow all outbound by default
@@ -282,7 +310,12 @@ type SecurityGroupBuilder(name: string) =
     /// <summary>Sets the VPC for the Security Group.</summary>
     /// <param name="vpc">The VPC.</param>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: SecurityGroupConfig, vpc: IVpc) = { config with Vpc = Some vpc }
+    member _.Vpc(config: SecurityGroupConfig, vpc: IVpc) = { config with Vpc = Some(VpcInterface vpc) }
+
+    /// <summary>Sets the VPC for the Security Group from a VpcSpec.</summary>
+    /// <param name="vpcSpec">The VPC specification.</param>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: SecurityGroupConfig, vpcSpec: VpcSpec) = { config with Vpc = Some(VpcSpecRef vpcSpec) }
 
     /// <summary>Sets the description for the Security Group.</summary>
     /// <param name="description">The description.</param>

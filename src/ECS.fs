@@ -20,7 +20,7 @@ open Amazon.CDK.AWS.ElasticLoadBalancingV2
 type ECSClusterConfig =
     { ClusterName: string
       ConstructId: string option
-      Vpc: IVpc option
+      Vpc: FsCDK.VpcRef option
       ContainerInsights: ContainerInsights option
       EnableFargateCapacityProviders: bool option }
 
@@ -66,7 +66,7 @@ type ECSClusterBuilder(name: string) =
 
         let props = ClusterProps()
         props.ClusterName <- clusterName
-        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
 
         config.ContainerInsights
         |> Option.iter (fun v -> props.ContainerInsightsV2 <- v)
@@ -82,7 +82,10 @@ type ECSClusterBuilder(name: string) =
     member _.ConstructId(config: ECSClusterConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) = { config with Vpc = Some vpc }
+    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) = { config with Vpc = Some(FsCDK.VpcInterface vpc) }
+
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: ECSClusterConfig, vpcSpec: FsCDK.VpcSpec) = { config with Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
 
     [<CustomOperation("containerInsights")>]
     member _.ContainerInsights(config: ECSClusterConfig, insights: ContainerInsights) =

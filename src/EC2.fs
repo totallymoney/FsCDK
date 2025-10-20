@@ -29,7 +29,7 @@ type EC2InstanceConfig =
       ConstructId: string option
       InstanceType: InstanceType option
       MachineImage: IMachineImage option
-      Vpc: IVpc option
+      Vpc: FsCDK.VpcRef option
       VpcSubnets: SubnetSelection option
       SecurityGroup: ISecurityGroup option
       KeyPair: IKeyPair option
@@ -117,7 +117,7 @@ type EC2InstanceBuilder(name: string) =
 
         config.InstanceType |> Option.iter (fun v -> props.InstanceType <- v)
         config.MachineImage |> Option.iter (fun v -> props.MachineImage <- v)
-        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
         config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
         // Use KeyPair if provided, otherwise fall back to KeyPairName (for backward compatibility)
@@ -154,7 +154,10 @@ type EC2InstanceBuilder(name: string) =
             MachineImage = Some machineImage }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: EC2InstanceConfig, vpc: IVpc) = { config with Vpc = Some vpc }
+    member _.Vpc(config: EC2InstanceConfig, vpc: IVpc) = { config with Vpc = Some(FsCDK.VpcInterface vpc) }
+
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: EC2InstanceConfig, vpcSpec: FsCDK.VpcSpec) = { config with Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: EC2InstanceConfig, subnets: SubnetSelection) =

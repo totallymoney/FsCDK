@@ -36,7 +36,6 @@
       <Compile Include="Tags.fs" />
       <Compile Include="IAM.fs" />
       <Compile Include="S3Builder.fs" />
-      <Compile Include="LambdaBuilder.fs" />
       <Compile Include="Observability.fs" />
       <!-- New service builders -->
       <Compile Include="EC2.fs" />

@@ -90,7 +90,9 @@ module StackOperations =
 
         | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec
 
-        | VpcOp vpcSpec -> Vpc(stack, vpcSpec.ConstructId, vpcSpec.Props) |> ignore
+        | VpcOp vpcSpec ->
+            let vpc = Vpc(stack, vpcSpec.ConstructId, vpcSpec.Props)
+            vpcSpec.Vpc <- Some vpc
 
         | SecurityGroupOp sgSpec -> SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props) |> ignore
 

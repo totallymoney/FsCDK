@@ -45,7 +45,15 @@ open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.DynamoDB
 open FsCDK
 
-let config = Config.get ()
+// Use environment variables or defaults for AWS account/region
+let accountId = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
+    |> Option.ofObj 
+    |> Option.defaultValue "000000000000"
+let regionName = 
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
+    |> Option.ofObj 
+    |> Option.defaultValue "us-east-1"
 
 stack "MultiTierApp" {
     app {
@@ -53,13 +61,7 @@ stack "MultiTierApp" {
         context "app-name" "my-web-app"
     }
 
-    environment {
-        account config.Account
-        region config.Region
-    }
-    
     stackProps {
-        stackEnv
         description "Multi-tier web application with database and CDN"
         tags [ 
             "project", "MultiTierApp"
@@ -195,7 +197,7 @@ stack "MultiTierApp" {
             "DATABASE_HOST", "dbEndpoint"
             "DATABASE_NAME", "myapp"
             "USER_POOL_ID", "userPoolId"
-            "REGION", config.Region
+            "REGION", region
         ]
         
         // Enable X-Ray tracing
