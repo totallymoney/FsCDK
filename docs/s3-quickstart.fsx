@@ -1,3 +1,10 @@
+(**
+---
+title: S3 Quickstart Example
+category: docs
+index: 6
+---
+
 # S3 Quickstart Example
 
 This example demonstrates how to create an S3 bucket using FsCDK with secure defaults and optional configuration.
@@ -73,37 +80,9 @@ s3Bucket "my-versioned-bucket" {
 
 Enables versioning for data protection.
 
-### Example 3: Lifecycle Rules
+##Complete Example Stack
 
-```fsharp
-open FsCDK.Storage
-
-s3Bucket "my-bucket-with-lifecycle" {
-    versioned true
-    LifecycleRuleHelpers.expireAfter 30 "expire-old-objects"
-    LifecycleRuleHelpers.transitionToGlacier 90 "archive-to-glacier"
-}
-```
-
-Configures lifecycle rules for cost optimization:
-- Deletes objects after 30 days
-- Archives to Glacier after 90 days
-
-### Example 4: Custom Encryption Key
-
-```fsharp
-// Create a KMS key
-let key = Key(stack, "MyKey", KeyProps(
-    Description = "KMS key for S3 encryption"
-))
-
-s3Bucket "my-bucket-custom-kms" {
-    encryption BucketEncryption.KMS
-    encryptionKey key
-}
-```
-
-Uses a customer-managed KMS key for encryption.
+See the actual runnable example code in [examples/s3-quickstart](https://github.com/Thorium/FsCDK/tree/main/examples/s3-quickstart).
 
 ## Security Considerations
 
@@ -114,13 +93,7 @@ All buckets use KMS encryption by default. This provides:
 - Fine-grained access control
 
 ### Blocking Public Access
-Public access is blocked at the bucket level by default. To allow public access (not recommended):
-
-```fsharp
-s3Bucket "public-bucket" {
-    blockPublicAccess BlockPublicAccess.NONE
-}
-```
+Public access is blocked at the bucket level by default. 
 
 **Warning**: Only disable public access blocking if absolutely necessary.
 
@@ -131,19 +104,7 @@ All bucket operations require HTTPS. HTTP requests are rejected.
 
 ### Lifecycle Rules
 
-Use lifecycle rules to reduce storage costs:
-
-```fsharp
-// Transition to cheaper storage classes
-LifecycleRuleHelpers.transitionToGlacier 90 "archive"
-LifecycleRuleHelpers.transitionToDeepArchive 365 "deep-archive"
-
-// Delete old objects
-LifecycleRuleHelpers.expireAfter 30 "cleanup"
-
-// Delete old versions
-LifecycleRuleHelpers.deleteNonCurrentVersions 90 "cleanup-versions"
-```
+Use lifecycle rules to reduce storage costs by transitioning objects to cheaper storage classes or expiring them after a certain time.
 
 ### Storage Classes
 
@@ -151,25 +112,15 @@ LifecycleRuleHelpers.deleteNonCurrentVersions 90 "cleanup-versions"
 - **Glacier**: Archival data (retrieval in minutes to hours)
 - **Glacier Deep Archive**: Long-term archival (retrieval in hours)
 
-## Escape Hatch
-
-For advanced scenarios not covered by the builder:
-
-```fsharp
-let bucketResource = s3Bucket "my-bucket" { }
-// Access underlying CDK construct
-let cdkBucket = bucketResource.Bucket
-// Use any CDK Bucket methods...
-```
-
 ## Next Steps
 
-- Explore [Lambda Quickstart](../lambda-quickstart/) to integrate S3 with Lambda
-- Read [IAM Best Practices](../../docs/IAM_BEST_PRACTICES.md) for access control
+- Explore [Lambda Quickstart](lambda-quickstart.html) to integrate S3 with Lambda
+- Read [IAM Best Practices](iam-best-practices.html) for access control
 - Review [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)
 
 ## Resources
 
-- [FsCDK Documentation](https://totallymoney.github.io/FsCDK/)
+- [FsCDK Documentation](index.html)
 - [S3 Security Best Practices](https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html)
 - [AWS KMS Documentation](https://docs.aws.amazon.com/kms/latest/developerguide/overview.html)
+*)
