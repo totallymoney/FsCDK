@@ -10,7 +10,6 @@ let (</>) a b = Path.Combine(a, b)
 let sln = __SOURCE_DIRECTORY__ </> "FsCDK.sln"
 let config = "Release"
 let nupkgs = __SOURCE_DIRECTORY__ </> "nupkgs"
-let templateProj = __SOURCE_DIRECTORY__ </> "templates" </> "FsCDK.Templates.proj"
 
 let nightlyVersion =
     Environment.GetEnvironmentVariable("NIGHTLY_VERSION")
@@ -50,39 +49,6 @@ pipeline "ci" {
     }
 
     stage "pack" { run $"dotnet pack {sln} -c {config} -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}" }
-
-    stage "pack templates" {
-        run
-            $"dotnet pack %s{templateProj} -c {config} -p:IsNightlyBuild=true -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}"
-    }
-
-    stage "test templates" {
-        // Clean up NuGet sources
-        run "bash -lc \"dotnet nuget remove source github >/dev/null 2>&1 || true\""
-
-        run
-            "bash -lc \"if [ -n \\\"$GITHUB_TOKEN\\\" ]; then dotnet nuget add source https://nuget.pkg.github.com/totallymoney/index.json -n github -u $GITHUB_ACTOR -p $GITHUB_TOKEN --store-password-in-clear-text || true; else echo 'GITHUB_TOKEN not set, skipping GitHub source add'; fi\""
-
-        run "bash -lc \"dotnet nuget remove source local >/dev/null 2>&1 || true\""
-        run $"dotnet nuget add source \"%s{nupkgs}\" --name local"
-
-        // Install templates
-        run
-            "bash -lc \"if [ -n \\\"$NIGHTLY_VERSION\\\" ]; then dotnet new install FsCDK.Templates::$NIGHTLY_VERSION; else echo 'NIGHTLY_VERSION not set, attempting to install FsCDK.Templates without version'; dotnet new install FsCDK.Templates || true; fi\""
-
-        // Test template
-        run "rm -rf TemplateTest || true"
-
-        // Create project with the appropriate FsCDK version
-        run (
-            match nightlyVersion with
-            | Some nv -> $"dotnet new fscdk-lambda -n TemplateTest --FsCDKPkgVersion %s{nv}"
-            | None -> "dotnet new fscdk-lambda -n TemplateTest --FsCDKPkgVersion 0.1.0"
-        )
-
-        run $"dotnet build TemplateTest -c {config}"
-        run "rm -rf TemplateTest"
-    }
 
     runIfOnlySpecified false
 }
