@@ -2,23 +2,55 @@ namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.S3
+open Amazon.CDK.AWS.KMS
 
 // ============================================================================
 // S3 Bucket Configuration DSL
 // ============================================================================
 
-// Configuration for S3 Bucket builder
-// Keeps it minimal and aligned with the existing DSL style
+type BucketSpec =
+    {
+        BucketName: string
+        ConstructId: string
+        Props: BucketProps
+        /// The underlying CDK Bucket construct - use for advanced scenarios
+        mutable Bucket: Bucket option
+    }
 
+type BucketRef =
+    | BucketInterface of IBucket // AWS class
+    | BucketSpecRef of BucketSpec // FsCDK class
+
+/// <summary>
+/// High-level S3 Bucket builder following AWS security best practices.
+///
+/// **Default Security Settings:**
+/// - BlockPublicAccess = BLOCK_ALL (prevents public access)
+/// - ServerSideEncryption = SSE-KMS with AWS managed key (aws/s3)
+/// - Versioning = disabled (opt-in via versioned operation)
+/// - EnforceSSL = true (requires HTTPS for all requests)
+///
+/// **Rationale:**
+/// These defaults follow AWS Well-Architected Framework security pillar:
+/// - Encryption at rest protects data from unauthorized access
+/// - Blocking public access prevents accidental data exposure
+/// - SSL/TLS enforcement protects data in transit
+/// - KMS provides audit trails and key rotation capabilities
+///
+/// **Escape Hatch:**
+/// Access the underlying CDK Bucket via the `Bucket` property on the returned resource
+/// for advanced scenarios not covered by this builder.
+/// </summary>
 type BucketConfig =
     { BucketName: string
       ConstructId: string option
       BlockPublicAccess: BlockPublicAccess option
       Encryption: BucketEncryption option
+      EncryptionKey: IKey option
       EnforceSSL: bool option
       Versioned: bool option
       RemovalPolicy: RemovalPolicy option
-      ServerAccessLogsBucket: IBucket option
+      ServerAccessLogsBucket: BucketRef option
       ServerAccessLogsPrefix: string option
       AutoDeleteObjects: bool option
       WebsiteIndexDocument: string option
@@ -27,19 +59,15 @@ type BucketConfig =
       Cors: ICorsRule list
       Metrics: IBucketMetrics list }
 
-type BucketSpec =
-    { BucketName: string
-      ConstructId: string
-      Props: BucketProps }
-
 type BucketBuilder(name: string) =
     member _.Yield _ : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = None
-          Encryption = None
-          EnforceSSL = None
-          Versioned = None
+          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
+          Encryption = Some BucketEncryption.KMS_MANAGED
+          EncryptionKey = None
+          EnforceSSL = Some true
+          Versioned = Some false
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -53,10 +81,11 @@ type BucketBuilder(name: string) =
     member _.Yield(corsRule: ICorsRule) : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = None
-          Encryption = None
-          EnforceSSL = None
-          Versioned = None
+          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
+          Encryption = Some BucketEncryption.KMS_MANAGED
+          EncryptionKey = None
+          EnforceSSL = Some true
+          Versioned = Some false
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -70,10 +99,11 @@ type BucketBuilder(name: string) =
     member _.Yield(lifecycleRule: ILifecycleRule) : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = None
-          Encryption = None
-          EnforceSSL = None
-          Versioned = None
+          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
+          Encryption = Some BucketEncryption.KMS_MANAGED
+          EncryptionKey = None
+          EnforceSSL = Some true
+          Versioned = Some false
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -87,10 +117,11 @@ type BucketBuilder(name: string) =
     member _.Yield(metrics: IBucketMetrics) : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = None
-          Encryption = None
-          EnforceSSL = None
-          Versioned = None
+          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
+          Encryption = Some BucketEncryption.KMS_MANAGED
+          EncryptionKey = None
+          EnforceSSL = Some true
+          Versioned = Some false
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -104,10 +135,11 @@ type BucketBuilder(name: string) =
     member _.Zero() : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = None
-          Encryption = None
-          EnforceSSL = None
-          Versioned = None
+          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
+          Encryption = Some BucketEncryption.KMS_MANAGED
+          EncryptionKey = None
+          EnforceSSL = Some true
+          Versioned = Some false
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -125,6 +157,7 @@ type BucketBuilder(name: string) =
           ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
           BlockPublicAccess = state2.BlockPublicAccess |> Option.orElse state1.BlockPublicAccess
           Encryption = state2.Encryption |> Option.orElse state1.Encryption
+          EncryptionKey = state2.EncryptionKey |> Option.orElse state1.EncryptionKey
           EnforceSSL = state2.EnforceSSL |> Option.orElse state1.EnforceSSL
           Versioned = state2.Versioned |> Option.orElse state1.Versioned
           RemovalPolicy = state2.RemovalPolicy |> Option.orElse state1.RemovalPolicy
@@ -150,6 +183,7 @@ type BucketBuilder(name: string) =
 
         config.BlockPublicAccess |> Option.iter (fun v -> props.BlockPublicAccess <- v)
         config.Encryption |> Option.iter (fun v -> props.Encryption <- v)
+        config.EncryptionKey |> Option.iter (fun v -> props.EncryptionKey <- v)
         config.EnforceSSL |> Option.iter (fun v -> props.EnforceSSL <- v)
         config.Versioned |> Option.iter (fun v -> props.Versioned <- v)
 
@@ -157,7 +191,16 @@ type BucketBuilder(name: string) =
         |> Option.iter (fun v -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(v))
 
         config.ServerAccessLogsBucket
-        |> Option.iter (fun v -> props.ServerAccessLogsBucket <- v)
+        |> Option.iter (fun v ->
+            props.ServerAccessLogsBucket <-
+                match v with
+                | BucketRef.BucketInterface b -> b
+                | BucketRef.BucketSpecRef b ->
+                    match b.Bucket with
+                    | None ->
+                        failwith
+                            $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+                    | Some bu -> bu)
 
         config.ServerAccessLogsPrefix
         |> Option.iter (fun v -> props.ServerAccessLogsPrefix <- v)
@@ -181,7 +224,8 @@ type BucketBuilder(name: string) =
 
         { BucketName = bucketName
           ConstructId = constructId
-          Props = props }
+          Props = props
+          Bucket = None } // Will be created during stack construction
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: BucketConfig, id: string) = { config with ConstructId = Some id }
@@ -193,6 +237,10 @@ type BucketBuilder(name: string) =
 
     [<CustomOperation("encryption")>]
     member _.Encryption(config: BucketConfig, value: BucketEncryption) = { config with Encryption = Some value }
+
+    [<CustomOperation("encryptionKey")>]
+    member _.EncryptionKey(config: BucketConfig, key: IKey) =
+        { config with EncryptionKey = Some key }
 
     [<CustomOperation("enforceSSL")>]
     member _.EnforceSSL(config: BucketConfig, value: bool) = { config with EnforceSSL = Some value }
@@ -208,7 +256,12 @@ type BucketBuilder(name: string) =
     [<CustomOperation("serverAccessLogsBucket")>]
     member _.ServerAccessLogsBucket(config: BucketConfig, bucket: IBucket) =
         { config with
-            ServerAccessLogsBucket = Some bucket }
+            ServerAccessLogsBucket = Some(BucketRef.BucketInterface bucket) }
+
+    [<CustomOperation("serverAccessLogsBucket")>]
+    member _.ServerAccessLogsBucket(config: BucketConfig, bucket: BucketSpec) =
+        { config with
+            ServerAccessLogsBucket = Some(BucketRef.BucketSpecRef bucket) }
 
     [<CustomOperation("serverAccessLogsPrefix")>]
     member _.ServerAccessLogsPrefix(config: BucketConfig, prefix: string) =
@@ -326,10 +379,48 @@ type CorsRuleBuilder() =
     member _.MaxAgeSeconds(config: CorsRuleConfig, seconds: int) = { config with MaxAge = Some seconds }
 
 // ============================================================================
+// Lifecycle Rule Helpers
+// ============================================================================
+
+/// <summary>
+/// Helper functions for creating S3 lifecycle rules
+/// </summary>
+module LifecycleRuleHelpers =
+
+    /// <summary>
+    /// Creates a lifecycle rule that transitions objects to GLACIER storage after specified days
+    /// </summary>
+    let transitionToGlacier (days: int) (id: string) =
+        LifecycleRule(
+            Id = id,
+            Enabled = true,
+            Transitions =
+                [| Transition(StorageClass = StorageClass.GLACIER, TransitionAfter = Duration.Days(float days)) |]
+        )
+
+    /// <summary>
+    /// Creates a lifecycle rule that expires objects after specified days
+    /// </summary>
+    let expireAfter (days: int) (id: string) =
+        LifecycleRule(Id = id, Enabled = true, Expiration = Duration.Days(float days))
+
+    /// <summary>
+    /// Creates a lifecycle rule that deletes non-current versions after specified days
+    /// </summary>
+    let deleteNonCurrentVersions (days: int) (id: string) =
+        LifecycleRule(Id = id, Enabled = true, NoncurrentVersionExpiration = Duration.Days(float days))
+
+// ============================================================================
 // Builders
 // ============================================================================
 
 [<AutoOpen>]
 module S3Builders =
     let bucket name = BucketBuilder(name)
+    /// <summary>
+    /// Creates a new S3 bucket builder with secure defaults.
+    /// Example: s3Bucket "my-bucket" { versioned true }
+    /// Alias for bucket builder.
+    /// </summary>
+    let s3Bucket name = BucketBuilder(name)
     let corsRule = CorsRuleBuilder()

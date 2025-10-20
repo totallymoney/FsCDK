@@ -57,14 +57,14 @@ type LambdaFileSystemBuilder() =
 type EfsFileSystemConfig =
     { Stack: Stack option
       Id: string
-      Vpc: IVpc option
+      Vpc: FsCDK.VpcRef option
       RemovalPolicy: RemovalPolicy option
       Encrypted: bool option
       KmsKey: IKey option
       PerformanceMode: PerformanceMode option
       ThroughputMode: ThroughputMode option
       ProvisionedThroughputPerSecond: float option
-      SecurityGroup: ISecurityGroup option }
+      SecurityGroup: SecurityGroupRef option }
 
 type EfsFileSystemBuilder(id: string) =
     member _.Yield _ : EfsFileSystemConfig =
@@ -95,7 +95,7 @@ type EfsFileSystemBuilder(id: string) =
         match config.Stack, config.Vpc with
         | Some stack, Some vpc ->
             let props = FileSystemProps()
-            props.Vpc <- vpc
+            props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef vpc
             config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
             config.Encrypted |> Option.iter (fun e -> props.Encrypted <- e)
             config.KmsKey |> Option.iter (fun k -> props.KmsKey <- k)
@@ -105,7 +105,9 @@ type EfsFileSystemBuilder(id: string) =
             config.ProvisionedThroughputPerSecond
             |> Option.iter (fun t -> props.ProvisionedThroughputPerSecond <- Size.Mebibytes(t))
 
-            config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
+            config.SecurityGroup
+            |> Option.iter (fun sg -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef sg)
+
             FileSystem(stack, config.Id, props)
         | _ -> failwith "Both stack and vpc are required for FileSystem"
 
@@ -183,7 +185,19 @@ type EfsFileSystemBuilder(id: string) =
     member _.Yield(vpc: IVpc) : EfsFileSystemConfig =
         { Stack = None
           Id = id
-          Vpc = Some vpc
+          Vpc = Some(FsCDK.VpcInterface vpc)
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = None
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = None }
+
+    member _.Yield(vpcSpec: FsCDK.VpcSpec) : EfsFileSystemConfig =
+        { Stack = None
+          Id = id
+          Vpc = Some(FsCDK.VpcSpecRef vpcSpec)
           RemovalPolicy = None
           Encrypted = None
           KmsKey = None
@@ -214,7 +228,19 @@ type EfsFileSystemBuilder(id: string) =
           PerformanceMode = None
           ThroughputMode = None
           ProvisionedThroughputPerSecond = None
-          SecurityGroup = Some sg }
+          SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
+
+    member _.Yield(sg: SecurityGroupSpec) : EfsFileSystemConfig =
+        { Stack = None
+          Id = id
+          Vpc = None
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = None
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
 
 // ============================================================================
 // EFS AccessPoint Builder DSL

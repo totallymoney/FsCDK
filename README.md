@@ -8,7 +8,7 @@
 
 </div>
 
-FsCDK is a robust F# library for AWS Cloud Development Kit (CDK), enabling you to define cloud infrastructure using F#'s type safety and functional programming features. It provides a natural F# interface to AWS CDK, allowing you to build reliable and maintainable cloud infrastructure as code.
+FsCDK is an F# library for the AWS Cloud Development Kit (CDK), enabling you to define cloud infrastructure using F#'s type safety and functional programming style. It provides F#-friendly builders on top of AWS CDK constructs, so you can compose infrastructure in a concise, declarative way to build reliable and maintainable cloud infrastructure as code.
 
 ## Features
 
@@ -20,18 +20,19 @@ FsCDK is a robust F# library for AWS Cloud Development Kit (CDK), enabling you t
 
 ## Quick Start
 
-1. Install the package:
-```fsharp
+1) Install the package:
+```bash
 dotnet add package FsCDK
 ```
 
-1. Create your first stack:
+2) Define a simple stack with a bucket and a Lambda function using a single builder API:
 ```fsharp
 open Amazon.CDK
 open Amazon.CDK.AWS.S3
+open Amazon.CDK.AWS.Lambda
 open FsCDK
 
-let config = Config.get () // Load Environment Variables
+let config = Config.get () // e.g., reads AWS account and region from env
 
 stack "MyFirstStack" {
     app {
@@ -44,14 +45,21 @@ stack "MyFirstStack" {
         account config.Account
         region config.Region
     }
-    
+
     stackProps {
         stackEnv
-        description "My first CDK stack in F#"
-        tags [ "project", "FsCDK"; "owner", "me" ]
+        description "My first FsCDK stack"
     }
 
-    lambda "Playground-SayHello" {
+    // S3 bucket
+    bucket "MyBucket" {
+        versioned true
+        encryption BucketEncryption.S3_MANAGED
+        blockPublicAccess BlockPublicAccess.BLOCK_ALL
+    }
+
+    // Lambda function
+    lambda "HelloFunction" {
         runtime Runtime.DOTNET_8
         handler "Playground::Playground.Handlers::sayHello"
         code "../Playground/bin/Release/net8.0/publish"
@@ -62,7 +70,7 @@ stack "MyFirstStack" {
 }
 ```
 
-1. Deploy your infrastructure:
+3) Synthesize and deploy:
 ```bash
 cdk synth   # Review the generated CloudFormation template
 cdk deploy  # Deploy to AWS
@@ -72,9 +80,13 @@ cdk deploy  # Deploy to AWS
 
 For detailed documentation, examples, and best practices, visit our [Documentation Site](https://totallymoney.github.io/FsCDK/).
 
+Notes:
+- Defaults and configuration come from AWS CDK and your code; review the synthesized template to verify settings meet your needs.
+- You can mix FsCDK builders with direct AWS CDK constructs anywhere you need lower-level control.
+
 ## Examples
 
-Check out the [samples directory](./samples) for complete examples of common infrastructure patterns implemented with FsCDK.
+- See the repository’s examples and samples (if available in the tree) for additional patterns such as API gateways, queues, and databases.
 
 ## Contributing
 
@@ -83,7 +95,7 @@ Contributions are welcome! Whether it's:
 - Submitting a fix
 - Proposing new features
 
-Please check out our [Contributing Guide](CONTRIBUTING.md) for guidelines about how to proceed.
+Please check out our [Contributing Guide](CONTRIBUTING.md) for guidelines.
 
 ## License
 

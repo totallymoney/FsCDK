@@ -6,6 +6,10 @@ open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.SNS
 open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.S3
+open Amazon.CDK.AWS.EC2
+open Amazon.CDK.AWS.RDS
+open Amazon.CDK.AWS.CloudFront
+open Amazon.CDK.AWS.Cognito
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -20,6 +24,12 @@ type Operation =
     | QueueOp of QueueSpec
     | BucketOp of BucketSpec
     | SubscriptionOp of SubscriptionSpec
+    | VpcOp of VpcSpec
+    | SecurityGroupOp of SecurityGroupSpec
+    | RdsInstanceOp of DatabaseInstanceSpec
+    | CloudFrontDistributionOp of DistributionSpec
+    | UserPoolOp of UserPoolSpec
+    | UserPoolClientOp of UserPoolClientSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -32,13 +42,13 @@ module StackOperations =
         | TableOp tableSpec -> Table(stack, tableSpec.ConstructId, tableSpec.Props) |> ignore
 
         | FunctionOp lambdaSpec ->
-            let fn = Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
+            let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
 
             for action in lambdaSpec.Actions do
                 action fn
 
         | DockerImageFunctionOp imageLambdaSpec ->
-            DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
+            AWS.Lambda.DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
             |> ignore
 
         | GrantOp grantSpec -> Grants.processGrant stack grantSpec
@@ -76,9 +86,37 @@ module StackOperations =
 
             Queue(stack, queueSpec.ConstructId, props) |> ignore
 
-        | BucketOp bucketSpec -> Bucket(stack, bucketSpec.ConstructId, bucketSpec.Props) |> ignore
+        | BucketOp bucketSpec ->
+            match bucketSpec.Bucket with
+            | None ->
+                let bucket = Bucket(stack, bucketSpec.ConstructId, bucketSpec.Props)
+                bucketSpec.Bucket <- Some bucket
+            | Some b ->
+                if b.Stack <> stack || b.BucketName <> bucketSpec.BucketName then
+                    printfn
+                        $"Warning: Bucket %s{b.BucketName} was already created to stack {b.Stack.StackName} when constructing same but %s{b.BucketName} to %s{stack.StackName}."
+
+                ()
 
         | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec
+
+        | VpcOp vpcSpec ->
+            let vpc = Vpc(stack, vpcSpec.ConstructId, vpcSpec.Props)
+            vpcSpec.Vpc <- Some vpc
+
+        | SecurityGroupOp sgSpec ->
+            let sg = SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props)
+            sgSpec.SecurityGroup <- Some sg
+
+        | RdsInstanceOp rdsSpec -> DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
+
+        | CloudFrontDistributionOp cfSpec -> Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
+
+        | UserPoolOp upSpec ->
+            let up = UserPool(stack, upSpec.ConstructId, upSpec.Props)
+            upSpec.UserPool <- Some up
+
+        | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
 
 
 // ============================================================================
@@ -152,6 +190,42 @@ type StackBuilder(name: string) =
           App = None
           Props = None
           Operations = [ SubscriptionOp subSpec ] }
+
+    member _.Yield(vpcSpec: VpcSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ VpcOp vpcSpec ] }
+
+    member _.Yield(sgSpec: SecurityGroupSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ SecurityGroupOp sgSpec ] }
+
+    member _.Yield(rdsSpec: DatabaseInstanceSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ RdsInstanceOp rdsSpec ] }
+
+    member _.Yield(cfSpec: DistributionSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ CloudFrontDistributionOp cfSpec ] }
+
+    member _.Yield(upSpec: UserPoolSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ UserPoolOp upSpec ] }
+
+    member _.Yield(upcSpec: UserPoolClientSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ UserPoolClientOp upcSpec ] }
 
     member _.Yield(props: StackProps) : StackConfig =
         { Name = name

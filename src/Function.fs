@@ -7,6 +7,7 @@ open Amazon.CDK.AWS.S3.Assets
 open Amazon.CDK.AWS.Logs
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.SQS
+open Amazon.CDK.AWS.KMS
 open System.Collections.Generic
 
 // ============================================================================
@@ -39,13 +40,14 @@ type FunctionConfig =
       Architecture: Architecture option
       Tracing: Tracing option
       VpcSubnets: SubnetSelection option
-      SecurityGroups: ISecurityGroup list
+      SecurityGroups: SecurityGroupRef list
       FileSystem: Amazon.CDK.AWS.Lambda.FileSystem option
       DeadLetterQueue: IQueue option
       DeadLetterQueueEnabled: bool option
       LoggingFormat: LoggingFormat option
       MaxEventAge: Duration option
-      RetryAttempts: int option }
+      RetryAttempts: int option
+      EnvironmentEncryption: IKey option }
 
 type FunctionSpec =
     { FunctionName: string
@@ -85,7 +87,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(spec: FunctionUrlSpec) : FunctionConfig =
         { FunctionName = name
@@ -118,7 +121,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(stmt: PolicyStatement) : FunctionConfig =
         { FunctionName = name
@@ -151,7 +155,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(event: IEventSource) : FunctionConfig =
         { FunctionName = name
@@ -184,7 +189,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(spec: PermissionSpec) : FunctionConfig =
         { FunctionName = name
@@ -217,7 +223,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(spec: EventSourceMappingSpec) : FunctionConfig =
         { FunctionName = name
@@ -250,7 +257,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield _ : FunctionConfig =
         { FunctionName = name
@@ -283,7 +291,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Zero() : FunctionConfig =
         { FunctionName = name
@@ -316,7 +325,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> FunctionConfig) : FunctionConfig = f ()
 
@@ -443,7 +453,12 @@ type FunctionBuilder(name: string) =
             if state1.RetryAttempts.IsSome then
                 state1.RetryAttempts
             else
-                state2.RetryAttempts }
+                state2.RetryAttempts
+          EnvironmentEncryption =
+            if state1.EnvironmentEncryption.IsSome then
+                state1.EnvironmentEncryption
+            else
+                state2.EnvironmentEncryption }
 
     member _.Run(config: FunctionConfig) : FunctionSpec =
         let props = FunctionProps()
@@ -498,7 +513,10 @@ type FunctionBuilder(name: string) =
         config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
 
         if not (List.isEmpty config.SecurityGroups) then
-            props.SecurityGroups <- config.SecurityGroups |> List.toArray
+            props.SecurityGroups <-
+                config.SecurityGroups
+                |> List.map VpcHelpers.resolveSecurityGroupRef
+                |> Array.ofList
 
         config.FileSystem |> Option.iter (fun fs -> props.Filesystem <- fs)
         config.DeadLetterQueue |> Option.iter (fun dlq -> props.DeadLetterQueue <- dlq)
@@ -509,6 +527,9 @@ type FunctionBuilder(name: string) =
         config.LoggingFormat |> Option.iter (fun f -> props.LoggingFormat <- f)
         config.MaxEventAge |> Option.iter (fun age -> props.MaxEventAge <- age)
         config.RetryAttempts |> Option.iter (fun r -> props.RetryAttempts <- r)
+
+        config.EnvironmentEncryption
+        |> Option.iter (fun key -> props.EnvironmentEncryption <- key)
 
         // Actions to perform on the Function after creation
         let actions =
@@ -721,10 +742,21 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("tracing")>]
     member _.Tracing(config: FunctionConfig, tracing: Tracing) = { config with Tracing = Some tracing }
 
+    /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: FunctionConfig, sgs: ISecurityGroup list) =
+        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
+
         { config with
-            SecurityGroups = sgs @ config.SecurityGroups }
+            SecurityGroups = sgsrefs @ config.SecurityGroups }
+
+    /// Add groups to securityGroups
+    [<CustomOperation("securityGroups")>]
+    member _.SecurityGroups(config: FunctionConfig, sgs: SecurityGroupSpec list) =
+        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
+
+        { config with
+            SecurityGroups = sgsrefs @ config.SecurityGroups }
 
     [<CustomOperation("deadLetterQueue")>]
     member _.DeadLetterQueue(config: FunctionConfig, queue: IQueue) =
@@ -748,6 +780,19 @@ type FunctionBuilder(name: string) =
     member _.DeadLetterQueueEnabled(config: FunctionConfig, value: bool) =
         { config with
             DeadLetterQueueEnabled = Some value }
+
+    [<CustomOperation("environmentEncryption")>]
+    member _.EnvironmentEncryption(config: FunctionConfig, key: IKey) =
+        { config with
+            EnvironmentEncryption = Some key }
+
+    [<CustomOperation("xrayEnabled")>]
+    member _.XRayEnabled(config: FunctionConfig) =
+        { config with
+            Tracing = Some Tracing.ACTIVE }
+
+    [<CustomOperation("role")>]
+    member _.Role(config: FunctionConfig, role: IRole) = { config with Role = Some role }
 
     // Implicit yields for complex types
     member _.Yield(logGroup: ILogGroup) : FunctionConfig =
@@ -781,7 +826,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(role: IRole) : FunctionConfig =
         { FunctionName = name
@@ -814,7 +860,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(versionOptions: VersionOptions) : FunctionConfig =
         { FunctionName = name
@@ -847,7 +894,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(vpcSubnets: SubnetSelection) : FunctionConfig =
         { FunctionName = name
@@ -880,7 +928,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
     member _.Yield(fileSystem: Amazon.CDK.AWS.Lambda.FileSystem) : FunctionConfig =
         { FunctionName = name
@@ -913,7 +962,8 @@ type FunctionBuilder(name: string) =
           DeadLetterQueueEnabled = None
           LoggingFormat = None
           MaxEventAge = None
-          RetryAttempts = None }
+          RetryAttempts = None
+          EnvironmentEncryption = None }
 
 // ============================================================================
 // Builders

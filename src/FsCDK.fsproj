@@ -10,16 +10,20 @@
       <Compile Include="Environment.fs" />
       <Compile Include="PolicyStatement.fs" />
       <Compile Include="SubnetSelection.fs" />
+      <Compile Include="VPC.fs" />
+      <Compile Include="RDS.fs" />
+      <Compile Include="S3Transition.fs" />
+      <Compile Include="S3LifecycleRule.fs" />
+      <Compile Include="S3BucketMetrics.fs" />
+      <Compile Include="S3.fs" />
+      <Compile Include="CloudFront.fs" />
+      <Compile Include="Cognito.fs" />
       <Compile Include="FunctionVersion.fs" />
       <Compile Include="LambdaFileSystem.fs" />
       <Compile Include="EventInvokeConfig.fs" />
       <Compile Include="EventSourceMapping.fs" />
       <Compile Include="FunctionPermissions.fs" />
       <Compile Include="FunctionUrl.fs" />
-      <Compile Include="S3Transition.fs" />
-      <Compile Include="S3LifecycleRule.fs" />
-      <Compile Include="S3BucketMetrics.fs" />
-      <Compile Include="S3.fs" />
       <Compile Include="DynamoDB.fs" />
       <Compile Include="DockerImageFunction.fs" />
       <Compile Include="Function.fs" />
@@ -28,6 +32,17 @@
       <Compile Include="Grants.fs" />
       <Compile Include="Stack.fs" />
       <Compile Include="App.fs" />
+      <!-- High-level builders with best practices -->
+      <Compile Include="Tags.fs" />
+      <Compile Include="IAM.fs" />
+      <Compile Include="Observability.fs" />
+      <!-- New service builders -->
+      <Compile Include="EC2.fs" />
+      <Compile Include="ECS.fs" />
+      <Compile Include="ALB.fs" />
+      <Compile Include="SecretsManager.fs" />
+      <Compile Include="ElasticBeanstalk.fs" />
+      <Compile Include="Route53.fs" />
     </ItemGroup>
 
   <ItemGroup>

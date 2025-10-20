@@ -24,12 +24,18 @@
         <Compile Include="S3BucketMetricsTests.fs" />
         <Compile Include="S3CorsRuleBuilderTests.fs" />
         <Compile Include="S3Tests.fs" />
+        <Compile Include="VPCTests.fs" />
+        <Compile Include="RDSTests.fs" />
+        <Compile Include="CloudFrontTests.fs" />
+        <Compile Include="CognitoTests.fs" />
         <Compile Include="AppTests.fs" />
         <Compile Include="DockerImageFunctionTests.fs" />
         <Compile Include="FunctionTests.fs" />
         <Compile Include="FunctionUrlOptionsTests.fs" />
         <Compile Include="FunctionAddOptionsBuildersTests.fs" />
         <Compile Include="StackPropsTests.fs" />
+        <Compile Include="SnapshotTests/S3SnapshotTests.fs" />
+        <Compile Include="SnapshotTests/LambdaSnapshotTests.fs" />
         <Compile Include="Main.fs" />
     </ItemGroup>
     <ItemGroup>
