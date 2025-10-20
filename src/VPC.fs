@@ -18,22 +18,48 @@ and VpcSpec =
       ConstructId: string
       Props: VpcProps
       mutable Vpc: IVpc option }
-    
+
     /// Gets the underlying IVpc resource. Must be called after the stack is built.
     member this.Resource =
         match this.Vpc with
         | Some vpc -> vpc
-        | None -> failwith $"VPC '{this.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+        | None ->
+            failwith
+                $"VPC '{this.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+type SecurityGroupSpec =
+    { SecurityGroupName: string
+      ConstructId: string
+      Props: SecurityGroupProps
+      mutable SecurityGroup: ISecurityGroup option }
+
+type SecurityGroupRef =
+    | SecurityGroupInterface of ISecurityGroup
+    | SecurityGroupSpecRef of SecurityGroupSpec
 
 module VpcHelpers =
     /// Resolves a VPC reference to an IVpc
     let resolveVpcRef (ref: VpcRef) =
         match ref with
         | VpcInterface vpc -> vpc
-        | VpcSpecRef spec -> 
+        | VpcSpecRef spec ->
             match spec.Vpc with
             | Some vpc -> vpc
-            | None -> failwith $"VPC '{spec.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+            | None ->
+                failwith
+                    $"VPC '{spec.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+    /// Resolves a VPC reference to an IVpc
+    let resolveSecurityGroupRef (ref: SecurityGroupRef) =
+        match ref with
+        | SecurityGroupInterface sgi -> sgi
+        | SecurityGroupSpecRef spec ->
+            match spec.SecurityGroup with
+            | Some sg -> sg
+            | None ->
+                failwith
+                    $"SecurityGroup '{spec.SecurityGroupName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
 
 // ============================================================================
 // VPC Configuration DSL
@@ -223,11 +249,6 @@ type SecurityGroupConfig =
       AllowAllOutbound: bool option
       DisableInlineRules: bool option }
 
-type SecurityGroupSpec =
-    { SecurityGroupName: string
-      ConstructId: string
-      Props: SecurityGroupProps }
-
 type SecurityGroupBuilder(name: string) =
 
     member _.Yield _ : SecurityGroupConfig =
@@ -300,7 +321,8 @@ type SecurityGroupBuilder(name: string) =
 
         { SecurityGroupName = config.SecurityGroupName
           ConstructId = constructId
-          Props = props }
+          Props = props
+          SecurityGroup = None }
 
     /// <summary>Sets the construct ID for the Security Group.</summary>
     /// <param name="id">The construct ID.</param>
@@ -310,12 +332,16 @@ type SecurityGroupBuilder(name: string) =
     /// <summary>Sets the VPC for the Security Group.</summary>
     /// <param name="vpc">The VPC.</param>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: SecurityGroupConfig, vpc: IVpc) = { config with Vpc = Some(VpcInterface vpc) }
+    member _.Vpc(config: SecurityGroupConfig, vpc: IVpc) =
+        { config with
+            Vpc = Some(VpcInterface vpc) }
 
     /// <summary>Sets the VPC for the Security Group from a VpcSpec.</summary>
     /// <param name="vpcSpec">The VPC specification.</param>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: SecurityGroupConfig, vpcSpec: VpcSpec) = { config with Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: SecurityGroupConfig, vpcSpec: VpcSpec) =
+        { config with
+            Vpc = Some(VpcSpecRef vpcSpec) }
 
     /// <summary>Sets the description for the Security Group.</summary>
     /// <param name="description">The description.</param>

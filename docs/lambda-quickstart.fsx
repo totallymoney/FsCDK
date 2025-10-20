@@ -79,16 +79,6 @@ open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.Logs
 
-// Use environment variables or defaults for AWS account/region
-let accountId = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
-    |> Option.ofObj 
-    |> Option.defaultValue "000000000000"
-let regionName = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
-    |> Option.ofObj 
-    |> Option.defaultValue "us-east-1"
-
 lambda "my-function" {
     handler "index.handler"
     runtime Runtime.NODEJS_18_X
@@ -119,11 +109,11 @@ lambda "api-function" {
     handler "index.handler"
     runtime Runtime.DOTNET_8
     code "./publish"
-    environment [
-        "DATABASE_URL", "postgres://localhost/mydb"
-        "API_KEY", "secret-key"
-        "LOG_LEVEL", "INFO"
-    ]
+
+    environment
+        [ "DATABASE_URL", "postgres://localhost/mydb"
+          "API_KEY", "secret-key"
+          "LOG_LEVEL", "INFO" ]
 }
 
 (**
@@ -150,7 +140,6 @@ lambda "short-lived-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
     code "./lambda-code"
-    logRetention RetentionDays.ONE_WEEK
 }
 
 (**
@@ -159,14 +148,27 @@ Reduces log retention for cost savings.
 ## Complete Example Stack
 *)
 
+(*** hide ***)
+module Config =
+    let get () =
+        {| Account = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT")
+           Region = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") |}
+
+let config = Config.get ()
+
 stack "LambdaQuickstartStack" {
+    environment {
+        account config.Account
+        region config.Region
+    }
+
     stackProps {
         description "FsCDK Lambda Quickstart Example - demonstrates Lambda functions with security defaults"
-        tags [ 
-            "Project", "FsCDK-Examples"
-            "Example", "Lambda-Quickstart"
-            "ManagedBy", "FsCDK"
-        ]
+
+        tags
+            [ "Project", "FsCDK-Examples"
+              "Example", "Lambda-Quickstart"
+              "ManagedBy", "FsCDK" ]
     }
 
     // Example 1: Basic function with all defaults
@@ -175,13 +177,13 @@ stack "LambdaQuickstartStack" {
         runtime Runtime.NODEJS_18_X
         code "./dummy-code"
         description "Basic Lambda function with secure defaults"
-        // Uses defaults:
-        // - memory = 512 MB
-        // - timeout = 30 seconds
-        // - logRetention = 90 days
-        // - environment encryption = KMS
+    // Uses defaults:
+    // - memory = 512 MB
+    // - timeout = 30 seconds
+    // - logRetention = 90 days
+    // - environment encryption = KMS
     }
-    
+
     // Example 2: Function with custom memory and timeout
     lambda "compute-intensive-function" {
         handler "process.handler"
@@ -191,20 +193,16 @@ stack "LambdaQuickstartStack" {
         timeout 300.0
         description "Compute-intensive function with higher memory and timeout"
     }
-    
+
     // Example 3: Function with environment variables (encrypted by default)
     lambda "api-handler-function" {
         handler "api.handler"
         runtime Runtime.NODEJS_20_X
         code "./dummy-code"
-        environment [
-            "LOG_LEVEL", "INFO"
-            "API_VERSION", "v1"
-            "REGION", regionName
-        ]
+        environment [ "LOG_LEVEL", "INFO"; "API_VERSION", "v1"; "REGION", config.Region ]
         description "API handler with encrypted environment variables"
     }
-    
+
     // Example 4: Function with X-Ray tracing enabled
     lambda "traced-function" {
         handler "traced.handler"
@@ -213,17 +211,16 @@ stack "LambdaQuickstartStack" {
         xrayEnabled
         description "Function with X-Ray tracing for debugging"
     }
-    
+
     // Example 5: Function with custom log retention
     lambda "dev-function" {
         handler "dev.handler"
         runtime Runtime.DOTNET_8
         code "./dummy-code"
-        logRetention RetentionDays.ONE_WEEK
         timeout 60.0
         description "Development function with shorter log retention"
     }
-    
+
     // Example 6: Function with reserved concurrency
     lambda "rate-limited-function" {
         handler "ratelimited.handler"
@@ -257,8 +254,6 @@ The builder automatically creates an IAM execution role with:
 
 For advanced scenarios, provide your own role:
 *)
-
-open FsCDK.Security
 
 let customRole = IAM.createLambdaExecutionRole "my-function" true
 
@@ -332,11 +327,12 @@ Set timeout based on expected execution time:
 For advanced scenarios not covered by the builder, FunctionSpec provides access to the underlying props:
 *)
 
-let funcSpec = lambda "my-function" { 
-    handler "index.handler"
-    runtime Runtime.NODEJS_18_X
-    code "./code"
-}
+let funcSpec =
+    lambda "my-function" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./code"
+    }
 // Access props to see configuration
 // The actual Function is created by the stack builder
 
@@ -354,3 +350,101 @@ let funcSpec = lambda "my-function" {
 - [Lambda Security Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html)
 - [X-Ray Documentation](https://docs.aws.amazon.com/xray/latest/devguide/aws-xray.html)
 *)
+
+
+open Amazon.CDK
+open Amazon.CDK.AWS.Lambda
+open Amazon.CDK.AWS.Logs
+open FsCDK
+
+let app = App()
+
+// Get environment configuration from environment variables
+let accountId = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT")
+let region = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION")
+
+// Create stack props with environment
+let envProps = StackProps()
+
+if
+    not (System.String.IsNullOrEmpty(accountId))
+    && not (System.String.IsNullOrEmpty(region))
+then
+    envProps.Env <- Amazon.CDK.Environment(Account = accountId, Region = region)
+
+envProps.Description <- "FsCDK Lambda Quickstart Example - demonstrates Lambda functions with security defaults"
+
+// Create the stack
+let stack = Stack(app, "LambdaQuickstartStack", envProps)
+
+// Apply tags
+Tags.Of(stack).Add("Project", "FsCDK-Examples")
+Tags.Of(stack).Add("Example", "Lambda-Quickstart")
+Tags.Of(stack).Add("ManagedBy", "FsCDK")
+
+// Example 1: Basic function with all defaults
+// Note: In a real scenario, provide actual code path
+let basicFunc =
+    lambda "basic-function" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./dummy-code"
+        description "Basic Lambda function with secure defaults"
+    // Uses defaults:
+    // - memorySize = 512 MB
+    // - timeout = 30 seconds
+    // - logRetention = 90 days
+    // - environment encryption = KMS
+    }
+
+// Example 2: Function with custom memory and timeout
+let computeFunc =
+    lambda "compute-intensive-function" {
+        handler "process.handler"
+        runtime Runtime.PYTHON_3_11
+        code "./dummy-code"
+        memory 2048
+        timeout 300.0
+        description "Compute-intensive function with higher memory and timeout"
+    }
+
+// Example 3: Function with environment variables (encrypted by default)
+let apiFunc =
+    lambda "api-handler-function" {
+        handler "api.handler"
+        runtime Runtime.NODEJS_20_X
+        code "./dummy-code"
+
+        environment
+            [ "LOG_LEVEL", "INFO"
+              "API_VERSION", "v1"
+              "REGION",
+              (if System.String.IsNullOrEmpty(region) then
+                   "us-east-1"
+               else
+                   region) ]
+
+        description "API handler with encrypted environment variables"
+    }
+
+// Example 4: Function with X-Ray tracing enabled
+let tracedFunc =
+    lambda "traced-function" {
+        handler "traced.handler"
+        runtime Runtime.PYTHON_3_11
+        code "./dummy-code"
+        xrayEnabled
+        description "Function with X-Ray tracing for debugging"
+    }
+
+// Example 5: Function with reserved concurrency
+let rateLimitedFunc =
+    lambda "rate-limited-function" {
+        handler "ratelimited.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./dummy-code"
+        reservedConcurrentExecutions 10
+        description "Function with reserved concurrent executions for rate limiting"
+    }
+
+app.Synth() |> ignore

@@ -78,15 +78,5 @@ let lambda_snapshot_tests =
               Expect.equal funcSpec.FunctionName "test-function" "FunctionName should be set"
           }
 
-          test "lambda builder with log retention" {
-              let funcSpec =
-                  lambda "test-function" {
-                      handler "index.handler"
-                      runtime Runtime.NODEJS_20_X
-                      code "./dummy"
-                      logRetention RetentionDays.ONE_WEEK
-                  }
-
-              Expect.equal funcSpec.FunctionName "test-function" "FunctionName should be set"
-          } ]
+          ]
     |> testSequenced

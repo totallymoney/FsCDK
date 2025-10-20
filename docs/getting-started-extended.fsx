@@ -34,9 +34,9 @@ open FsCDK
 open Amazon.CDK.AWS.EC2
 
 vpc "MyVpc" {
-    maxAzs 2              // Multi-AZ for high availability
-    natGateways 1         // Cost-optimized
-    cidr "10.0.0.0/16"    // IP address range
+    maxAzs 2 // Multi-AZ for high availability
+    natGateways 1 // Cost-optimized
+    cidr "10.0.0.0/16" // IP address range
 }
 
 (**
@@ -84,26 +84,27 @@ rdsInstance "MyDatabase" {
 open Amazon.CDK.AWS.Cognito
 
 // Create user pool
-userPool "MyUserPool" {
-    signInWithEmail                    // Users sign in with email
-    selfSignUpEnabled true             // Allow self-registration
-    mfa Mfa.OPTIONAL                   // Users can enable MFA
-    
+let myUserPool =
+    userPool "MyUserPool" {
+        signInWithEmail // Users sign in with email
+        selfSignUpEnabled true // Allow self-registration
+        mfa Mfa.OPTIONAL // Users can enable MFA
+
     // Automatic best practices:
     // ✅ Strong password policy (8+ chars, mixed case, digits, symbols)
     // ✅ Email verification required
     // ✅ Account recovery via email
-}
+    }
 
 // Create app client
 userPoolClient "MyAppClient" {
     userPool myUserPool
-    generateSecret false               // For web/mobile apps
-    
-    // Automatic best practices:
-    // ✅ SRP authentication flow
-    // ✅ Prevents user existence errors
-    // ✅ Reasonable token expiration times
+    generateSecret false // For web/mobile apps
+
+// Automatic best practices:
+// ✅ SRP authentication flow
+// ✅ Prevents user existence errors
+// ✅ Reasonable token expiration times
 }
 
 (**
@@ -118,15 +119,19 @@ userPoolClient "MyAppClient" {
 
 open Amazon.CDK.AWS.CloudFront
 
+(*** hide ***)
+let myBehavior =
+    CloudFrontBehaviors.httpBehaviorDefault "origin.example.com" (Some true)
+
 cloudFrontDistribution "MyCDN" {
-    defaultBehavior myBehavior         // Your origin configuration
+    defaultBehavior myBehavior // Your origin configuration
     defaultRootObject "index.html"
-    
-    // Automatic best practices:
-    // ✅ HTTP/2 enabled
-    // ✅ TLS 1.2 minimum
-    // ✅ IPv6 enabled
-    // ✅ Cost-optimized (US/Canada/Europe)
+
+// Automatic best practices:
+// ✅ HTTP/2 enabled
+// ✅ TLS 1.2 minimum
+// ✅ IPv6 enabled
+// ✅ Cost-optimized (US/Canada/Europe)
 }
 
 (**
@@ -145,28 +150,37 @@ open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.Lambda
 
-// Use environment variables or defaults for AWS account/region
-let accountId = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
-    |> Option.ofObj 
-    |> Option.defaultValue "000000000000"
-let regionName = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
-    |> Option.ofObj 
-    |> Option.defaultValue "us-east-1"
+(*** hide ***)
+module Config =
+    let get () =
+        {| Account = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT")
+           Region = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") |}
+
+let config = Config.get ()
+
+(*** hide ***)
+let cdnBehavior =
+    CloudFrontBehaviors.httpBehaviorDefault "origin.example.com" (Some true)
 
 stack "ProductionApp" {
+
+    environment {
+        account config.Account
+        region config.Region
+    }
+
     stackProps {
         description "Production application stack"
         tags [ "environment", "production"; "managed-by", "FsCDK" ]
     }
 
     // 1. Network layer
-    vpc "AppVpc" {
-        maxAzs 2
-        natGateways 1
-        cidr "10.0.0.0/16"
-    }
+    let myVpc =
+        vpc "AppVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
 
     // 2. Database layer
     rdsInstance "AppDatabase" {
@@ -191,11 +205,8 @@ stack "ProductionApp" {
         code "../MyApp.Api/bin/Release/net8.0/publish"
         timeout 30.0
         memory 512
-        
-        environment [
-            "DATABASE_HOST", "dbEndpoint"
-            "DATABASE_NAME", "myapp"
-        ]
+
+        environment [ "DATABASE_HOST", "dbEndpoint"; "DATABASE_NAME", "myapp" ]
     }
 
     // 5. Auth layer
@@ -246,52 +257,51 @@ FsCDK automatically applies AWS best practices:
 
 ### Pattern 1: Web Application with Auth
 *)
+let example1 =
+    stack "WebApp" {
+        vpc "WebVpc" { }
 
-stack "WebApp" {
-    vpc "WebVpc" { }
-    
-    userPool "Users" {
-        signInWithEmail
-        selfSignUpEnabled true
+        userPool "Users" {
+            signInWithEmail
+            selfSignUpEnabled true
+        }
+
+        lambda "Api" {
+            runtime Runtime.DOTNET_8
+            handler "Api::Handler"
+            code "./publish"
+        }
+
+        bucket "Assets" { versioned true }
     }
-    
-    lambda "Api" {
-        runtime Runtime.DOTNET_8
-        handler "Api::Handler"
-        code "./publish"
-    }
-    
-    bucket "Assets" {
-        versioned true
-    }
-}
 
 (**
 ### Pattern 2: Data Processing Pipeline
 *)
 
-stack "DataPipeline" {
-    vpc "DataVpc" { }
-    
-    rdsInstance "DataWarehouse" {
-        vpc myVpc
-        postgresEngine
-        multiAz true
-    }
-    
-    lambda "Processor" {
-        runtime Runtime.DOTNET_8
-        handler "Processor::Handler"
-        code "./publish"
-        timeout 300.0  // 5 minutes for data processing
-        memory 1024    // More memory for processing
-    }
-    
-    bucket "DataLake" {
-        versioned true
+let example2 =
+    stack "DataPipeline" {
+        let myVpc = vpc "DataVpc" { }
+
+        rdsInstance "DataWarehouse" {
+            vpc myVpc
+            postgresEngine
+            multiAz true
+        }
+
+        lambda "Processor" {
+            runtime Runtime.DOTNET_8
+            handler "Processor::Handler"
+            code "./publish"
+            timeout 300.0 // 5 minutes for data processing
+            memory 1024 // More memory for processing
+        }
+
+        bucket "DataLake" {
+            versioned true
         // lifecycleRules [ /* ... */ ]
+        }
     }
-}
 
 (**
 ### Pattern 3: Serverless API with CDN
@@ -299,28 +309,31 @@ stack "DataPipeline" {
 
 open Amazon.CDK.AWS.DynamoDB
 
-stack "ServerlessApi" {
-    lambda "GetUsers" {
-        runtime Runtime.DOTNET_8
-        handler "Api::GetUsers"
-        code "./publish"
+(*** hide ***)
+let apiOrigin =
+    CloudFrontBehaviors.httpBehaviorDefault "origin.example.com" (Some true)
+
+let example3 =
+    stack "ServerlessApi" {
+        lambda "GetUsers" {
+            runtime Runtime.DOTNET_8
+            handler "Api::GetUsers"
+            code "./publish"
+        }
+
+        lambda "CreateUser" {
+            runtime Runtime.DOTNET_8
+            handler "Api::CreateUser"
+            code "./publish"
+        }
+
+        table "Users" {
+            partitionKey "userId" AttributeType.STRING
+            billingMode BillingMode.PAY_PER_REQUEST
+        }
+
+        cloudFrontDistribution "ApiCDN" { defaultBehavior apiOrigin }
     }
-    
-    lambda "CreateUser" {
-        runtime Runtime.DOTNET_8
-        handler "Api::CreateUser"
-        code "./publish"
-    }
-    
-    table "Users" {
-        partitionKey "userId" AttributeType.STRING
-        billingMode BillingMode.PAY_PER_REQUEST
-    }
-    
-    cloudFrontDistribution "ApiCDN" {
-        defaultBehavior apiOrigin
-    }
-}
 
 (**
 ## Migration from Existing FsCDK
@@ -329,32 +342,37 @@ Good news! **No breaking changes!** Your existing code continues to work:
 *)
 
 // Your existing code still works!
-stack "MyStack" {
-    lambda "MyFunction" {
-        runtime Runtime.DOTNET_8
-        handler "index.handler"
-        code "./lambda"
+let example5 =
+    stack "MyStack" {
+        lambda "MyFunction" {
+            runtime Runtime.DOTNET_8
+            handler "index.handler"
+            code "./lambda"
+        }
+
+        table "MyTable" { partitionKey "id" AttributeType.STRING }
     }
-    
-    table "MyTable" {
-        partitionKey "id" AttributeType.STRING
-    }
-}
 
 // Just add new features when you need them
-stack "EnhancedStack" {
-    // Existing services
-    lambda "MyFunction" { 
-        runtime Runtime.DOTNET_8
-        handler "index.handler"
-        code "./lambda"
+let example6 =
+    stack "EnhancedStack" {
+        // Existing services
+        lambda "MyFunction" {
+            runtime Runtime.DOTNET_8
+            handler "index.handler"
+            code "./lambda"
+        }
+
+        // New services
+        let myVpc = vpc "MyVpc" { }
+
+        rdsInstance "MyDB" {
+            vpc myVpc
+            postgresEngine
+        }
+
+        userPool "MyAuth" { signInWithEmail }
     }
-    
-    // New services
-    vpc "MyVpc" { }
-    rdsInstance "MyDB" { vpc myVpc; postgresEngine }
-    userPool "MyAuth" { signInWithEmail }
-}
 
 (**
 ## Learning Resources
@@ -439,3 +457,5 @@ Future enhancements may include:
 
 Ready to build secure, scalable infrastructure with F#? Let's go! 🚀
 *)
+
+()

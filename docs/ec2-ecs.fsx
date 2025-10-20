@@ -22,42 +22,42 @@ open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open FsCDK
 
-// Use environment variables or defaults for AWS account/region
-let accountId = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
-    |> Option.ofObj 
-    |> Option.defaultValue "000000000000"
-let regionName = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
-    |> Option.ofObj 
-    |> Option.defaultValue "us-east-1"
+(*** hide ***)
+module Config =
+    let get () =
+        {| Account = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT")
+           Region = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") |}
+
+let config = Config.get ()
 
 stack "EC2Stack" {
-    app {
-        context "environment" "production"
-    }
-    
-    stackProps {
-        description "EC2 instance example"
+    app { context "environment" "production" }
+
+    environment {
+        account config.Account
+        region config.Region
     }
 
+    stackProps { description "EC2 instance example" }
+
     // Create VPC first
-    let myVpc = vpc "MyVpc" {
-        maxAzs 2
-        natGateways 1
-        cidr "10.0.0.0/16"
-    }
+    let myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
 
     // Create EC2 instance with secure defaults
     ec2Instance "MyWebServer" {
         instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
         machineImage (MachineImage.LatestAmazonLinux2())
         vpc myVpc
-        requireImdsv2 true  // IMDSv2 for enhanced security
+        requireImdsv2 true // IMDSv2 for enhanced security
         detailedMonitoring false
     }
 
-    ()  // Return unit to satisfy F# requirement
+    ()
 }
 
 (**
@@ -66,40 +66,28 @@ stack "EC2Stack" {
 
 open Amazon.CDK.AWS.ECS
 
-// Use environment variables or defaults for AWS account/region
-let accountId = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
-    |> Option.ofObj 
-    |> Option.defaultValue "000000000000"
-let regionName = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
-    |> Option.ofObj 
-    |> Option.defaultValue "us-east-1"
-
 stack "ECSStack" {
-    app {
-        context "environment" "production"
-    }
-    
-    stackProps {
-        description "ECS cluster with Fargate service"
-    }
+    app { context "environment" "production" }
+
+    stackProps { description "ECS cluster with Fargate service" }
 
     // Create VPC
-    let myVpc = vpc "MyVpc" {
-        maxAzs 2
-        natGateways 1
-        cidr "10.0.0.0/16"
-    }
+    let myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
 
     // Create ECS cluster
-    let myCluster = ecsCluster "MyCluster" {
-        vpc myVpc
-        containerInsights ContainerInsights.ENABLED
-        enableFargateCapacityProviders true
-    }
+    let myCluster =
+        ecsCluster "MyCluster" {
+            vpc myVpc
+            containerInsights ContainerInsights.ENABLED
+            enableFargateCapacityProviders true
+        }
 
-    ()  // Return unit to satisfy F# requirement
+    ()
 }
 
 (**

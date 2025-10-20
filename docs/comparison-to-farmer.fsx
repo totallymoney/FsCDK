@@ -292,13 +292,14 @@ let config = {
 open Amazon.CDK
 
 // Use environment variables or defaults for AWS account/region
-let accountId = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
-    |> Option.ofObj 
+let accountId =
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT")
+    |> Option.ofObj
     |> Option.defaultValue "000000000000"
-let regionName = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
-    |> Option.ofObj 
+
+let regionName =
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION")
+    |> Option.ofObj
     |> Option.defaultValue "us-east-1"
 
 stack "MyStack" {
@@ -329,12 +330,12 @@ let deployment = arm {
 
 stack "MyStack" {
     let bucket = s3Bucket "my-bucket" { }
-    
+
     lambdaFunction "my-function" {
         handler "index.handler"
         runtime Runtime.NODEJS_18_X
         codePath "./code"
-        // Lambda can read from bucket (configure IAM separately)
+    // Lambda can read from bucket (configure IAM separately)
     }
 }
 

@@ -3,6 +3,7 @@ namespace FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.Cognito
 
+
 // ============================================================================
 // Cognito User Pool Configuration DSL
 // ============================================================================
@@ -28,7 +29,33 @@ type UserPoolConfig =
 type UserPoolSpec =
     { UserPoolName: string
       ConstructId: string
-      Props: UserPoolProps }
+      Props: UserPoolProps
+      mutable UserPool: IUserPool option }
+
+    /// Gets the underlying IUserPool resource. Must be called after the stack is built.
+    member this.Resource =
+        match this.UserPool with
+        | Some vpc -> vpc
+        | None ->
+            failwith
+                $"UserPool '{this.UserPoolName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+/// Represents a reference to a VPC that can be resolved later
+type UserPoolRef =
+    | UserPoolInterface of IUserPool
+    | UserPoolSpecRef of UserPoolSpec
+
+module UserPoolHelpers =
+    /// Resolves a UserPool reference to an IUserPool
+    let resolveUserPoolRef (ref: UserPoolRef) =
+        match ref with
+        | UserPoolInterface upi -> upi
+        | UserPoolSpecRef spec ->
+            match spec.UserPool with
+            | Some vpc -> vpc
+            | None ->
+                failwith
+                    $"UserPool '{spec.UserPoolName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type UserPoolBuilder(name: string) =
 
@@ -188,7 +215,8 @@ type UserPoolBuilder(name: string) =
 
         { UserPoolName = config.UserPoolName
           ConstructId = constructId
-          Props = props }
+          Props = props
+          UserPool = None }
 
     /// <summary>Sets the construct ID for the user pool.</summary>
     [<CustomOperation("constructId")>]
@@ -293,7 +321,7 @@ type UserPoolBuilder(name: string) =
 type UserPoolClientConfig =
     { ClientName: string
       ConstructId: string option
-      UserPool: IUserPool option
+      UserPool: UserPoolRef option
       GenerateSecret: bool option
       AuthFlows: IAuthFlow option
       OAuth: IOAuthSettings option
@@ -393,7 +421,7 @@ type UserPoolClientBuilder(name: string) =
         // UserPool is required
         props.UserPool <-
             match config.UserPool with
-            | Some pool -> pool
+            | Some pool -> UserPoolHelpers.resolveUserPoolRef pool
             | None -> invalidArg "userPool" "User Pool is required for User Pool Client"
 
         // AWS Best Practice: Prevent user existence errors for security
@@ -430,7 +458,15 @@ type UserPoolClientBuilder(name: string) =
 
     /// <summary>Sets the user pool.</summary>
     [<CustomOperation("userPool")>]
-    member _.UserPool(config: UserPoolClientConfig, pool: IUserPool) = { config with UserPool = Some pool }
+    member _.UserPool(config: UserPoolClientConfig, pool: IUserPool) =
+        { config with
+            UserPool = Some(UserPoolRef.UserPoolInterface pool) }
+
+    /// <summary>Sets the user pool.</summary>
+    [<CustomOperation("userPool")>]
+    member _.UserPool(config: UserPoolClientConfig, pool: UserPoolSpec) =
+        { config with
+            UserPool = Some(UserPoolRef.UserPoolSpecRef pool) }
 
     /// <summary>Enables or disables secret generation.</summary>
     [<CustomOperation("generateSecret")>]
@@ -460,17 +496,13 @@ type UserPoolClientBuilder(name: string) =
 
     /// <summary>Sets token validities.</summary>
     [<CustomOperation("tokenValidities")>]
-    member _.TokenValidities
-        (
-            config: UserPoolClientConfig,
-            ?refreshToken: Duration,
-            ?accessToken: Duration,
-            ?idToken: Duration
-        ) =
+    member _.TokenValidities(config: UserPoolClientConfig, (refresh_access_id: Duration * Duration * Duration)) =
+        let refreshToken, accessToken, idToken = refresh_access_id
+
         { config with
-            RefreshTokenValidity = refreshToken
-            AccessTokenValidity = accessToken
-            IdTokenValidity = idToken }
+            RefreshTokenValidity = Some refreshToken
+            AccessTokenValidity = Some accessToken
+            IdTokenValidity = Some idToken }
 
 // ============================================================================
 // Builders

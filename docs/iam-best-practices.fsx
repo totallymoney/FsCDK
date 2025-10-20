@@ -38,8 +38,8 @@ lambda "MyFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
-    // role adminRole  // Don't do this!
+
+// role adminRole  // Don't do this!
 }
 
 (**
@@ -48,18 +48,26 @@ lambda "MyFunction" {
 Grant only specific permissions needed:
 *)
 
+(*** hide ***)
+let myVpc =
+    vpc "MyVpc" {
+        maxAzs 2
+        natGateways 1
+        cidr "10.0.0.0/16"
+    }
+
 lambda "MyFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
+
     // Grant only specific permissions needed
     policyStatement {
         effect Effect.ALLOW
         actions [ "dynamodb:GetItem"; "dynamodb:PutItem" ]
         resources [ "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable" ]
     }
-    
+
     policyStatement {
         effect Effect.ALLOW
         actions [ "s3:GetObject" ]
@@ -76,11 +84,12 @@ FsCDK security groups follow least privilege by default.
 open Amazon.CDK.AWS.EC2
 
 // ✅ GOOD: FsCDK defaults to denying all outbound
-securityGroup "MySecurityGroup" {
-    vpc myVpc
-    description "Security group for Lambda"
-    allowAllOutbound false  // This is the default!
-}
+let lambdaSecurityGroup =
+    securityGroup "MySecurityGroup" {
+        vpc myVpc
+        description "Security group for Lambda"
+        allowAllOutbound false // This is the default!
+    }
 
 (**
 Only allow specific outbound traffic (Note: In real code, you'd add ingress/egress rules after creation).
@@ -90,7 +99,7 @@ Only allow specific outbound traffic (Note: In real code, you'd add ingress/egre
 
 securityGroup "TooPermissive" {
     vpc myVpc
-    allowAllOutbound true  // Only use when absolutely necessary
+    allowAllOutbound true // Only use when absolutely necessary
 }
 
 (**
@@ -105,16 +114,16 @@ open Amazon.CDK.AWS.RDS
 rdsInstance "MyDatabase" {
     vpc myVpc
     postgresEngine
-    
+
     // Private subnet - not accessible from internet
     vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
-    
+
     // Not publicly accessible
     publiclyAccessible false
-    
+
     // Only Lambda security group can access
     securityGroup lambdaSecurityGroup
-    
+
     // Enable IAM authentication for better security
     iamAuthentication true
 }
@@ -128,48 +137,53 @@ Implement strong authentication and authorization.
 open Amazon.CDK.AWS.Cognito
 
 // ✅ GOOD: Secure user pool configuration
-userPool "SecureUserPool" {
-    signInWithEmail
-    
-    // Disable self sign-up to prevent unauthorized accounts
-    selfSignUpEnabled false  // Approve users manually or via API
-    
-    // Require MFA for sensitive operations
-    mfa Mfa.REQUIRED
-    
-    // Strong password policy
-    passwordPolicy (PasswordPolicy(
-        MinLength = 12,
-        RequireLowercase = true,
-        RequireUppercase = true,
-        RequireDigits = true,
-        RequireSymbols = true,
-        TempPasswordValidity = Duration.Days(7.0)
-    ))
-    
-    // Account recovery via email only (more secure than SMS)
-    accountRecovery AccountRecovery.EMAIL_ONLY
-}
+let myUserPool =
+    userPool "SecureUserPool" {
+        signInWithEmail
+
+        // Disable self sign-up to prevent unauthorized accounts
+        selfSignUpEnabled false // Approve users manually or via API
+
+        // Require MFA for sensitive operations
+        mfa Mfa.REQUIRED
+
+        // Strong password policy
+        passwordPolicy (
+            PasswordPolicy(
+                MinLength = 12,
+                RequireLowercase = true,
+                RequireUppercase = true,
+                RequireDigits = true,
+                RequireSymbols = true,
+                TempPasswordValidity = Duration.Days(7.0)
+            )
+        )
+
+        // Account recovery via email only (more secure than SMS)
+        accountRecovery AccountRecovery.EMAIL_ONLY
+    }
 
 // ✅ GOOD: Secure client configuration
 userPoolClient "SecureClient" {
     userPool myUserPool
-    
+
     // Don't generate secret for public clients (web/mobile)
     generateSecret false
-    
+
     // Use SRP for secure authentication
-    authFlows (AuthFlow(
-        UserSrp = true,
-        UserPassword = true,
-        AdminUserPassword = false  // Don't allow admin-initiated auth
-    ))
-    
+    authFlows (
+        AuthFlow(
+            UserSrp = true,
+            UserPassword = true,
+            AdminUserPassword = false // Don't allow admin-initiated auth
+        )
+    )
+
     // Short-lived tokens
-    tokenValidities(
-        accessToken = Duration.Minutes(60.0),
-        idToken = Duration.Minutes(60.0),
-        refreshToken = Duration.Days(30.0)
+    tokenValidities (
+        (Duration.Minutes 60.0), // refreshToken
+        (Duration.Minutes 60.0), // accessToken
+        (Duration.Days 30.0) // idToken
     )
 }
 
@@ -185,16 +199,16 @@ open Amazon.CDK.AWS.S3
 bucket "SecureAssets" {
     // Block all public access
     blockPublicAccess BlockPublicAccess.BLOCK_ALL
-    
+
     // Encrypt data at rest
     encryption BucketEncryption.S3_MANAGED
-    
+
     // Enforce SSL for all requests
     enforceSSL true
-    
+
     // Enable versioning for data protection
     versioned true
-    
+
     // Prevent accidental deletion
     removalPolicy RemovalPolicy.RETAIN
     autoDeleteObjects false
@@ -208,18 +222,32 @@ Secure content delivery with CloudFront.
 
 open Amazon.CDK.AWS.CloudFront
 
+(*** hide ***)
+let myBehavior =
+    CloudFrontBehaviors.httpBehaviorDefault "origin.example.com" (Some true)
+
+(*** hide ***)
+let myLogBucket =
+    bucket "CloudFrontLogs" {
+        blockPublicAccess BlockPublicAccess.BLOCK_ALL
+        encryption BucketEncryption.S3_MANAGED
+        enforceSSL true
+        versioned false
+        removalPolicy RemovalPolicy.RETAIN
+    }
+
 // ✅ GOOD: Secure CloudFront distribution
 cloudFrontDistribution "SecureCDN" {
     defaultBehavior myBehavior
-    
+
     // Require HTTPS (Note: This is configured in the behavior)
-    
+
     // Use modern TLS version
     minimumProtocolVersion SecurityPolicyProtocol.TLS_V1_2_2021
-    
+
     // Optional: Add WAF for additional protection
     // webAclId myWafAclId
-    
+
     // Enable logging for audit trail
     enableLogging myLogBucket "cloudfront-logs/"
 }
@@ -234,15 +262,16 @@ lambda "ReadOnlyFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
+
     policyStatement {
         effect Effect.ALLOW
-        actions [ 
-            "dynamodb:GetItem"
-            "dynamodb:Query"
-            "dynamodb:Scan"
-            "dynamodb:BatchGetItem"
-        ]
+
+        actions
+            [ "dynamodb:GetItem"
+              "dynamodb:Query"
+              "dynamodb:Scan"
+              "dynamodb:BatchGetItem" ]
+
         resources [ "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable" ]
     }
 }
@@ -255,7 +284,7 @@ lambda "S3Writer" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
+
     policyStatement {
         effect Effect.ALLOW
         actions [ "s3:PutObject"; "s3:PutObjectAcl" ]
@@ -273,14 +302,10 @@ lambda "QueueProcessor" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
+
     policyStatement {
         effect Effect.ALLOW
-        actions [ 
-            "sqs:ReceiveMessage"
-            "sqs:DeleteMessage"
-            "sqs:GetQueueAttributes"
-        ]
+        actions [ "sqs:ReceiveMessage"; "sqs:DeleteMessage"; "sqs:GetQueueAttributes" ]
         resources [ "arn:aws:sqs:us-east-1:123456789012:my-queue" ]
     }
 }
@@ -295,7 +320,7 @@ lambda "NotificationSender" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
+
     policyStatement {
         effect Effect.ALLOW
         actions [ "sns:Publish" ]
@@ -312,17 +337,17 @@ Network isolation and security.
 // ✅ GOOD: Properly segmented VPC
 vpc "SecureVpc" {
     maxAzs 2
-    
+
     // Subnet configuration (done via CDK)
     // - Public subnets: NAT Gateways, Load Balancers
     // - Private subnets: Lambda, ECS, RDS
     // - Isolated subnets: Highly sensitive resources
-    
+
     // NAT Gateways for private subnet internet access
-    natGateways 2  // One per AZ for HA
-    
-    // Enable VPC Flow Logs for monitoring
-    // (Note: Would need to be configured separately)
+    natGateways 2 // One per AZ for HA
+
+// Enable VPC Flow Logs for monitoring
+// (Note: Would need to be configured separately)
 }
 
 // Place sensitive resources in private subnets
@@ -352,10 +377,10 @@ lambda "MonitoredFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
+
     // Enable AWS X-Ray tracing
     tracing Tracing.ACTIVE
-    
+
     // Enable Lambda Insights
     insightsVersion LambdaInsightsVersion.VERSION_1_0_229_0
 }
@@ -379,10 +404,8 @@ lambda "BadFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
-    environment [
-        "DB_PASSWORD", "mypassword123"  // Never do this!
-    ]
+
+    environment [ "DB_PASSWORD", "mypassword123" ] // Never do this!
 }
 
 (**
@@ -393,11 +416,9 @@ lambda "GoodFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
-    
-    environment [
-        "DB_SECRET_ARN", "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-secret"
-    ]
-    
+
+    environment [ "DB_SECRET_ARN", "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-secret" ]
+
     // Grant permission to read secret
     policyStatement {
         effect Effect.ALLOW
@@ -410,9 +431,9 @@ lambda "GoodFunction" {
 rdsInstance "SecureDatabase" {
     vpc myVpc
     postgresEngine
-    
+
     // Credentials automatically stored in Secrets Manager
-    credentials (Credentials.FromGeneratedSecret("admin"))
+    credentials (Credentials.FromGeneratedSecret "admin")
 }
 
 (**
@@ -423,7 +444,7 @@ rdsInstance "SecureDatabase" {
 
 // Enable encryption for data at rest
 bucket "UserData" {
-    encryption BucketEncryption.KMS_MANAGED  // Customer managed keys
+    encryption BucketEncryption.KMS_MANAGED // Customer managed keys
     blockPublicAccess BlockPublicAccess.BLOCK_ALL
 }
 
@@ -437,7 +458,7 @@ rdsInstance "UserDatabase" {
 // Enable audit logging
 userPool "CompliantUserPool" {
     signInWithEmail
-    // Cognito automatically logs authentication events
+// Cognito automatically logs authentication events
 }
 
 (**
@@ -456,7 +477,7 @@ rdsInstance "HealthDatabase" {
     vpc myVpc
     postgresEngine
     storageEncrypted true
-    backupRetentionDays 30.0  // Longer retention for compliance
+    backupRetentionDays 30.0 // Longer retention for compliance
     deletionProtection true
 }
 

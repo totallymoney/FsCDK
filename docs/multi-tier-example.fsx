@@ -45,14 +45,19 @@ open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.DynamoDB
 open FsCDK
 
+(*** hide ***)
+let myBehaviorOptions =
+    CloudFrontBehaviors.httpBehaviorDefault "origin.example.com" (Some true)
+
 // Use environment variables or defaults for AWS account/region
-let accountId = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
-    |> Option.ofObj 
+let accountId =
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT")
+    |> Option.ofObj
     |> Option.defaultValue "000000000000"
-let regionName = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
-    |> Option.ofObj 
+
+let regionName =
+    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION")
+    |> Option.ofObj
     |> Option.defaultValue "us-east-1"
 
 stack "MultiTierApp" {
@@ -63,58 +68,61 @@ stack "MultiTierApp" {
 
     stackProps {
         description "Multi-tier web application with database and CDN"
-        tags [ 
-            "project", "MultiTierApp"
-            "environment", "production"
-            "managed-by", "FsCDK"
-        ]
+
+        tags
+            [ "project", "MultiTierApp"
+              "environment", "production"
+              "managed-by", "FsCDK" ]
     }
 
     // Step 1: Create VPC with public and private subnets
     // AWS Best Practice: Multi-AZ for high availability
-    vpc "AppVpc" {
-        maxAzs 2
-        natGateways 1  // Cost optimized - 1 NAT gateway
-        cidr "10.0.0.0/16"
-    }
+    let myVpc =
+        vpc "AppVpc" {
+            maxAzs 2
+            natGateways 1 // Cost optimized - 1 NAT gateway
+            cidr "10.0.0.0/16"
+        }
 
     // Step 2: Create Security Group for Lambda functions
     // AWS Best Practice: Least privilege - no outbound by default
-    securityGroup "LambdaSecurityGroup" {
-        vpc myVpc
-        description "Security group for Lambda functions"
-        allowAllOutbound false  // Explicit configuration required
-    }
+    let lambdaSecurityGroup =
+        securityGroup "LambdaSecurityGroup" {
+            vpc myVpc
+            description "Security group for Lambda functions"
+            allowAllOutbound false // Explicit configuration required
+        }
 
     // Step 3: Create Security Group for RDS
-    securityGroup "DatabaseSecurityGroup" {
-        vpc myVpc
-        description "Security group for RDS PostgreSQL"
-        allowAllOutbound false
-    }
+    let dbSecurityGroup =
+        securityGroup "DatabaseSecurityGroup" {
+            vpc myVpc
+            description "Security group for RDS PostgreSQL"
+            allowAllOutbound false
+        }
 
     // Step 4: Create RDS PostgreSQL database
     // AWS Best Practice: Encrypted, automated backups, Multi-AZ
     rdsInstance "AppDatabase" {
         vpc myVpc
-        postgresEngine  // Uses PostgreSQL 15 by default
+        postgresEngine // Uses PostgreSQL 15 by default
         instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
         allocatedStorage 20
         databaseName "myapp"
-        
+
         // High Availability
         multiAz true
         backupRetentionDays 7.0
-        
+
         // Security
         storageEncrypted true
         deletionProtection true
         publiclyAccessible false
-        
+
         // Networking
         vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
         securityGroup dbSecurityGroup
-        
+
         // Maintenance
         preferredBackupWindow "03:00-04:00"
         preferredMaintenanceWindow "sun:04:00-sun:05:00"
@@ -128,53 +136,55 @@ stack "MultiTierApp" {
         blockPublicAccess BlockPublicAccess.BLOCK_ALL
         removalPolicy RemovalPolicy.RETAIN
         autoDeleteObjects false
-        
+
         // Lifecycle rules for cost optimization
-        lifecycleRules [
-            lifecycleRule {
-                enabled true
-                transitions [
-                    transition {
-                        storageClass StorageClass.INFREQUENT_ACCESS
-                        transitionAfter 30.0
-                    }
-                    transition {
-                        storageClass StorageClass.GLACIER
-                        transitionAfter 90.0
-                    }
-                ]
-            }
-        ]
+        lifecycleRules
+            [ lifecycleRule {
+                  enabled true
+
+                  transitions
+                      [ transition {
+                            storageClass StorageClass.INFREQUENT_ACCESS
+                            transitionAfter 30.0
+                        }
+                        transition {
+                            storageClass StorageClass.GLACIER
+                            transitionAfter 90.0
+                        } ]
+              } ]
     }
 
     // Step 6: Create Cognito User Pool for authentication
     // AWS Best Practice: MFA, strong password policy, email verification
-    userPool "AppUserPool" {
-        signInWithEmail
-        selfSignUpEnabled true
-        mfa Mfa.OPTIONAL
-        passwordPolicy (PasswordPolicy(
-            MinLength = 12,
-            RequireLowercase = true,
-            RequireUppercase = true,
-            RequireDigits = true,
-            RequireSymbols = true
-        ))
-        accountRecovery AccountRecovery.EMAIL_ONLY
-    }
+    let myUserPool =
+        userPool "AppUserPool" {
+            signInWithEmail
+            selfSignUpEnabled true
+            mfa Mfa.OPTIONAL
+
+            passwordPolicy (
+                PasswordPolicy(
+                    MinLength = 12,
+                    RequireLowercase = true,
+                    RequireUppercase = true,
+                    RequireDigits = true,
+                    RequireSymbols = true
+                )
+            )
+
+            accountRecovery AccountRecovery.EMAIL_ONLY
+        }
 
     // Step 7: Create User Pool Client
     userPoolClient "AppClient" {
         userPool myUserPool
-        generateSecret false  // For web/mobile apps
-        authFlows (AuthFlow(
-            UserSrp = true,
-            UserPassword = true
-        ))
-        tokenValidities(
-            refreshToken = Duration.Days(30.0),
-            accessToken = Duration.Hours(1.0),
-            idToken = Duration.Hours(1.0)
+        generateSecret false // For web/mobile apps
+        authFlows (AuthFlow(UserSrp = true, UserPassword = true))
+
+        tokenValidities (
+            (Duration.Days 30.0), // refreshToken
+            (Duration.Hours 1.0), // accessToken
+            (Duration.Hours 1.0) // idToken
         )
     }
 
@@ -183,26 +193,25 @@ stack "MultiTierApp" {
         runtime Runtime.DOTNET_8
         handler "MyApp.Api::MyApp.Api.Handler::handleRequest"
         code "../MyApp.Api/bin/Release/net8.0/publish"
-        
+
         timeout 30.0
         memory 512
         description "API handler for the web application"
-        
+
         // VPC configuration for database access
         vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
         securityGroups [ lambdaSecurityGroup ]
-        
+
         // Environment variables
-        environment [
-            "DATABASE_HOST", "dbEndpoint"
-            "DATABASE_NAME", "myapp"
-            "USER_POOL_ID", "userPoolId"
-            "REGION", region
-        ]
-        
+        environment
+            [ "DATABASE_HOST", "dbEndpoint"
+              "DATABASE_NAME", "myapp"
+              "USER_POOL_ID", "userPoolId"
+              "REGION", regionName ]
+
         // Enable X-Ray tracing
         tracing Tracing.ACTIVE
-        
+
         // Enable Lambda Insights
         insightsVersion LambdaInsightsVersion.VERSION_1_0_229_0
     }
@@ -210,20 +219,20 @@ stack "MultiTierApp" {
     // Step 9: Create CloudFront distribution for CDN
     // AWS Best Practice: HTTP/2, TLS 1.2, IPv6, cost-optimized
     cloudFrontDistribution "AppCDN" {
-        defaultBehavior myBehaviorOptions  // Created separately
+        defaultBehavior myBehaviorOptions // Created separately
         defaultRootObject "index.html"
         comment "CDN for multi-tier application"
-        
+
         // Performance
         httpVersion HttpVersion.HTTP2
         enableIpv6 true
-        
+
         // Security
         minimumProtocolVersion SecurityPolicyProtocol.TLS_V1_2_2021
-        
+
         // Cost optimization
         priceClass PriceClass.PRICE_CLASS_100
-        
+
         // Logging
         enableLogging staticAssetsBucket "cdn-logs/"
     }

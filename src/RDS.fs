@@ -13,9 +13,9 @@ type DatabaseInstanceConfig =
       ConstructId: string option
       Engine: IInstanceEngine option
       InstanceType: InstanceType option
-      Vpc: IVpc option
+      Vpc: FsCDK.VpcRef option
       VpcSubnets: SubnetSelection option
-      SecurityGroups: ISecurityGroup list
+      SecurityGroups: SecurityGroupRef list
       AllocatedStorage: int option
       StorageType: StorageType option
       BackupRetention: Duration option
@@ -223,7 +223,7 @@ type DatabaseInstanceBuilder(name: string) =
         // VPC is required
         props.Vpc <-
             match config.Vpc with
-            | Some vpc -> vpc
+            | Some vpc -> FsCDK.VpcHelpers.resolveVpcRef vpc
             | None -> invalidArg "vpc" "VPC is required for RDS Database Instance"
 
         props.Engine <-
@@ -263,7 +263,10 @@ type DatabaseInstanceBuilder(name: string) =
         config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
 
         if not (List.isEmpty config.SecurityGroups) then
-            props.SecurityGroups <- config.SecurityGroups |> List.toArray
+            props.SecurityGroups <-
+                config.SecurityGroups
+                |> List.map VpcHelpers.resolveSecurityGroupRef
+                |> Array.ofList
 
         config.AllocatedStorage
         |> Option.iter (fun s -> props.AllocatedStorage <- float s)
@@ -319,7 +322,15 @@ type DatabaseInstanceBuilder(name: string) =
 
     /// <summary>Sets the VPC.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: DatabaseInstanceConfig, vpc: IVpc) = { config with Vpc = Some vpc }
+    member _.Vpc(config: DatabaseInstanceConfig, vpc: IVpc) =
+        { config with
+            Vpc = Some(FsCDK.VpcInterface vpc) }
+
+    /// <summary>Sets the VPC.</summary>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: DatabaseInstanceConfig, vpcSpec: FsCDK.VpcSpec) =
+        { config with
+            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
 
     /// <summary>Sets the VPC subnets.</summary>
     [<CustomOperation("vpcSubnets")>]
@@ -331,7 +342,13 @@ type DatabaseInstanceBuilder(name: string) =
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: DatabaseInstanceConfig, sg: ISecurityGroup) =
         { config with
-            SecurityGroups = sg :: config.SecurityGroups }
+            SecurityGroups = (SecurityGroupRef.SecurityGroupInterface sg) :: config.SecurityGroups }
+
+    /// <summary>Adds a security group.</summary>
+    [<CustomOperation("securityGroup")>]
+    member _.SecurityGroup(config: DatabaseInstanceConfig, sg: SecurityGroupSpec) =
+        { config with
+            SecurityGroups = (SecurityGroupRef.SecurityGroupSpecRef sg) :: config.SecurityGroups }
 
     /// <summary>Sets the allocated storage in GB.</summary>
     [<CustomOperation("allocatedStorage")>]

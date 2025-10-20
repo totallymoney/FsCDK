@@ -23,38 +23,38 @@ open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
 open FsCDK
 
-// Use environment variables or defaults for AWS account/region
-let accountId = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
-    |> Option.ofObj 
-    |> Option.defaultValue "000000000000"
-let regionName = 
-    System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
-    |> Option.ofObj 
-    |> Option.defaultValue "us-east-1"
+(*** hide ***)
+module Config =
+    let get () =
+        {| Account = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT")
+           Region = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") |}
+
+let config = Config.get ()
 
 stack "ALBStack" {
-    app {
-        context "environment" "production"
+    app { context "environment" "production" }
+
+    environment {
+        account config.Account
+        region config.Region
     }
 
-    stackProps {
-        description "Application Load Balancer example"
-    }
+    stackProps { description "Application Load Balancer example" }
 
     // Create VPC
-    let myVpc = vpc "MyVpc" {
-        maxAzs 2
-        natGateways 1
-        cidr "10.0.0.0/16"
-    }
+    let myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
 
     // Create internet-facing ALB
     applicationLoadBalancer "MyALB" {
-        vpc myVpc.Vpc
+        vpc myVpc
         internetFacing true
         http2Enabled true
-        dropInvalidHeaderFields true  // Security best practice
+        dropInvalidHeaderFields true // Security best practice
     }
 }
 
@@ -65,13 +65,14 @@ stack "ALBStack" {
 open Amazon.CDK.AWS.SecretsManager
 
 stack "SecretsStack" {
-    app {
-        context "environment" "production"
+    app { context "environment" "production" }
+
+    environment {
+        account config.Account
+        region config.Region
     }
 
-    stackProps {
-        description "Secrets Manager example"
-    }
+    stackProps { description "Secrets Manager example" }
 
     // Create a secret with auto-generated password
     secret "MyDatabasePassword" {
@@ -82,11 +83,7 @@ stack "SecretsStack" {
     // Create a secret for API credentials (JSON format)
     secret "MyApiCredentials" {
         description "External API credentials"
-        generateSecretString (
-            SecretsManagerHelpers.generateJsonSecret 
-                """{"username": "admin"}""" 
-                "password"
-        )
+        generateSecretString (SecretsManagerHelpers.generateJsonSecret """{"username": "admin"}""" "password")
     }
 }
 
@@ -97,30 +94,31 @@ stack "SecretsStack" {
 open Amazon.CDK.AWS.Route53
 
 stack "DNSStack" {
-    app {
-        context "environment" "production"
+    app { context "environment" "production" }
+
+    environment {
+        account config.Account
+        region config.Region
     }
 
-    stackProps {
-        description "Route 53 DNS example"
-    }
+    stackProps { description "Route 53 DNS example" }
 
     // Create VPC and ALB first
-    let myVpc = vpc "MyVpc" {
-        maxAzs 2
-        natGateways 1
-        cidr "10.0.0.0/16"
-    }
+    let myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
 
-    let myAlb = applicationLoadBalancer "MyALB" {
-        vpc myVpc.Vpc
-        internetFacing true
-    }
+    let myAlb =
+        applicationLoadBalancer "MyALB" {
+            vpc myVpc
+            internetFacing true
+        }
 
     // Create hosted zone
-    let myZone = hostedZone "example.com" {
-        comment "Production domain"
-    }
+    let myZone = hostedZone "example.com" { comment "Production domain" }
 
     // Create A record pointing to ALB
     aRecord "www" {
@@ -137,18 +135,17 @@ stack "DNSStack" {
 open Amazon.CDK.AWS.ElasticBeanstalk
 
 stack "BeanstalkStack" {
-    app {
-        context "environment" "production"
+    app { context "environment" "production" }
+
+    environment {
+        account config.Account
+        region config.Region
     }
 
-    stackProps {
-        description "Elastic Beanstalk example"
-    }
+    stackProps { description "Elastic Beanstalk example" }
 
     // Create Elastic Beanstalk application
-    let myApp = ebApplication "MyWebApp" {
-        description "My web application"
-    }
+    let myApp = ebApplication "MyWebApp" { description "My web application" }
 
     // Create environment for the application
     // Note: Solution stack name depends on your platform

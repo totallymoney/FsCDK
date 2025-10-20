@@ -46,7 +46,7 @@ pipeline "ci" {
         run $"dotnet restore {sln}"
         run $"dotnet build {sln} -c {config} --no-restore"
         run $"dotnet publish src -c {config} -f net8.0 --no-build"
-        run $"dotnet fsdocs build --properties Configuration={config} --eval"
+        run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"
     }
 
     stage "pack" { run $"dotnet pack {sln} -c {config} -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}" }
@@ -61,6 +61,7 @@ pipeline "ci" {
         // Note: This will probably fail on Windows because there is no bash.
         // There could be bash under git directory (something like c:\Program Files\Git\bin\ that may or may not be in PATH variable).
         // But also "rm" is a bit different command.
+        whenNot { platformWindows }
 
         // Clean up NuGet sources
         run "bash -lc \"dotnet nuget remove source github >/dev/null 2>&1 || true\""
@@ -100,7 +101,7 @@ pipeline "docs" {
         run $"dotnet restore {sln}"
         run $"dotnet build {sln} -c {config} --no-restore"
         run $"dotnet publish src -c {config} -f net8.0 --no-build"
-        run $"dotnet fsdocs build --properties Configuration={config} --eval"
+        run $"dotnet fsdocs build --properties Configuration={config} --eval --strict"
     }
 
     runIfOnlySpecified false
