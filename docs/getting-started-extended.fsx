@@ -436,7 +436,7 @@ cdk deploy --verbose
 cdk import
 
 # Or use different names
-vpc "MyVpc-v2" { }
+vpc "MyVpc-v2" { ... }
 ```
 
 ## What's Coming Next?
@@ -453,4 +453,5 @@ Future enhancements may include:
 Ready to build secure, scalable infrastructure with F#? Let's go! 🚀
 *)
 
+(*** hide ***)
 ()
