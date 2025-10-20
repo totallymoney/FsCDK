@@ -197,8 +197,9 @@ type BucketBuilder(name: string) =
                 | BucketRef.BucketInterface b -> b
                 | BucketRef.BucketSpecRef b ->
                     match b.Bucket with
-                    | None -> 
-                        failwith $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+                    | None ->
+                        failwith
+                            $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
                     | Some bu -> bu)
 
         config.ServerAccessLogsPrefix

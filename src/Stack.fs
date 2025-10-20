@@ -93,7 +93,9 @@ module StackOperations =
                 bucketSpec.Bucket <- Some bucket
             | Some b ->
                 if b.Stack <> stack || b.BucketName <> bucketSpec.BucketName then
-                    printfn $"Warning: Bucket %s{b.BucketName} was already created to stack {b.Stack.StackName} when constructing same but %s{b.BucketName} to %s{stack.StackName}."
+                    printfn
+                        $"Warning: Bucket %s{b.BucketName} was already created to stack {b.Stack.StackName} when constructing same but %s{b.BucketName} to %s{stack.StackName}."
+
                 ()
 
         | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec
