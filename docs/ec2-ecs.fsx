@@ -50,10 +50,12 @@ stack "EC2Stack" {
     ec2Instance "MyWebServer" {
         instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
         machineImage (MachineImage.LatestAmazonLinux2())
-        vpc myVpc.Vpc
+        vpc myVpc
         requireImdsv2 true  // IMDSv2 for enhanced security
         detailedMonitoring false
     }
+
+    ()  // Return unit to satisfy F# requirement
 }
 
 (**
@@ -86,18 +88,12 @@ stack "ECSStack" {
 
     // Create ECS cluster
     let myCluster = ecsCluster "MyCluster" {
-        vpc myVpc.Vpc
+        vpc myVpc
         containerInsights ContainerInsights.ENABLED
         enableFargateCapacityProviders true
     }
 
-    // Create Fargate service
-    // Note: Requires a task definition to be created first
-    // ecsFargateService "MyService" {
-    //     cluster myCluster.Cluster
-    //     desiredCount 2
-    //     assignPublicIp false
-    // }
+    ()  // Return unit to satisfy F# requirement
 }
 
 (**
