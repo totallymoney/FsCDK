@@ -1,3 +1,10 @@
+(**
+---
+title: Lambda Quickstart Example
+category: docs
+index: 5
+---
+
 # Lambda Quickstart Example
 
 This example demonstrates how to create AWS Lambda functions using FsCDK with secure defaults and best practices.
@@ -59,20 +66,31 @@ The Lambda function builder applies these best practices by default:
 - **X-Ray**: Disabled (opt-in)
 
 ### Example 1: Basic Function
+*)
 
-```fsharp
+#r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
+#r "../src/bin/Release/net8.0/publish/Constructs.dll"
+#r "../src/bin/Release/net8.0/publish/Amazon.CDK.Lib.dll"
+#r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
+#r "../src/bin/Release/net8.0/publish/FsCDK.dll"
+
+open FsCDK
+open Amazon.CDK
+open Amazon.CDK.AWS.Lambda
+open Amazon.CDK.AWS.Logs
+
 lambdaFunction "my-function" {
     handler "index.handler"
     runtime Runtime.NODEJS_18_X
     codePath "./lambda-code"
 }
-```
 
+(**
 Creates a function with all defaults.
 
 ### Example 2: Custom Memory and Timeout
+*)
 
-```fsharp
 lambdaFunction "heavy-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
@@ -80,30 +98,30 @@ lambdaFunction "heavy-function" {
     memorySize 1024
     timeout 120.0
 }
-```
 
+(**
 Adjusts memory and timeout for compute-intensive workloads.
 
 ### Example 3: Environment Variables
+*)
 
-```fsharp
 lambdaFunction "api-function" {
     handler "index.handler"
     runtime Runtime.DOTNET_8
     codePath "./publish"
     environment [
-        "DATABASE_URL", databaseUrl
-        "API_KEY", apiKey
+        "DATABASE_URL", "postgres://localhost/mydb"
+        "API_KEY", "secret-key"
         "LOG_LEVEL", "INFO"
     ]
 }
-```
 
+(**
 **Security Note**: Environment variables are encrypted at rest using KMS by default.
 
 ### Example 4: X-Ray Tracing
+*)
 
-```fsharp
 lambdaFunction "traced-function" {
     handler "index.handler"
     runtime Runtime.NODEJS_20_X
@@ -111,23 +129,110 @@ lambdaFunction "traced-function" {
     xrayEnabled
     description "Function with X-Ray tracing for debugging"
 }
-```
 
+(**
 Enables AWS X-Ray for distributed tracing.
 
 ### Example 5: Custom Log Retention
+*)
 
-```fsharp
 lambdaFunction "short-lived-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
     codePath "./lambda-code"
     logRetention RetentionDays.ONE_WEEK
 }
-```
 
+(**
 Reduces log retention for cost savings.
 
+## Complete Example Stack
+*)
+
+let config = Config.get ()
+
+stack "LambdaQuickstartStack" {
+    environment {
+        account config.Account
+        region config.Region
+    }
+    
+    stackProps {
+        stackEnv
+        description "FsCDK Lambda Quickstart Example - demonstrates Lambda functions with security defaults"
+        tags [ 
+            "Project", "FsCDK-Examples"
+            "Example", "Lambda-Quickstart"
+            "ManagedBy", "FsCDK"
+        ]
+    }
+
+    // Example 1: Basic function with all defaults
+    lambdaFunction "basic-function" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        codePath "./dummy-code"
+        description "Basic Lambda function with secure defaults"
+        // Uses defaults:
+        // - memorySize = 512 MB
+        // - timeout = 30 seconds
+        // - logRetention = 90 days
+        // - environment encryption = KMS
+    }
+    
+    // Example 2: Function with custom memory and timeout
+    lambdaFunction "compute-intensive-function" {
+        handler "process.handler"
+        runtime Runtime.PYTHON_3_11
+        codePath "./dummy-code"
+        memorySize 2048
+        timeout 300.0
+        description "Compute-intensive function with higher memory and timeout"
+    }
+    
+    // Example 3: Function with environment variables (encrypted by default)
+    lambdaFunction "api-handler-function" {
+        handler "api.handler"
+        runtime Runtime.NODEJS_20_X
+        codePath "./dummy-code"
+        environment [
+            "LOG_LEVEL", "INFO"
+            "API_VERSION", "v1"
+            "REGION", config.Region
+        ]
+        description "API handler with encrypted environment variables"
+    }
+    
+    // Example 4: Function with X-Ray tracing enabled
+    lambdaFunction "traced-function" {
+        handler "traced.handler"
+        runtime Runtime.PYTHON_3_11
+        codePath "./dummy-code"
+        xrayEnabled
+        description "Function with X-Ray tracing for debugging"
+    }
+    
+    // Example 5: Function with custom log retention
+    lambdaFunction "dev-function" {
+        handler "dev.handler"
+        runtime Runtime.DOTNET_8
+        codePath "./dummy-code"
+        logRetention RetentionDays.ONE_WEEK
+        timeout 60.0
+        description "Development function with shorter log retention"
+    }
+    
+    // Example 6: Function with reserved concurrency
+    lambdaFunction "rate-limited-function" {
+        handler "ratelimited.handler"
+        runtime Runtime.NODEJS_18_X
+        codePath "./dummy-code"
+        reservedConcurrentExecutions 10
+        description "Function with reserved concurrent executions for rate limiting"
+    }
+}
+
+(**
 ## IAM Permissions
 
 ### Default Execution Role
@@ -149,8 +254,8 @@ The builder automatically creates an IAM execution role with:
 ### Custom Role
 
 For advanced scenarios, provide your own role:
+*)
 
-```fsharp
 open FsCDK.Security
 
 let customRole = IAM.createLambdaExecutionRole "my-function" true
@@ -161,8 +266,8 @@ lambdaFunction "my-function" {
     codePath "./code"
     role customRole
 }
-```
 
+(**
 ## Security Considerations
 
 ### Environment Variable Encryption
@@ -223,23 +328,28 @@ Set timeout based on expected execution time:
 ## Escape Hatch
 
 For advanced scenarios not covered by the builder:
+*)
 
-```fsharp
-let funcResource = lambdaFunction "my-function" { ... }
+let funcResource = lambdaFunction "my-function" { 
+    handler "index.handler"
+    runtime Runtime.NODEJS_18_X
+    codePath "./code"
+}
 // Access underlying CDK construct
 let cdkFunction = funcResource.Function
 // Use any CDK Function methods...
-```
 
+(**
 ## Next Steps
 
-- Integrate with [S3 Quickstart](../s3-quickstart/) for event-driven processing
-- Read [IAM Best Practices](../../docs/IAM_BEST_PRACTICES.md) for advanced permissions
+- Integrate with [S3 Quickstart](s3-quickstart.html) for event-driven processing
+- Read [IAM Best Practices](iam-best-practices.html) for advanced permissions
 - Review [Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
 
 ## Resources
 
-- [FsCDK Documentation](https://totallymoney.github.io/FsCDK/)
+- [FsCDK Documentation](index.html)
 - [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/)
 - [Lambda Security Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html)
 - [X-Ray Documentation](https://docs.aws.amazon.com/xray/latest/devguide/aws-xray.html)
+*)

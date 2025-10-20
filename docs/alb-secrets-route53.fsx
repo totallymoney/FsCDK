@@ -1,10 +1,23 @@
+(**
+---
+title: Load Balancer, Secrets Manager, and Route 53 Example
+category: docs
+index: 7
+---
+
 # Load Balancer, Secrets Manager, and Route 53 Example
 
 This example demonstrates how to use Application Load Balancer, Secrets Manager, and Route 53 with FsCDK.
 
 ## Application Load Balancer (ALB)
+*)
 
-```fsharp
+#r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
+#r "../src/bin/Release/net8.0/publish/Constructs.dll"
+#r "../src/bin/Release/net8.0/publish/Amazon.CDK.Lib.dll"
+#r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
+#r "../src/bin/Release/net8.0/publish/FsCDK.dll"
+
 open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
@@ -42,15 +55,12 @@ stack "ALBStack" {
         dropInvalidHeaderFields true  // Security best practice
     }
 }
-```
 
+(**
 ## Secrets Manager
+*)
 
-```fsharp
-open Amazon.CDK
-open FsCDK
-
-let config = Config.get ()
+open Amazon.CDK.AWS.SecretsManager
 
 stack "SecretsStack" {
     app {
@@ -83,17 +93,12 @@ stack "SecretsStack" {
         )
     }
 }
-```
 
+(**
 ## Route 53 (DNS)
+*)
 
-```fsharp
-open Amazon.CDK
 open Amazon.CDK.AWS.Route53
-open Amazon.CDK.AWS.ElasticLoadBalancingV2
-open FsCDK
-
-let config = Config.get ()
 
 stack "DNSStack" {
     app {
@@ -134,16 +139,12 @@ stack "DNSStack" {
         ttl (Duration.Minutes(5.0))
     }
 }
-```
 
+(**
 ## Elastic Beanstalk
+*)
 
-```fsharp
-open Amazon.CDK
 open Amazon.CDK.AWS.ElasticBeanstalk
-open FsCDK
-
-let config = Config.get ()
 
 stack "BeanstalkStack" {
     app {
@@ -173,8 +174,8 @@ stack "BeanstalkStack" {
         description "Production environment"
     }
 }
-```
 
+(**
 ## Key Features
 
 ### Application Load Balancer
@@ -231,3 +232,4 @@ cdk deploy
 # Destroy resources when done
 cdk destroy
 ```
+*)

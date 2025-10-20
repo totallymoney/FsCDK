@@ -1,3 +1,10 @@
+(**
+---
+title: IAM Best Practices for FsCDK
+category: docs
+index: 1
+---
+
 # IAM Best Practices for FsCDK
 
 This guide covers IAM (Identity and Access Management) best practices when using FsCDK to build AWS infrastructure.
@@ -7,19 +14,39 @@ This guide covers IAM (Identity and Access Management) best practices when using
 Always grant only the permissions required to perform a task.
 
 ### Lambda Function Roles
+*)
 
-```fsharp
-// ❌ BAD: Too permissive
+#r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
+#r "../src/bin/Release/net8.0/publish/Constructs.dll"
+#r "../src/bin/Release/net8.0/publish/Amazon.CDK.Lib.dll"
+#r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
+#r "../src/bin/Release/net8.0/publish/FsCDK.dll"
+
+open FsCDK
+open Amazon.CDK
+open Amazon.CDK.AWS.Lambda
+
+(**
+#### ❌ BAD: Too permissive
+
+Don't grant Lambda full access to everything:
+*)
+
+// This grants the Lambda full access to everything!
 lambda "MyFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
     
-    // This grants the Lambda full access to everything!
-    role adminRole
+    // role adminRole  // Don't do this!
 }
 
-// ✅ GOOD: Specific permissions
+(**
+#### ✅ GOOD: Specific permissions
+
+Grant only specific permissions needed:
+*)
+
 lambda "MyFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
@@ -29,22 +56,24 @@ lambda "MyFunction" {
     policyStatement {
         effect Effect.ALLOW
         actions [ "dynamodb:GetItem"; "dynamodb:PutItem" ]
-        resources [ myTableArn ]
+        resources [ "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable" ]
     }
     
     policyStatement {
         effect Effect.ALLOW
         actions [ "s3:GetObject" ]
-        resources [ $"{myBucketArn}/*" ]
+        resources [ "arn:aws:s3:::my-bucket/*" ]
     }
 }
-```
 
+(**
 ## Security Group Best Practices
 
 FsCDK security groups follow least privilege by default.
+*)
 
-```fsharp
+open Amazon.CDK.AWS.EC2
+
 // ✅ GOOD: FsCDK defaults to denying all outbound
 securityGroup "MySecurityGroup" {
     vpc myVpc
@@ -52,21 +81,25 @@ securityGroup "MySecurityGroup" {
     allowAllOutbound false  // This is the default!
 }
 
-// Only allow specific outbound traffic
-// (Note: In real code, you'd add ingress/egress rules after creation)
+(**
+Only allow specific outbound traffic (Note: In real code, you'd add ingress/egress rules after creation).
 
-// ❌ BAD: Allowing all outbound unnecessarily
+❌ BAD: Allowing all outbound unnecessarily:
+*)
+
 securityGroup "TooPermissive" {
     vpc myVpc
     allowAllOutbound true  // Only use when absolutely necessary
 }
-```
 
+(**
 ## RDS Database Access
 
 Restrict database access to specific security groups.
+*)
 
-```fsharp
+open Amazon.CDK.AWS.RDS
+
 // ✅ GOOD: Database in private subnet with restricted access
 rdsInstance "MyDatabase" {
     vpc myVpc
@@ -84,13 +117,15 @@ rdsInstance "MyDatabase" {
     // Enable IAM authentication for better security
     iamAuthentication true
 }
-```
 
+(**
 ## Cognito Security
 
 Implement strong authentication and authorization.
+*)
 
-```fsharp
+open Amazon.CDK.AWS.Cognito
+
 // ✅ GOOD: Secure user pool configuration
 userPool "SecureUserPool" {
     signInWithEmail
@@ -136,13 +171,15 @@ userPoolClient "SecureClient" {
         refreshToken = Duration.Days(30.0)
     )
 }
-```
 
+(**
 ## S3 Bucket Policies
 
 Secure your S3 buckets properly.
+*)
 
-```fsharp
+open Amazon.CDK.AWS.S3
+
 // ✅ GOOD: Secure S3 bucket
 bucket "SecureAssets" {
     // Block all public access
@@ -161,36 +198,37 @@ bucket "SecureAssets" {
     removalPolicy RemovalPolicy.RETAIN
     autoDeleteObjects false
 }
-```
 
+(**
 ## CloudFront Security
 
 Secure content delivery with CloudFront.
+*)
 
-```fsharp
+open Amazon.CDK.AWS.CloudFront
+
 // ✅ GOOD: Secure CloudFront distribution
 cloudFrontDistribution "SecureCDN" {
     defaultBehavior myBehavior
     
-    // Require HTTPS
-    // (Note: This is configured in the behavior)
+    // Require HTTPS (Note: This is configured in the behavior)
     
     // Use modern TLS version
     minimumProtocolVersion SecurityPolicyProtocol.TLS_V1_2_2021
     
     // Optional: Add WAF for additional protection
-    webAclId myWafAclId
+    // webAclId myWafAclId
     
     // Enable logging for audit trail
     enableLogging myLogBucket "cloudfront-logs/"
 }
-```
 
+(**
 ## Common IAM Patterns
 
 ### Read-Only Access to DynamoDB
+*)
 
-```fsharp
 lambda "ReadOnlyFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
@@ -204,14 +242,14 @@ lambda "ReadOnlyFunction" {
             "dynamodb:Scan"
             "dynamodb:BatchGetItem"
         ]
-        resources [ myTableArn ]
+        resources [ "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable" ]
     }
 }
-```
 
+(**
 ### Write Access to S3 Bucket
+*)
 
-```fsharp
 lambda "S3Writer" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
@@ -220,14 +258,16 @@ lambda "S3Writer" {
     policyStatement {
         effect Effect.ALLOW
         actions [ "s3:PutObject"; "s3:PutObjectAcl" ]
-        resources [ $"{myBucketArn}/*" ]
+        resources [ "arn:aws:s3:::my-bucket/*" ]
     }
 }
-```
 
+(**
 ### Read from SQS Queue
+*)
 
-```fsharp
+open Amazon.CDK.AWS.SQS
+
 lambda "QueueProcessor" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
@@ -240,14 +280,16 @@ lambda "QueueProcessor" {
             "sqs:DeleteMessage"
             "sqs:GetQueueAttributes"
         ]
-        resources [ myQueueArn ]
+        resources [ "arn:aws:sqs:us-east-1:123456789012:my-queue" ]
     }
 }
-```
 
+(**
 ### Publish to SNS Topic
+*)
 
-```fsharp
+open Amazon.CDK.AWS.SNS
+
 lambda "NotificationSender" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
@@ -256,16 +298,16 @@ lambda "NotificationSender" {
     policyStatement {
         effect Effect.ALLOW
         actions [ "sns:Publish" ]
-        resources [ myTopicArn ]
+        resources [ "arn:aws:sns:us-east-1:123456789012:my-topic" ]
     }
 }
-```
 
+(**
 ## VPC Security
 
 Network isolation and security.
+*)
 
-```fsharp
 // ✅ GOOD: Properly segmented VPC
 vpc "SecureVpc" {
     maxAzs 2
@@ -297,13 +339,13 @@ lambda "PrivateFunction" {
     vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
     securityGroups [ restrictedSecurityGroup ]
 }
-```
 
+(**
 ## Monitoring and Auditing
 
 Enable CloudTrail and monitoring.
+*)
 
-```fsharp
 // Enable detailed monitoring
 lambda "MonitoredFunction" {
     runtime Runtime.DOTNET_8
@@ -323,14 +365,15 @@ rdsInstance "MonitoredDatabase" {
     postgresEngine
     enablePerformanceInsights true
 }
-```
 
+(**
 ## Secrets Management
 
 Never hardcode secrets!
 
-```fsharp
-// ❌ BAD: Hardcoded secrets
+❌ BAD: Hardcoded secrets
+*)
+
 lambda "BadFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
@@ -341,21 +384,24 @@ lambda "BadFunction" {
     ]
 }
 
-// ✅ GOOD: Use Secrets Manager or Parameter Store
+(**
+✅ GOOD: Use Secrets Manager or Parameter Store
+*)
+
 lambda "GoodFunction" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
     code "./publish"
     
     environment [
-        "DB_SECRET_ARN", dbSecretArn  // Reference to secret
+        "DB_SECRET_ARN", "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-secret"
     ]
     
     // Grant permission to read secret
     policyStatement {
         effect Effect.ALLOW
         actions [ "secretsmanager:GetSecretValue" ]
-        resources [ dbSecretArn ]
+        resources [ "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-secret" ]
     }
 }
 
@@ -367,13 +413,13 @@ rdsInstance "SecureDatabase" {
     // Credentials automatically stored in Secrets Manager
     credentials Credentials.FromGeneratedSecret("admin")
 }
-```
 
+(**
 ## Compliance Considerations
 
 ### GDPR/Data Privacy
+*)
 
-```fsharp
 // Enable encryption for data at rest
 bucket "UserData" {
     encryption BucketEncryption.KMS_MANAGED  // Customer managed keys
@@ -392,11 +438,11 @@ userPool "CompliantUserPool" {
     signInWithEmail
     // Cognito automatically logs authentication events
 }
-```
 
+(**
 ### HIPAA/PHI Data
+*)
 
-```fsharp
 // Use KMS encryption for sensitive data
 bucket "HealthRecords" {
     encryption BucketEncryption.KMS_MANAGED
@@ -412,8 +458,8 @@ rdsInstance "HealthDatabase" {
     backupRetentionDays 30.0  // Longer retention for compliance
     deletionProtection true
 }
-```
 
+(**
 ## Security Checklist
 
 Before deploying to production:
@@ -437,3 +483,4 @@ Before deploying to production:
 - [AWS Security Best Practices](https://aws.amazon.com/architecture/security-identity-compliance/)
 - [Yan Cui's Serverless Security Best Practices](https://theburningmonk.com/)
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+*)

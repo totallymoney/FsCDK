@@ -1,3 +1,10 @@
+(**
+---
+title: FsCDK Multi-Tier Application Example
+category: docs
+index: 4
+---
+
 # FsCDK Multi-Tier Application Example
 
 This example demonstrates how to build a complete multi-tier web application using FsCDK with AWS best practices.
@@ -20,8 +27,14 @@ Cognito for authentication
 ```
 
 ## Example Stack
+*)
 
-```fsharp
+#r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
+#r "../src/bin/Release/net8.0/publish/Constructs.dll"
+#r "../src/bin/Release/net8.0/publish/Amazon.CDK.Lib.dll"
+#r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
+#r "../src/bin/Release/net8.0/publish/FsCDK.dll"
+
 open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.RDS
@@ -29,6 +42,7 @@ open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.Cognito
 open Amazon.CDK.AWS.CloudFront
+open Amazon.CDK.AWS.DynamoDB
 open FsCDK
 
 let config = Config.get ()
@@ -178,9 +192,9 @@ stack "MultiTierApp" {
         
         // Environment variables
         environment [
-            "DATABASE_HOST", dbEndpoint
+            "DATABASE_HOST", "dbEndpoint"
             "DATABASE_NAME", "myapp"
-            "USER_POOL_ID", userPoolId
+            "USER_POOL_ID", "userPoolId"
             "REGION", config.Region
         ]
         
@@ -212,8 +226,8 @@ stack "MultiTierApp" {
         enableLogging staticAssetsBucket "cdn-logs/"
     }
 }
-```
 
+(**
 ## Best Practices Demonstrated
 
 ### Security
@@ -324,3 +338,4 @@ Approximate monthly costs (us-east-1):
 4. Configure WAF for CloudFront
 5. Set up CloudWatch alarms
 6. Implement CI/CD pipeline
+*)

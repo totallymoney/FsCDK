@@ -1,3 +1,10 @@
+(**
+---
+title: Getting Started with FsCDK - Extended Features
+category: docs
+index: 3
+---
+
 # Getting Started with FsCDK - Extended Features
 
 Welcome to the extended FsCDK! This guide will help you understand the new features and how to use them effectively.
@@ -15,8 +22,14 @@ All following AWS Well-Architected Framework best practices!
 ## Quick Start Examples
 
 ### 1. Create a Secure VPC
+*)
 
-```fsharp
+#r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
+#r "../src/bin/Release/net8.0/publish/Constructs.dll"
+#r "../src/bin/Release/net8.0/publish/Amazon.CDK.Lib.dll"
+#r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
+#r "../src/bin/Release/net8.0/publish/FsCDK.dll"
+
 open FsCDK
 open Amazon.CDK.AWS.EC2
 
@@ -25,8 +38,8 @@ vpc "MyVpc" {
     natGateways 1         // Cost-optimized
     cidr "10.0.0.0/16"    // IP address range
 }
-```
 
+(**
 **What you get:**
 - 2 public subnets (one per AZ)
 - 2 private subnets with NAT gateway access
@@ -34,8 +47,8 @@ vpc "MyVpc" {
 - Best practices baked in!
 
 ### 2. Add a PostgreSQL Database
+*)
 
-```fsharp
 open Amazon.CDK.AWS.RDS
 
 rdsInstance "MyDatabase" {
@@ -53,8 +66,8 @@ rdsInstance "MyDatabase" {
     multiAz true                       // High availability
     databaseName "myapp"
 }
-```
 
+(**
 **What you get:**
 - Encrypted database in private subnet
 - Automated backups with 7-day retention
@@ -62,8 +75,8 @@ rdsInstance "MyDatabase" {
 - Not publicly accessible (secure!)
 
 ### 3. Set Up User Authentication
+*)
 
-```fsharp
 open Amazon.CDK.AWS.Cognito
 
 // Create user pool
@@ -88,8 +101,8 @@ userPoolClient "MyAppClient" {
     // ✅ Prevents user existence errors
     // ✅ Reasonable token expiration times
 }
-```
 
+(**
 **What you get:**
 - Secure authentication with strong passwords
 - Email verification out of the box
@@ -97,8 +110,8 @@ userPoolClient "MyAppClient" {
 - Industry-standard OAuth flows
 
 ### 4. Add a CDN for Fast Delivery
+*)
 
-```fsharp
 open Amazon.CDK.AWS.CloudFront
 
 cloudFrontDistribution "MyCDN" {
@@ -111,8 +124,8 @@ cloudFrontDistribution "MyCDN" {
     // ✅ IPv6 enabled
     // ✅ Cost-optimized (US/Canada/Europe)
 }
-```
 
+(**
 **What you get:**
 - Global content delivery network
 - Modern protocols (HTTP/2, IPv6)
@@ -122,12 +135,11 @@ cloudFrontDistribution "MyCDN" {
 ## Complete Application Stack
 
 Here's how to combine everything into a production-ready stack:
+*)
 
-```fsharp
 open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.Lambda
-open FsCDK
 
 let config = Config.get ()
 
@@ -175,7 +187,7 @@ stack "ProductionApp" {
         memory 512
         
         environment [
-            "DATABASE_HOST", dbEndpoint
+            "DATABASE_HOST", "dbEndpoint"
             "DATABASE_NAME", "myapp"
         ]
     }
@@ -193,8 +205,8 @@ stack "ProductionApp" {
         defaultRootObject "index.html"
     }
 }
-```
 
+(**
 ## Best Practices Baked In
 
 FsCDK automatically applies AWS best practices:
@@ -227,8 +239,8 @@ FsCDK automatically applies AWS best practices:
 ## Common Patterns
 
 ### Pattern 1: Web Application with Auth
+*)
 
-```fsharp
 stack "WebApp" {
     vpc "WebVpc" { }
     
@@ -247,11 +259,11 @@ stack "WebApp" {
         versioned true
     }
 }
-```
 
+(**
 ### Pattern 2: Data Processing Pipeline
+*)
 
-```fsharp
 stack "DataPipeline" {
     vpc "DataVpc" { }
     
@@ -271,14 +283,16 @@ stack "DataPipeline" {
     
     bucket "DataLake" {
         versioned true
-        lifecycleRules [ /* ... */ ]
+        // lifecycleRules [ /* ... */ ]
     }
 }
-```
 
+(**
 ### Pattern 3: Serverless API with CDN
+*)
 
-```fsharp
+open Amazon.CDK.AWS.DynamoDB
+
 stack "ServerlessApi" {
     lambda "GetUsers" {
         runtime Runtime.DOTNET_8
@@ -301,13 +315,13 @@ stack "ServerlessApi" {
         defaultBehavior apiOrigin
     }
 }
-```
 
+(**
 ## Migration from Existing FsCDK
 
 Good news! **No breaking changes!** Your existing code continues to work:
+*)
 
-```fsharp
 // Your existing code still works!
 stack "MyStack" {
     lambda "MyFunction" {
@@ -324,19 +338,23 @@ stack "MyStack" {
 // Just add new features when you need them
 stack "EnhancedStack" {
     // Existing services
-    lambda "MyFunction" { /* ... */ }
+    lambda "MyFunction" { 
+        runtime Runtime.DOTNET_8
+        handler "index.handler"
+        code "./lambda"
+    }
     
     // New services
     vpc "MyVpc" { }
     rdsInstance "MyDB" { vpc myVpc; postgresEngine }
     userPool "MyAuth" { signInWithEmail }
 }
-```
 
+(**
 ## Learning Resources
 
-1. **Examples**: See `/docs/MULTI_TIER_EXAMPLE.md` for a complete application
-2. **Security**: Read `/docs/IAM_BEST_PRACTICES.md` for security guidance
+1. **Examples**: See [Multi-Tier Example](multi-tier-example.html) for a complete application
+2. **Security**: Read [IAM Best Practices](iam-best-practices.html) for security guidance
 3. **API Docs**: Check XML documentation comments in code
 4. **AWS Docs**: [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
 
@@ -350,7 +368,7 @@ stack "EnhancedStack" {
 
 ## Getting Help
 
-- 📖 Read the examples in `/docs/`
+- 📖 Read the examples in the docs
 - 🔍 Check the test files for usage patterns
 - 💬 Ask questions in GitHub Issues
 - 📚 Reference AWS CDK documentation
@@ -414,3 +432,4 @@ Future enhancements may include:
 ---
 
 Ready to build secure, scalable infrastructure with F#? Let's go! 🚀
+*)

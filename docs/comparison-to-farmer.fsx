@@ -1,3 +1,10 @@
+(**
+---
+title: Comparison with Azure (Farmer F#) to AWS (FsCDK)
+category: docs
+index: 2
+---
+
 # Comparison with Azure (Farmer F#) to AWS (FsCDK)
 
 This guide helps developers familiar with [Farmer](https://compositionalit.github.io/farmer/) (the F# DSL for Azure) transition to FsCDK for AWS infrastructure.
@@ -47,6 +54,15 @@ Both Farmer and FsCDK share similar goals:
 ### Storage: Blob Storage → S3
 
 **Farmer (Azure Blob Storage):**
+*)
+
+#r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
+#r "../src/bin/Release/net8.0/publish/Constructs.dll"
+#r "../src/bin/Release/net8.0/publish/Amazon.CDK.Lib.dll"
+#r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
+#r "../src/bin/Release/net8.0/publish/FsCDK.dll"
+
+(**
 ```fsharp
 open Farmer
 open Farmer.Builders
@@ -63,8 +79,10 @@ let deployment = arm {
 ```
 
 **FsCDK (AWS S3):**
-```fsharp
+*)
+
 open FsCDK
+open Amazon.CDK.AWS.S3
 
 stack "MyStack" {
     s3Bucket "my-bucket" {
@@ -72,8 +90,8 @@ stack "MyStack" {
         encryption BucketEncryption.S3_MANAGED
     }
 }
-```
 
+(**
 ### Compute: Azure Functions → Lambda
 
 **Farmer (Azure Functions):**
@@ -89,8 +107,9 @@ let myFunction = functions {
 ```
 
 **FsCDK (AWS Lambda):**
-```fsharp
-open FsCDK
+*)
+
+open Amazon.CDK.AWS.Lambda
 
 lambdaFunction "my-function" {
     handler "MyApp::MyApp.Handler::FunctionHandler"
@@ -100,8 +119,8 @@ lambdaFunction "my-function" {
     timeout 30.0
     environment [ "KEY", "value" ]
 }
-```
 
+(**
 ### Database: Cosmos DB → DynamoDB
 
 **Farmer (Cosmos DB):**
@@ -116,16 +135,17 @@ let cosmos = cosmosDb {
 ```
 
 **FsCDK (DynamoDB):**
-```fsharp
-open FsCDK
+*)
+
+open Amazon.CDK.AWS.DynamoDB
 
 table "my-table" {
     partitionKey "id" AttributeType.STRING
     sortKey "timestamp" AttributeType.NUMBER
     billingMode BillingMode.PAY_PER_REQUEST
 }
-```
 
+(**
 ### Networking: VNet → VPC
 
 **Farmer (Azure VNet):**
@@ -148,16 +168,17 @@ let vnet = vnet {
 ```
 
 **FsCDK (AWS VPC):**
-```fsharp
-open FsCDK
+*)
+
+open Amazon.CDK.AWS.EC2
 
 vpc "my-vpc" {
     cidr "10.0.0.0/16"
     maxAzs 2
     natGateways 1
 }
-```
 
+(**
 ### Security: Managed Identity → IAM Role
 
 **Farmer (Managed Identity):**
@@ -266,8 +287,9 @@ let config = {
 ```
 
 **FsCDK:**
-```fsharp
-open FsCDK
+*)
+
+open Amazon.CDK
 
 let config = Config.get()
 
@@ -277,8 +299,8 @@ stack "MyStack" {
         region config.Region
     }
 }
-```
 
+(**
 ### Resource Composition
 
 **Farmer:**
@@ -295,7 +317,8 @@ let deployment = arm {
 ```
 
 **FsCDK:**
-```fsharp
+*)
+
 stack "MyStack" {
     let bucket = s3Bucket "my-bucket" { }
     
@@ -306,8 +329,8 @@ stack "MyStack" {
         // Lambda can read from bucket (configure IAM separately)
     }
 }
-```
 
+(**
 ### Tagging
 
 **Farmer:**
@@ -349,7 +372,7 @@ When FsCDK builders don't cover your use case, access underlying CDK constructs.
 ## Resources
 
 - [FsCDK Documentation](https://totallymoney.github.io/FsCDK/)
-- [FsCDK Examples](/examples)
+- [FsCDK Examples](lambda-quickstart.html)
 - [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/latest/guide/home.html)
 - [Farmer Documentation](https://compositionalit.github.io/farmer/)
 - [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)
@@ -363,3 +386,4 @@ When FsCDK builders don't cover your use case, access underlying CDK constructs.
 ---
 
 Welcome to FsCDK! We're excited to have Farmer users in the community. 🎉
+*)
