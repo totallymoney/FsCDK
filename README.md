@@ -8,14 +8,15 @@
 
 </div>
 
-FsCDK is an F# library for the AWS Cloud Development Kit (CDK), enabling you to define cloud infrastructure using F#’s type safety and functional programming style. It provides F#-friendly builders on top of AWS CDK constructs, so you can compose infrastructure in a concise, declarative way while retaining full access to the underlying CDK.
+FsCDK is an F# library for the AWS Cloud Development Kit (CDK), enabling you to define cloud infrastructure using F#'s type safety and functional programming style. It provides F#-friendly builders on top of AWS CDK constructs, so you can compose infrastructure in a concise, declarative way to build reliable and maintainable cloud infrastructure as code.
 
 ## Features
 
-- Type-safe infrastructure definitions in F#
-- Functional-first, composable builders for AWS resources
-- Native interop with AWS CDK constructs and patterns
-- IDE support with type hints and IntelliSense
+- **Type-Safe Infrastructure**: Leverage F#'s strong type system to catch configuration errors at compile time
+- **Functional-First Approach**: Use F#'s functional programming features to create reusable and composable infrastructure components
+- **Native AWS CDK Integration**: Full access to AWS CDK constructs and patterns with F#-friendly APIs
+- **Immutable Infrastructure**: Define your infrastructure using immutable constructs, promoting reliable and predictable deployments
+- **IDE Support**: Excellent tooling support with type hints and IntelliSense in your favorite F# IDE
 
 ## Quick Start
 
@@ -33,9 +34,11 @@ open FsCDK
 
 let config = Config.get () // e.g., reads AWS account and region from env
 
-stack "MyStack" {
+stack "MyFirstStack" {
     app {
         context "environment" "production"
+        context "feature-flag" true
+        context "version" "1.2.3"
     }
 
     environment {
