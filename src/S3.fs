@@ -14,7 +14,7 @@ type BucketSpec =
         ConstructId: string
         Props: BucketProps
         /// The underlying CDK Bucket construct - use for advanced scenarios
-        Bucket: Bucket
+        mutable Bucket: Bucket option
     }
 
 type BucketRef =
@@ -195,7 +195,11 @@ type BucketBuilder(name: string) =
             props.ServerAccessLogsBucket <-
                 match v with
                 | BucketRef.BucketInterface b -> b
-                | BucketRef.BucketSpecRef b -> b.Bucket)
+                | BucketRef.BucketSpecRef b ->
+                    match b.Bucket with
+                    | None -> 
+                        failwith $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+                    | Some bu -> bu)
 
         config.ServerAccessLogsPrefix
         |> Option.iter (fun v -> props.ServerAccessLogsPrefix <- v)
@@ -220,7 +224,7 @@ type BucketBuilder(name: string) =
         { BucketName = bucketName
           ConstructId = constructId
           Props = props
-          Bucket = null } // Will be created during stack construction
+          Bucket = None } // Will be created during stack construction
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: BucketConfig, id: string) = { config with ConstructId = Some id }

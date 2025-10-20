@@ -70,7 +70,12 @@ type ImportSourceBuilder() =
         spec.Bucket <-
             match bucket with
             | BucketRef.BucketInterface b -> b
-            | BucketRef.BucketSpecRef b -> b.Bucket
+            | BucketRef.BucketSpecRef b ->
+                match b.Bucket with
+                | None -> 
+                    failwith $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+                | Some bu -> bu
+
 
         spec.InputFormat <- input
 

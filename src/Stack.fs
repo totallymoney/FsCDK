@@ -86,7 +86,15 @@ module StackOperations =
 
             Queue(stack, queueSpec.ConstructId, props) |> ignore
 
-        | BucketOp bucketSpec -> Bucket(stack, bucketSpec.ConstructId, bucketSpec.Props) |> ignore
+        | BucketOp bucketSpec ->
+            match bucketSpec.Bucket with
+            | None ->
+                let bucket = Bucket(stack, bucketSpec.ConstructId, bucketSpec.Props)
+                bucketSpec.Bucket <- Some bucket
+            | Some b ->
+                if b.Stack <> stack || b.BucketName <> bucketSpec.BucketName then
+                    printfn $"Warning: Bucket %s{b.BucketName} was already created to stack {b.Stack.StackName} when constructing same but %s{b.BucketName} to %s{stack.StackName}."
+                ()
 
         | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec
 
@@ -94,13 +102,17 @@ module StackOperations =
             let vpc = Vpc(stack, vpcSpec.ConstructId, vpcSpec.Props)
             vpcSpec.Vpc <- Some vpc
 
-        | SecurityGroupOp sgSpec -> SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props) |> ignore
+        | SecurityGroupOp sgSpec ->
+            let sg = SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props)
+            sgSpec.SecurityGroup <- Some sg
 
         | RdsInstanceOp rdsSpec -> DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
 
         | CloudFrontDistributionOp cfSpec -> Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
 
-        | UserPoolOp upSpec -> UserPool(stack, upSpec.ConstructId, upSpec.Props) |> ignore
+        | UserPoolOp upSpec ->
+            let up = UserPool(stack, upSpec.ConstructId, upSpec.Props)
+            upSpec.UserPool <- Some up
 
         | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
 
