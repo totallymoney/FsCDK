@@ -25,6 +25,7 @@ Always grant only the permissions required to perform a task.
 open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
+open Amazon.CDK.AWS.IAM
 
 (**
 #### ❌ BAD: Too permissive
@@ -411,7 +412,7 @@ rdsInstance "SecureDatabase" {
     postgresEngine
     
     // Credentials automatically stored in Secrets Manager
-    credentials Credentials.FromGeneratedSecret("admin")
+    credentials (Credentials.FromGeneratedSecret("admin"))
 }
 
 (**

@@ -46,11 +46,11 @@ open Amazon.CDK.AWS.DynamoDB
 open FsCDK
 
 // Use environment variables or defaults for AWS account/region
-let account = 
+let accountId = 
     System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
     |> Option.ofObj 
     |> Option.defaultValue "000000000000"
-let region = 
+let regionName = 
     System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
     |> Option.ofObj 
     |> Option.defaultValue "us-east-1"
@@ -61,13 +61,7 @@ stack "MultiTierApp" {
         context "app-name" "my-web-app"
     }
 
-    environment {
-        account account
-        region region
-    }
-    
     stackProps {
-        stackEnv
         description "Multi-tier web application with database and CDN"
         tags [ 
             "project", "MultiTierApp"

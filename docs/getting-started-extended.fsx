@@ -51,6 +51,10 @@ vpc "MyVpc" {
 
 open Amazon.CDK.AWS.RDS
 
+(**
+Here's how to add a PostgreSQL database (shown in full stack example below):
+
+```fsharp
 rdsInstance "MyDatabase" {
     vpc myVpc
     postgresEngine                     // PostgreSQL 15
@@ -66,8 +70,8 @@ rdsInstance "MyDatabase" {
     multiAz true                       // High availability
     databaseName "myapp"
 }
+```
 
-(**
 **What you get:**
 - Encrypted database in private subnet
 - Automated backups with 7-day retention
@@ -142,23 +146,17 @@ open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.Lambda
 
 // Use environment variables or defaults for AWS account/region
-let account = 
+let accountId = 
     System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
     |> Option.ofObj 
     |> Option.defaultValue "000000000000"
-let region = 
+let regionName = 
     System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
     |> Option.ofObj 
     |> Option.defaultValue "us-east-1"
 
 stack "ProductionApp" {
-    environment {
-        account account
-        region region
-    }
-    
     stackProps {
-        stackEnv
         description "Production application stack"
         tags [ "environment", "production"; "managed-by", "FsCDK" ]
     }

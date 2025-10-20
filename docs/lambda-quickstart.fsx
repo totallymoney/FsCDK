@@ -80,11 +80,11 @@ open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.Logs
 
 // Use environment variables or defaults for AWS account/region
-let account = 
+let accountId = 
     System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT") 
     |> Option.ofObj 
     |> Option.defaultValue "000000000000"
-let region = 
+let regionName = 
     System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION") 
     |> Option.ofObj 
     |> Option.defaultValue "us-east-1"
@@ -160,13 +160,7 @@ Reduces log retention for cost savings.
 *)
 
 stack "LambdaQuickstartStack" {
-    environment {
-        account account
-        region region
-    }
-    
     stackProps {
-        stackEnv
         description "FsCDK Lambda Quickstart Example - demonstrates Lambda functions with security defaults"
         tags [ 
             "Project", "FsCDK-Examples"
@@ -206,7 +200,7 @@ stack "LambdaQuickstartStack" {
         environment [
             "LOG_LEVEL", "INFO"
             "API_VERSION", "v1"
-            "REGION", region
+            "REGION", regionName
         ]
         description "API handler with encrypted environment variables"
     }
