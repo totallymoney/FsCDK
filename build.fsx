@@ -50,12 +50,6 @@ pipeline "ci" {
 
     stage "pack" { run $"dotnet pack {sln} -c {config} -p:PackageOutputPath=\"%s{nupkgs}\" {versionProperty}" }
 
-
-        // Note: This will probably fail on Windows because there is no bash.
-        // There could be bash under git directory (something like c:\Program Files\Git\bin\ that may or may not be in PATH variable).
-        // But also "rm" is a bit different command.
-        whenNot { platformWindows }
-
     runIfOnlySpecified false
 }
 
