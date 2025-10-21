@@ -189,7 +189,7 @@ let vnet = vnet {
 }
 ```
 
-**FsCDK (AWS VPC):**
+**FsCDK (AWS VPC, "Virtual Private Cloud"):**
 *)
 
 open Amazon.CDK.AWS.EC2
@@ -230,11 +230,13 @@ let customRole = IAM.createRole "lambda.amazonaws.com" "my-custom-role"
 ### 1. Stack Model
 
 **Farmer:**
+
 - Uses ARM templates
 - Deployment at resource group level
 - Single region per deployment
 
 **FsCDK:**
+
 - Uses AWS CloudFormation
 - Stack-based deployment
 - Multi-region support
@@ -242,10 +244,12 @@ let customRole = IAM.createRole "lambda.amazonaws.com" "my-custom-role"
 ### 2. Naming Conventions
 
 **Farmer:**
+
 - Resource names are globally unique or scoped to resource group
 - Naming restrictions vary by service
 
 **FsCDK:**
+
 - Most resources autogenerate unique names
 - Logical IDs separate from physical names
 - More flexible naming
@@ -253,11 +257,13 @@ let customRole = IAM.createRole "lambda.amazonaws.com" "my-custom-role"
 ### 3. Security Defaults
 
 **Farmer:**
+
 - Follows Azure best practices
 - Managed identities for authentication
 - Network security groups
 
 **FsCDK:**
+
 - Follows AWS Well-Architected Framework
 - IAM roles and policies
 - Security groups and NACLs
