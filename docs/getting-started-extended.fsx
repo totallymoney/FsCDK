@@ -12,6 +12,7 @@ Welcome to the extended FsCDK! This guide will help you understand the new featu
 ## What's New?
 
 FsCDK now includes builders for:
+
 - 🌐 **VPC & Networking** - Secure, multi-AZ virtual private clouds
 - 🗄️ **RDS PostgreSQL** - Managed databases with automated backups
 - ⚡ **CloudFront** - Global CDN for fast content delivery
@@ -41,6 +42,7 @@ vpc "MyVpc" {
 
 (**
 **What you get:**
+
 - 2 public subnets (one per AZ)
 - 2 private subnets with NAT gateway access
 - DNS hostnames and support enabled
@@ -73,6 +75,7 @@ rdsInstance "MyDatabase" {
 ```
 
 **What you get:**
+
 - Encrypted database in private subnet
 - Automated backups with 7-day retention
 - Multi-AZ replication for HA
@@ -109,6 +112,7 @@ userPoolClient "MyAppClient" {
 
 (**
 **What you get:**
+
 - Secure authentication with strong passwords
 - Email verification out of the box
 - MFA support for enhanced security
@@ -136,6 +140,7 @@ cloudFrontDistribution "MyCDN" {
 
 (**
 **What you get:**
+
 - Global content delivery network
 - Modern protocols (HTTP/2, IPv6)
 - Secure by default (TLS 1.2+)
@@ -403,6 +408,7 @@ stack "EnhancedStack" {
 ## Cost Management
 
 Monitor your costs:
+
 - Use `aws ce get-cost-and-usage` CLI command
 - Set up AWS Budgets
 - Review the cost estimates in examples
@@ -442,6 +448,7 @@ vpc "MyVpc-v2" { ... }
 ## What's Coming Next?
 
 Future enhancements may include:
+
 - Application Load Balancer (ALB)
 - Network Load Balancer (NLB)
 - Route53 DNS zones
