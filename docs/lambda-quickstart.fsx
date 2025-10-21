@@ -270,6 +270,7 @@ lambda "my-function" {
 ### Environment Variable Encryption
 
 All environment variables are encrypted at rest using KMS. This protects:
+
 - API keys and secrets
 - Database connection strings
 - Configuration values
@@ -279,6 +280,7 @@ All environment variables are encrypted at rest using KMS. This protects:
 ### Least-Privilege IAM
 
 The execution role includes only:
+
 - CloudWatch Logs write permissions
 - KMS decrypt (for environment variables)
 
@@ -296,6 +298,7 @@ IAM.allow ["s3:GetObject"] ["arn:aws:s3:::my-bucket/*"]
 ### Log Retention
 
 Logs are retained for 90 days by default, balancing:
+
 - **Auditability**: Sufficient history for investigation
 - **Cost**: Prevents unbounded log storage costs
 - **Compliance**: Meets many regulatory requirements
@@ -305,6 +308,7 @@ Logs are retained for 90 days by default, balancing:
 ### Memory Configuration
 
 Lambda CPU scales with memory:
+
 - **128-512 MB**: Low-power functions
 - **512-1536 MB**: Standard workloads (default: 512 MB)
 - **1536-10240 MB**: CPU-intensive tasks
@@ -312,6 +316,7 @@ Lambda CPU scales with memory:
 ### Timeout
 
 Set timeout based on expected execution time:
+
 - **API handlers**: 5-30 seconds (default: 30s)
 - **Batch processing**: 60-900 seconds
 - **Max**: 15 minutes (900 seconds)
