@@ -12,6 +12,7 @@ This guide helps developers familiar with [Farmer](https://compositionalit.githu
 ## Philosophy
 
 Both Farmer and FsCDK share similar goals:
+
 - **Type Safety**: Catch configuration errors at compile time
 - **Security by Default**: Follow cloud provider best practices
 - **Composability**: Build reusable infrastructure components
