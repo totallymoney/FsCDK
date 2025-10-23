@@ -12,6 +12,7 @@ This guide helps developers familiar with [Farmer](https://compositionalit.githu
 ## Philosophy
 
 Both Farmer and FsCDK share similar goals:
+
 - **Type Safety**: Catch configuration errors at compile time
 - **Security by Default**: Follow cloud provider best practices
 - **Composability**: Build reusable infrastructure components
@@ -21,31 +22,50 @@ Both Farmer and FsCDK share similar goals:
 
 ### Azure → AWS Service Mapping
 
-| Azure Service | Farmer | AWS Service | FsCDK |
-|---------------|--------|-------------|-------|
-| **Storage** |
+Mapping of services
+
+#### Storage
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
 | Blob Storage | `storageAccount` | S3 | `s3Bucket` |
 | Storage Queue | `storageQueue` | SQS | `queue` |
 | Table Storage | `table` | DynamoDB | `table` |
-| **Compute** |
+
+#### Compute
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
 | App Service | `webApp` | Elastic Beanstalk | `eb` |
 | Azure Functions | `functions` | Lambda | `lambdaFunction` |
 | Container Instances | `containerGroup` | ECS/Fargate | `ecs` |
 | Virtual Machine | `vm` | EC2 | `ec2` |
 | AKS | `aks` | EKS | (planned) |
-| **Database** |
+
+#### Databases
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
 | Cosmos DB | `cosmosDb` | DynamoDB | `table` |
 | Azure SQL | `sqlServer` | RDS | `rds` |
 | PostgreSQL | `postgreSql` | RDS PostgreSQL | `rds` |
-| **Networking** |
+
+#### Networking
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
 | Virtual Network | `vnet` | VPC | `vpc` |
 | Load Balancer | `loadBalancer` | ALB/NLB | `applicationLoadBalancer` |
 | Application Gateway | `appGateway` | ALB | `applicationLoadBalancer` |
 | DNS | `dns` | Route53 | Route53 |
-| **Security** |
+
+#### Security
+
 | Key Vault | `keyVault` | Secrets Manager | `secret` |
 | Managed Identity | `identity` | IAM Role | IAM helpers |
-| **Messaging** |
+
+#### Messaging
+
 | Event Hub | `eventHub` | Kinesis | (planned) |
 | Service Bus | `serviceBus` | SNS/SQS | `topic`/`queue` |
 
@@ -111,14 +131,15 @@ let myFunction = functions {
 
 open Amazon.CDK.AWS.Lambda
 
-lambda "my-function" {
-    handler "MyApp::MyApp.Handler::FunctionHandler"
-    runtime Runtime.DOTNET_8
-    code "./publish"
-    memory 512
-    timeout 30.0
-    environment [ "KEY", "value" ]
-}
+let myLambdaFunction =
+    lambda "my-function" {
+        handler "MyApp::MyApp.Handler::FunctionHandler"
+        runtime Runtime.DOTNET_8
+        code "./publish"
+        memory 512
+        timeout 30.0
+        environment [ "KEY", "value" ]
+    }
 
 (**
 ### Database: Cosmos DB → DynamoDB
@@ -139,11 +160,12 @@ let cosmos = cosmosDb {
 
 open Amazon.CDK.AWS.DynamoDB
 
-table "my-table" {
-    partitionKey "id" AttributeType.STRING
-    sortKey "timestamp" AttributeType.NUMBER
-    billingMode BillingMode.PAY_PER_REQUEST
-}
+let myDynamoTable =
+    table "my-table" {
+        partitionKey "id" AttributeType.STRING
+        sortKey "timestamp" AttributeType.NUMBER
+        billingMode BillingMode.PAY_PER_REQUEST
+    }
 
 (**
 ### Networking: VNet → VPC
@@ -167,16 +189,17 @@ let vnet = vnet {
 }
 ```
 
-**FsCDK (AWS VPC):**
+**FsCDK (AWS VPC, "Virtual Private Cloud"):**
 *)
 
 open Amazon.CDK.AWS.EC2
 
-vpc "my-vpc" {
-    cidr "10.0.0.0/16"
-    maxAzs 2
-    natGateways 1
-}
+let myVirtualPrivateCloud =
+    vpc "my-vpc" {
+        cidr "10.0.0.0/16"
+        maxAzs 2
+        natGateways 1
+    }
 
 (**
 ### Security: Managed Identity → IAM Role
@@ -207,11 +230,13 @@ let customRole = IAM.createRole "lambda.amazonaws.com" "my-custom-role"
 ### 1. Stack Model
 
 **Farmer:**
+
 - Uses ARM templates
 - Deployment at resource group level
 - Single region per deployment
 
 **FsCDK:**
+
 - Uses AWS CloudFormation
 - Stack-based deployment
 - Multi-region support
@@ -219,10 +244,12 @@ let customRole = IAM.createRole "lambda.amazonaws.com" "my-custom-role"
 ### 2. Naming Conventions
 
 **Farmer:**
+
 - Resource names are globally unique or scoped to resource group
 - Naming restrictions vary by service
 
 **FsCDK:**
+
 - Most resources autogenerate unique names
 - Logical IDs separate from physical names
 - More flexible naming
@@ -230,11 +257,13 @@ let customRole = IAM.createRole "lambda.amazonaws.com" "my-custom-role"
 ### 3. Security Defaults
 
 **Farmer:**
+
 - Follows Azure best practices
 - Managed identities for authentication
 - Network security groups
 
 **FsCDK:**
+
 - Follows AWS Well-Architected Framework
 - IAM roles and policies
 - Security groups and NACLs
@@ -398,4 +427,5 @@ When FsCDK builders don't cover your use case, access underlying CDK constructs.
 Welcome to FsCDK! We're excited to have Farmer users in the community. 🎉
 *)
 
+(*** hide ***)
 ()

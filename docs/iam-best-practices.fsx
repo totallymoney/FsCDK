@@ -215,7 +215,7 @@ bucket "SecureAssets" {
 }
 
 (**
-## CloudFront Security
+## CloudFront CDN Security
 
 Secure content delivery with CloudFront.
 *)
@@ -329,7 +329,7 @@ lambda "NotificationSender" {
 }
 
 (**
-## VPC Security
+## Virtual Private Cloud (VPC) Security
 
 Network isolation and security.
 *)
