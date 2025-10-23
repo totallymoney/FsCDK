@@ -23,7 +23,7 @@ jobs:
         dotnet-version: 8.0.x
 
     - name: Restore
-      run: dotnet restore ${SLN_FILE}
+      run: dotnet restore ${{env.SLN_FILE}}
 
     - name: CI
       run: dotnet fsi build.fsx

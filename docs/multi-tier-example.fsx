@@ -331,7 +331,8 @@ To scale for production:
 
 ## Cost Estimation
 
-Approximate monthly costs (us-east-1):
+Approximate monthly costs (us-east-1) (at of Oct25):
+
 - VPC + NAT Gateway: ~$32
 - RDS t3.small (Multi-AZ): ~$50
 - Lambda (1M requests, 512MB): ~$10
