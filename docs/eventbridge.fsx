@@ -111,34 +111,6 @@ Note: Custom event buses are created using the CDK EventBus class directly,
 then referenced in rules.
 *)
 
-(*
-stack "CustomEventBus" {
-    // Create custom event bus using CDK directly
-    let customBus = EventBus(this, "AppEventBus", EventBusProps(EventBusName = "my-application-events"))
-
-    let orderProcessor =
-        lambda "OrderProcessor" {
-            runtime Runtime.DOTNET_8
-            handler "App::ProcessOrder"
-            code "./lambda"
-        }
-
-    // Rule on custom bus
-    let orderPattern =
-        EventPattern(
-            Source = [| "my.application" |],
-            DetailType = [| "Order Placed" |]
-        )
-
-    eventBridgeRule "ProcessOrders" {
-        description "Process new orders"
-        eventPattern orderPattern
-        eventBus customBus
-        target (LambdaFunction(orderProcessor.Function.Value))
-    }
-}
-*)
-
 (**
 ## Multi-Target Rules
 

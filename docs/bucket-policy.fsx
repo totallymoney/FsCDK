@@ -49,8 +49,9 @@ stack "SecureBucket" {
 Allow CloudFront to access a private S3 bucket.
 *)
 
-(*
+
 open Amazon.CDK.AWS.CloudFront
+
 stack "CloudFrontOrigin" {
 
     let websiteBucket =
@@ -60,15 +61,15 @@ stack "CloudFrontOrigin" {
         }
 
     // CloudFront Origin Access Identity
-    let oai = OriginAccessIdentity(this, "OAI")
+    let oai = originAccessIdentity "MyOAI" { comment "S3 access for CloudFront" }
 
     bucketPolicy "CloudFrontAccess" {
         bucket websiteBucket
-        allowCloudFrontOAI oai.CloudFrontOriginAccessIdentityS3CanonicalUserId
+        allowCloudFrontOAI oai.Identity.Value.OriginAccessIdentityId // CloudFrontOriginAccessIdentityS3CanonicalUserId
         denyInsecureTransport
     }
 }
-*)
+
 
 (**
 ## IP Address Restrictions
@@ -196,5 +197,4 @@ stack "ComprehensivePolicy" {
 - ✅ Minimize policy complexity
 - ✅ Use bucket policies over ACLs
 - ✅ Cache policy evaluation results when possible
-
 *)

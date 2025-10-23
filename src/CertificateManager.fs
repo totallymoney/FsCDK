@@ -184,7 +184,18 @@ type CertificateBuilder(name: string) =
     [<CustomOperation("dnsValidation")>]
     member _.DnsValidation(config: CertificateConfig, hostedZone: IHostedZone) =
         { config with
-            Validation = Some(CertificateValidation.FromDns(hostedZone)) }
+            Validation = Some(CertificateValidation.FromDns hostedZone) }
+
+    /// <summary>Uses DNS validation with a specific hosted zone.</summary>
+    [<CustomOperation("dnsValidation")>]
+    member _.DnsValidation(config: CertificateConfig, hostedZone: Route53HostedZoneSpec) =
+        match hostedZone.HostedZone with
+        | Some knownZone ->
+            { config with
+                Validation = Some(CertificateValidation.FromDns knownZone) }
+        | None ->
+            // Todo: This should carry the process forward and resolve it on Run instead of here.
+            failwith "DNS-validation from new zone not implemented yet"
 
     /// <summary>Uses email validation.</summary>
     [<CustomOperation("emailValidation")>]
@@ -213,7 +224,7 @@ type DnsValidatedCertificateConfig =
       ConstructId: string option
       DomainName: string option
       SubjectAlternativeNames: string list
-      HostedZone: IHostedZone option
+      HostedZone: Route53HostedZoneRef option
       Region: string option
       CertificateName_: string option
       KeyAlgorithm: KeyAlgorithm option }
@@ -300,7 +311,13 @@ type DnsValidatedCertificateBuilder(name: string) =
         // Hosted zone is required for DNS validation
         props.HostedZone <-
             match config.HostedZone with
-            | Some hz -> hz
+            | Some hz ->
+                match hz with
+                | Route53HostedZoneRef.Route53HostedZoneInterface ihz -> ihz
+                | Route53HostedZoneRef.Route53HostedZoneSpecRef sp ->
+                    match sp.HostedZone with
+                    | Some hz -> hz
+                    | None -> invalidArg "hostedZone" $"Hosted zone {sp.ZoneName} has to be resolved first."
             | None -> invalidArg "hostedZone" "Hosted zone is required for DNS Validated Certificate"
 
         if not (List.isEmpty config.SubjectAlternativeNames) then
@@ -333,7 +350,13 @@ type DnsValidatedCertificateBuilder(name: string) =
     [<CustomOperation("hostedZone")>]
     member _.HostedZone(config: DnsValidatedCertificateConfig, hostedZone: IHostedZone) =
         { config with
-            HostedZone = Some hostedZone }
+            HostedZone = Some(Route53HostedZoneRef.Route53HostedZoneInterface hostedZone) }
+
+    /// <summary>Sets the Route53 hosted zone for DNS validation.</summary>
+    [<CustomOperation("hostedZone")>]
+    member _.HostedZone(config: DnsValidatedCertificateConfig, hostedZone: Route53HostedZoneSpec) =
+        { config with
+            HostedZone = Some(Route53HostedZoneRef.Route53HostedZoneSpecRef hostedZone) }
 
     /// <summary>Sets the region for the certificate (useful for CloudFront which requires us-east-1).</summary>
     [<CustomOperation("region")>]

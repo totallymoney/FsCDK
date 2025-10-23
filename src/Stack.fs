@@ -15,6 +15,9 @@ open Amazon.CDK.AWS.Events
 open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.CertificateManager
 open Amazon.CDK.AWS.CloudWatch
+open Amazon.CDK.AWS.ECS
+open Amazon.CDK.AWS.Kinesis
+open Amazon.CDK.AWS.Route53
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -48,6 +51,10 @@ type Operation =
     | CertificateOp of CertificateSpec
     | BucketPolicyOp of BucketPolicySpec
     | CloudWatchDashboardOp of DashboardSpec
+    | EKSClusterOp of EKSClusterSpec
+    | KinesisStreamOp of KinesisStreamSpec
+    | HostedZoneOp of Route53HostedZoneSpec
+    | OriginAccessIdentityOp of OriginAccessIdentitySpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -59,7 +66,7 @@ module StackOperations =
         match operation with
         | TableOp tableSpec ->
             let t = Table(stack, tableSpec.ConstructId, tableSpec.Props)
-            tableSpec.Table <- t
+            tableSpec.Table <- Some t
 
         | FunctionOp lambdaSpec ->
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
@@ -210,6 +217,21 @@ module StackOperations =
             let dashboard = Dashboard(stack, dashSpec.ConstructId, dashSpec.Props)
             dashSpec.Dashboard <- Some dashboard
 
+        | EKSClusterOp spec ->
+            let cluster = AWS.EKS.Cluster(stack, spec.ConstructId, spec.Props)
+            spec.Cluster <- Some cluster
+
+        | KinesisStreamOp spec ->
+            let stream = Stream(stack, spec.ConstructId, spec.Props)
+            spec.Stream <- Some stream
+
+        | HostedZoneOp spec ->
+            let zone = HostedZone(stack, spec.ConstructId, spec.Props)
+            spec.HostedZone <- Some zone
+
+        | OriginAccessIdentityOp spec ->
+            let oai = OriginAccessIdentity(stack, spec.ConstructId, spec.Props)
+            spec.Identity <- Some oai
 
 // ============================================================================
 // Stack and App Configuration DSL
@@ -397,6 +419,30 @@ type StackBuilder(name: string) =
           App = None
           Props = None
           Operations = [ CloudWatchDashboardOp dashSpec ] }
+
+    member _.Yield(spec: EKSClusterSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ EKSClusterOp spec ] }
+
+    member _.Yield(spec: KinesisStreamSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ KinesisStreamOp spec ] }
+
+    member _.Yield(spec: Route53HostedZoneSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ HostedZoneOp spec ] }
+
+    member _.Yield(spec: OriginAccessIdentitySpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ OriginAccessIdentityOp spec ] }
 
     member _.Zero() : StackConfig =
         { Name = name

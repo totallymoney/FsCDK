@@ -252,6 +252,10 @@ type EventBusBuilder(name: string) =
         { config with
             EventSourceName = Some sourceName }
 
+    /// <summary>Sets a custom event bus name (creates a custom event bus, not default).</summary>
+    [<CustomOperation("customEventBusName")>]
+    member _.CustomEventBusName(config: EventBusConfig, name: string) = { config with EventBusName = name }
+
 // ============================================================================
 // Builders
 // ============================================================================

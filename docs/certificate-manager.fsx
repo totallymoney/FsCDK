@@ -58,18 +58,17 @@ stack "WildcardCert" {
 Use a Route53 hosted zone for automated DNS validation.
 *)
 
-(*
+
 stack "Route53Cert" {
-    // Assuming hosted zone exists
-    let hostedZone = HostedZone.FromLookup(this, "Zone", HostedZoneProviderProps(DomainName = "example.com"))
+    let myHostedZone = hostedZone "example.com" { comment "Production domain" }
 
     certificate "Route53Cert" {
         domainName "example.com"
         subjectAlternativeName "*.example.com"
-        dnsValidation hostedZone
+        dnsValidation myHostedZone
     }
 }
-*)
+
 
 (**
 ## CloudFront Certificate (us-east-1)
@@ -77,17 +76,15 @@ stack "Route53Cert" {
 CloudFront requires certificates in us-east-1. Use DnsValidatedCertificate for cross-region deployment.
 *)
 
-(*
 stack "CloudFrontCert" {
-    let hostedZone = HostedZone.FromLookup(this, "Zone", HostedZoneProviderProps(DomainName = "example.com"))
+    let myHostedZone = hostedZone "example.com" { comment "Production domain" }
 
     dnsValidatedCertificate "CFCert" {
         domainName "cdn.example.com"
-        hostedZone hostedZone
+        hostedZone myHostedZone
         region "us-east-1" // Required for CloudFront
     }
 }
-*)
 
 (**
 ## Multi-Domain Certificate

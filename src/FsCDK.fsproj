@@ -52,6 +52,8 @@
       <Compile Include="OIDCProvider.fs" />
       <Compile Include="RouteTable.fs" />
       <Compile Include="VPCGatewayAttachment.fs" />
+      <Compile Include="EKS.fs" />
+      <Compile Include="Kinesis.fs" />
 
       <Compile Include="Stack.fs" />
       <Compile Include="App.fs" />
