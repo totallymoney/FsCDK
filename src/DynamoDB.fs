@@ -161,7 +161,8 @@ type TableConfig =
 type TableSpec =
     { TableName: string
       ConstructId: string
-      Props: TableProps }
+      Props: TableProps
+      mutable Table : ITable }
 
 type TableBuilder(name: string) =
     member _.Yield _ : TableConfig =

@@ -53,7 +53,8 @@ type FunctionSpec =
     { FunctionName: string
       ConstructId: string // Construct ID for CDK
       Props: FunctionProps
-      Actions: (Function -> unit) list }
+      Actions: (Function -> unit) list
+      mutable Function: IFunction option }
 
 type FunctionBuilder(name: string) =
     member _.Yield(spec: EventInvokeConfigSpec) : FunctionConfig =
@@ -563,7 +564,8 @@ type FunctionBuilder(name: string) =
         { FunctionName = config.FunctionName
           ConstructId = constructId
           Props = props
-          Actions = actions }
+          Actions = actions
+          Function = None }
 
     // Custom operations for primitive values
     /// <summary>Sets the construct ID for the Lambda function.</summary>

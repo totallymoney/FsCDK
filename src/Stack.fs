@@ -10,6 +10,11 @@ open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.RDS
 open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.Cognito
+open Amazon.CDK.AWS.ElasticLoadBalancingV2
+open Amazon.CDK.AWS.Events
+open Amazon.CDK.AWS.IAM
+open Amazon.CDK.AWS.CertificateManager
+open Amazon.CDK.AWS.CloudWatch
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -30,6 +35,19 @@ type Operation =
     | CloudFrontDistributionOp of DistributionSpec
     | UserPoolOp of UserPoolSpec
     | UserPoolClientOp of UserPoolClientSpec
+    // New operations
+    | NetworkLoadBalancerOp of NetworkLoadBalancerSpec
+    | EventBridgeRuleOp of EventBridgeRuleSpec
+    | EventBusOp of EventBusSpec
+    | BastionHostOp of BastionHostSpec
+    | VPCGatewayAttachmentOp of VPCGatewayAttachmentSpec
+    | RouteTableOp of RouteTableSpec
+    | RouteOp of RouteSpec
+    | OIDCProviderOp of OIDCProviderSpec
+    | ManagedPolicyOp of ManagedPolicySpec
+    | CertificateOp of CertificateSpec
+    | BucketPolicyOp of BucketPolicySpec
+    | CloudWatchDashboardOp of DashboardSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -39,10 +57,13 @@ module StackOperations =
     // Process a single operation on a stack
     let processOperation (stack: Stack) (operation: Operation) : unit =
         match operation with
-        | TableOp tableSpec -> Table(stack, tableSpec.ConstructId, tableSpec.Props) |> ignore
+        | TableOp tableSpec ->
+            let t = Table(stack, tableSpec.ConstructId, tableSpec.Props)
+            tableSpec.Table <- t
 
         | FunctionOp lambdaSpec ->
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
+            lambdaSpec.Function <- Some fn
 
             for action in lambdaSpec.Actions do
                 action fn
@@ -117,6 +138,77 @@ module StackOperations =
             upSpec.UserPool <- Some up
 
         | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
+
+        // New operations
+        | NetworkLoadBalancerOp nlbSpec ->
+            let nlb = NetworkLoadBalancer(stack, nlbSpec.ConstructId, nlbSpec.Props)
+
+            if nlb.Vpc = null then
+                failwith "VPC is required for Network Load Balancer"
+
+            nlbSpec.LoadBalancer <- Some nlb
+
+
+        | EventBridgeRuleOp ruleSpec ->
+            let rule = Rule(stack, ruleSpec.ConstructId, ruleSpec.Props)
+            ruleSpec.Rule <- Some rule
+
+        | EventBusOp busSpec ->
+            let bus =
+                Amazon.CDK.AWS.Events.EventBus(
+                    stack,
+                    busSpec.ConstructId,
+                    EventBusProps(EventBusName = busSpec.EventBusName)
+                )
+
+            busSpec.EventBus <- Some bus
+
+        | BastionHostOp bastionSpec ->
+            let bastion = BastionHostLinux(stack, bastionSpec.ConstructId, bastionSpec.Props)
+            bastionSpec.BastionHost <- Some bastion
+
+        | VPCGatewayAttachmentOp attachSpec ->
+            let props = CfnVPCGatewayAttachmentProps()
+            props.VpcId <- attachSpec.VpcId
+
+            attachSpec.InternetGatewayId
+            |> Option.iter (fun id -> props.InternetGatewayId <- id)
+
+            attachSpec.VpnGatewayId |> Option.iter (fun id -> props.VpnGatewayId <- id)
+            let attachment = CfnVPCGatewayAttachment(stack, attachSpec.ConstructId, props)
+            attachSpec.Attachment <- Some attachment
+
+        | RouteTableOp rtSpec ->
+            let rt = CfnRouteTable(stack, rtSpec.ConstructId, rtSpec.Props)
+            rtSpec.RouteTable <- Some rt
+
+        | RouteOp routeSpec -> CfnRoute(stack, routeSpec.ConstructId, routeSpec.Props) |> ignore
+
+        | OIDCProviderOp oidcSpec ->
+            let provider = OpenIdConnectProvider(stack, oidcSpec.ConstructId, oidcSpec.Props)
+            oidcSpec.Provider <- Some provider
+
+        | ManagedPolicyOp policySpec ->
+            let policy =
+                Amazon.CDK.AWS.IAM.ManagedPolicy(stack, policySpec.ConstructId, policySpec.Props)
+
+            policySpec.Policy <- Some policy
+
+        | CertificateOp certSpec ->
+            let cert =
+                Amazon.CDK.AWS.CertificateManager.Certificate(stack, certSpec.ConstructId, certSpec.Props)
+
+            certSpec.Certificate <- Some cert
+
+        | BucketPolicyOp policySpec ->
+            let policy =
+                Amazon.CDK.AWS.S3.BucketPolicy(stack, policySpec.ConstructId, policySpec.Props)
+
+            policySpec.Policy <- Some policy
+
+        | CloudWatchDashboardOp dashSpec ->
+            let dashboard = Dashboard(stack, dashSpec.ConstructId, dashSpec.Props)
+            dashSpec.Dashboard <- Some dashboard
 
 
 // ============================================================================
@@ -232,6 +324,79 @@ type StackBuilder(name: string) =
           App = None
           Props = Some props
           Operations = [] }
+
+    // New Yield overloads
+    member _.Yield(nlbSpec: NetworkLoadBalancerSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ NetworkLoadBalancerOp nlbSpec ] }
+
+    member _.Yield(ruleSpec: EventBridgeRuleSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ EventBridgeRuleOp ruleSpec ] }
+
+    member _.Yield(busSpec: EventBusSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ EventBusOp busSpec ] }
+
+    member _.Yield(bastionSpec: BastionHostSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ BastionHostOp bastionSpec ] }
+
+    member _.Yield(attachSpec: VPCGatewayAttachmentSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ VPCGatewayAttachmentOp attachSpec ] }
+
+    member _.Yield(rtSpec: RouteTableSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ RouteTableOp rtSpec ] }
+
+    member _.Yield(routeSpec: RouteSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ RouteOp routeSpec ] }
+
+    member _.Yield(oidcSpec: OIDCProviderSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ OIDCProviderOp oidcSpec ] }
+
+    member _.Yield(policySpec: ManagedPolicySpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ ManagedPolicyOp policySpec ] }
+
+    member _.Yield(certSpec: CertificateSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ CertificateOp certSpec ] }
+
+    member _.Yield(policySpec: BucketPolicySpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ BucketPolicyOp policySpec ] }
+
+    member _.Yield(dashSpec: DashboardSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ CloudWatchDashboardOp dashSpec ] }
 
     member _.Zero() : StackConfig =
         { Name = name

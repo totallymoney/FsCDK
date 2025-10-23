@@ -30,6 +30,15 @@
         <Compile Include="CognitoTests.fs" />
         <Compile Include="AppTests.fs" />
         <Compile Include="DockerImageFunctionTests.fs" />
+        <Compile Include="BastionHostTests.fs" />
+        <Compile Include="BucketPolicyTests.fs" />
+        <Compile Include="CertificateManagerTests.fs" />
+        <Compile Include="CloudWatchDashboardTests.fs" />
+        <Compile Include="EventBridgeTests.fs" />
+        <Compile Include="ManagedPolicyTests.fs" />
+        <Compile Include="NetworkLoadBalancerTests.fs" />
+        <Compile Include="OIDCProviderTests.fs" />
+        <Compile Include="RouteTableTests.fs" />
         <Compile Include="FunctionTests.fs" />
         <Compile Include="FunctionUrlOptionsTests.fs" />
         <Compile Include="FunctionAddOptionsBuildersTests.fs" />
