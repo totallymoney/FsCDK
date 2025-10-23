@@ -311,6 +311,11 @@ type Route53ARecordBuilder(recordName: string) =
             Zone = Some(Route53HostedZoneRef.Route53HostedZoneInterface zone) }
 
     [<CustomOperation("zone")>]
+    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone option) =
+        { config with
+            Zone = zone |> Option.map Route53HostedZoneRef.Route53HostedZoneInterface }
+
+    [<CustomOperation("zone")>]
     member _.Zone(config: Route53ARecordConfig, zone: Route53HostedZoneSpec) =
         { config with
             Zone = Some(Route53HostedZoneRef.Route53HostedZoneSpecRef zone) }
