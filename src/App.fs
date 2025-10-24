@@ -1,23 +1,25 @@
 namespace FsCDK
 
 open Amazon.CDK
-open System.Collections.Generic
 
 type AppConfig =
-    { Context: (string * obj) list
+    { Context: Map<string, obj>
       StackTraces: bool option
       DefaultStackSynthesizer: IReusableStackSynthesizer option }
 
 type AppBuilder() =
     member _.Zero() =
-        { Context = []
+        { Context = Map.empty
           StackTraces = None
           DefaultStackSynthesizer = None }
 
-    member this.Yield(_: unit) : AppConfig = this.Zero()
+    member this.Yield _ : AppConfig =
+        { Context = Map.empty
+          StackTraces = None
+          DefaultStackSynthesizer = None }
 
     member _.Combine(config1: AppConfig, config2: AppConfig) =
-        { Context = config1.Context @ config2.Context
+        { Context = Map.fold (fun acc k v -> acc.Add(k, v)) config1.Context config2.Context
           StackTraces = config1.StackTraces |> Option.orElse config2.StackTraces
           DefaultStackSynthesizer = config1.DefaultStackSynthesizer |> Option.orElse config2.DefaultStackSynthesizer }
 
@@ -28,18 +30,18 @@ type AppBuilder() =
         x.Combine(config, newConfig)
 
     /// <summary>Adds context to the App with a key-value pair.</summary>
-    /// <param name="key">The context key.</param>
-    /// <param name="value">The context value.</param>
+    /// <param name="keys">The context key.</param>
     /// <code lang="fsharp">
     /// app {
-    ///     context "environment" "production"
-    ///     context "feature-flag" true
+    ///     context [
+    ///         "environment" "production"
+    ///         "feature-flag" true ]
     /// }
     /// </code>
     [<CustomOperation("context")>]
-    member _.Context(config: AppConfig, key: string, value: obj) : AppConfig =
+    member _.Context(config: AppConfig, keys: (string * obj) seq) : AppConfig =
         { config with
-            Context = (key, value) :: config.Context }
+            Context = keys |> Seq.fold (fun ctx (k, v) -> Map.add k v ctx) config.Context }
 
     /// <summary>Enables or disables stack traces in synthesized CloudFormation templates.</summary>
     /// <param name="enabled">Whether stack traces should be included.</param>
@@ -66,8 +68,7 @@ type AppBuilder() =
             DefaultStackSynthesizer = Some synthesizer }
 
     member _.Run(config: AppConfig) =
-        let props =
-            AppProps(Context = (config.Context |> List.rev |> dict |> Dictionary<string, obj>))
+        let props = AppProps(Context = config.Context)
 
         config.StackTraces |> Option.iter (fun v -> props.StackTraces <- v)
 
