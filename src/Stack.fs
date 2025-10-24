@@ -1014,9 +1014,9 @@ type StackBuilder(name: string) =
     /// }
     /// </code>
     [<CustomOperation("tags")>]
-    member _.Tags(config: StackConfig, tags: (string * string) list) =
+    member _.Tags(config: StackConfig, tags: (string * string) seq) =
         { config with
-            Tags = Some(tags |> Map.ofList) }
+            Tags = Some(tags |> Map.ofSeq) }
 
     /// <summary>Enables or disables termination protection for the stack.</summary>
     /// <param name="enabled">Whether termination protection is enabled.</param>

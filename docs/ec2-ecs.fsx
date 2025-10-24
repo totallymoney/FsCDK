@@ -31,14 +31,14 @@ module Config =
 let config = Config.get ()
 
 stack "EC2Stack" {
-    app { context "environment" "production" }
+    app { context [ "environment", "production" ] }
 
     environment {
         account config.Account
         region config.Region
     }
 
-    stackProps { description "EC2 instance example" }
+    description "EC2 instance example"
 
     // Create VPC first
     let myVpc =
@@ -67,9 +67,9 @@ stack "EC2Stack" {
 open Amazon.CDK.AWS.ECS
 
 stack "ECSStack" {
-    app { context "environment" "production" }
+    app { context [ "environment", "production" ] }
 
-    stackProps { description "ECS cluster with Fargate service" }
+    description "ECS cluster with Fargate service"
 
     // Create VPC
     let myVpc =
