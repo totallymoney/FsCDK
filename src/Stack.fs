@@ -10,6 +10,15 @@ open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.RDS
 open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.Cognito
+open Amazon.CDK.AWS.ElasticLoadBalancingV2
+open Amazon.CDK.AWS.Events
+open Amazon.CDK.AWS.IAM
+open Amazon.CDK.AWS.CertificateManager
+open Amazon.CDK.AWS.CloudWatch
+open Amazon.CDK.AWS.ECS
+open Amazon.CDK.AWS.Kinesis
+open Amazon.CDK.AWS.Route53
+//open Amazon.CDK.AWS.CloudHSMV2
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -30,6 +39,27 @@ type Operation =
     | CloudFrontDistributionOp of DistributionSpec
     | UserPoolOp of UserPoolSpec
     | UserPoolClientOp of UserPoolClientSpec
+    // New operations
+    | NetworkLoadBalancerOp of NetworkLoadBalancerSpec
+    | EventBridgeRuleOp of EventBridgeRuleSpec
+    | EventBusOp of EventBusSpec
+    | BastionHostOp of BastionHostSpec
+    | VPCGatewayAttachmentOp of VPCGatewayAttachmentSpec
+    | RouteTableOp of RouteTableSpec
+    | RouteOp of RouteSpec
+    | OIDCProviderOp of OIDCProviderSpec
+    | ManagedPolicyOp of ManagedPolicySpec
+    | CertificateOp of CertificateSpec
+    | BucketPolicyOp of BucketPolicySpec
+    | CloudWatchDashboardOp of DashboardSpec
+    | EKSClusterOp of EKSClusterSpec
+    | KinesisStreamOp of KinesisStreamSpec
+    | HostedZoneOp of Route53HostedZoneSpec
+    | OriginAccessIdentityOp of OriginAccessIdentitySpec
+    //| CloudHSMClusterOp of CloudHSMClusterSpec
+    | LambdaRoleOp of IAM.LambdaRoleSpec
+    | CloudWatchAlarmOp of CloudWatchAlarmSpec
+    | KMSKeyOp of KMSKeySpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -39,10 +69,17 @@ module StackOperations =
     // Process a single operation on a stack
     let processOperation (stack: Stack) (operation: Operation) : unit =
         match operation with
-        | TableOp tableSpec -> Table(stack, tableSpec.ConstructId, tableSpec.Props) |> ignore
+        | TableOp tableSpec ->
+            let t = Table(stack, tableSpec.ConstructId, tableSpec.Props)
+            tableSpec.Table <- Some t
 
         | FunctionOp lambdaSpec ->
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
+
+            let _ =
+                lambdaSpec.EventSources |> Seq.map (fun e -> fn.AddEventSource e) |> Seq.toList
+
+            lambdaSpec.Function <- Some fn
 
             for action in lambdaSpec.Actions do
                 action fn
@@ -118,7 +155,127 @@ module StackOperations =
 
         | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
 
+        // New operations
+        | NetworkLoadBalancerOp nlbSpec ->
+            let nlb = NetworkLoadBalancer(stack, nlbSpec.ConstructId, nlbSpec.Props)
 
+            if nlb.Vpc = null then
+                failwith "VPC is required for Network Load Balancer"
+
+            nlbSpec.LoadBalancer <- Some nlb
+
+
+        | EventBridgeRuleOp ruleSpec ->
+            let rule = Rule(stack, ruleSpec.ConstructId, ruleSpec.Props)
+            ruleSpec.Rule <- Some rule
+
+        | EventBusOp busSpec ->
+            let bus =
+                Amazon.CDK.AWS.Events.EventBus(
+                    stack,
+                    busSpec.ConstructId,
+                    EventBusProps(EventBusName = busSpec.EventBusName)
+                )
+
+            busSpec.EventBus <- Some bus
+
+        | BastionHostOp bastionSpec ->
+            let bastion = BastionHostLinux(stack, bastionSpec.ConstructId, bastionSpec.Props)
+            bastionSpec.BastionHost <- Some bastion
+
+        | KMSKeyOp keySpec ->
+            let key = Amazon.CDK.AWS.KMS.Key(stack, keySpec.ConstructId, keySpec.Props)
+            keySpec.Key <- Some key
+
+        | VPCGatewayAttachmentOp attachSpec ->
+            let props = CfnVPCGatewayAttachmentProps()
+            props.VpcId <- attachSpec.VpcId
+
+            attachSpec.InternetGatewayId
+            |> Option.iter (fun id -> props.InternetGatewayId <- id)
+
+            attachSpec.VpnGatewayId |> Option.iter (fun id -> props.VpnGatewayId <- id)
+            let attachment = CfnVPCGatewayAttachment(stack, attachSpec.ConstructId, props)
+            attachSpec.Attachment <- Some attachment
+
+        | RouteTableOp rtSpec ->
+            let rt = CfnRouteTable(stack, rtSpec.ConstructId, rtSpec.Props)
+            rtSpec.RouteTable <- Some rt
+
+        | RouteOp routeSpec -> CfnRoute(stack, routeSpec.ConstructId, routeSpec.Props) |> ignore
+
+        | OIDCProviderOp oidcSpec ->
+            let provider = OpenIdConnectProvider(stack, oidcSpec.ConstructId, oidcSpec.Props)
+            oidcSpec.Provider <- Some provider
+
+        | ManagedPolicyOp policySpec ->
+            let policy =
+                Amazon.CDK.AWS.IAM.ManagedPolicy(stack, policySpec.ConstructId, policySpec.Props)
+
+            policySpec.Policy <- Some policy
+
+        | CertificateOp certSpec ->
+            let cert =
+                Amazon.CDK.AWS.CertificateManager.Certificate(stack, certSpec.ConstructId, certSpec.Props)
+
+            certSpec.Certificate <- Some cert
+
+        | BucketPolicyOp policySpec ->
+            let policy =
+                Amazon.CDK.AWS.S3.BucketPolicy(stack, policySpec.ConstructId, policySpec.Props)
+
+            policySpec.Policy <- Some policy
+
+        | CloudWatchDashboardOp dashSpec ->
+            let dashboard = Dashboard(stack, dashSpec.ConstructId, dashSpec.Props)
+            dashSpec.Dashboard <- Some dashboard
+
+        | EKSClusterOp spec ->
+            let cluster = AWS.EKS.Cluster(stack, spec.ConstructId, spec.Props)
+
+            let _ =
+                spec.AddNodegroupCapacity
+                |> List.map (fun (name, opts) -> cluster.AddNodegroupCapacity(name, opts))
+
+            let _ =
+                spec.AddHelmChart
+                |> List.map (fun (name, opts) -> cluster.AddHelmChart(name, opts))
+
+            let _ =
+                spec.AddServiceAccount
+                |> List.map (fun (name, opts) -> cluster.AddServiceAccount(name, opts))
+
+            let _ =
+                spec.AddFargateProfile
+                |> List.map (fun (name, opts) -> cluster.AddFargateProfile(name, opts))
+
+            spec.Cluster <- Some cluster
+
+        | KinesisStreamOp spec ->
+            let stream = Stream(stack, spec.ConstructId, spec.Props)
+            let _ = spec.GrantReads |> Seq.map stream.GrantRead |> Seq.toList
+            let _ = spec.GrantWrites |> Seq.map stream.GrantWrite |> Seq.toList
+            spec.Stream <- Some stream
+
+        | HostedZoneOp spec ->
+            let zone = HostedZone(stack, spec.ConstructId, spec.Props)
+            spec.HostedZone <- Some zone
+
+        | OriginAccessIdentityOp spec ->
+            let oai = OriginAccessIdentity(stack, spec.ConstructId, spec.Props)
+            spec.Identity <- Some oai
+
+        | CloudWatchAlarmOp alarmSpec ->
+            let ala = Alarm(stack, alarmSpec.ConstructId, alarmSpec.Props)
+            alarmSpec.Alarm <- Some ala
+
+        //| CloudHSMClusterOp hsmSpec ->
+        //    CfnCluster(stack, hsmSpec.ConstructId, hsmSpec.Props) |> ignore
+
+        | LambdaRoleOp roleSpec ->
+            // Role is already created in the builder, just store reference if needed
+            // The role is available in roleSpec.Role
+            ()
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
@@ -232,6 +389,127 @@ type StackBuilder(name: string) =
           App = None
           Props = Some props
           Operations = [] }
+
+    // New Yield overloads
+    member _.Yield(nlbSpec: NetworkLoadBalancerSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ NetworkLoadBalancerOp nlbSpec ] }
+
+    member _.Yield(ruleSpec: EventBridgeRuleSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ EventBridgeRuleOp ruleSpec ] }
+
+    member _.Yield(busSpec: EventBusSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ EventBusOp busSpec ] }
+
+    member _.Yield(bastionSpec: BastionHostSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ BastionHostOp bastionSpec ] }
+
+    member _.Yield(attachSpec: VPCGatewayAttachmentSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ VPCGatewayAttachmentOp attachSpec ] }
+
+    member _.Yield(rtSpec: RouteTableSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ RouteTableOp rtSpec ] }
+
+    member _.Yield(routeSpec: RouteSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ RouteOp routeSpec ] }
+
+    member _.Yield(oidcSpec: OIDCProviderSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ OIDCProviderOp oidcSpec ] }
+
+    member _.Yield(policySpec: ManagedPolicySpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ ManagedPolicyOp policySpec ] }
+
+    member _.Yield(certSpec: CertificateSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ CertificateOp certSpec ] }
+
+    member _.Yield(policySpec: BucketPolicySpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ BucketPolicyOp policySpec ] }
+
+    member _.Yield(keySpec: KMSKeySpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ KMSKeyOp keySpec ] }
+
+    member _.Yield(dashSpec: DashboardSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ CloudWatchDashboardOp dashSpec ] }
+
+    member _.Yield(spec: EKSClusterSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ EKSClusterOp spec ] }
+
+    member _.Yield(spec: KinesisStreamSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ KinesisStreamOp spec ] }
+
+    member _.Yield(spec: Route53HostedZoneSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ HostedZoneOp spec ] }
+
+    member _.Yield(spec: OriginAccessIdentitySpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ OriginAccessIdentityOp spec ] }
+
+    //member _.Yield(hsmSpec: CloudHSMClusterSpec) : StackConfig =
+    //    { Name = name
+    //      App = None
+    //      Props = None
+    //      Operations = [ CloudHSMClusterOp hsmSpec ] }
+
+    member _.Yield(roleSpec: IAM.LambdaRoleSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ LambdaRoleOp roleSpec ] }
+
+    member _.Yield(alarmSpec: CloudWatchAlarmSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ CloudWatchAlarmOp alarmSpec ] }
 
     member _.Zero() : StackConfig =
         { Name = name

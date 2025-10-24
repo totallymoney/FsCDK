@@ -44,7 +44,7 @@ let s3_bucket_happy_path_tests =
               // Basic assertion: we produced exactly one stack in this app
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           }
-          
+
           test "app synth succeeds with bucket using secure defaults" {
               let app = App()
 
@@ -63,7 +63,7 @@ let s3_bucket_happy_path_tests =
               // Basic assertion: we produced exactly one stack in this app
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack with secure defaults"
           }
-          
+
           test "bucket and s3Bucket are aliases" {
               let bucketResult = bucket "test-bucket" { () }
               let s3BucketResult = s3Bucket "test-bucket" { () }

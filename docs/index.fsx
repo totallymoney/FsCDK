@@ -116,3 +116,44 @@ stack "Prod" {
         readWriteAccess
     }
 }
+
+(**
+
+### List of builders and their operations
+
+(Most of them, this might not be complete)
+
+| AWS Resource | Builder Name(s) | Parameters |
+|-------------|------------------|---------------------------|
+| **CDK App** | `app` | `context`, `stackTraces`, `synthesizer` |
+| **Bucket** | `bucket`, `s3Bucket` | `constructId`, `blockPublicAccess`, `encryption`, `encryptionKey`, `enforceSSL`, `versioned`, `removalPolicy`, `serverAccessLogsBucket`, `serverAccessLogsPrefix`, `autoDeleteObjects`, `websiteIndexDocument`, `websiteErrorDocument` |
+| **Cors Rule** | `corsRule` | `allowedMethods`, `allowedOrigins`, `allowedHeaders`, `exposedHeaders`, `id`, `maxAgeSeconds` |
+| **LambdaRole** | `lambdaRole` | `constructId`, `assumeRolePrincipal`, `managedPolicy`, `inlinePolicy`, `basicExecution`, `vpcExecution`, `kmsDecrypt`, `xrayTracing` |
+| **IAM PolicyStatement** | `policyStatement` | (none - uses method chaining, not CustomOperations) |
+| **Topic** | `topic` | `constructId`, `displayName`, `fifo`, `contentBasedDeduplication` |
+| **Subscription** | `subscription` | `topic`, `lambda`, `queue`, `email`, `sms`, `http`, `https`, `filterPolicy`, `subscriptionDeadLetterQueue` |
+| **Database Instance** | `rdsInstance` | `constructId`, `engine`, `postgresEngine`, `instanceType`, `vpc`, `vpcSubnets`, `securityGroup`, `allocatedStorage`, `storageType`, `backupRetentionDays`, `deleteAutomatedBackups`, `removalPolicy`, `deletionProtection`, `multiAz`, `publiclyAccessible`, `databaseName`, `masterUsername`, `credentials`, `preferredBackupWindow`, `preferredMaintenanceWindow`, `storageEncrypted`, `monitoringInterval`, `enablePerformanceInsights`, `performanceInsightRetention`, `autoMinorVersionUpgrade`, `iamAuthentication` |
+| **KMS Key** | `kmsKey` | `constructId`, `description`, `alias`, `enableKeyRotation`, `disableKeyRotation`, `removalPolicy`, `enabled`, `keySpec`, `keyUsage`, `pendingWindow`, `admissionPrincipal`, `policy` |
+| **EKS Cluster** | `eksCluster` | `constructId`, `version`, `vpc`, `vpcSubnet`, `defaultCapacity`, `defaultCapacityInstance`, `mastersRole`, `endpointAccess`, `disableClusterLogging`, `setClusterLogging`, `enableAlbController`, `coreDnsComputeType`, `encryptionKey`, `addNodegroupCapacity`, `addServiceAccount`, `addHelmChart`, `addFargateProfile` |
+| **Grant** | `grant` | `table`, `lambda`, `readAccess`, `writeAccess`, `readWriteAccess`, `customAccess` |
+| **CloudWatch Alarm** | `cloudwatchAlarm` | `constructId`, `description`, `metricNamespace`, `metricName`, `metric`, `dimensions`, `statistic`, `period`, `threshold`, `evaluationPeriods`, `comparisonOperator`, `treatMissingData` |
+| **Route53 HostedZone** | `hostedZone` | `constructId`, `comment`, `queryLogsLogGroupArn`, `vpcs`, `vpc` |
+| **Route53 PrivateHostedZone** | `privateHostedZone` | `constructId`, `comment`, `vpc` |
+| **Route53 ARecord** | `aRecord` | `constructId`, `zone`, `target`, `ttl`, `comment` |
+| **Function** | `lambda` | `constructId`, `handler`, `runtime`, `code`, `dockerImageCode`, `inlineCode`, `environment`, `envVar`, `timeout`, `memory`, `description`, `reservedConcurrentExecutions`, `insightsVersion`, `layer`, `layers`, `architecture`, `tracing`, `securityGroups`, `deadLetterQueue`, `loggingFormat`, `maxEventAge`, `retryAttempts`, `deadLetterQueueEnabled`, `environmentEncryption`, `xrayEnabled`, `role` |
+| **Table** | `table` | `constructId`, `partitionKey`, `sortKey`, `billingMode`, `removalPolicy`, `pointInTimeRecovery`, `stream`, `kinesisStream` |
+| **Import Source** | `importSource` | `bucket`, `inputFormat`, `bucketOwner`, `compressionType`, `keyPrefix` |
+| **Queue** | `queue` | `constructId`, `visibilityTimeout`, `messageRetention`, `fifo`, `contentBasedDeduplication`, `deadLetterQueue`, `delaySeconds` |
+| **Vpc** | `vpc` | `constructId`, `maxAzs`, `natGateways`, `subnet`, `enableDnsHostnames`, `enableDnsSupport`, `defaultInstanceTenancy`, `ipAddresses`, `cidr` |
+| **Security Group** | `securityGroup` | `constructId`, `vpc`, `description`, `allowAllOutbound`, `disableInlineRules` |
+| **ALB** | `applicationLoadBalancer` | `constructId`, `vpc`, `internetFacing`, `vpcSubnets`, `securityGroup`, `deletionProtection`, `http2Enabled`, `dropInvalidHeaderFields` |
+| **User Pool** | `userPool` | `constructId`, `userPoolName`, `selfSignUpEnabled`, `signInAliases`, `signInWithEmailAndUsername`, `signInWithEmail`, `autoVerify`, `standardAttributes`, `customAttribute`, `passwordPolicy`, `mfa`, `mfaSecondFactor`, `accountRecovery`, `emailSettings`, `smsRole`, `lambdaTriggers`, `removalPolicy` |
+| **User Pool Client** | `userPoolClient` | `constructId`, `userPool`, `generateSecret`, `authFlows`, `oAuth`, `preventUserExistenceErrors`, `supportedIdentityProvider`, `tokenValidities` |
+| **Distribution** | `cloudFrontDistribution` | `constructId`, `defaultBehavior`, `s3DefaultBehavior`, `httpDefaultBehavior`, `additionalBehavior`, `additionalS3Behavior`, `additionalHttpBehavior`, `domainName`, `certificate`, `defaultRootObject`, `comment`, `enabled`, `priceClass`, `httpVersion`, `minimumProtocolVersion`, `enableIpv6`, `enableLogging`, `webAclId` |
+| **Origin Access Identity** | `originAccessIdentity` | `constructId`, `comment` |
+| **Event BridgeRule** | `eventBridgeRule` | `constructId`, `ruleName`, `description`, `enabled`, `eventPattern`, `schedule`, `target`, `eventBus` |
+| **Event Bus** | `eventBus` | `constructId`, `eventSourceName`, `customEventBusName` |
+| **Kinesis Stream** | `kinesisStream` | `constructId`, `streamName`, `shardCount`, `retentionPeriod`, `streamMode`, `onDemand`, `unencrypted`, `encryptionKey`, `encryption`, `grantRead`, `grantWrite` |
+| **Stack** | `stack` | - |
+
+*)

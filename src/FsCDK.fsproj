@@ -12,6 +12,7 @@
       <Compile Include="SubnetSelection.fs" />
       <Compile Include="VPC.fs" />
       <Compile Include="RDS.fs" />
+      <Compile Include="KMS.fs" />
       <Compile Include="S3Transition.fs" />
       <Compile Include="S3LifecycleRule.fs" />
       <Compile Include="S3BucketMetrics.fs" />
@@ -30,8 +31,6 @@
       <Compile Include="SNS.fs" />
       <Compile Include="SQS.fs" />
       <Compile Include="Grants.fs" />
-      <Compile Include="Stack.fs" />
-      <Compile Include="App.fs" />
       <!-- High-level builders with best practices -->
       <Compile Include="Tags.fs" />
       <Compile Include="IAM.fs" />
@@ -43,6 +42,24 @@
       <Compile Include="SecretsManager.fs" />
       <Compile Include="ElasticBeanstalk.fs" />
       <Compile Include="Route53.fs" />
+
+      <Compile Include="BastionHost.fs" />
+      <Compile Include="BucketPolicy.fs" />
+      <Compile Include="CertificateManager.fs" />
+      <Compile Include="CloudWatchDashboard.fs" />
+      <Compile Include="EventBridge.fs" />
+      <Compile Include="ManagedPolicy.fs" />
+      <Compile Include="NetworkLoadBalancer.fs" />
+      <Compile Include="OIDCProvider.fs" />
+      <Compile Include="RouteTable.fs" />
+      <Compile Include="VPCGatewayAttachment.fs" />
+      <Compile Include="EKS.fs" />
+      <Compile Include="Kinesis.fs" />
+      <Compile Include="CloudHSM.fs" />
+
+      <Compile Include="Stack.fs" />
+      <Compile Include="App.fs" />
+
     </ItemGroup>
 
   <ItemGroup>

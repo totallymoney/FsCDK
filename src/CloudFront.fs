@@ -493,6 +493,94 @@ type DistributionBuilder(name: string) =
     member _.WebAclId(config: DistributionConfig, aclId: string) = { config with WebAclId = Some aclId }
 
 // ============================================================================
+// CloudFront Origin Access Identity Configuration DSL
+// ============================================================================
+
+/// <summary>
+/// High-level CloudFront Origin Access Identity (OAI) builder.
+///
+/// **Use Case:**
+/// OAI allows CloudFront to access private S3 buckets without making them public.
+/// This is a security best practice for serving static content.
+///
+/// **Note:**
+/// AWS recommends using Origin Access Control (OAC) instead of OAI for new applications.
+/// OAI is maintained for backward compatibility.
+///
+/// **Escape Hatch:**
+/// Access the underlying CDK OriginAccessIdentity via the `Identity` property.
+/// </summary>
+type OriginAccessIdentityConfig =
+    { IdentityName: string
+      ConstructId: string option
+      Comment: string option }
+
+type OriginAccessIdentitySpec =
+    { IdentityName: string
+      ConstructId: string
+      Props: OriginAccessIdentityProps
+      mutable Identity: IOriginAccessIdentity option }
+
+    /// Gets the underlying IOriginAccessIdentity resource. Must be called after the stack is built.
+    member this.Resource =
+        match this.Identity with
+        | Some identity -> identity
+        | None ->
+            failwith
+                $"OriginAccessIdentity '{this.IdentityName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+/// Gets the canonical user ID for use in S3 bucket policies
+//member this.CanonicalUserId =
+//    match this.Identity with
+//    | Some identity -> identity.CloudFrontOriginAccessIdentityS3CanonicalUserId
+//    | None ->
+//        failwith
+//            $"OriginAccessIdentity '{this.IdentityName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+type OriginAccessIdentityBuilder(name: string) =
+    member _.Yield _ : OriginAccessIdentityConfig =
+        { IdentityName = name
+          ConstructId = None
+          Comment = None }
+
+    member _.Zero() : OriginAccessIdentityConfig =
+        { IdentityName = name
+          ConstructId = None
+          Comment = None }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> OriginAccessIdentityConfig) : OriginAccessIdentityConfig = f ()
+
+    member _.Combine(a: OriginAccessIdentityConfig, b: OriginAccessIdentityConfig) : OriginAccessIdentityConfig =
+        { IdentityName = a.IdentityName
+          ConstructId =
+            match a.ConstructId with
+            | Some _ -> a.ConstructId
+            | None -> b.ConstructId
+          Comment =
+            match a.Comment with
+            | Some _ -> a.Comment
+            | None -> b.Comment }
+
+    member _.Run(config: OriginAccessIdentityConfig) : OriginAccessIdentitySpec =
+        let props = OriginAccessIdentityProps()
+        let constructId = config.ConstructId |> Option.defaultValue config.IdentityName
+
+        config.Comment |> Option.iter (fun c -> props.Comment <- c)
+
+        { IdentityName = config.IdentityName
+          ConstructId = constructId
+          Props = props
+          Identity = None }
+
+    /// <summary>Sets the construct ID.</summary>
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: OriginAccessIdentityConfig, id: string) = { config with ConstructId = Some id }
+
+    /// <summary>Sets a comment for the OAI.</summary>
+    [<CustomOperation("comment")>]
+    member _.Comment(config: OriginAccessIdentityConfig, comment: string) = { config with Comment = Some comment }
+
+// ============================================================================
 // Helper modules (kept inside CloudFront.fs as requested)
 // ============================================================================
 
@@ -509,7 +597,16 @@ module CloudFrontBuilders =
     ///     priceClass PriceClass.PRICE_CLASS_100
     /// }
     /// </remarks>
-    let cloudFrontDistribution (name: string) = DistributionBuilder(name)
+    let cloudFrontDistribution (name: string) = DistributionBuilder name
+
+    /// <summary>Creates a CloudFront Origin Access Identity.</summary>
+    /// <param name="name">The OAI name.</param>
+    /// <code lang="fsharp">
+    /// originAccessIdentity "MyOAI" {
+    ///     comment "Access to private S3 bucket"
+    /// }
+    /// </code>
+    let originAccessIdentity (name: string) = OriginAccessIdentityBuilder name
 
 /// <summary>
 /// Factory helpers to build common IBehaviorOptions for S3 and HTTP origins.

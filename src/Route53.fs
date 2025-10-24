@@ -29,13 +29,27 @@ type Route53HostedZoneConfig =
       QueryLogsLogGroupArn: string option
       Vpcs: IVpc list }
 
-type Route53HostedZoneResource =
+
+type Route53HostedZoneRef =
+    | Route53HostedZoneInterface of IHostedZone
+    | Route53HostedZoneSpecRef of Route53HostedZoneSpec
+
+and Route53HostedZoneSpec =
     {
         ZoneName: string
         ConstructId: string
+        Props: IHostedZoneProps
         /// The underlying CDK HostedZone construct
-        HostedZone: HostedZone
+        mutable HostedZone: IHostedZone option
     }
+
+    /// Gets the underlying IHostedZone resource. Must be called after the stack is built.
+    member this.Resource =
+        match this.HostedZone with
+        | Some zone -> zone
+        | None ->
+            failwith
+                $"HostedZone '{this.ZoneName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type Route53HostedZoneBuilder(zoneName: string) =
     member _.Yield _ : Route53HostedZoneConfig =
@@ -67,7 +81,7 @@ type Route53HostedZoneBuilder(zoneName: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: Route53HostedZoneConfig) : Route53HostedZoneResource =
+    member _.Run(config: Route53HostedZoneConfig) : Route53HostedZoneSpec =
         let zoneName = config.ZoneName
         let constructId = config.ConstructId |> Option.defaultValue zoneName
 
@@ -83,7 +97,8 @@ type Route53HostedZoneBuilder(zoneName: string) =
 
         { ZoneName = zoneName
           ConstructId = constructId
-          HostedZone = null }
+          Props = props
+          HostedZone = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: Route53HostedZoneConfig, id: string) = { config with ConstructId = Some id }
@@ -99,6 +114,111 @@ type Route53HostedZoneBuilder(zoneName: string) =
     [<CustomOperation("vpcs")>]
     member _.Vpcs(config: Route53HostedZoneConfig, vpcs: IVpc list) = { config with Vpcs = vpcs }
 
+    /// <summary>Adds a single VPC to the hosted zone (for private zones).</summary>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: Route53HostedZoneConfig, vpc: IVpc) =
+        { config with
+            Vpcs = vpc :: config.Vpcs }
+
+// ============================================================================
+// Private Hosted Zone Configuration DSL
+// ============================================================================
+
+/// <summary>
+/// High-level Route 53 Private Hosted Zone builder.
+///
+/// **Use Case:**
+/// Private hosted zones are used for DNS resolution within VPCs only.
+/// They are not accessible from the public internet.
+///
+/// **Rationale:**
+/// Private zones are ideal for internal service discovery and
+/// microservices architectures within AWS.
+/// </summary>
+type Route53PrivateHostedZoneConfig =
+    { ZoneName: string
+      ConstructId: string option
+      Comment: string option
+      Vpc: IVpc option }
+
+type Route53PrivateHostedZoneResource =
+    {
+        ZoneName: string
+        ConstructId: string
+        /// The underlying CDK PrivateHostedZone construct
+        mutable HostedZone: IHostedZone option
+    }
+
+    /// Gets the underlying IHostedZone resource. Must be called after the stack is built.
+    member this.Resource =
+        match this.HostedZone with
+        | Some zone -> zone
+        | None ->
+            failwith
+                $"PrivateHostedZone '{this.ZoneName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+type Route53PrivateHostedZoneBuilder(zoneName: string) =
+    member _.Yield _ : Route53PrivateHostedZoneConfig =
+        { ZoneName = zoneName
+          ConstructId = None
+          Comment = None
+          Vpc = None }
+
+    member _.Zero() : Route53PrivateHostedZoneConfig =
+        { ZoneName = zoneName
+          ConstructId = None
+          Comment = None
+          Vpc = None }
+
+    member _.Combine
+        (
+            state1: Route53PrivateHostedZoneConfig,
+            state2: Route53PrivateHostedZoneConfig
+        ) : Route53PrivateHostedZoneConfig =
+        { ZoneName = state2.ZoneName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          Comment = state2.Comment |> Option.orElse state1.Comment
+          Vpc = state2.Vpc |> Option.orElse state1.Vpc }
+
+    member inline x.For
+        (
+            config: Route53PrivateHostedZoneConfig,
+            [<InlineIfLambda>] f: unit -> Route53PrivateHostedZoneConfig
+        ) : Route53PrivateHostedZoneConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: Route53PrivateHostedZoneConfig) : Route53PrivateHostedZoneResource =
+        let zoneName = config.ZoneName
+        let constructId = config.ConstructId |> Option.defaultValue zoneName
+
+        let props = PrivateHostedZoneProps()
+        props.ZoneName <- zoneName
+
+        props.Vpc <-
+            match config.Vpc with
+            | Some vpc -> vpc
+            | None -> invalidArg "vpc" "VPC is required for Private Hosted Zone"
+
+        config.Comment |> Option.iter (fun v -> props.Comment <- v)
+
+        { ZoneName = zoneName
+          ConstructId = constructId
+          HostedZone = None }
+
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: Route53PrivateHostedZoneConfig, id: string) = { config with ConstructId = Some id }
+
+    [<CustomOperation("comment")>]
+    member _.Comment(config: Route53PrivateHostedZoneConfig, comment: string) = { config with Comment = Some comment }
+
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: Route53PrivateHostedZoneConfig, vpc: IVpc) = { config with Vpc = Some vpc }
+
+// ============================================================================
+// A Record Configuration (existing code unchanged)
+// ============================================================================
+
 /// <summary>
 /// High-level Route 53 A Record builder.
 ///
@@ -109,7 +229,7 @@ type Route53HostedZoneBuilder(zoneName: string) =
 type Route53ARecordConfig =
     { RecordName: string
       ConstructId: string option
-      Zone: IHostedZone option
+      Zone: Route53HostedZoneRef option
       Target: RecordTarget option
       Ttl: Duration option
       Comment: string option }
@@ -161,7 +281,19 @@ type Route53ARecordBuilder(recordName: string) =
 
         let props = ARecordProps()
         props.RecordName <- recordName
-        config.Zone |> Option.iter (fun v -> props.Zone <- v)
+
+        config.Zone
+        |> Option.iter (fun v ->
+            props.Zone <-
+                match v with
+                | Route53HostedZoneRef.Route53HostedZoneSpecRef isp ->
+                    match isp.HostedZone with
+                    | Some zone -> zone
+                    | None ->
+                        failwith
+                            $"Zone {isp.ZoneName} has to be resolved before using it in DNS zone record {config.RecordName}"
+                | Route53HostedZoneRef.Route53HostedZoneInterface izone -> izone)
+
         config.Target |> Option.iter (fun v -> props.Target <- v)
         config.Ttl |> Option.iter (fun v -> props.Ttl <- v)
         config.Comment |> Option.iter (fun v -> props.Comment <- v)
@@ -174,7 +306,19 @@ type Route53ARecordBuilder(recordName: string) =
     member _.ConstructId(config: Route53ARecordConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("zone")>]
-    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone) = { config with Zone = Some zone }
+    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone) =
+        { config with
+            Zone = Some(Route53HostedZoneRef.Route53HostedZoneInterface zone) }
+
+    [<CustomOperation("zone")>]
+    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone option) =
+        { config with
+            Zone = zone |> Option.map Route53HostedZoneRef.Route53HostedZoneInterface }
+
+    [<CustomOperation("zone")>]
+    member _.Zone(config: Route53ARecordConfig, zone: Route53HostedZoneSpec) =
+        { config with
+            Zone = Some(Route53HostedZoneRef.Route53HostedZoneSpecRef zone) }
 
     [<CustomOperation("target")>]
     member _.Target(config: Route53ARecordConfig, target: RecordTarget) = { config with Target = Some target }
@@ -208,6 +352,13 @@ module Route53Builders =
     /// Example: hostedZone "example.com" { comment "Production domain" }
     /// </summary>
     let hostedZone zoneName = Route53HostedZoneBuilder zoneName
+
+    /// <summary>
+    /// Creates a new Route 53 private hosted zone builder.
+    /// Example: privateHostedZone "internal.example.com" { vpc myVpc; comment "Internal DNS" }
+    /// </summary>
+    let privateHostedZone zoneName =
+        Route53PrivateHostedZoneBuilder zoneName
 
     /// <summary>
     /// Creates a new Route 53 A record builder.
