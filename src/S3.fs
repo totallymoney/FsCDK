@@ -46,7 +46,7 @@ type BucketConfig =
       ConstructId: string option
       BlockPublicAccess: BlockPublicAccess option
       Encryption: BucketEncryption option
-      EncryptionKey: IKey option
+      EncryptionKey: KMSKeyRef option
       EnforceSSL: bool option
       Versioned: bool option
       RemovalPolicy: RemovalPolicy option
@@ -183,7 +183,17 @@ type BucketBuilder(name: string) =
 
         config.BlockPublicAccess |> Option.iter (fun v -> props.BlockPublicAccess <- v)
         config.Encryption |> Option.iter (fun v -> props.Encryption <- v)
-        config.EncryptionKey |> Option.iter (fun v -> props.EncryptionKey <- v)
+
+        config.EncryptionKey
+        |> Option.iter (fun v ->
+            props.EncryptionKey <-
+                match v with
+                | KMSKeyRef.KMSKeyInterface i -> i
+                | KMSKeyRef.KMSKeySpecRef pr ->
+                    match pr.Key with
+                    | Some k -> k
+                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+
         config.EnforceSSL |> Option.iter (fun v -> props.EnforceSSL <- v)
         config.Versioned |> Option.iter (fun v -> props.Versioned <- v)
 
@@ -240,7 +250,13 @@ type BucketBuilder(name: string) =
 
     [<CustomOperation("encryptionKey")>]
     member _.EncryptionKey(config: BucketConfig, key: IKey) =
-        { config with EncryptionKey = Some key }
+        { config with
+            EncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
+
+    [<CustomOperation("encryptionKey")>]
+    member _.EncryptionKey(config: BucketConfig, key: KMSKeySpec) =
+        { config with
+            EncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
 
     [<CustomOperation("enforceSSL")>]
     member _.EnforceSSL(config: BucketConfig, value: bool) = { config with EnforceSSL = Some value }

@@ -224,3 +224,221 @@ module SecurityToggles =
         { Enabled = false
           IncludeGlobalResources = true
           AllSupported = true }
+
+// ============================================================================
+// CloudWatch Alarm Builder DSL
+// ============================================================================
+
+/// <summary>
+/// High-level CloudWatch Alarm builder for monitoring AWS resources.
+/// Supports common metrics and custom metric creation.
+/// </summary>
+type CloudWatchAlarmConfig =
+    { AlarmName: string
+      ConstructId: string option
+      Description: string option
+      MetricNamespace: string option
+      MetricName: string option
+      Metric: IMetric option
+      Dimensions: (string * string) list
+      Statistic: string option
+      Period: Duration option
+      Threshold: float option
+      EvaluationPeriods: int option
+      ComparisonOperator: ComparisonOperator option
+      TreatMissingData: TreatMissingData option
+      ActionsEnabled: bool option }
+
+type CloudWatchAlarmSpec =
+    { AlarmName: string
+      ConstructId: string
+      Props: AlarmProps
+      mutable Alarm: IAlarm option }
+
+type CloudWatchAlarmBuilder(name: string) =
+    member _.Yield _ : CloudWatchAlarmConfig =
+        { AlarmName = name
+          ConstructId = None
+          Description = None
+          MetricNamespace = None
+          MetricName = None
+          Metric = None
+          Dimensions = []
+          Statistic = Some "Average"
+          Period = Some(Duration.Minutes(5.0))
+          Threshold = None
+          EvaluationPeriods = Some 1
+          ComparisonOperator = Some ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
+          TreatMissingData = Some TreatMissingData.NOT_BREACHING
+          ActionsEnabled = Some true }
+
+    member _.Zero() : CloudWatchAlarmConfig =
+        { AlarmName = name
+          ConstructId = None
+          Description = None
+          MetricNamespace = None
+          MetricName = None
+          Metric = None
+          Dimensions = []
+          Statistic = Some "Average"
+          Period = Some(Duration.Minutes(5.0))
+          Threshold = None
+          EvaluationPeriods = Some 1
+          ComparisonOperator = Some ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
+          TreatMissingData = Some TreatMissingData.NOT_BREACHING
+          ActionsEnabled = Some true }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> CloudWatchAlarmConfig) : CloudWatchAlarmConfig = f ()
+
+    member _.Combine(state1: CloudWatchAlarmConfig, state2: CloudWatchAlarmConfig) : CloudWatchAlarmConfig =
+        { AlarmName = state1.AlarmName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          Description = state2.Description |> Option.orElse state1.Description
+          MetricNamespace = state2.MetricNamespace |> Option.orElse state1.MetricNamespace
+          MetricName = state2.MetricName |> Option.orElse state1.MetricName
+          Metric = state2.Metric |> Option.orElse state1.Metric
+          Dimensions =
+            if state2.Dimensions.IsEmpty then
+                state1.Dimensions
+            else
+                state2.Dimensions
+          Statistic = state2.Statistic |> Option.orElse state1.Statistic
+          Period = state2.Period |> Option.orElse state1.Period
+          Threshold = state2.Threshold |> Option.orElse state1.Threshold
+          EvaluationPeriods = state2.EvaluationPeriods |> Option.orElse state1.EvaluationPeriods
+          ComparisonOperator = state2.ComparisonOperator |> Option.orElse state1.ComparisonOperator
+          TreatMissingData = state2.TreatMissingData |> Option.orElse state1.TreatMissingData
+          ActionsEnabled = state2.ActionsEnabled |> Option.orElse state1.ActionsEnabled }
+
+    member inline x.For
+        (
+            config: CloudWatchAlarmConfig,
+            [<InlineIfLambda>] f: unit -> CloudWatchAlarmConfig
+        ) : CloudWatchAlarmConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: CloudWatchAlarmConfig) : CloudWatchAlarmSpec =
+        let constructId = config.ConstructId |> Option.defaultValue config.AlarmName
+
+        match config.Metric, config.MetricNamespace, config.MetricName with
+        | Some _, Some _, _
+        | Some _, _, Some _ -> failwith "CloudWatch alarm requires only Metric, or namespace+name be defined, not both."
+        | Some metric, None, None ->
+            let props = AlarmProps()
+            props.AlarmName <- config.AlarmName
+            config.Description |> Option.iter (fun d -> props.AlarmDescription <- d)
+
+            props.Metric <- metric
+            props.Threshold <- config.Threshold |> Option.defaultValue 1.0
+            props.EvaluationPeriods <- config.EvaluationPeriods |> Option.defaultValue 1 |> float
+
+            props.ComparisonOperator <-
+                config.ComparisonOperator
+                |> Option.defaultValue ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
+
+            props.TreatMissingData <- config.TreatMissingData |> Option.defaultValue TreatMissingData.NOT_BREACHING
+            props.ActionsEnabled <- config.ActionsEnabled |> Option.defaultValue true
+
+            { AlarmName = config.AlarmName
+              ConstructId = constructId
+              Props = props
+              Alarm = None }
+
+        | None, None, _
+        | None, _, None -> failwith "CloudWatch alarm requires both metricNamespace and metricName"
+        | None, Some ns, Some mn ->
+            let props = AlarmProps()
+            props.AlarmName <- config.AlarmName
+            config.Description |> Option.iter (fun d -> props.AlarmDescription <- d)
+
+            let metricProps = MetricProps()
+            metricProps.Namespace <- ns
+            metricProps.MetricName <- mn
+            metricProps.Statistic <- config.Statistic |> Option.defaultValue "Average"
+            metricProps.Period <- config.Period |> Option.defaultValue (Duration.Minutes(5.0))
+
+            if not config.Dimensions.IsEmpty then
+                metricProps.DimensionsMap <- dict config.Dimensions
+
+            props.Metric <- Metric(metricProps)
+            props.Threshold <- config.Threshold |> Option.defaultValue 1.0
+            props.EvaluationPeriods <- config.EvaluationPeriods |> Option.defaultValue 1 |> float
+
+            props.ComparisonOperator <-
+                config.ComparisonOperator
+                |> Option.defaultValue ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
+
+            props.TreatMissingData <- config.TreatMissingData |> Option.defaultValue TreatMissingData.NOT_BREACHING
+            props.ActionsEnabled <- config.ActionsEnabled |> Option.defaultValue true
+
+            { AlarmName = config.AlarmName
+              ConstructId = constructId
+              Props = props
+              Alarm = None }
+
+    /// <summary>Sets the construct ID for the alarm.</summary>
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: CloudWatchAlarmConfig, id: string) = { config with ConstructId = Some id }
+
+    /// <summary>Sets the alarm description.</summary>
+    [<CustomOperation("description")>]
+    member _.Description(config: CloudWatchAlarmConfig, desc: string) = { config with Description = Some desc }
+
+    /// <summary>Sets the CloudWatch metric namespace (e.g., "AWS/Lambda", "AWS/RDS").</summary>
+    [<CustomOperation("metricNamespace")>]
+    member _.MetricNamespace(config: CloudWatchAlarmConfig, ns: string) =
+        { config with
+            MetricNamespace = Some ns }
+
+    /// <summary>Sets the metric name (e.g., "Errors", "CPUUtilization").</summary>
+    [<CustomOperation("metricName")>]
+    member _.MetricName(config: CloudWatchAlarmConfig, name: string) = { config with MetricName = Some name }
+
+    /// <summary>Sets the IMetric. If you use this, don't define metricName or metricNamespace.</summary>
+    [<CustomOperation("metric")>]
+    member _.Metric(config: CloudWatchAlarmConfig, metric: IMetric) = { config with Metric = Some metric }
+
+    /// <summary>Sets the metric dimensions for filtering (e.g., FunctionName, DBInstanceIdentifier).</summary>
+    [<CustomOperation("dimensions")>]
+    member _.Dimensions(config: CloudWatchAlarmConfig, dims: (string * string) list) = { config with Dimensions = dims }
+
+    /// <summary>Sets the statistic (Average, Sum, Minimum, Maximum, SampleCount).</summary>
+    [<CustomOperation("statistic")>]
+    member _.Statistic(config: CloudWatchAlarmConfig, stat: string) = { config with Statistic = Some stat }
+
+    /// <summary>Sets the evaluation period.</summary>
+    [<CustomOperation("period")>]
+    member _.Period(config: CloudWatchAlarmConfig, period: Duration) = { config with Period = Some period }
+
+    /// <summary>Sets the alarm threshold value.</summary>
+    [<CustomOperation("threshold")>]
+    member _.Threshold(config: CloudWatchAlarmConfig, threshold: float) =
+        { config with
+            Threshold = Some threshold }
+
+    /// <summary>Sets the number of periods to evaluate.</summary>
+    [<CustomOperation("evaluationPeriods")>]
+    member _.EvaluationPeriods(config: CloudWatchAlarmConfig, periods: int) =
+        { config with
+            EvaluationPeriods = Some periods }
+
+    /// <summary>Sets the comparison operator.</summary>
+    [<CustomOperation("comparisonOperator")>]
+    member _.ComparisonOperator(config: CloudWatchAlarmConfig, op: ComparisonOperator) =
+        { config with
+            ComparisonOperator = Some op }
+
+    /// <summary>Sets how to treat missing data.</summary>
+    [<CustomOperation("treatMissingData")>]
+    member _.TreatMissingData(config: CloudWatchAlarmConfig, treatment: TreatMissingData) =
+        { config with
+            TreatMissingData = Some treatment }
+
+// ============================================================================
+// Builders
+// ============================================================================
+
+[<AutoOpen>]
+module CloudWatchBuilders =
+    let cloudwatchAlarm = CloudWatchAlarmBuilder

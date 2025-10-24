@@ -196,47 +196,38 @@ type DashboardBuilder(name: string) =
 module DashboardWidgets =
     /// Creates a metric widget (line graph)
     let metricWidget (title: string) (metrics: IMetric list) =
-        GraphWidget(
-            props =
-                { new IGraphWidgetProps with
-                    member _.Title = title
-                    member _.Left = (metrics |> List.toArray) }
-        )
+        GraphWidget(props = GraphWidgetProps(Title = title, Left = (metrics |> List.toArray)))
 
     /// Creates a metric widget with both left and right Y-axes
     let metricWidgetDualAxis (title: string) (leftMetrics: IMetric list) (rightMetrics: IMetric list) =
         GraphWidget(
             props =
-                { new IGraphWidgetProps with
-                    member _.Title = title
-                    member _.Left = (leftMetrics |> List.toArray)
-                    member _.Right = (rightMetrics |> List.toArray) }
+                GraphWidgetProps(
+                    Title = title,
+                    Left = (leftMetrics |> List.toArray),
+                    Right = (rightMetrics |> List.toArray)
+                )
         )
 
     /// Creates a single value widget (shows latest metric value)
     let singleValueWidget (title: string) (metrics: IMetric list) =
-        SingleValueWidget(
-            props =
-                { new ISingleValueWidgetProps with
-                    member _.Title = title
-                    member _.Metrics = (metrics |> List.toArray) }
-        )
+        SingleValueWidget(props = SingleValueWidgetProps(Title = title, Metrics = (metrics |> List.toArray)))
 
     /// Creates a text widget with markdown content
     let textWidget (markdown: string) =
-        TextWidget(
-            props =
-                { new ITextWidgetProps with
-                    member _.Markdown = markdown }
-        )
+        TextWidget(props = TextWidgetProps(Markdown = markdown))
 
     /// Creates an alarm widget
     let alarmWidget (alarm: IAlarm) =
-        AlarmWidget(
-            props =
-                { new IAlarmWidgetProps with
-                    member _.Alarm = alarm }
-        )
+        AlarmWidget(props = AlarmWidgetProps(Alarm = alarm))
+
+    /// Creates an alarm widget
+    let alarmWidgetSpec (alarmSpec: CloudWatchAlarmSpec) =
+        match alarmSpec.Alarm with
+        | Some alarm -> AlarmWidget(props = AlarmWidgetProps(Alarm = alarm))
+        | None ->
+            // Todo: This should carry the process forward and resolve it on Run instead of here.
+            failwith $"Sorry, a new alarm ({alarmSpec.AlarmName}) from a new spec not implemented yet."
 
     /// Creates a log query widget
     let logQueryWidget

@@ -195,7 +195,7 @@ type CertificateBuilder(name: string) =
                 Validation = Some(CertificateValidation.FromDns knownZone) }
         | None ->
             // Todo: This should carry the process forward and resolve it on Run instead of here.
-            failwith "DNS-validation from new zone not implemented yet"
+            failwith $"DNS-validation from new zone ({hostedZone.ZoneName}) not implemented yet"
 
     /// <summary>Uses email validation.</summary>
     [<CustomOperation("emailValidation")>]

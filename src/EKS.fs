@@ -40,14 +40,22 @@ type EKSClusterConfig =
       MastersRole: IRole option
       EndpointAccess: EndpointAccess option
       ClusterLogging: ClusterLoggingTypes list
-      SecretsEncryptionKey: Amazon.CDK.AWS.KMS.IKey option
+      SecretsEncryptionKey: KMSKeyRef option
       AlbController: bool option
-      CoreDnsComputeType: CoreDnsComputeType option }
+      CoreDnsComputeType: CoreDnsComputeType option
+      AddNodegroupCapacity: (string * NodegroupOptions) list
+      AddServiceAccount: (string * ServiceAccountOptions) list
+      AddHelmChart: (string * HelmChartOptions) list
+      AddFargateProfile: (string * FargateProfileOptions) list }
 
 type EKSClusterSpec =
     { ClusterName: string
       ConstructId: string
       Props: ClusterProps
+      AddNodegroupCapacity: (string * NodegroupOptions) list
+      AddServiceAccount: (string * ServiceAccountOptions) list
+      AddHelmChart: (string * HelmChartOptions) list
+      AddFargateProfile: (string * FargateProfileOptions) list
       mutable Cluster: AWS.EKS.ICluster option }
 
     /// Gets the underlying ICluster resource. Must be called after the stack is built.
@@ -77,7 +85,11 @@ type EKSClusterBuilder(name: string) =
               ClusterLoggingTypes.SCHEDULER ]
           SecretsEncryptionKey = None
           AlbController = None
-          CoreDnsComputeType = None }
+          CoreDnsComputeType = None
+          AddNodegroupCapacity = List.empty
+          AddServiceAccount = List.empty
+          AddHelmChart = List.empty
+          AddFargateProfile = List.empty }
 
     member _.Zero() : EKSClusterConfig =
         { ClusterName = name
@@ -97,7 +109,11 @@ type EKSClusterBuilder(name: string) =
               ClusterLoggingTypes.SCHEDULER ]
           SecretsEncryptionKey = None
           AlbController = None
-          CoreDnsComputeType = None }
+          CoreDnsComputeType = None
+          AddNodegroupCapacity = List.empty
+          AddServiceAccount = List.empty
+          AddHelmChart = List.empty
+          AddFargateProfile = List.empty }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> EKSClusterConfig) : EKSClusterConfig = f ()
 
@@ -152,7 +168,11 @@ type EKSClusterBuilder(name: string) =
           CoreDnsComputeType =
             match a.CoreDnsComputeType with
             | Some _ -> a.CoreDnsComputeType
-            | None -> b.CoreDnsComputeType }
+            | None -> b.CoreDnsComputeType
+          AddNodegroupCapacity = a.AddNodegroupCapacity @ b.AddNodegroupCapacity
+          AddServiceAccount = a.AddServiceAccount @ b.AddServiceAccount
+          AddHelmChart = a.AddHelmChart @ b.AddHelmChart
+          AddFargateProfile = a.AddFargateProfile @ b.AddFargateProfile }
 
     member _.Run(config: EKSClusterConfig) : EKSClusterSpec =
         let props = ClusterProps()
@@ -187,7 +207,14 @@ type EKSClusterBuilder(name: string) =
             props.ClusterLogging <- config.ClusterLogging |> List.toArray
 
         config.SecretsEncryptionKey
-        |> Option.iter (fun k -> props.SecretsEncryptionKey <- k)
+        |> Option.iter (fun v ->
+            props.SecretsEncryptionKey <-
+                match v with
+                | KMSKeyRef.KMSKeyInterface i -> i
+                | KMSKeyRef.KMSKeySpecRef pr ->
+                    match pr.Key with
+                    | Some k -> k
+                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
 
         config.AlbController
         |> Option.iter (fun alb -> props.AlbController <- AlbControllerOptions(Version = AlbControllerVersion.V2_6_2))
@@ -198,6 +225,10 @@ type EKSClusterBuilder(name: string) =
         { ClusterName = config.ClusterName
           ConstructId = constructId
           Props = props
+          AddNodegroupCapacity = List.Empty
+          AddServiceAccount = List.Empty
+          AddHelmChart = List.Empty
+          AddFargateProfile = List.Empty
           Cluster = None }
 
     /// <summary>Sets the construct ID for the EKS cluster.</summary>
@@ -252,6 +283,12 @@ type EKSClusterBuilder(name: string) =
     [<CustomOperation("disableClusterLogging")>]
     member _.DisableClusterLogging(config: EKSClusterConfig) = { config with ClusterLogging = [] }
 
+    /// <summary>Set cluster logging. Default: API/AUDIT/AUTHENTICATOR/CONTROLLER_MANAGER/SCHEDULER</summary>
+    [<CustomOperation("setClusterLogging")>]
+    member _.SetClusterLogging(config: EKSClusterConfig, loggingTypes: ClusterLoggingTypes list) =
+        { config with
+            ClusterLogging = loggingTypes }
+
     /// <summary>Enables the ALB controller.</summary>
     [<CustomOperation("enableAlbController")>]
     member _.EnableAlbController(config: EKSClusterConfig) =
@@ -263,6 +300,38 @@ type EKSClusterBuilder(name: string) =
     member _.CoreDnsComputeType(config: EKSClusterConfig, computeType: CoreDnsComputeType) =
         { config with
             CoreDnsComputeType = Some computeType }
+
+    /// <summary>Enables the ALB controller.</summary>
+    [<CustomOperation("encryptionKey")>]
+    member _.SecretsEncryptionKey(config: EKSClusterConfig, key: AWS.KMS.IKey) =
+        { config with
+            SecretsEncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
+
+    /// <summary>Enables the ALB controller.</summary>
+    [<CustomOperation("encryptionKey")>]
+    member _.SecretsEncryptionKey(config: EKSClusterConfig, key: KMSKeySpec) =
+        { config with
+            SecretsEncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
+
+    [<CustomOperation("addNodegroupCapacity")>]
+    member _.AddNodegroupCapacity(config: EKSClusterConfig, nodes: (string * NodegroupOptions)) =
+        { config with
+            AddNodegroupCapacity = (nodes) :: config.AddNodegroupCapacity }
+
+    [<CustomOperation("addServiceAccount")>]
+    member _.AddServiceAccount(config: EKSClusterConfig, nodes: (string * ServiceAccountOptions)) =
+        { config with
+            AddServiceAccount = (nodes) :: config.AddServiceAccount }
+
+    [<CustomOperation("addHelmChart")>]
+    member _.AddHelmChart(config: EKSClusterConfig, nodes: (string * HelmChartOptions)) =
+        { config with
+            AddHelmChart = (nodes) :: config.AddHelmChart }
+
+    [<CustomOperation("addFargateProfile")>]
+    member _.AddFargateProfile(config: EKSClusterConfig, nodes: (string * FargateProfileOptions)) =
+        { config with
+            AddFargateProfile = (nodes) :: config.AddFargateProfile }
 
 // ============================================================================
 // Builders
@@ -279,4 +348,4 @@ module EKSBuilders =
     ///     defaultCapacity 3
     /// }
     /// </code>
-    let eksCluster (name: string) = EKSClusterBuilder(name)
+    let eksCluster (name: string) = EKSClusterBuilder name

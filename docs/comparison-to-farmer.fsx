@@ -40,7 +40,7 @@ Mapping of services
 | Azure Functions | `functions` | Lambda | `lambdaFunction` |
 | Container Instances | `containerGroup` | ECS/Fargate | `ecs` |
 | Virtual Machine | `vm` | EC2 | `ec2` |
-| AKS | `aks` | EKS | (planned) |
+| AKS | `aks` | EKS | `eksCluster` |
 
 #### Databases
 
@@ -55,18 +55,22 @@ Mapping of services
 | Azure Service   | Farmer   | AWS Service   | FsCDK   |
 |-----------------|----------|---------------|---------|
 | Virtual Network | `vnet` | VPC | `vpc` |
-| Load Balancer | `loadBalancer` | ALB/NLB | `applicationLoadBalancer` |
+| Load Balancer | `loadBalancer` | ALB/NLB | `networkLoadBalancer` |
 | Application Gateway | `appGateway` | ALB | `applicationLoadBalancer` |
-| DNS | `dns` | Route53 | Route53 |
+| DNS | `dns` | Route53 | `hostedZone` |
 
 #### Security
 
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
 | Key Vault | `keyVault` | Secrets Manager | `secret` |
 | Managed Identity | `identity` | IAM Role | IAM helpers |
 
 #### Messaging
 
-| Event Hub | `eventHub` | Kinesis | (planned) |
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
+| Event Hub | `eventHub` | Kinesis | `kinesisStream` |
 | Service Bus | `serviceBus` | SNS/SQS | `topic`/`queue` |
 
 ## Code Examples
@@ -202,6 +206,79 @@ let myVirtualPrivateCloud =
     }
 
 (**
+### Messaging: Event Hub → Kinesis
+
+**Farmer (Azure Event Hub):**
+```fsharp
+let eventHub = eventHub {
+    name "myeventhub"
+    namespace_name "myeventhubnamespace"
+    sku EventHub.Sku.Standard
+    partition_count 4
+    message_retention 7<Days>
+}
+```
+
+**FsCDK (AWS Kinesis Data Streams):**
+*)
+
+open Amazon.CDK
+open Amazon.CDK.AWS.Kinesis
+
+let myStream =
+    kinesisStream "MyStream" {
+        streamName "my-data-stream"
+        shardCount 4
+        retentionPeriod (Duration.Hours 168.) // 7 days
+        encryption StreamEncryption.KMS
+    }
+
+(**
+For detailed Kinesis examples, see the [Kinesis Streams Guide](kinesis-streams.html).
+
+### Container Orchestration: AKS → EKS
+
+**Farmer (Azure Kubernetes Service):**
+```fsharp
+let aks = aks {
+    name "myakscluster"
+    service_principal_use_msi Enabled
+    dns_prefix "myaks"
+    
+    add_agent_pools [
+        agentPool {
+            name "nodepool1"
+            count 3
+            vm_size "Standard_DS2_v2"
+        }
+    ]
+}
+```
+
+**FsCDK (AWS Elastic Kubernetes Service):**
+*)
+
+open Amazon.CDK.AWS.EKS
+
+let cluster =
+    eksCluster "MyEKSCluster" {
+        version KubernetesVersion.V1_28
+        defaultCapacity 0
+
+        addNodegroupCapacity (
+            "NodeGroup",
+            NodegroupOptions(
+                InstanceTypes = [| InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MEDIUM) |],
+                MinSize = 1.,
+                MaxSize = 5.,
+                DesiredSize = 3.
+            )
+        )
+    }
+
+(**
+For comprehensive EKS examples, see the [EKS Guide](eks-kubernetes.html).
+
 ### Security: Managed Identity → IAM Role
 
 **Farmer (Managed Identity):**
@@ -297,6 +374,8 @@ cdk deploy
 - [ ] Adapt networking concepts (VNet → VPC, NSG → Security Group)
 - [ ] Modify storage patterns (Blob → S3, Queue → SQS)
 - [ ] Update database configurations (Cosmos → DynamoDB, SQL → RDS)
+- [ ] Migrate event streaming (Event Hub → Kinesis)
+- [ ] Adapt container orchestration (AKS → EKS)
 - [ ] Review security defaults and adjust as needed
 - [ ] Test with `cdk synth` before deploying
 - [ ] Update CI/CD pipelines for AWS deployment
@@ -412,6 +491,8 @@ When FsCDK builders don't cover your use case, access underlying CDK constructs.
 
 - [FsCDK Documentation](https://totallymoney.github.io/FsCDK/)
 - [FsCDK Examples](lambda-quickstart.html)
+- [Kinesis Streams Guide](kinesis-streams.html)
+- [EKS Kubernetes Guide](eks-kubernetes.html)
 - [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/latest/guide/home.html)
 - [Farmer Documentation](https://compositionalit.github.io/farmer/)
 - [AWS Well-Architected Framework](https://aws.amazon.com/architecture/well-architected/)

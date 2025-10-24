@@ -60,7 +60,7 @@ type EfsFileSystemConfig =
       Vpc: FsCDK.VpcRef option
       RemovalPolicy: RemovalPolicy option
       Encrypted: bool option
-      KmsKey: IKey option
+      KmsKey: KMSKeyRef option
       PerformanceMode: PerformanceMode option
       ThroughputMode: ThroughputMode option
       ProvisionedThroughputPerSecond: float option
@@ -98,7 +98,17 @@ type EfsFileSystemBuilder(id: string) =
             props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef vpc
             config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
             config.Encrypted |> Option.iter (fun e -> props.Encrypted <- e)
-            config.KmsKey |> Option.iter (fun k -> props.KmsKey <- k)
+
+            config.KmsKey
+            |> Option.iter (fun v ->
+                props.KmsKey <-
+                    match v with
+                    | KMSKeyRef.KMSKeyInterface i -> i
+                    | KMSKeyRef.KMSKeySpecRef pr ->
+                        match pr.Key with
+                        | Some k -> k
+                        | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+
             config.PerformanceMode |> Option.iter (fun p -> props.PerformanceMode <- p)
             config.ThroughputMode |> Option.iter (fun t -> props.ThroughputMode <- t)
 
@@ -212,7 +222,19 @@ type EfsFileSystemBuilder(id: string) =
           Vpc = None
           RemovalPolicy = None
           Encrypted = None
-          KmsKey = Some key
+          KmsKey = Some(KMSKeyRef.KMSKeyInterface key)
+          PerformanceMode = None
+          ThroughputMode = None
+          ProvisionedThroughputPerSecond = None
+          SecurityGroup = None }
+
+    member _.Yield(key: KMSKeySpec) : EfsFileSystemConfig =
+        { Stack = None
+          Id = id
+          Vpc = None
+          RemovalPolicy = None
+          Encrypted = None
+          KmsKey = Some(KMSKeyRef.KMSKeySpecRef key)
           PerformanceMode = None
           ThroughputMode = None
           ProvisionedThroughputPerSecond = None

@@ -47,13 +47,14 @@ type FunctionConfig =
       LoggingFormat: LoggingFormat option
       MaxEventAge: Duration option
       RetryAttempts: int option
-      EnvironmentEncryption: IKey option }
+      EnvironmentEncryption: KMSKeyRef option }
 
 type FunctionSpec =
     { FunctionName: string
       ConstructId: string // Construct ID for CDK
       Props: FunctionProps
       Actions: (Function -> unit) list
+      EventSources: ResizeArray<IEventSource>
       mutable Function: IFunction option }
 
 type FunctionBuilder(name: string) =
@@ -530,7 +531,14 @@ type FunctionBuilder(name: string) =
         config.RetryAttempts |> Option.iter (fun r -> props.RetryAttempts <- r)
 
         config.EnvironmentEncryption
-        |> Option.iter (fun key -> props.EnvironmentEncryption <- key)
+        |> Option.iter (fun v ->
+            props.EnvironmentEncryption <-
+                match v with
+                | KMSKeyRef.KMSKeyInterface i -> i
+                | KMSKeyRef.KMSKeySpecRef pr ->
+                    match pr.Key with
+                    | Some k -> k
+                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
 
         // Actions to perform on the Function after creation
         let actions =
@@ -565,6 +573,7 @@ type FunctionBuilder(name: string) =
           ConstructId = constructId
           Props = props
           Actions = actions
+          EventSources = ResizeArray()
           Function = None }
 
     // Custom operations for primitive values
@@ -786,7 +795,12 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("environmentEncryption")>]
     member _.EnvironmentEncryption(config: FunctionConfig, key: IKey) =
         { config with
-            EnvironmentEncryption = Some key }
+            EnvironmentEncryption = Some(KMSKeyRef.KMSKeyInterface key) }
+
+    [<CustomOperation("environmentEncryption")>]
+    member _.EnvironmentEncryption(config: FunctionConfig, key: KMSKeySpec) =
+        { config with
+            EnvironmentEncryption = Some(KMSKeyRef.KMSKeySpecRef key) }
 
     [<CustomOperation("xrayEnabled")>]
     member _.XRayEnabled(config: FunctionConfig) =

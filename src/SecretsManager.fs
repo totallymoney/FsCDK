@@ -26,7 +26,7 @@ type SecretsManagerSecretConfig =
     { SecretName: string
       ConstructId: string option
       Description: string option
-      EncryptionKey: IKey option
+      EncryptionKey: KMSKeyRef option
       RemovalPolicy: RemovalPolicy option
       SecretStringValue: SecretValue option
       GenerateSecretString: SecretStringGenerator option }
@@ -86,7 +86,17 @@ type SecretsManagerSecretBuilder(name: string) =
         let props = SecretProps()
         props.SecretName <- secretName
         config.Description |> Option.iter (fun v -> props.Description <- v)
-        config.EncryptionKey |> Option.iter (fun v -> props.EncryptionKey <- v)
+
+        config.EncryptionKey
+        |> Option.iter (fun v ->
+            props.EncryptionKey <-
+                match v with
+                | KMSKeyRef.KMSKeyInterface i -> i
+                | KMSKeyRef.KMSKeySpecRef pr ->
+                    match pr.Key with
+                    | Some k -> k
+                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+
         config.RemovalPolicy |> Option.iter (fun v -> props.RemovalPolicy <- v)
         config.SecretStringValue |> Option.iter (fun v -> props.SecretStringValue <- v)
 
@@ -107,7 +117,13 @@ type SecretsManagerSecretBuilder(name: string) =
 
     [<CustomOperation("encryptionKey")>]
     member _.EncryptionKey(config: SecretsManagerSecretConfig, key: IKey) =
-        { config with EncryptionKey = Some key }
+        { config with
+            EncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
+
+    [<CustomOperation("encryptionKey")>]
+    member _.EncryptionKey(config: SecretsManagerSecretConfig, key: KMSKeySpec) =
+        { config with
+            EncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
 
     [<CustomOperation("removalPolicy")>]
     member _.RemovalPolicy(config: SecretsManagerSecretConfig, policy: RemovalPolicy) =

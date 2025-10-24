@@ -18,6 +18,7 @@ open Amazon.CDK.AWS.CloudWatch
 open Amazon.CDK.AWS.ECS
 open Amazon.CDK.AWS.Kinesis
 open Amazon.CDK.AWS.Route53
+//open Amazon.CDK.AWS.CloudHSMV2
 
 // ============================================================================
 // Operation Types - Unified Discriminated Union
@@ -55,6 +56,10 @@ type Operation =
     | KinesisStreamOp of KinesisStreamSpec
     | HostedZoneOp of Route53HostedZoneSpec
     | OriginAccessIdentityOp of OriginAccessIdentitySpec
+    //| CloudHSMClusterOp of CloudHSMClusterSpec
+    | LambdaRoleOp of IAM.LambdaRoleSpec
+    | CloudWatchAlarmOp of CloudWatchAlarmSpec
+    | KMSKeyOp of KMSKeySpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -70,6 +75,10 @@ module StackOperations =
 
         | FunctionOp lambdaSpec ->
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
+
+            let _ =
+                lambdaSpec.EventSources |> Seq.map (fun e -> fn.AddEventSource e) |> Seq.toList
+
             lambdaSpec.Function <- Some fn
 
             for action in lambdaSpec.Actions do
@@ -174,6 +183,10 @@ module StackOperations =
             let bastion = BastionHostLinux(stack, bastionSpec.ConstructId, bastionSpec.Props)
             bastionSpec.BastionHost <- Some bastion
 
+        | KMSKeyOp keySpec ->
+            let key = Amazon.CDK.AWS.KMS.Key(stack, keySpec.ConstructId, keySpec.Props)
+            keySpec.Key <- Some key
+
         | VPCGatewayAttachmentOp attachSpec ->
             let props = CfnVPCGatewayAttachmentProps()
             props.VpcId <- attachSpec.VpcId
@@ -219,10 +232,29 @@ module StackOperations =
 
         | EKSClusterOp spec ->
             let cluster = AWS.EKS.Cluster(stack, spec.ConstructId, spec.Props)
+
+            let _ =
+                spec.AddNodegroupCapacity
+                |> List.map (fun (name, opts) -> cluster.AddNodegroupCapacity(name, opts))
+
+            let _ =
+                spec.AddHelmChart
+                |> List.map (fun (name, opts) -> cluster.AddHelmChart(name, opts))
+
+            let _ =
+                spec.AddServiceAccount
+                |> List.map (fun (name, opts) -> cluster.AddServiceAccount(name, opts))
+
+            let _ =
+                spec.AddFargateProfile
+                |> List.map (fun (name, opts) -> cluster.AddFargateProfile(name, opts))
+
             spec.Cluster <- Some cluster
 
         | KinesisStreamOp spec ->
             let stream = Stream(stack, spec.ConstructId, spec.Props)
+            let _ = spec.GrantReads |> Seq.map stream.GrantRead |> Seq.toList
+            let _ = spec.GrantWrites |> Seq.map stream.GrantWrite |> Seq.toList
             spec.Stream <- Some stream
 
         | HostedZoneOp spec ->
@@ -233,6 +265,17 @@ module StackOperations =
             let oai = OriginAccessIdentity(stack, spec.ConstructId, spec.Props)
             spec.Identity <- Some oai
 
+        | CloudWatchAlarmOp alarmSpec ->
+            let ala = Alarm(stack, alarmSpec.ConstructId, alarmSpec.Props)
+            alarmSpec.Alarm <- Some ala
+
+        //| CloudHSMClusterOp hsmSpec ->
+        //    CfnCluster(stack, hsmSpec.ConstructId, hsmSpec.Props) |> ignore
+
+        | LambdaRoleOp roleSpec ->
+            // Role is already created in the builder, just store reference if needed
+            // The role is available in roleSpec.Role
+            ()
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
@@ -414,6 +457,12 @@ type StackBuilder(name: string) =
           Props = None
           Operations = [ BucketPolicyOp policySpec ] }
 
+    member _.Yield(keySpec: KMSKeySpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ KMSKeyOp keySpec ] }
+
     member _.Yield(dashSpec: DashboardSpec) : StackConfig =
         { Name = name
           App = None
@@ -443,6 +492,24 @@ type StackBuilder(name: string) =
           App = None
           Props = None
           Operations = [ OriginAccessIdentityOp spec ] }
+
+    //member _.Yield(hsmSpec: CloudHSMClusterSpec) : StackConfig =
+    //    { Name = name
+    //      App = None
+    //      Props = None
+    //      Operations = [ CloudHSMClusterOp hsmSpec ] }
+
+    member _.Yield(roleSpec: IAM.LambdaRoleSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ LambdaRoleOp roleSpec ] }
+
+    member _.Yield(alarmSpec: CloudWatchAlarmSpec) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ CloudWatchAlarmOp alarmSpec ] }
 
     member _.Zero() : StackConfig =
         { Name = name

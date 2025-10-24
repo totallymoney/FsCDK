@@ -119,24 +119,26 @@ stack "PreBuiltStatements" {
 Attach policies to IAM roles for EC2, Lambda, or other services.
 *)
 
-(*
+
 stack "PolicyWithRole" {
     // Create a role for Lambda
-    let lambdaRole =
-        Role(
-            this,
-            "LambdaRole",
-            RoleProps(AssumedBy = ServicePrincipal("lambda.amazonaws.com"))
-        )
+    let lambdaRole1 =
+        lambdaRole "my-function-role" {
+            basicExecution
+            vpcExecution
+            kmsDecrypt
+            xrayTracing
+            managedPolicy "AmazonS3ReadOnlyAccess"
+            inlinePolicy (IAM.allow [ "dynamodb:Query" ] [ "arn:aws:dynamodb:*:*:table/MyTable" ])
+        }
 
     // Create and attach policy
     managedPolicy "LambdaS3Policy" {
         description "Lambda S3 access"
         statement (ManagedPolicyStatements.s3FullAccess "arn:aws:s3:::lambda-bucket")
-        attachToRole lambdaRole
+        attachToRole lambdaRole1.Role
     }
 }
-*)
 
 (**
 ## Cross-Account Access Policy

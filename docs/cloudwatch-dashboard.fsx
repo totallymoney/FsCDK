@@ -102,7 +102,7 @@ stack "MultiResourceDashboard" {
 Include CloudWatch alarms for critical metrics.
 *)
 
-(*
+
 stack "DashboardWithAlarms" {
     let webFunction =
         lambda "WebApp" {
@@ -114,26 +114,25 @@ stack "DashboardWithAlarms" {
     let errorMetric = webFunction.Function.Value.MetricErrors()
 
     let errorAlarm =
-        Alarm(
-            this,
-            "HighErrors",
-            AlarmProps(
-                Metric = errorMetric,
-                Threshold = 10.0,
-                EvaluationPeriods = 2.0,
-                AlarmDescription = "Alert when error rate is high"
-            )
-        )
+        // CloudWatch Alarm for Lambda errors
+        cloudwatchAlarm "lambda-error-alarm" {
+            description "Alert when error rate is high"
+            metric errorMetric
+            dimensions [ "FunctionName", "my-function" ]
+            statistic "Sum"
+            threshold 10.0
+            evaluationPeriods 2
+            period (Duration.Minutes 5.0)
+        }
 
     dashboard "AlertingDashboard" {
         dashboardName "web-app-alerts"
 
         widgetRow [ DashboardWidgets.metricWidget "Errors" [ errorMetric ] ]
 
-        widget (DashboardWidgets.alarmWidget errorAlarm)
+        widget (DashboardWidgets.alarmWidgetSpec errorAlarm)
     }
 }
-*)
 
 (**
 ## Dashboard with Text Widgets

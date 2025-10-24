@@ -12,6 +12,7 @@
       <Compile Include="SubnetSelection.fs" />
       <Compile Include="VPC.fs" />
       <Compile Include="RDS.fs" />
+      <Compile Include="KMS.fs" />
       <Compile Include="S3Transition.fs" />
       <Compile Include="S3LifecycleRule.fs" />
       <Compile Include="S3BucketMetrics.fs" />
@@ -54,6 +55,7 @@
       <Compile Include="VPCGatewayAttachment.fs" />
       <Compile Include="EKS.fs" />
       <Compile Include="Kinesis.fs" />
+      <Compile Include="CloudHSM.fs" />
 
       <Compile Include="Stack.fs" />
       <Compile Include="App.fs" />
