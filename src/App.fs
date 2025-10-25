@@ -30,7 +30,8 @@ type AppBuilder() =
         x.Combine(config, newConfig)
 
     /// <summary>Adds context to the App with a key-value pair.</summary>
-    /// <param name="keys">The context key.</param>
+    /// <param name="config">The current stack configuration.</param>
+    /// <param name="keys">The context key-value pairs to add.</param>
     /// <code lang="fsharp">
     /// app {
     ///     context [
@@ -44,6 +45,7 @@ type AppBuilder() =
             Context = keys |> Seq.fold (fun ctx (k, v) -> Map.add k v ctx) config.Context }
 
     /// <summary>Enables or disables stack traces in synthesized CloudFormation templates.</summary>
+    /// <param name="config">The current app configuration.</param>
     /// <param name="enabled">Whether stack traces should be included.</param>
     /// <code lang="fsharp">
     /// app {
@@ -56,6 +58,7 @@ type AppBuilder() =
             StackTraces = Some enabled }
 
     /// <summary>Sets the stack synthesizer for the App.</summary>
+    /// <param name="config">The current app configuration.</param>
     /// <param name="synthesizer">The stack synthesizer to use.</param>
     /// <code lang="fsharp">
     /// app {
@@ -86,7 +89,7 @@ module AppBuilders =
     /// <summary>Creates an AWS CDK App construct.</summary>
     /// <code lang="fsharp">
     /// app {
-    ///     context "key" "value"
+    ///     context [ ("environment", "production"); ("feature-flag", true) ]
     ///     stackTraces true
     /// }
     /// </code>

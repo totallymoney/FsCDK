@@ -893,37 +893,20 @@ type StackBuilder(name: string) =
         { Name = state1.Name
           Construct = state1.Construct
           Env = if state2.Env.IsSome then state2.Env else state1.Env
-          Description =
-            if state2.Description.IsSome then
-                state2.Description
-            else
-                state1.Description
+          Description = state1.Description |> Option.orElse state2.Description
           Tags =
             match state1.Tags, state2.Tags with
             | Some tags1, Some tags2 -> Some(Map.fold (fun acc k v -> Map.add k v acc) tags1 tags2)
             | Some tags, None -> Some tags
             | None, Some tags -> Some tags
             | None, None -> None
-          TerminationProtection =
-            if state2.TerminationProtection.IsSome then
-                state2.TerminationProtection
-            else
-                state1.TerminationProtection
-          AnalyticsReporting =
-            if state2.AnalyticsReporting.IsSome then
-                state2.AnalyticsReporting
-            else
-                state1.AnalyticsReporting
-          CrossRegionReferences =
-            if state2.CrossRegionReferences.IsSome then
-                state2.CrossRegionReferences
-            else
-                state1.CrossRegionReferences
+          TerminationProtection = state1.TerminationProtection |> Option.orElse state2.TerminationProtection
+
+          AnalyticsReporting = state1.AnalyticsReporting |> Option.orElse state2.AnalyticsReporting
+          CrossRegionReferences = state1.CrossRegionReferences |> Option.orElse state2.CrossRegionReferences
           SuppressTemplateIndentation =
-            if state2.SuppressTemplateIndentation.IsSome then
-                state2.SuppressTemplateIndentation
-            else
-                state1.SuppressTemplateIndentation
+            state1.SuppressTemplateIndentation
+            |> Option.orElse state2.SuppressTemplateIndentation
           NotificationArns =
             match state1.NotificationArns, state2.NotificationArns with
             | Some n1, Some n2 -> Some(Seq.toList n1 @ Seq.toList n2)
@@ -941,11 +924,7 @@ type StackBuilder(name: string) =
             | Some p, None -> Some p
             | None, Some p -> Some p
             | None, None -> None
-          Synthesizer =
-            if state2.Synthesizer.IsSome then
-                state2.Synthesizer
-            else
-                state1.Synthesizer
+          Synthesizer = state1.Synthesizer |> Option.orElse state2.Synthesizer
           Operations = state1.Operations @ state2.Operations }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> StackConfig) : StackConfig = f ()
