@@ -38,7 +38,6 @@ type Operation =
     | CloudFrontDistributionOp of DistributionSpec
     | UserPoolOp of UserPoolSpec
     | UserPoolClientOp of UserPoolClientSpec
-    // New operations
     | NetworkLoadBalancerOp of NetworkLoadBalancerSpec
     | EventBridgeRuleOp of EventBridgeRuleSpec
     | EventBusOp of EventBusSpec

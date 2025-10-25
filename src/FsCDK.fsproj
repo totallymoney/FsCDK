@@ -58,6 +58,8 @@
       <Compile Include="CloudHSM.fs" />
 
       <Compile Include="Stack.fs" />
+
+      <Compile Include="Stage.fs" />
       <Compile Include="App.fs" />
 
     </ItemGroup>

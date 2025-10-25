@@ -9,17 +9,17 @@ open Amazon.CDK.AWS.IAM
 /// <summary>
 /// High-level OIDC Provider builder for federated identity in IAM.
 ///
-/// **Use Cases:**
+/// **Use Cases: **
 /// - GitHub Actions authentication
 /// - GitLab CI/CD authentication
 /// - Other OIDC-based identity providers
 ///
-/// **Security Best Practices:**
+/// **Security Best Practices: **
 /// - Limit client IDs to known applications
 /// - Use thumbprints to verify the identity provider's certificate
 /// - Apply least-privilege IAM policies to federated roles
 ///
-/// **Escape Hatch:**
+/// **Escape Hatch: **
 /// Access the underlying CDK OpenIdConnectProvider via the `Provider` property
 /// for advanced scenarios not covered by this builder.
 /// </summary>
@@ -162,4 +162,4 @@ module OIDCProviderBuilders =
     ///     clientId "sts.amazonaws.com"
     /// }
     /// </code>
-    let oidcProvider (name: string) = OIDCProviderBuilder name
+    let oidcProvider (name: string) = OIDCProviderBuilder(name)
