@@ -32,14 +32,14 @@ module Config =
 let config = Config.get ()
 
 stack "ALBStack" {
-    app { context "environment" "production" }
+    app { context [ "environment", "production" ] }
 
     environment {
         account config.Account
         region config.Region
     }
 
-    stackProps { description "Application Load Balancer example" }
+    description "Application Load Balancer example"
 
     // Create VPC
     let myVpc =
@@ -65,14 +65,14 @@ stack "ALBStack" {
 open Amazon.CDK.AWS.SecretsManager
 
 stack "SecretsStack" {
-    app { context "environment" "production" }
+    app { context [ "environment", "production" ] }
 
     environment {
         account config.Account
         region config.Region
     }
 
-    stackProps { description "Secrets Manager example" }
+    description "Secrets Manager example"
 
     // Create a secret with auto-generated password
     secret "MyDatabasePassword" {
@@ -94,14 +94,14 @@ stack "SecretsStack" {
 open Amazon.CDK.AWS.Route53
 
 stack "DNSStack" {
-    app { context "environment" "production" }
+    app { context [ "environment", "production" ] }
 
     environment {
         account config.Account
         region config.Region
     }
 
-    stackProps { description "Route 53 DNS example" }
+    description "Route 53 DNS example"
 
     // Create VPC and ALB first
     let myVpc =
@@ -135,14 +135,14 @@ stack "DNSStack" {
 open Amazon.CDK.AWS.ElasticBeanstalk
 
 stack "BeanstalkStack" {
-    app { context "environment" "production" }
+    app { context [ "environment", "production" ] }
 
     environment {
         account config.Account
         region config.Region
     }
 
-    stackProps { description "Elastic Beanstalk example" }
+    description "Elastic Beanstalk example"
 
     // Create Elastic Beanstalk application
     let myApp = ebApplication "MyWebApp" { description "My web application" }

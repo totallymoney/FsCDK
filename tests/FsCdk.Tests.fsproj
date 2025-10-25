@@ -42,7 +42,6 @@
         <Compile Include="FunctionTests.fs" />
         <Compile Include="FunctionUrlOptionsTests.fs" />
         <Compile Include="FunctionAddOptionsBuildersTests.fs" />
-        <Compile Include="StackPropsTests.fs" />
         <Compile Include="SnapshotTests/S3SnapshotTests.fs" />
         <Compile Include="SnapshotTests/LambdaSnapshotTests.fs" />
         <Compile Include="Main.fs" />

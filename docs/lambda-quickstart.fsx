@@ -162,14 +162,13 @@ stack "LambdaQuickstartStack" {
         region config.Region
     }
 
-    stackProps {
-        description "FsCDK Lambda Quickstart Example - demonstrates Lambda functions with security defaults"
+    description "FsCDK Lambda Quickstart Example - demonstrates Lambda functions with security defaults"
 
-        tags
-            [ "Project", "FsCDK-Examples"
-              "Example", "Lambda-Quickstart"
-              "ManagedBy", "FsCDK" ]
-    }
+    tags
+        [ "Project", "FsCDK-Examples"
+          "Example", "Lambda-Quickstart"
+          "ManagedBy", "FsCDK" ]
+
 
     // Example 1: Basic function with all defaults
     lambda "basic-function" {

@@ -232,7 +232,8 @@ type DnsValidatedCertificateConfig =
 type DnsValidatedCertificateSpec =
     { CertificateName: string
       ConstructId: string
-      Props: DnsValidatedCertificateProps }
+      Props: DnsValidatedCertificateProps
+      mutable Certificate: Certificate }
 
 type DnsValidatedCertificateBuilder(name: string) =
     member _.Yield _ : DnsValidatedCertificateConfig =
@@ -329,6 +330,7 @@ type DnsValidatedCertificateBuilder(name: string) =
 
         { CertificateName = config.CertificateName
           ConstructId = constructId
+          Certificate = null
           Props = props }
 
     /// <summary>Sets the construct ID.</summary>
@@ -395,4 +397,4 @@ module CertificateManagerBuilders =
     ///     region "us-east-1"
     /// }
     /// </code>
-    let dnsValidatedCertificate (name: string) = DnsValidatedCertificateBuilder name
+    let dnsValidatedCertificate (name: string) = DnsValidatedCertificateBuilder(name)

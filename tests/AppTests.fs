@@ -30,21 +30,16 @@ let appTests =
                   }
 
               let app =
-                  app {
-                      context "environment" "production"
-                      context "feature-flag" true
-                      context "version" "1.2.3"
-                  }
+                  app { context [ "environment", "production"; "feature-flag", true; "version", "1.2.3" ] }
 
               // 2) A Dev stack you can actually work with
               stack "Dev" {
                   app
 
-                  stackProps {
-                      devEnv
-                      description "Developer stack for feature work"
-                      tags [ "service", "users"; "env", "dev" ]
-                  }
+                  devEnv
+
+                  description "Developer stack for feature work"
+                  tags [ "service", "users"; "env", "dev" ]
 
                   table "users" {
                       partitionKey "id" AttributeType.STRING
@@ -71,13 +66,9 @@ let appTests =
 
               stack "Prod" {
                   app
-
-                  stackProps {
-                      prodEnv
-                      stackName "users-prod"
-                      terminationProtection true
-                      tags [ "service", "users"; "env", "prod" ]
-                  }
+                  prodEnv
+                  terminationProtection true
+                  tags [ "service", "users"; "env", "prod" ]
 
                   table "users" {
                       partitionKey "id" AttributeType.STRING
@@ -93,7 +84,7 @@ let appTests =
 
               Expect.equal cloudAssembly.Stacks.Length 2 "App should have exactly two stacks"
               Expect.equal cloudAssembly.Stacks[0].DisplayName "Dev" "First spec should be Dev"
-              Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod (users-prod)" "Second spec should be Prod"
+              Expect.equal cloudAssembly.Stacks[1].DisplayName "Prod" "Second spec should be Prod"
 
               Expect.equal
                   (app.Node.TryGetContext("environment"))
@@ -124,15 +115,12 @@ let appTests =
               stack "Dev" {
                   app
                   devEnv
-                  stackProps { devEnv }
-
                   table "users" { partitionKey "id" AttributeType.STRING }
               }
 
               stack "Prod" {
                   app
-                  stackProps { prodEnv }
-
+                  prodEnv
                   table "users" { partitionKey "id" AttributeType.STRING }
               }
 
