@@ -44,5 +44,6 @@ let rds_instance_dsl_tests =
                   |> ignore
 
               // This would fail without VPC, which is expected
-              Expect.throws configTest "Should require VPC"
+              Expect.throws configTest "RDS Instance builder should throw without VPC"
           } ]
+    |> testSequenced
