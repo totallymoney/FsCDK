@@ -29,7 +29,7 @@ type EC2InstanceConfig =
       ConstructId: string option
       InstanceType: InstanceType option
       MachineImage: IMachineImage option
-      Vpc: FsCDK.VpcRef option
+      Vpc: VpcRef option
       VpcSubnets: SubnetSelection option
       SecurityGroup: SecurityGroupRef option
       KeyPair: IKeyPair option
@@ -40,16 +40,14 @@ type EC2InstanceConfig =
       DetailedMonitoring: bool option
       BlockDevices: IBlockDevice list }
 
-type EC2InstanceResource =
-    {
-        InstanceName: string
-        ConstructId: string
-        /// The underlying CDK Instance construct - use for advanced scenarios
-        Instance: Instance_
-    }
+type EC2InstanceSpec =
+    { InstanceName: string
+      ConstructId: string
+      mutable Instance: Instance_
+      Props: InstanceProps }
 
 type EC2InstanceBuilder(name: string) =
-    member _.Yield _ : EC2InstanceConfig =
+    member _.Yield(_: unit) : EC2InstanceConfig =
         { InstanceName = name
           ConstructId = None
           InstanceType = Some(InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MICRO))
@@ -109,7 +107,7 @@ type EC2InstanceBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: EC2InstanceConfig) : EC2InstanceResource =
+    member _.Run(config: EC2InstanceConfig) : EC2InstanceSpec =
         let instanceName = config.InstanceName
         let constructId = config.ConstructId |> Option.defaultValue instanceName
 
@@ -118,8 +116,7 @@ type EC2InstanceBuilder(name: string) =
         config.InstanceType |> Option.iter (fun v -> props.InstanceType <- v)
         config.MachineImage |> Option.iter (fun v -> props.MachineImage <- v)
 
-        config.Vpc
-        |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- VpcHelpers.resolveVpcRef v)
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
@@ -143,7 +140,8 @@ type EC2InstanceBuilder(name: string) =
 
         { InstanceName = instanceName
           ConstructId = constructId
-          Instance = null } // Will be created during stack construction
+          Instance = null
+          Props = props }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: EC2InstanceConfig, id: string) = { config with ConstructId = Some id }
@@ -161,12 +159,12 @@ type EC2InstanceBuilder(name: string) =
     [<CustomOperation("vpc")>]
     member _.Vpc(config: EC2InstanceConfig, vpc: IVpc) =
         { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
+            Vpc = Some(VpcInterface vpc) }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: EC2InstanceConfig, vpcSpec: FsCDK.VpcSpec) =
+    member _.Vpc(config: EC2InstanceConfig, vpcSpec: VpcSpec) =
         { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+            Vpc = Some(VpcSpecRef vpcSpec) }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: EC2InstanceConfig, subnets: SubnetSelection) =
@@ -218,4 +216,4 @@ module EC2Builders =
     /// Creates a new EC2 instance builder with secure defaults.
     /// Example: ec2Instance "my-instance" { instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL)) }
     /// </summary>
-    let ec2Instance name = EC2InstanceBuilder name
+    let ec2Instance name = EC2InstanceBuilder(name)

@@ -59,6 +59,12 @@ type Operation =
     | LambdaRoleOp of IAM.LambdaRoleSpec
     | CloudWatchAlarmOp of CloudWatchAlarmSpec
     | KMSKeyOp of KMSKeySpec
+    | EC2InstanceOp of EC2InstanceSpec
+    | Route53RecordOp of Route53ARecordSpec
+    | ALBOp of ALBSpec
+    | SecretsManagerOp of SecretsManagerSpec
+    | ElasticBeanstalkEnvironmentOp of ElasticBeanstalkEnvironmentSpec
+    | DnsValidatedCertificateOp of DnsValidatedCertificateSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -269,6 +275,38 @@ module StackOperations =
             // Role is already created in the builder, just store reference if needed
             // The role is available in roleSpec.Role
             ()
+
+        | EC2InstanceOp ec2Spec ->
+            let instance = Instance_(stack, ec2Spec.ConstructId, ec2Spec.Props)
+            ec2Spec.Instance <- instance
+
+        | Route53RecordOp recordSpec ->
+            let record = ARecord(stack, recordSpec.ConstructId, recordSpec.Props)
+            recordSpec.ARecord <- record
+
+        | ALBOp albSpec ->
+            let alb = ApplicationLoadBalancer(stack, albSpec.ConstructId, albSpec.Props)
+            albSpec.LoadBalancer <- alb
+
+        | SecretsManagerOp secretsSpec ->
+            let secret =
+                Amazon.CDK.AWS.SecretsManager.Secret(stack, secretsSpec.ConstructId, secretsSpec.Props)
+
+            secretsSpec.Secret <- secret
+
+        | ElasticBeanstalkEnvironmentOp envSpec ->
+            let env =
+                Amazon.CDK.AWS.ElasticBeanstalk.CfnEnvironment(stack, envSpec.ConstructId, envSpec.Props)
+
+            envSpec.Environment <- env
+
+        | DnsValidatedCertificateOp certSpec ->
+            let cert =
+                Amazon.CDK.AWS.CertificateManager.Certificate(stack, certSpec.ConstructId, certSpec.Props)
+
+            certSpec.Certificate <- cert
+            certSpec.Certificate <- cert
+
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
@@ -338,6 +376,103 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ TableOp tableSpec ] }
+
+    member _.Yield(tableSpec: EC2InstanceSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ EC2InstanceOp tableSpec ] }
+
+    member _.Yield(tableSpec: Route53ARecordSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ Route53RecordOp tableSpec ] }
+
+
+    member _.Yield(albSpec: ALBSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ ALBOp albSpec ] }
+
+    member _.Yield(secretsSpec: SecretsManagerSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ SecretsManagerOp secretsSpec ] }
+
+    member _.Yield(secretsSpec: ElasticBeanstalkEnvironmentSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ ElasticBeanstalkEnvironmentOp secretsSpec ] }
+
+    member _.Yield(secretsSpec: DnsValidatedCertificateSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ DnsValidatedCertificateOp secretsSpec ] }
 
     member _.Yield(app: Construct) : StackConfig =
         { Name = name

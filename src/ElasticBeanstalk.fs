@@ -96,13 +96,11 @@ type ElasticBeanstalkEnvironmentConfig =
       Tier: CfnEnvironment.ITierProperty option
       OptionSettings: CfnEnvironment.IOptionSettingProperty list }
 
-type ElasticBeanstalkEnvironmentResource =
-    {
-        EnvironmentName: string
-        ConstructId: string
-        /// The underlying CDK Environment construct
-        Environment: CfnEnvironment
-    }
+type ElasticBeanstalkEnvironmentSpec =
+    { EnvironmentName: string
+      ConstructId: string
+      mutable Environment: CfnEnvironment
+      Props: CfnEnvironmentProps }
 
 type ElasticBeanstalkEnvironmentBuilder(name: string) =
     member _.Yield _ : ElasticBeanstalkEnvironmentConfig =
@@ -148,7 +146,7 @@ type ElasticBeanstalkEnvironmentBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ElasticBeanstalkEnvironmentConfig) : ElasticBeanstalkEnvironmentResource =
+    member _.Run(config: ElasticBeanstalkEnvironmentConfig) : ElasticBeanstalkEnvironmentSpec =
         let environmentName = config.EnvironmentName
         let constructId = config.ConstructId |> Option.defaultValue environmentName
 
@@ -164,7 +162,8 @@ type ElasticBeanstalkEnvironmentBuilder(name: string) =
 
         { EnvironmentName = environmentName
           ConstructId = constructId
-          Environment = null }
+          Environment = null
+          Props = props }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ElasticBeanstalkEnvironmentConfig, id: string) = { config with ConstructId = Some id }
@@ -209,4 +208,5 @@ module ElasticBeanstalkBuilders =
     /// Creates a new Elastic Beanstalk environment builder.
     /// Example: ebEnvironment "my-env" { applicationName "my-app"; solutionStackName "64bit Amazon Linux 2 v5.8.0 running Node.js 18" }
     /// </summary>
-    let ebEnvironment name = ElasticBeanstalkEnvironmentBuilder name
+    let ebEnvironment name =
+        ElasticBeanstalkEnvironmentBuilder(name)
