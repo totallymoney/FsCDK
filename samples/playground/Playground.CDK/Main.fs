@@ -11,15 +11,12 @@ let main _ =
 
     let config = Config.get ()
 
-    let env =
-        environment {
-            account config.Account
-            region config.Region
-        }
-
     let createStack envName =
         stack envName {
-            stackProps { env }
+            environment {
+                account config.Account
+                region config.Region
+            }
 
             lambda $"playground-{envName}-sayHello" {
                 runtime Runtime.DOTNET_8

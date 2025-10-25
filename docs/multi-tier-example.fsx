@@ -71,19 +71,14 @@ let staticAssetsBucket =
     }
 
 stack "MultiTierApp" {
-    app {
-        context "environment" "production"
-        context "app-name" "my-web-app"
-    }
+    app { context [ "environment", "production"; "app-name", "my-web-app" ] }
 
-    stackProps {
-        description "Multi-tier web application with database and CDN"
+    description "Multi-tier web application with database and CDN"
 
-        tags
-            [ "project", "MultiTierApp"
-              "environment", "production"
-              "managed-by", "FsCDK" ]
-    }
+    tags
+        [ "project", "MultiTierApp"
+          "environment", "production"
+          "managed-by", "FsCDK" ]
 
     // Step 1: Create VPC with public and private subnets
     // AWS Best Practice: Multi-AZ for high availability

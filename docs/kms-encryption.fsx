@@ -37,7 +37,7 @@ module Config =
 let config = Config.get ()
 
 stack "BasicKMSStack" {
-    stackProps { description "Basic KMS key with automatic rotation" }
+    description "Basic KMS key with automatic rotation"
 
     // Create a KMS key with secure defaults
     let myKey =
@@ -57,7 +57,7 @@ stack "BasicKMSStack" {
 *)
 
 stack "S3EncryptionStack" {
-    stackProps { description "S3 bucket with KMS encryption" }
+    description "S3 bucket with KMS encryption"
 
     // Create KMS key for S3
     let s3Key =
@@ -83,7 +83,7 @@ stack "S3EncryptionStack" {
 *)
 
 stack "SecretsEncryptionStack" {
-    stackProps { description "Secrets Manager with custom KMS key" }
+    description "Secrets Manager with custom KMS key"
 
     // Create KMS key for secrets
     let secretsKey =
@@ -109,7 +109,7 @@ stack "SecretsEncryptionStack" {
 *)
 
 stack "LambdaEncryptionStack" {
-    stackProps { description "Lambda with encrypted environment variables" }
+    description "Lambda with encrypted environment variables"
 
     // Create KMS key for Lambda
     let lambdaKey =
@@ -139,7 +139,7 @@ stack "LambdaEncryptionStack" {
 *)
 
 stack "SigningKeyStack" {
-    stackProps { description "Asymmetric KMS key for digital signatures" }
+    description "Asymmetric KMS key for digital signatures"
 
     // Create signing key
     let signingKey =
@@ -164,11 +164,8 @@ stack "ProductionKMSStack" {
         region config.Region
     }
 
-    stackProps {
-        description "Production KMS keys for multi-tier application"
-
-        tags [ "Environment", "Production"; "ManagedBy", "FsCDK" ]
-    }
+    description "Production KMS keys for multi-tier application"
+    tags [ "Environment", "Production"; "ManagedBy", "FsCDK" ]
 
     // Application data encryption key
     let appDataKey =
@@ -234,13 +231,13 @@ Grant only required permissions:
 
 ```fsharp
 // Allow encryption only
-let encryptStmt = IAM.allow 
-    ["kms:Encrypt"; "kms:GenerateDataKey"] 
+let encryptStmt = IAM.allow
+    ["kms:Encrypt"; "kms:GenerateDataKey"]
     [appDataKey.Key.Value.KeyArn]
 
 // Allow decryption only
-let decryptStmt = IAM.allow 
-    ["kms:Decrypt"] 
+let decryptStmt = IAM.allow
+    ["kms:Decrypt"]
     [appDataKey.Key.Value.KeyArn]
 ```
 
@@ -251,7 +248,7 @@ Use CloudWatch and CloudTrail to monitor all key operations.
 
 ### KMS Pricing
 - **Key Storage**: $1/month per key
-- **API Requests**: 
+- **API Requests**:
   - Free tier: 20,000 requests/month
   - Beyond free tier: $0.03 per 10,000 requests
 

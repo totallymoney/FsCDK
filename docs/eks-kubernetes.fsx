@@ -56,11 +56,10 @@ stack "BasicEKSStack" {
         region config.Region
     }
 
-    stackProps {
-        description "Basic EKS cluster with managed node group"
+    description "Basic EKS cluster with managed node group"
 
-        tags [ "Project", "FsCDK-Examples"; "Service", "EKS"; "ManagedBy", "FsCDK" ]
-    }
+    tags [ "Project", "FsCDK-Examples"; "Service", "EKS"; "ManagedBy", "FsCDK" ]
+
 
     // Create VPC for EKS cluster
     let clusterVpc =
@@ -116,7 +115,7 @@ Run pods without managing EC2 instances using AWS Fargate.
 *)
 
 stack "FargateEKSStack" {
-    stackProps { description "EKS cluster with Fargate profiles" }
+    description "EKS cluster with Fargate profiles"
 
     let fargateVpc =
         vpc "FargateVpc" {
@@ -157,7 +156,7 @@ Support both x86 and ARM workloads for cost optimization.
 *)
 
 stack "MultiArchEKSStack" {
-    stackProps { description "EKS cluster with x86 and ARM node groups" }
+    description "EKS cluster with x86 and ARM node groups"
 
     let multiArchVpc =
         vpc "MultiArchVpc" {
@@ -212,7 +211,7 @@ Use Spot Instances for fault-tolerant workloads to save up to 90%.
 *)
 
 stack "SpotEKSStack" {
-    stackProps { description "EKS cluster with Spot instance node group" }
+    description "EKS cluster with Spot instance node group"
 
     let spotVpc =
         vpc "SpotVpc" {
@@ -274,7 +273,7 @@ Grant Kubernetes pods fine-grained IAM permissions without sharing credentials.
 *)
 
 stack "IRSAEKSStack" {
-    stackProps { description "EKS cluster with IRSA for pod permissions" }
+    description "EKS cluster with IRSA for pod permissions"
 
     let irsaVpc =
         vpc "IRSAVpc" {
@@ -316,7 +315,7 @@ Enable envelope encryption for Kubernetes secrets at rest.
 *)
 
 stack "SecureEKSStack" {
-    stackProps { description "EKS cluster with KMS secrets encryption" }
+    description "EKS cluster with KMS secrets encryption"
 
     let secureVpc =
         vpc "SecureVpc" {
@@ -442,7 +441,7 @@ Install applications using Helm package manager.
 *)
 
 stack "HelmChartsStack" {
-    stackProps { description "EKS cluster with Helm chart installations" }
+    description "EKS cluster with Helm chart installations"
 
     let helmVpc =
         vpc "HelmVpc" {
@@ -509,7 +508,7 @@ Automatically adjust node group size based on pod resource requests.
 *)
 
 stack "AutoScalingEKSStack" {
-    stackProps { description "EKS cluster with autoscaling" }
+    description "EKS cluster with autoscaling"
 
     let autoScaleVpc =
         vpc "AutoScaleVpc" {
@@ -565,11 +564,8 @@ stack "ProductionEKSStack" {
         region config.Region
     }
 
-    stackProps {
-        description "Production-ready EKS cluster with security and monitoring"
-
-        tags [ "Environment", "Production"; "Project", "K8sCluster"; "ManagedBy", "FsCDK" ]
-    }
+    description "Production-ready EKS cluster with security and monitoring"
+    tags [ "Environment", "Production"; "Project", "K8sCluster"; "ManagedBy", "FsCDK" ]
 
     // Production VPC with high availability
     let prodVpc =

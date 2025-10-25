@@ -41,11 +41,9 @@ let prodEnv =
 
 // 2) A Dev stack you can actually work with
 stack "Dev" {
-    stackProps {
-        devEnv
-        description "Developer stack for feature work"
-        tags [ "service", "users"; "env", "dev" ]
-    }
+    devEnv
+    description "Developer stack for feature work"
+    tags [ "service", "users"; "env", "dev" ]
 
     // resources
     table "users" {
@@ -87,12 +85,9 @@ stack "Dev" {
 }
 
 stack "Prod" {
-    stackProps {
-        prodEnv
-        stackName "users-prod"
-        terminationProtection true
-        tags [ "service", "users"; "env", "prod" ]
-    }
+    prodEnv
+    terminationProtection true
+    tags [ "service", "users"; "env", "prod" ]
 
     table "users" {
         partitionKey "id" AttributeType.STRING

@@ -32,13 +32,13 @@ pipeline "ci" {
     stage "build" {
         run $"dotnet restore {sln}"
         run $"dotnet build {sln} -c {config} --no-restore"
-        run $"dotnet test {sln} -c {config} --no-build"
+        run $"dotnet test {sln} -c {config} --no-build --blame-hang --blame-hang-timeout 5m --diag:artifacts/vstest.log"
     }
 
     stage "cdk synth tests" {
         workingDir (__SOURCE_DIRECTORY__ </> "tests")
-        run "npx aws-cdk --version --yes"
-        run "npx cdk synth --yes"
+        run "npx --yes aws-cdk --version"
+        run "npx --yes cdk synth --yes"
     }
 
     stage "docs" {

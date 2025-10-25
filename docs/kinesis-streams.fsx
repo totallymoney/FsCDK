@@ -48,11 +48,8 @@ stack "KinesisStack" {
         region config.Region
     }
 
-    stackProps {
-        description "Kinesis Data Streams example with Lambda consumer"
-
-        tags [ "Project", "FsCDK-Examples"; "Service", "Kinesis"; "ManagedBy", "FsCDK" ]
-    }
+    description "Kinesis Data Streams example with Lambda consumer"
+    tags [ "Project", "FsCDK-Examples"; "Service", "Kinesis"; "ManagedBy", "FsCDK" ]
 
     // Create a basic Kinesis stream with encryption
     let stream =
@@ -96,7 +93,7 @@ For unpredictable workloads, use on-demand capacity mode. The stream automatical
 *)
 
 stack "OnDemandKinesisStack" {
-    stackProps { description "Kinesis stream with on-demand capacity" }
+    description "Kinesis stream with on-demand capacity"
 
     let onDemandStream =
         kinesisStream "OnDemandStream" {
@@ -123,7 +120,7 @@ For predictable, high-volume data ingestion with multiple shards.
 *)
 
 stack "HighThroughputKinesisStack" {
-    stackProps { description "High-throughput Kinesis stream with multiple shards" }
+    description "High-throughput Kinesis stream with multiple shards"
 
     let highThroughputStream =
         kinesisStream "HighThroughputStream" {
@@ -145,7 +142,7 @@ Process streaming data for real-time dashboards and metrics.
 *)
 
 stack "AnalyticsPipelineStack" {
-    stackProps { description "Real-time analytics with Kinesis and Lambda" }
+    description "Real-time analytics with Kinesis and Lambda"
 
     // Kinesis stream captures clickstream data
     let clickstream =
@@ -198,7 +195,7 @@ Capture application events for multiple independent consumers.
 *)
 
 stack "EventStreamingStack" {
-    stackProps { description "Event streaming with multiple consumers" }
+    description "Event streaming with multiple consumers"
 
     // Central event stream
     let eventStream =
@@ -261,7 +258,7 @@ Centralize logs from multiple sources for analysis and storage.
 *)
 
 stack "LogAggregationStack" {
-    stackProps { description "Centralized log aggregation with Kinesis" }
+    description "Centralized log aggregation with Kinesis"
 
     // Log aggregation stream
     let logStream =
@@ -366,7 +363,7 @@ Monitor stream health with alarms:
 *)
 
 stack "MonitoredKinesisStack" {
-    stackProps { description "Kinesis stream with CloudWatch monitoring" }
+    description "Kinesis stream with CloudWatch monitoring"
 
     let monitoredStream =
         kinesisStream "MonitoredStream" {
@@ -424,7 +421,7 @@ Optimize Lambda processing for cost and latency:
 *)
 
 stack "OptimizedProcessingStack" {
-    stackProps { description "Optimized Kinesis processing with Lambda" }
+    description "Optimized Kinesis processing with Lambda"
 
     let stream =
         kinesisStream "OptimizedStream" {
@@ -476,11 +473,8 @@ stack "ProductionKinesisStack" {
         region config.Region
     }
 
-    stackProps {
-        description "Production-ready Kinesis streaming pipeline"
-
-        tags [ "Environment", "Production"; "Project", "DataPipeline"; "ManagedBy", "FsCDK" ]
-    }
+    description "Production-ready Kinesis streaming pipeline"
+    tags [ "Environment", "Production"; "Project", "DataPipeline"; "ManagedBy", "FsCDK" ]
 
     // Production stream with extended retention
     let prodStream =
