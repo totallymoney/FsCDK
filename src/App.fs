@@ -34,8 +34,8 @@ type AppBuilder() =
     /// <code lang="fsharp">
     /// app {
     ///     context [
-    ///         "environment" "production"
-    ///         "feature-flag" true ]
+    ///         ("environment", "production")
+    ///         ("feature-flag", true) ]
     /// }
     /// </code>
     [<CustomOperation("context")>]
