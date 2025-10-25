@@ -19,7 +19,7 @@ type AppBuilder() =
           DefaultStackSynthesizer = None }
 
     member _.Combine(config1: AppConfig, config2: AppConfig) =
-        { Context = Map.fold (fun acc k v -> acc.Add(k, v)) config1.Context config2.Context
+        { Context = Map.fold (fun acc k v -> Map.add k v acc) config2.Context config1.Context
           StackTraces = config1.StackTraces |> Option.orElse config2.StackTraces
           DefaultStackSynthesizer = config1.DefaultStackSynthesizer |> Option.orElse config2.DefaultStackSynthesizer }
 
