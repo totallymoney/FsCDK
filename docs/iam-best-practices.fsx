@@ -141,23 +141,22 @@ let myUserPool =
     userPool "SecureUserPool" {
         signInWithEmail
 
-        // Disable self sign-up to prevent unauthorized accounts
+        // Disable self-sign-up to prevent unauthorized accounts
         selfSignUpEnabled false // Approve users manually or via API
 
         // Require MFA for sensitive operations
         mfa Mfa.REQUIRED
 
         // Strong password policy
-        passwordPolicy (
-            PasswordPolicy(
-                MinLength = 12,
-                RequireLowercase = true,
-                RequireUppercase = true,
-                RequireDigits = true,
-                RequireSymbols = true,
-                TempPasswordValidity = Duration.Days(7.0)
-            )
-        )
+        passwordPolicy {
+            minLength 12
+            requireLowercase true
+            requireUppercase true
+            requireDigits true
+            requireSymbols true
+            tempPasswordValidity (Duration.Days 7.0)
+
+        }
 
         // Account recovery via email only (more secure than SMS)
         accountRecovery AccountRecovery.EMAIL_ONLY
@@ -296,8 +295,6 @@ lambda "S3Writer" {
 ### Read from SQS Queue
 *)
 
-open Amazon.CDK.AWS.SQS
-
 lambda "QueueProcessor" {
     runtime Runtime.DOTNET_8
     handler "MyApp::Handler"
@@ -313,8 +310,6 @@ lambda "QueueProcessor" {
 (**
 ### Publish to SNS Topic
 *)
-
-open Amazon.CDK.AWS.SNS
 
 lambda "NotificationSender" {
     runtime Runtime.DOTNET_8
@@ -486,7 +481,7 @@ rdsInstance "HealthDatabase" {
 
 Before deploying to production:
 
-- [ ] All security groups follow least privilege
+- [ ] All security groups follow the least privilege
 - [ ] All S3 buckets block public access (unless specifically required)
 - [ ] All databases use encryption at rest
 - [ ] All data transfer uses encryption in transit (TLS 1.2+)

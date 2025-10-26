@@ -18,7 +18,6 @@
       <Compile Include="S3BucketMetrics.fs" />
       <Compile Include="S3.fs" />
       <Compile Include="CloudFront.fs" />
-      <Compile Include="Cognito.fs" />
       <Compile Include="FunctionVersion.fs" />
       <Compile Include="LambdaFileSystem.fs" />
       <Compile Include="EventInvokeConfig.fs" />
@@ -28,6 +27,7 @@
       <Compile Include="DynamoDB.fs" />
       <Compile Include="DockerImageFunction.fs" />
       <Compile Include="Function.fs" />
+      <Compile Include="Cognito.fs" />
       <Compile Include="SNS.fs" />
       <Compile Include="SQS.fs" />
       <Compile Include="Grants.fs" />
