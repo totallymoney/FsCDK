@@ -36,10 +36,8 @@ Amazon Elastic Kubernetes Service (EKS) is a managed Kubernetes service that mak
 #r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
-open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.EKS
-open Amazon.CDK.AWS.IAM
 open FsCDK
 
 (*** hide ***)

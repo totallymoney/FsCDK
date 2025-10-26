@@ -51,8 +51,8 @@ type FunctionConfig =
 
 type FunctionSpec =
     { FunctionName: string
-      ConstructId: string // Construct ID for CDK
-      Props: FunctionProps
+      ConstructId: string
+      Props: IFunctionProps
       Actions: (Function -> unit) list
       EventSources: ResizeArray<IEventSource>
       mutable Function: IFunction option }

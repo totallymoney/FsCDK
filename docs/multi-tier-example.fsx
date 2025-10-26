@@ -168,15 +168,14 @@ stack "MultiTierApp" {
             selfSignUpEnabled true
             mfa Mfa.OPTIONAL
 
-            passwordPolicy (
-                PasswordPolicy(
-                    MinLength = 12,
-                    RequireLowercase = true,
-                    RequireUppercase = true,
-                    RequireDigits = true,
-                    RequireSymbols = true
-                )
-            )
+            passwordPolicy {
+                minLength 10
+                requireLowercase true
+                requireUppercase true
+                requireDigits true
+                requireSymbols false
+
+            }
 
             accountRecovery AccountRecovery.EMAIL_ONLY
         }

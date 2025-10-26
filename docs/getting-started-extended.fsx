@@ -32,7 +32,6 @@ All following AWS Well-Architected Framework best practices!
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open FsCDK
-open Amazon.CDK.AWS.EC2
 
 vpc "MyVpc" {
     maxAzs 2 // Multi-AZ for high availability
@@ -51,15 +50,13 @@ vpc "MyVpc" {
 ### 2. Add a PostgreSQL Database
 *)
 
-open Amazon.CDK.AWS.RDS
-
 (**
 Here's how to add a PostgreSQL database (shown in full stack example below):
 
 ```fsharp
 rdsInstance "MyDatabase" {
     vpc myVpc
-    postgresEngine                     // PostgreSQL 15
+    postgresEngine // PostgreSQL 15
     instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
     allocatedStorage 20
 
@@ -69,7 +66,7 @@ rdsInstance "MyDatabase" {
     // ✅ Auto minor version upgrades
     // ✅ Private subnet placement
 
-    multiAz true                       // High availability
+    multiAz true // High availability
     databaseName "myapp"
 }
 ```
@@ -121,7 +118,6 @@ userPoolClient "MyAppClient" {
 ### 4. Add a CDN for Fast Delivery
 *)
 
-open Amazon.CDK.AWS.CloudFront
 
 (*** hide ***)
 let myBehavior =
@@ -151,7 +147,6 @@ cloudFrontDistribution "MyCDN" {
 Here's how to combine everything into a production-ready stack:
 *)
 
-open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.Lambda
 
