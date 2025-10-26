@@ -493,7 +493,7 @@ let lambda_function_dsl_tests =
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      vpcSubnets { subnetType SubnetType.PRIVATE_WITH_EGRESS }
+                      subnetSelection { subnetType SubnetType.PRIVATE_WITH_EGRESS }
                   }
 
               let subnetTypeObj = box spec.Props.VpcSubnets.SubnetType
@@ -514,7 +514,7 @@ let lambda_function_dsl_tests =
                       architecture Architecture.ARM_64
                       tracing Tracing.ACTIVE
 
-                      vpcSubnets {
+                      subnetSelection {
                           subnetType SubnetType.PUBLIC
                           availabilityZones [ "us-east-1a"; "us-east-1b" ]
                       }
