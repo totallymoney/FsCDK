@@ -108,8 +108,7 @@ type EventSourceMappingOptionsBuilder(id: string) =
         config.ParallelizationFactor
         |> Option.iter (fun v -> opts.ParallelizationFactor <- v)
 
-        { Id = id
-          Options = opts :> IEventSourceMappingOptions }
+        { Id = id; Options = opts }
 
     [<CustomOperation("eventSourceArn")>]
     member _.EventSourceArn(config: EventSourceMappingOptionsConfig, arn: string) =

@@ -41,7 +41,7 @@ type FunctionConfig =
       Tracing: Tracing option
       VpcSubnets: SubnetSelection option
       SecurityGroups: SecurityGroupRef list
-      FileSystem: Amazon.CDK.AWS.Lambda.FileSystem option
+      FileSystem: FileSystem option
       DeadLetterQueue: IQueue option
       DeadLetterQueueEnabled: bool option
       LoggingFormat: LoggingFormat option
@@ -947,7 +947,7 @@ type FunctionBuilder(name: string) =
           RetryAttempts = None
           EnvironmentEncryption = None }
 
-    member _.Yield(fileSystem: Amazon.CDK.AWS.Lambda.FileSystem) : FunctionConfig =
+    member _.Yield(fileSystem: FileSystem) : FunctionConfig =
         { FunctionName = name
           ConstructId = None
           Handler = None
