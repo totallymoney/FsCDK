@@ -202,12 +202,9 @@ let lambda_function_dsl_tests =
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                       policyStatement {
-                          policyStatementProps {
-                              effect Effect.ALLOW
-                              actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
-                              resources [ "*" ]
-                          }
-
+                          effect Effect.ALLOW
+                          actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                          resources [ "*" ]
                           actions [ "dynamodb:Query"; "dynamodb:Scan" ]
                           resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
                       }
@@ -270,12 +267,9 @@ let lambda_function_dsl_tests =
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
                       policyStatement {
-                          policyStatementProps {
-                              effect Effect.ALLOW
-                              actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
-                              resources [ "*" ]
-                          }
-
+                          effect Effect.ALLOW
+                          actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                          resources [ "*" ]
                           actions [ "dynamodb:Query"; "dynamodb:Scan" ]
                           resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
                       }
