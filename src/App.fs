@@ -27,6 +27,14 @@ type AppBuilder() =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
+    member this.For(sequence: seq<'T>, body: 'T -> AppConfig) =
+        let mutable state = this.Zero()
+
+        for item in sequence do
+            state <- this.Combine(state, body item)
+
+        state
+
     /// <summary>Adds context to the App with a key-value pair.</summary>
     /// <param name="key">The context key.</param>
     /// <param name="value">The context value.</param>
@@ -75,6 +83,9 @@ type AppBuilder() =
         |> Option.iter (fun v -> props.DefaultStackSynthesizer <- v)
 
         App(props)
+
+    /// Run delayed config
+    member this.Run(f: unit -> AppConfig) = this.Run(f ())
 
 // ============================================================================
 // Builders
