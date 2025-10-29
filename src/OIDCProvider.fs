@@ -34,23 +34,7 @@ type OIDCProviderSpec =
     { ProviderName: string
       ConstructId: string
       Props: OpenIdConnectProviderProps
-      mutable Provider: IOpenIdConnectProvider option }
-
-    /// Gets the underlying IOpenIdConnectProvider resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Provider with
-        | Some provider -> provider
-        | None ->
-            failwith
-                $"OIDCProvider '{this.ProviderName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-    /// Gets the provider ARN for use in IAM role trust policies
-    member this.Arn =
-        match this.Provider with
-        | Some provider -> provider.OpenIdConnectProviderArn
-        | None ->
-            failwith
-                $"OIDCProvider '{this.ProviderName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+      mutable Provider: IOpenIdConnectProvider }
 
 type OIDCProviderBuilder(name: string) =
     member _.Yield _ : OIDCProviderConfig =
@@ -111,24 +95,51 @@ type OIDCProviderBuilder(name: string) =
         { ProviderName = config.ProviderName
           ConstructId = constructId
           Props = props
-          Provider = None }
+          Provider = null }
 
     /// <summary>Sets the construct ID.</summary>
+    /// <param name="config">The current OIDC provider configuration.</param>
+    /// <param name="id">The construct ID to use in the CDK stack.</param>
+    /// <code lang="fsharp">
+    /// oidcProvider "GitHubActions" {
+    ///     constructId "GitHubOIDCProvider"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: OIDCProviderConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the OIDC provider URL.</summary>
+    /// <param name="config">The current OIDC provider configuration.</param>
     /// <param name="url">The provider URL (e.g., "https://token.actions.githubusercontent.com").</param>
+    /// <code lang="fsharp">
+    /// oidcProvider "GitHubActions" {
+    ///     url "https://token.actions.githubusercontent.com"
+    /// }
+    /// </code>
     [<CustomOperation("url")>]
     member _.Url(config: OIDCProviderConfig, url: string) = { config with Url = Some url }
 
     /// <summary>Adds a client ID.</summary>
+    /// <param name="config">The current OIDC provider configuration.</param>
+    /// <param name="clientId">The client ID (audience) to add.</param>
+    /// <code lang="fsharp">
+    /// oidcProvider "GitHubActions" {
+    ///     clientId "sts.amazonaws.com"
+    /// }
+    /// </code>
     [<CustomOperation("clientId")>]
     member _.ClientId(config: OIDCProviderConfig, clientId: string) =
         { config with
             ClientIds = clientId :: config.ClientIds }
 
     /// <summary>Adds a certificate thumbprint.</summary>
+    /// <param name="config">The current OIDC provider configuration.</param>
+    /// <param name="thumbprint">The thumbprint to add.</param>
+    /// <code lang="fsharp">
+    /// oidcProvider "GitHubActions" {
+    ///     thumbprint "9e99a48a9960b14926bb7f1e6f1e7a2c4f6e8b5"
+    /// }
+    /// </code>
     [<CustomOperation("thumbprint")>]
     member _.Thumbprint(config: OIDCProviderConfig, thumbprint: string) =
         { config with

@@ -26,7 +26,8 @@ type DockerImageFunctionSpec =
       ConstructId: string // Construct ID for CDK
       Code: string
       TimeoutSeconds: System.Nullable<double>
-      Props: DockerImageFunctionProps }
+      Props: DockerImageFunctionProps
+      mutable Function: IFunction }
 
 type DockerImageFunctionBuilder(name: string) =
     do
@@ -103,7 +104,8 @@ type DockerImageFunctionBuilder(name: string) =
             (match config.Timeout with
              | Some t -> Nullable t
              | None -> Nullable())
-          Props = props }
+          Props = props
+          Function = null }
 
     /// <summary>Sets the construct ID for the Docker Lambda function.</summary>
     /// <param name="id">The construct ID.</param>

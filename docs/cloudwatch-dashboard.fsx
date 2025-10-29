@@ -33,15 +33,15 @@ Create a simple dashboard to monitor Lambda functions.
 
 
 stack "BasicDashboard" {
-    let myFunction =
+    let! myFunction =
         lambda "MyFunction" {
             runtime Runtime.DOTNET_8
             handler "App::Handler"
             code "./lambda"
         }
 
-    let invocationsMetric = myFunction.Function.Value.MetricInvocations()
-    let errorsMetric = myFunction.Function.Value.MetricErrors()
+    let invocationsMetric = myFunction.MetricInvocations()
+    let errorsMetric = myFunction.MetricErrors()
 
     dashboard "LambdaDashboard" {
         dashboardName "lambda-monitoring"
@@ -61,7 +61,7 @@ Monitor multiple services in one dashboard.
 
 
 stack "MultiResourceDashboard" {
-    let apiFunction =
+    let! apiFunction =
         lambda "API" {
             runtime Runtime.DOTNET_8
             handler "App::API"
@@ -74,8 +74,8 @@ stack "MultiResourceDashboard" {
             billingMode BillingMode.PAY_PER_REQUEST
         }
 
-    let apiMetric = apiFunction.Function.Value.MetricInvocations()
-    let apiDuration = apiFunction.Function.Value.MetricDuration()
+    let apiMetric = apiFunction.MetricInvocations()
+    let apiDuration = apiFunction.MetricDuration()
     let tableReads = dataTable.Table.Value.MetricConsumedReadCapacityUnits()
     let tableWrites = dataTable.Table.Value.MetricConsumedWriteCapacityUnits()
 
@@ -104,14 +104,14 @@ Include CloudWatch alarms for critical metrics.
 
 
 stack "DashboardWithAlarms" {
-    let webFunction =
+    let! webFunction =
         lambda "WebApp" {
             runtime Runtime.DOTNET_8
             handler "App::Handle"
             code "./lambda"
         }
 
-    let errorMetric = webFunction.Function.Value.MetricErrors()
+    let errorMetric = webFunction.MetricErrors()
 
     let errorAlarm =
         // CloudWatch Alarm for Lambda errors
