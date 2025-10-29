@@ -1642,6 +1642,14 @@ type StackBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
+    member this.For(sequence: seq<'T>, body: 'T -> StackConfig) =
+        let mutable state = this.Zero()
+
+        for item in sequence do
+            state <- this.Combine(state, body item)
+
+        state
+
     member this.Run(config: StackConfig) =
         let props = StackProps()
         props.StackName <- config.Name
@@ -1682,6 +1690,9 @@ type StackBuilder(name: string) =
 
         for op in config.Operations do
             StackOperations.processOperation stack op
+
+    /// Run delayed config
+    member this.Run(f: unit -> StackConfig) = this.Run(f ())
 
     /// <summary>Sets the stack description.</summary>
     /// <param name="config">The current stack configuration.</param>
