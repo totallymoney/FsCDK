@@ -44,7 +44,7 @@ stack "BasicKMSStack" {
         kmsKey "my-encryption-key" {
             description "Encrypts sensitive application data"
             alias "alias/my-app-key"
-            enableKeyRotation
+            enableKeyRotation true
         }
 
     ()
@@ -60,11 +60,11 @@ stack "S3EncryptionStack" {
     description "S3 bucket with KMS encryption"
 
     // Create KMS key for S3
-    let s3Key =
+    let! s3Key =
         kmsKey "s3-encryption-key" {
             description "KMS key for S3 bucket encryption"
             alias "alias/s3-data-encryption"
-            enableKeyRotation
+            enableKeyRotation true
         }
 
     // Create S3 bucket with KMS encryption
@@ -86,11 +86,11 @@ stack "SecretsEncryptionStack" {
     description "Secrets Manager with custom KMS key"
 
     // Create KMS key for secrets
-    let secretsKey =
+    let! secretsKey =
         kmsKey "secrets-encryption-key" {
             description "KMS key for Secrets Manager"
             alias "alias/secrets-encryption"
-            enableKeyRotation
+            enableKeyRotation true
         }
 
     // Create secret with KMS encryption
@@ -112,26 +112,23 @@ stack "LambdaEncryptionStack" {
     description "Lambda with encrypted environment variables"
 
     // Create KMS key for Lambda
-    let lambdaKey =
+    let! lambdaKey =
         kmsKey "lambda-env-key" {
             description "Encrypts Lambda environment variables"
             alias "alias/lambda-env-encryption"
-            enableKeyRotation
+            enableKeyRotation true
         }
 
     // Create Lambda with encrypted env vars
-    let myFunction =
-        lambda "my-secure-function" {
-            handler "index.handler"
-            runtime Amazon.CDK.AWS.Lambda.Runtime.NODEJS_18_X
-            code "./lambda-code"
+    lambda "my-secure-function" {
+        handler "index.handler"
+        runtime Amazon.CDK.AWS.Lambda.Runtime.NODEJS_18_X
+        code "./lambda-code"
 
-            environment [ "API_KEY", "super-secret-key"; "DATABASE_URL", "postgres://..." ]
+        environment [ "API_KEY", "super-secret-key"; "DATABASE_URL", "postgres://..." ]
 
-            environmentEncryption lambdaKey
-        }
-
-    ()
+        environmentEncryption lambdaKey
+    }
 }
 
 (**
@@ -141,17 +138,14 @@ stack "LambdaEncryptionStack" {
 stack "SigningKeyStack" {
     description "Asymmetric KMS key for digital signatures"
 
-    // Create signing key
-    let signingKey =
-        kmsKey "code-signing-key" {
-            description "Signs application artifacts"
-            alias "alias/code-signing"
-            keySpec KeySpec.RSA_2048
-            keyUsage KeyUsage.SIGN_VERIFY
-            disableKeyRotation // Asymmetric keys don't support automatic rotation
-        }
-
-    ()
+    // Create a signing key
+    kmsKey "code-signing-key" {
+        description "Signs application artifacts"
+        alias "alias/code-signing"
+        keySpec KeySpec.RSA_2048
+        keyUsage KeyUsage.SIGN_VERIFY
+        enableKeyRotation false
+    }
 }
 
 (**
@@ -168,51 +162,46 @@ stack "ProductionKMSStack" {
     tags [ "Environment", "Production"; "ManagedBy", "FsCDK" ]
 
     // Application data encryption key
-    let appDataKey =
+    let! appDataKey =
         kmsKey "app-data-key" {
             description "Encrypts application data at rest"
             alias "alias/prod-app-data"
-            enableKeyRotation
+            enableKeyRotation true
             pendingWindow (Duration.Days(30.0))
         }
 
     // Database encryption key
-    let dbKey =
-        kmsKey "database-key" {
-            description "Encrypts RDS database"
-            alias "alias/prod-database"
-            enableKeyRotation
-        }
+    kmsKey "database-key" {
+        description "Encrypts RDS database"
+        alias "alias/prod-database"
+        enableKeyRotation true
+    }
 
     // Secrets encryption key
-    let secretsKey =
-        kmsKey "secrets-key" {
-            description "Encrypts secrets and credentials"
-            alias "alias/prod-secrets"
-            enableKeyRotation
-        }
+    kmsKey "secrets-key" {
+        description "Encrypts secrets and credentials"
+        alias "alias/prod-secrets"
+        enableKeyRotation true
+    }
 
     // S3 bucket with custom KMS key
-    let dataBucket =
-        s3Bucket "production-data" {
-            encryption BucketEncryption.KMS
-            encryptionKey appDataKey
-            versioned true
-        }
+    s3Bucket "production-data" {
+        encryption BucketEncryption.KMS
+        encryptionKey appDataKey
+        versioned true
+    }
 
     // CloudWatch alarm for key usage
     cloudwatchAlarm "kms-key-usage-alarm" {
         description "Alert on unusual KMS key usage"
         metricNamespace "AWS/KMS"
         metricName "NumberOfOperations"
-        dimensions [ "KeyId", appDataKey.Key.Value.KeyId ]
+        dimensions [ "KeyId", appDataKey.KeyId ]
         statistic "Sum"
         threshold 1000.0
         evaluationPeriods 1
         period (Duration.Minutes(5.0))
     }
-
-    ()
 }
 
 (**

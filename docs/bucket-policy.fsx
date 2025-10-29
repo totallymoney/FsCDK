@@ -20,7 +20,6 @@ FsCDK provides a first-class DSL for creating secure bucket policies.
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open FsCDK
-open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.IAM
 
@@ -31,7 +30,7 @@ Deny all non-HTTPS requests (security best practice).
 *)
 
 stack "SecureBucket" {
-    let myBucket =
+    let! myBucket =
         bucket "MyBucket" {
             versioned true
             encryption BucketEncryption.S3_MANAGED
@@ -39,7 +38,16 @@ stack "SecureBucket" {
 
     bucketPolicy "SecurePolicy" {
         bucket myBucket
-        denyInsecureTransport
+
+        statements
+            [ policyStatement {
+                  sid "DenyInsecureTransport"
+                  effect Effect.DENY
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ myBucket.BucketArn; myBucket.BucketArn + "/*" ]
+                  conditions [ ("Bool", Map.ofList [ "aws:SecureTransport", false ]) ]
+              } ]
     }
 }
 
@@ -50,23 +58,36 @@ Allow CloudFront to access a private S3 bucket.
 *)
 
 
-open Amazon.CDK.AWS.CloudFront
-
 stack "CloudFrontOrigin" {
 
-    let websiteBucket =
+    let! websiteBucket =
         bucket "Website" {
             blockPublicAccess BlockPublicAccess.BLOCK_ALL
             encryption BucketEncryption.S3_MANAGED
         }
 
-    // CloudFront Origin Access Identity
-    let oai = originAccessIdentity "MyOAI" { comment "S3 access for CloudFront" }
+    let! oai = originAccessIdentity "MyOAI" { comment "S3 access for CloudFront" }
 
     bucketPolicy "CloudFrontAccess" {
         bucket websiteBucket
-        allowCloudFrontOAI oai.Identity.Value.OriginAccessIdentityId // CloudFrontOriginAccessIdentityS3CanonicalUserId
-        denyInsecureTransport
+
+        statements
+            [ policyStatement {
+                  sid "AllowCloudFrontAccess"
+                  effect Effect.ALLOW
+                  principals [ CanonicalUserPrincipal(oai.OriginAccessIdentityId) :> IPrincipal ]
+                  actions [ "s3:GetObject" ]
+                  resources [ websiteBucket.BucketArn + "/*" ]
+              }
+
+              policyStatement {
+                  sid "DenyInsecureTransport"
+                  effect Effect.DENY
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ websiteBucket.BucketArn; websiteBucket.BucketArn + "/*" ]
+                  conditions [ ("Bool", Map.ofList [ "aws:SecureTransport", false ]) ]
+              } ]
     }
 }
 
@@ -78,13 +99,30 @@ Restrict bucket access to specific IP addresses.
 *)
 
 stack "IPRestrictedBucket" {
-    let privateBucket =
-        bucket "PrivateBucket" { blockPublicAccess BlockPublicAccess.BLOCK_ALL }
+    let! privateBucket = bucket "PrivateBucket" { blockPublicAccess BlockPublicAccess.BLOCK_ALL }
 
     bucketPolicy "IPRestriction" {
         bucket privateBucket
-        allowFromIpAddresses [ "203.0.113.0/24"; "198.51.100.0/24" ]
-        denyInsecureTransport
+
+        statements
+            [ policyStatement {
+                  sid "AllowFromSpecificIPs"
+                  effect Effect.ALLOW
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ privateBucket.BucketArn; privateBucket.BucketArn + "/*" ]
+
+                  conditions
+                      [ "IpAddress", box (dict [ "aws:SourceIp", box [| "203.0.113.0/24"; "198.51.100.0/24" |] ]) ]
+              }
+              policyStatement {
+                  sid "DenyInsecureTransport"
+                  effect Effect.DENY
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ privateBucket.BucketArn; privateBucket.BucketArn + "/*" ]
+                  conditions [ ("Bool", Map.ofList [ "aws:SecureTransport", false ]) ]
+              } ]
     }
 }
 
@@ -95,12 +133,30 @@ Block access from known malicious IPs.
 *)
 
 stack "BlockMaliciousIPs" {
-    let publicBucket = bucket "PublicBucket" { () }
+    let! publicBucket = bucket "PublicBucket" { () }
 
     bucketPolicy "BlockBadActors" {
         bucket publicBucket
-        denyFromIpAddresses [ "192.0.2.0/24" ]
-        denyInsecureTransport
+
+        statements
+            [ policyStatement {
+                  sid "DenyFromMaliciousIPs"
+                  effect Effect.DENY
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ publicBucket.BucketArn; publicBucket.BucketArn + "/*" ]
+                  conditions [ "IpAddress", box (dict [ "aws:SourceIp", box [| "192.0.2.0/24" |] ]) ]
+
+              }
+
+              policyStatement {
+                  sid "DenyInsecureTransport"
+                  effect Effect.DENY
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ publicBucket.BucketArn; publicBucket.BucketArn + "/*" ]
+                  conditions [ ("Bool", Map.ofList [ "aws:SecureTransport", false ]) ]
+              } ]
     }
 }
 
@@ -111,7 +167,7 @@ Add custom policy statements for specific requirements.
 *)
 
 stack "CustomPolicy" {
-    let dataBucket = bucket "DataBucket" { versioned true }
+    let! dataBucket = bucket "DataBucket" { versioned true }
 
     let readOnlyStatement =
         PolicyStatement(
@@ -120,16 +176,24 @@ stack "CustomPolicy" {
                 Effect = Effect.ALLOW,
                 Principals = [| AccountPrincipal("123456789012") :> IPrincipal |],
                 Actions = [| "s3:GetObject"; "s3:ListBucket" |],
-                Resources =
-                    [| dataBucket.Bucket.Value.BucketArn
-                       dataBucket.Bucket.Value.BucketArn + "/*" |]
+                Resources = [| dataBucket.BucketArn; dataBucket.BucketArn + "/*" |]
             )
         )
 
     bucketPolicy "CustomPolicy" {
         bucket dataBucket
-        statement readOnlyStatement
-        denyInsecureTransport
+
+        statements
+            [ readOnlyStatement
+              policyStatement {
+                  sid "DenyInsecureTransport"
+                  effect Effect.DENY
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ dataBucket.BucketArn; dataBucket.BucketArn + "/*" ]
+                  conditions [ ("Bool", Map.ofList [ "aws:SecureTransport", false ]) ]
+              } ]
+
     }
 }
 
@@ -140,7 +204,7 @@ Combine multiple security controls in one policy.
 *)
 
 stack "ComprehensivePolicy" {
-    let secureBucket =
+    let! secureBucket =
         bucket "SecureBucket" {
             versioned true
             encryption BucketEncryption.KMS_MANAGED
@@ -153,17 +217,32 @@ stack "ComprehensivePolicy" {
                 Effect = Effect.ALLOW,
                 Principals = [| ArnPrincipal("arn:aws:iam::123456789012:role/AdminRole") :> IPrincipal |],
                 Actions = [| "s3:*" |],
-                Resources =
-                    [| secureBucket.Bucket.Value.BucketArn
-                       secureBucket.Bucket.Value.BucketArn + "/*" |]
+                Resources = [| secureBucket.BucketArn; secureBucket.BucketArn + "/*" |]
             )
         )
 
     bucketPolicy "ComprehensivePolicy" {
         bucket secureBucket
-        denyInsecureTransport
-        allowFromIpAddresses [ "10.0.0.0/8" ]
-        statement adminStatement
+
+        statements
+            [ adminStatement
+              policyStatement {
+                  sid "DenyInsecureTransport"
+                  effect Effect.DENY
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ secureBucket.BucketArn; secureBucket.BucketArn + "/*" ]
+                  conditions [ ("Bool", Map.ofList [ "aws:SecureTransport", false ]) ]
+              }
+
+              policyStatement {
+                  sid "AllowFromInternalNetwork"
+                  effect Effect.ALLOW
+                  principals [ AnyPrincipal() :> IPrincipal ]
+                  actions [ "s3:*" ]
+                  resources [ secureBucket.BucketArn; secureBucket.BucketArn + "/*" ]
+                  conditions [ "IpAddress", box (dict [ "aws:SourceIp", box [| "10.0.0.0/8" |] ]) ]
+              } ]
     }
 }
 

@@ -84,12 +84,21 @@ FsCDK security groups follow least privilege by default.
 open Amazon.CDK.AWS.EC2
 
 // ✅ GOOD: FsCDK defaults to denying all outbound
-let lambdaSecurityGroup =
+
+stack "MyStack" {
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
+
     securityGroup "MySecurityGroup" {
         vpc myVpc
         description "Security group for Lambda"
         allowAllOutbound false // This is the default!
     }
+}
 
 (**
 Only allow specific outbound traffic (Note: In real code, you'd add ingress/egress rules after creation).
@@ -97,9 +106,19 @@ Only allow specific outbound traffic (Note: In real code, you'd add ingress/egre
 ❌ BAD: Allowing all outbound unnecessarily:
 *)
 
-securityGroup "TooPermissive" {
-    vpc myVpc
-    allowAllOutbound true // Only use when absolutely necessary
+stack "TooPermissiveSG" {
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
+
+    securityGroup "TooPermissive" {
+        vpc myVpc
+        allowAllOutbound true // Only use when absolutely necessary
+    }
+
 }
 
 (**
@@ -111,21 +130,38 @@ Restrict database access to specific security groups.
 open Amazon.CDK.AWS.RDS
 
 // ✅ GOOD: Database in private subnet with restricted access
-rdsInstance "MyDatabase" {
-    vpc myVpc
-    postgresEngine
 
-    // Private subnet - not accessible from internet
-    vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
+stack "MyDatabaseStack" {
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
 
-    // Not publicly accessible
-    publiclyAccessible false
+    let! lambdaSecurityGroup =
+        securityGroup "TooPermissive" {
+            vpc myVpc
+            allowAllOutbound true // Only use when absolutely necessary
+        }
 
-    // Only Lambda security group can access
-    securityGroup lambdaSecurityGroup
+    rdsInstance "MyDatabase" {
+        vpc myVpc
+        postgresEngine
 
-    // Enable IAM authentication for better security
-    iamAuthentication true
+        // Private subnet - not accessible from internet
+        vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
+
+        // Not publicly accessible
+        publiclyAccessible false
+
+        // Only Lambda security group can access
+        securityGroups [ lambdaSecurityGroup ]
+
+        // Enable IAM authentication for better security
+        iamAuthentication true
+    }
+
 }
 
 (**
@@ -248,7 +284,7 @@ cloudFrontDistribution "SecureCDN" {
     // webAclId myWafAclId
 
     // Enable logging for audit trail
-    enableLogging myLogBucket "cloudfront-logs/"
+    enableLogging true
 }
 
 (**
@@ -346,19 +382,30 @@ vpc "SecureVpc" {
 }
 
 // Place sensitive resources in private subnets
-rdsInstance "Database" {
-    vpc myVpc
-    postgresEngine
-    vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
-    publiclyAccessible false
-}
 
-lambda "PrivateFunction" {
-    runtime Runtime.DOTNET_8
-    handler "MyApp::Handler"
-    code "./publish"
-    vpcSubnets { yield SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) }
-    securityGroups [ lambdaSecurityGroup ]
+stack "PrivateResources" {
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
+
+    rdsInstance "Database" {
+        vpc myVpc
+        postgresEngine
+        vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
+        publiclyAccessible false
+    }
+
+    lambda "PrivateFunction" {
+        runtime Runtime.DOTNET_8
+        handler "MyApp::Handler"
+        code "./publish"
+    //vpcSubnets { yield SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) }
+    //securityGroups [ lambdaSecurityGroup ]
+    }
+
 }
 
 (**
@@ -381,10 +428,21 @@ lambda "MonitoredFunction" {
 }
 
 // Enable RDS Performance Insights
-rdsInstance "MonitoredDatabase" {
-    vpc myVpc
-    postgresEngine
-    enablePerformanceInsights true
+
+stack "RDSMonitoringStack" {
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
+
+    rdsInstance "MonitoredDatabase" {
+        vpc myVpc
+        postgresEngine
+        enablePerformanceInsights true
+    }
+
 }
 
 (**
@@ -423,12 +481,22 @@ lambda "GoodFunction" {
 }
 
 // RDS can generate and manage secrets automatically
-rdsInstance "SecureDatabase" {
-    vpc myVpc
-    postgresEngine
+stack "RDSWithSecrets" {
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
 
-    // Credentials automatically stored in Secrets Manager
-    credentials (Credentials.FromGeneratedSecret "admin")
+    rdsInstance "SecureDatabase" {
+        vpc myVpc
+        postgresEngine
+
+        // Credentials automatically stored in Secrets Manager
+        credentials (Credentials.FromGeneratedSecret "admin")
+    }
+
 }
 
 (**
@@ -443,11 +511,21 @@ bucket "UserData" {
     blockPublicAccess BlockPublicAccess.BLOCK_ALL
 }
 
-rdsInstance "UserDatabase" {
-    vpc myVpc
-    postgresEngine
-    storageEncrypted true
-    deletionProtection true
+stack "GDPRCompliantStack" {
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
+
+    rdsInstance "UserDatabase" {
+        vpc myVpc
+        postgresEngine
+        storageEncrypted true
+        deletionProtection true
+    }
+
 }
 
 // Enable audit logging
@@ -468,12 +546,22 @@ bucket "HealthRecords" {
 }
 
 // Enable audit trails
-rdsInstance "HealthDatabase" {
-    vpc myVpc
-    postgresEngine
-    storageEncrypted true
-    backupRetentionDays 30.0 // Longer retention for compliance
-    deletionProtection true
+
+stack "HIPAACompliantStack" {
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
+
+    rdsInstance "HealthDatabase" {
+        vpc myVpc
+        postgresEngine
+        storageEncrypted true
+        backupRetentionDays 30.0 // Longer retention for compliance
+        deletionProtection true
+    }
 }
 
 (**

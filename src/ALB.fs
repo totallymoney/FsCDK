@@ -26,10 +26,10 @@ open Amazon.CDK.AWS.EC2
 type ALBConfig =
     { LoadBalancerName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       InternetFacing: bool option
       VpcSubnets: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       DeletionProtection: bool option
       Http2Enabled: bool option
       DropInvalidHeaderFields: bool option }
@@ -85,14 +85,12 @@ type ALBBuilder(name: string) =
         let props = ApplicationLoadBalancerProps()
         props.LoadBalancerName <- loadBalancerName
 
-        config.Vpc
-        |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
 
         config.InternetFacing |> Option.iter (fun v -> props.InternetFacing <- v)
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
-        config.SecurityGroup
-        |> Option.iter (fun v -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef v)
+        config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
 
         config.DeletionProtection
         |> Option.iter (fun v -> props.DeletionProtection <- v)
@@ -111,14 +109,7 @@ type ALBBuilder(name: string) =
     member _.ConstructId(config: ALBConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ALBConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: ALBConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: ALBConfig, vpc: IVpc) = { config with Vpc = Some vpc }
 
     [<CustomOperation("internetFacing")>]
     member _.InternetFacing(config: ALBConfig, internetFacing: bool) =
@@ -132,13 +123,7 @@ type ALBBuilder(name: string) =
 
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: ALBConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: ALBConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+        { config with SecurityGroup = Some(sg) }
 
     [<CustomOperation("deletionProtection")>]
     member _.DeletionProtection(config: ALBConfig, enabled: bool) =

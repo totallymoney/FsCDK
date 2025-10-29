@@ -20,7 +20,6 @@ FsCDK provides secure bastion host configuration following AWS best practices.
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open FsCDK
-open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 
 (**
@@ -30,7 +29,7 @@ Create a minimal bastion host in a VPC.
 *)
 
 stack "BasicBastion" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     bastionHost "MyBastion" {
         vpc myVpc
@@ -45,9 +44,9 @@ For production, use a security group to restrict SSH access.
 *)
 
 stack "SecureBastion" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
-    let bastionSG =
+    let! bastionSG =
         securityGroup "BastionSG" {
             vpc myVpc
             description "Security group for bastion host"
@@ -69,7 +68,7 @@ Use a hardened custom AMI for enhanced security.
 *)
 
 stack "CustomBastion" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     let hardenedAMI = MachineImage.GenericLinux(dict [ "us-east-1", "ami-12345678" ])
 
@@ -88,7 +87,7 @@ Deploy bastions in multiple availability zones for high availability.
 *)
 
 stack "HABastion" {
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 2
             natGateways 2

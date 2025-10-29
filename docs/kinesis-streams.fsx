@@ -29,6 +29,7 @@ Amazon Kinesis Data Streams enables you to build custom applications that proces
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open Amazon.CDK
+open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.Kinesis
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.Lambda.EventSources
@@ -61,20 +62,17 @@ stack "KinesisStack" {
         }
 
     // Lambda function to process stream records
-    let processor =
-        lambda "stream-processor" {
-            handler "index.handler"
-            runtime Runtime.NODEJS_18_X
-            code "./lambda-code"
-            memory 512
-            timeout 60.0
+    lambda "stream-processor" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./lambda-code"
+        memory 512
+        timeout 60.0
 
-            environment [ "STREAM_NAME", stream.StreamName ]
+        environment [ "STREAM_NAME", stream.StreamName ]
 
-            description "Processes records from Kinesis stream"
-        }
-
-    ()
+        description "Processes records from Kinesis stream"
+    }
 }
 
 (**
@@ -87,23 +85,20 @@ For unpredictable workloads, use on-demand capacity mode. The stream automatical
 **When to use:**
 - Unpredictable traffic patterns
 - Sporadic workloads
-- New applications with unknown load
+- New applications with an unknown load
 
-**Pricing:** Pay per GB of data written and read
+**Pricing: ** Pay per GB of data written and read
 *)
 
 stack "OnDemandKinesisStack" {
     description "Kinesis stream with on-demand capacity"
 
-    let onDemandStream =
-        kinesisStream "OnDemandStream" {
-            streamName "on-demand-stream"
-            streamMode StreamMode.ON_DEMAND
-            retentionPeriod (Duration.Hours 168.) // 7 days
-            encryption StreamEncryption.KMS
-        }
-
-    ()
+    kinesisStream "OnDemandStream" {
+        streamName "on-demand-stream"
+        streamMode StreamMode.ON_DEMAND
+        retentionPeriod (Duration.Hours 168.) // 7 days
+        encryption StreamEncryption.KMS
+    }
 }
 
 (**
@@ -116,21 +111,18 @@ For predictable, high-volume data ingestion with multiple shards.
 - Cost optimization with reserved capacity
 - Need for predictable performance
 
-**Pricing:** Pay per shard-hour
+**Pricing: ** Pay per shard-hour
 *)
 
 stack "HighThroughputKinesisStack" {
     description "High-throughput Kinesis stream with multiple shards"
 
-    let highThroughputStream =
-        kinesisStream "HighThroughputStream" {
-            streamName "high-throughput-stream"
-            shardCount 10
-            retentionPeriod (Duration.Hours 168.) // 7 days
-            encryption StreamEncryption.KMS
-        }
-
-    ()
+    kinesisStream "HighThroughputStream" {
+        streamName "high-throughput-stream"
+        shardCount 10
+        retentionPeriod (Duration.Hours 168.) // 7 days
+        encryption StreamEncryption.KMS
+    }
 }
 
 (**
@@ -145,7 +137,7 @@ stack "AnalyticsPipelineStack" {
     description "Real-time analytics with Kinesis and Lambda"
 
     // Kinesis stream captures clickstream data
-    let clickstream =
+    let! clickstream =
         kinesisStream "ClickstreamData" {
             streamName "clickstream-events"
             shardCount 5
@@ -170,11 +162,11 @@ stack "AnalyticsPipelineStack" {
         }
 
     // This value-cross-linking would need some nicer API.
-    clickstream.GrantReads.Add(analyticsProcessor.Function.Value.Role) |> ignore
+    clickstream.GrantRead(analyticsProcessor.Function.Role) |> ignore
 
     analyticsProcessor.EventSources.Add(
         KinesisEventSource(
-            clickstream.Stream.Value,
+            clickstream,
             KinesisEventSourceProps(
                 StartingPosition = StartingPosition.LATEST,
                 BatchSize = 500.,
@@ -183,9 +175,6 @@ stack "AnalyticsPipelineStack" {
             )
         )
     )
-    |> ignore
-
-    ()
 }
 
 (**
@@ -198,7 +187,7 @@ stack "EventStreamingStack" {
     description "Event streaming with multiple consumers"
 
     // Central event stream
-    let eventStream =
+    let! eventStream =
         kinesisStream "ApplicationEvents" {
             streamName "application-events"
             shardCount 3
@@ -217,15 +206,14 @@ stack "EventStreamingStack" {
             description "Archives events to S3"
         }
 
-    eventStream.GrantReads.Add(archiver.Function.Value.Role) |> ignore
+    eventStream.GrantRead(archiver.Function.Role) |> ignore
 
     archiver.EventSources.Add(
         KinesisEventSource(
-            eventStream.Stream.Value,
+            eventStream,
             KinesisEventSourceProps(StartingPosition = StartingPosition.TRIM_HORIZON, BatchSize = 100.)
         )
     )
-    |> ignore
 
     // Consumer 2: Metrics aggregator
     let metricsAggregator =
@@ -238,17 +226,14 @@ stack "EventStreamingStack" {
             description "Aggregates metrics from events"
         }
 
-    eventStream.GrantReads.Add(metricsAggregator.Function.Value.Role) |> ignore
+    eventStream.GrantRead(metricsAggregator.Function.Role) |> ignore
 
     metricsAggregator.EventSources.Add(
         KinesisEventSource(
-            eventStream.Stream.Value,
+            eventStream,
             KinesisEventSourceProps(StartingPosition = StartingPosition.LATEST, BatchSize = 200.)
         )
     )
-    |> ignore
-
-    ()
 }
 
 (**
@@ -261,7 +246,7 @@ stack "LogAggregationStack" {
     description "Centralized log aggregation with Kinesis"
 
     // Log aggregation stream
-    let logStream =
+    let! logStream =
         kinesisStream "LogAggregation" {
             streamName "application-logs"
             shardCount 4
@@ -283,11 +268,11 @@ stack "LogAggregationStack" {
             description "Processes and filters log data"
         }
 
-    logStream.GrantReads.Add(logProcessor.Function.Value.Role) |> ignore
+    logStream.GrantRead(logProcessor.Function.Role) |> ignore
 
     logProcessor.EventSources.Add(
         KinesisEventSource(
-            logStream.Stream.Value,
+            logStream,
             KinesisEventSourceProps(
                 StartingPosition = StartingPosition.LATEST,
                 BatchSize = 500.,
@@ -295,9 +280,6 @@ stack "LogAggregationStack" {
             )
         )
     )
-    |> ignore
-
-    ()
 }
 
 (**
@@ -326,23 +308,41 @@ Grant least-privilege access to streams.
 *)
 
 // Producer permissions
-let producerRole = IAM.createRole "lambda.amazonaws.com" "stream-producer-role"
+stack "KinesisIAMStack" {
+    let! producerRole =
+        role "stream-producer-role" {
+            assumedBy (ServicePrincipal("lambda.amazonaws.com"))
+            description "Role for Kinesis stream producer"
+        }
 
-let producerStmt =
-    IAM.allow [ "kinesis:PutRecord"; "kinesis:PutRecords" ] [ "arn:aws:kinesis:*:*:stream/my-stream" ]
-//producerRole.AddToPolicy producerStmt |> ignore
+    let producerStmt =
+        policyStatement {
+            actions [ "kinesis:PutRecord"; "kinesis:PutRecords" ]
+            resources [ "arn:aws:kinesis:*:*:stream/my-stream" ]
+        }
 
-// Consumer permissions
-let consumerRole = IAM.createRole "lambda.amazonaws.com" "stream-consumer-role"
+    (producerRole :?> Role).AddToPolicy producerStmt |> ignore
 
-let consumerStmt =
-    IAM.allow
-        [ "kinesis:GetRecords"
-          "kinesis:GetShardIterator"
-          "kinesis:DescribeStream"
-          "kinesis:ListShards" ]
-        [ "arn:aws:kinesis:*:*:stream/my-stream" ]
-//consumerRole.AddToPolicy consumerStmt |> ignore
+    // Consumer permissions
+    let! consumerRole =
+        role "stream-consumer-role" {
+            assumedBy (ServicePrincipal("lambda.amazonaws.com"))
+            description "Role for Kinesis stream consumer"
+        }
+
+    let consumerStmt =
+        policyStatement {
+            actions
+                [ "kinesis:GetRecords"
+                  "kinesis:GetShardIterator"
+                  "kinesis:DescribeStream"
+                  "kinesis:ListShards" ]
+
+            resources [ "arn:aws:kinesis:*:*:stream/my-stream" ]
+        }
+
+    (consumerRole :?> Role).AddToPolicy consumerStmt |> ignore
+}
 
 (**
 ## Monitoring and Observability
@@ -423,7 +423,7 @@ Optimize Lambda processing for cost and latency:
 stack "OptimizedProcessingStack" {
     description "Optimized Kinesis processing with Lambda"
 
-    let stream =
+    let! stream =
         kinesisStream "OptimizedStream" {
             streamName "optimized-stream"
             shardCount 5
@@ -440,12 +440,12 @@ stack "OptimizedProcessingStack" {
             description "Optimized batch processor"
         }
 
-    stream.GrantReads.Add(optimizedConsumer.Function.Value.Role) |> ignore
+    stream.GrantRead(optimizedConsumer.Function.Role) |> ignore
 
     // Optimized event source mapping
     optimizedConsumer.EventSources.Add(
         KinesisEventSource(
-            stream.Stream.Value,
+            stream,
             KinesisEventSourceProps(
                 StartingPosition = StartingPosition.LATEST,
                 BatchSize = 1000., // Larger batches reduce Lambda invocations
@@ -458,9 +458,6 @@ stack "OptimizedProcessingStack" {
             )
         )
     )
-    |> ignore
-
-    ()
 }
 
 (**
@@ -477,7 +474,7 @@ stack "ProductionKinesisStack" {
     tags [ "Environment", "Production"; "Project", "DataPipeline"; "ManagedBy", "FsCDK" ]
 
     // Production stream with extended retention
-    let prodStream =
+    let! prodStream =
         kinesisStream "ProductionStream" {
             streamName "production-data-stream"
             shardCount 10
@@ -499,7 +496,7 @@ stack "ProductionKinesisStack" {
             description "Produces events to Kinesis stream"
         }
 
-    prodStream.GrantWrites.Add(producer.Function.Value.Role) |> ignore
+    prodStream.GrantWrite(producer.Function.Role) |> ignore
 
     // Consumer Lambda with optimal settings
     let consumer =
@@ -516,11 +513,11 @@ stack "ProductionKinesisStack" {
             description "Consumes and processes events from Kinesis"
         }
 
-    prodStream.GrantReads.Add(consumer.Function.Value.Role) |> ignore
+    prodStream.GrantRead(consumer.Function.Role) |> ignore
 
     consumer.EventSources.Add(
         KinesisEventSource(
-            prodStream.Stream.Value,
+            prodStream,
             KinesisEventSourceProps(
                 StartingPosition = StartingPosition.TRIM_HORIZON,
                 BatchSize = 1000.,
@@ -532,7 +529,6 @@ stack "ProductionKinesisStack" {
             )
         )
     )
-    |> ignore
 
     // CloudWatch alarm for monitoring
     cloudwatchAlarm "production-stream-lag" {
@@ -545,8 +541,6 @@ stack "ProductionKinesisStack" {
         evaluationPeriods 2
         period (Duration.Minutes(5.0))
     }
-
-    ()
 }
 
 (**

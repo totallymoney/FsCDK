@@ -21,7 +21,7 @@ open Amazon.CDK.AWS.IAM
 /// These defaults follow AWS Well-Architected Framework:
 /// - Automatic rotation reduces risk of key compromise
 /// - Retained keys prevent data loss (encrypted data becomes unreadable without key)
-/// - Symmetric encryption is most common use case
+/// - Symmetric encryption is the most common use case
 /// - CloudTrail provides audit trails for all key usage
 ///
 /// **Use Cases:**
@@ -49,17 +49,11 @@ type KMSKeyConfig =
       Policy: PolicyDocument option }
 
 type KMSKeySpec =
-    {
-        KeyName: string
-        ConstructId: string
-        Props: KeyProps
-        /// The underlying CDK Key construct - use for advanced scenarios
-        mutable Key: IKey option
-    }
+    { KeyName: string
+      ConstructId: string
+      Props: KeyProps
+      mutable Key: IKey }
 
-type KMSKeyRef =
-    | KMSKeyInterface of IKey
-    | KMSKeySpecRef of KMSKeySpec
 
 type KMSKeyBuilder(name: string) =
     member _.Yield _ : KMSKeyConfig =
@@ -129,9 +123,10 @@ type KMSKeyBuilder(name: string) =
         { KeyName = config.KeyName
           ConstructId = constructId
           Props = props
-          Key = None }
+          Key = null }
 
     /// <summary>Sets the construct ID for the KMS key.</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="id">The construct ID.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -142,6 +137,7 @@ type KMSKeyBuilder(name: string) =
     member _.ConstructId(config: KMSKeyConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the description for the KMS key.</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="description">Human-readable description.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -154,6 +150,7 @@ type KMSKeyBuilder(name: string) =
             Description = Some description }
 
     /// <summary>Sets an alias for the KMS key (e.g., "alias/my-app-key").</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="alias">The key alias.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -164,28 +161,20 @@ type KMSKeyBuilder(name: string) =
     member _.Alias(config: KMSKeyConfig, alias: string) = { config with Alias = Some alias }
 
     /// <summary>Enables automatic key rotation (recommended for security).</summary>
+    /// <param name="config">The current KMS key configuration.</param>
+    /// <param name="value">True to enable key rotation, false to disable.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
-    ///     enableKeyRotation
+    ///     enableKeyRotation true
     /// }
     /// </code>
     [<CustomOperation("enableKeyRotation")>]
-    member _.EnableKeyRotation(config: KMSKeyConfig) =
+    member _.EnableKeyRotation(config: KMSKeyConfig, value: bool) =
         { config with
-            EnableKeyRotation = Some true }
-
-    /// <summary>Disables automatic key rotation (not recommended).</summary>
-    /// <code lang="fsharp">
-    /// kmsKey "my-key" {
-    ///     disableKeyRotation
-    /// }
-    /// </code>
-    [<CustomOperation("disableKeyRotation")>]
-    member _.DisableKeyRotation(config: KMSKeyConfig) =
-        { config with
-            EnableKeyRotation = Some false }
+            EnableKeyRotation = Some value }
 
     /// <summary>Sets the removal policy (RETAIN, DESTROY, SNAPSHOT).</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="policy">The removal policy.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -198,6 +187,7 @@ type KMSKeyBuilder(name: string) =
             RemovalPolicy = Some policy }
 
     /// <summary>Sets whether the key is enabled (default: true).</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="enabled">Enable or disable the key.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -208,6 +198,7 @@ type KMSKeyBuilder(name: string) =
     member _.Enabled(config: KMSKeyConfig, enabled: bool) = { config with Enabled = Some enabled }
 
     /// <summary>Sets the key spec (SYMMETRIC_DEFAULT, RSA_2048, etc.).</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="spec">The key specification.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -218,6 +209,7 @@ type KMSKeyBuilder(name: string) =
     member _.KeySpec(config: KMSKeyConfig, spec: KeySpec) = { config with KeySpec = Some spec }
 
     /// <summary>Sets the key usage (ENCRYPT_DECRYPT, SIGN_VERIFY, GENERATE_VERIFY_MAC).</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="usage">The key usage.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -228,6 +220,7 @@ type KMSKeyBuilder(name: string) =
     member _.KeyUsage(config: KMSKeyConfig, usage: KeyUsage) = { config with KeyUsage = Some usage }
 
     /// <summary>Sets the pending window for key deletion (7-30 days).</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="window">The pending window duration.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -240,6 +233,7 @@ type KMSKeyBuilder(name: string) =
             PendingWindow = Some window }
 
     /// <summary>Sets the principal that can administer the key.</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="principal">The IAM principal.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -252,6 +246,7 @@ type KMSKeyBuilder(name: string) =
             AdmissionPrincipal = Some principal }
 
     /// <summary>Sets a custom key policy.</summary>
+    /// <param name="config">The current KMS key configuration.</param>
     /// <param name="policy">The key policy document.</param>
     /// <code lang="fsharp">
     /// kmsKey "my-key" {
@@ -336,4 +331,4 @@ module KMSBuilders =
     /// Creates a new KMS key builder with secure defaults.
     /// Example: kmsKey "my-encryption-key" { description "Encrypts sensitive data" }
     /// </summary>
-    let kmsKey name = KMSKeyBuilder name
+    let kmsKey name = KMSKeyBuilder(name)

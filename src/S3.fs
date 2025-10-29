@@ -1,6 +1,8 @@
 namespace FsCDK
 
+open System
 open Amazon.CDK
+open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.KMS
 
@@ -8,18 +10,21 @@ open Amazon.CDK.AWS.KMS
 // S3 Bucket Configuration DSL
 // ============================================================================
 
-type BucketSpec =
-    {
-        BucketName: string
-        ConstructId: string
-        Props: BucketProps
-        /// The underlying CDK Bucket construct - use for advanced scenarios
-        mutable Bucket: Bucket option
-    }
+type BucketGrantAccessType =
+    | GrantRead of IGrantable
+    | GrantDelete of IGrantable
+    | GrantPublicAccess of string
+    | GrantPut of IGrantable
+    | GrantPutAcl of IGrantable
+    | GrantReplicationPermission of (IGrantable * IGrantReplicationPermissionProps)
+    | GrantReadWrite of IGrantable
 
-type BucketRef =
-    | BucketInterface of IBucket // AWS class
-    | BucketSpecRef of BucketSpec // FsCDK class
+type BucketSpec =
+    { BucketName: string
+      ConstructId: string
+      Props: BucketProps
+      Grant: BucketGrantAccessType option
+      mutable Bucket: IBucket }
 
 /// <summary>
 /// High-level S3 Bucket builder following AWS security best practices.
@@ -46,18 +51,19 @@ type BucketConfig =
       ConstructId: string option
       BlockPublicAccess: BlockPublicAccess option
       Encryption: BucketEncryption option
-      EncryptionKey: KMSKeyRef option
+      EncryptionKey: IKey option
       EnforceSSL: bool option
       Versioned: bool option
       RemovalPolicy: RemovalPolicy option
-      ServerAccessLogsBucket: BucketRef option
+      ServerAccessLogsBucket: IBucket option
       ServerAccessLogsPrefix: string option
       AutoDeleteObjects: bool option
       WebsiteIndexDocument: string option
       WebsiteErrorDocument: string option
       LifecycleRules: ILifecycleRule list
       Cors: ICorsRule list
-      Metrics: IBucketMetrics list }
+      Metrics: IBucketMetrics list
+      Grant: BucketGrantAccessType option }
 
 type BucketBuilder(name: string) =
     member _.Yield _ : BucketConfig =
@@ -76,7 +82,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = []
           Cors = []
-          Metrics = [] }
+          Metrics = []
+          Grant = None }
 
     member _.Yield(corsRule: ICorsRule) : BucketConfig =
         { BucketName = name
@@ -94,7 +101,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = []
           Cors = [ corsRule ]
-          Metrics = [] }
+          Metrics = []
+          Grant = None }
 
     member _.Yield(lifecycleRule: ILifecycleRule) : BucketConfig =
         { BucketName = name
@@ -112,7 +120,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = [ lifecycleRule ]
           Cors = []
-          Metrics = [] }
+          Metrics = []
+          Grant = None }
 
     member _.Yield(metrics: IBucketMetrics) : BucketConfig =
         { BucketName = name
@@ -130,7 +139,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = []
           Cors = []
-          Metrics = [ metrics ] }
+          Metrics = [ metrics ]
+          Grant = None }
 
     member _.Zero() : BucketConfig =
         { BucketName = name
@@ -148,7 +158,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = []
           Cors = []
-          Metrics = [] }
+          Metrics = []
+          Grant = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> BucketConfig) : BucketConfig = f ()
 
@@ -168,7 +179,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = state2.WebsiteErrorDocument |> Option.orElse state1.WebsiteErrorDocument
           LifecycleRules = state1.LifecycleRules @ state2.LifecycleRules
           Cors = state1.Cors @ state2.Cors
-          Metrics = state1.Metrics @ state2.Metrics }
+          Metrics = state1.Metrics @ state2.Metrics
+          Grant = None }
 
     member inline x.For(config: BucketConfig, [<InlineIfLambda>] f: unit -> BucketConfig) : BucketConfig =
         let newConfig = f ()
@@ -184,15 +196,7 @@ type BucketBuilder(name: string) =
         config.BlockPublicAccess |> Option.iter (fun v -> props.BlockPublicAccess <- v)
         config.Encryption |> Option.iter (fun v -> props.Encryption <- v)
 
-        config.EncryptionKey
-        |> Option.iter (fun v ->
-            props.EncryptionKey <-
-                match v with
-                | KMSKeyRef.KMSKeyInterface i -> i
-                | KMSKeyRef.KMSKeySpecRef pr ->
-                    match pr.Key with
-                    | Some k -> k
-                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+        config.EncryptionKey |> Option.iter (fun v -> props.EncryptionKey <- v)
 
         config.EnforceSSL |> Option.iter (fun v -> props.EnforceSSL <- v)
         config.Versioned |> Option.iter (fun v -> props.Versioned <- v)
@@ -201,16 +205,7 @@ type BucketBuilder(name: string) =
         |> Option.iter (fun v -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(v))
 
         config.ServerAccessLogsBucket
-        |> Option.iter (fun v ->
-            props.ServerAccessLogsBucket <-
-                match v with
-                | BucketRef.BucketInterface b -> b
-                | BucketRef.BucketSpecRef b ->
-                    match b.Bucket with
-                    | None ->
-                        failwith
-                            $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-                    | Some bu -> bu)
+        |> Option.iter (fun v -> props.ServerAccessLogsBucket <- v)
 
         config.ServerAccessLogsPrefix
         |> Option.iter (fun v -> props.ServerAccessLogsPrefix <- v)
@@ -235,10 +230,20 @@ type BucketBuilder(name: string) =
         { BucketName = bucketName
           ConstructId = constructId
           Props = props
-          Bucket = None } // Will be created during stack construction
+          Grant = config.Grant
+          Bucket = null } // Will be created during stack construction
 
+    /// <summary> Sets the construct ID for the S3 bucket. </summary>
+    /// <param name="config">The current bucket configuration.</param>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// bucket {
+    ///    constructId "MySecureBucket"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: BucketConfig, id: string) = { config with ConstructId = Some id }
+
 
     [<CustomOperation("blockPublicAccess")>]
     member _.BlockPublicAccess(config: BucketConfig, value: BlockPublicAccess) =
@@ -251,12 +256,7 @@ type BucketBuilder(name: string) =
     [<CustomOperation("encryptionKey")>]
     member _.EncryptionKey(config: BucketConfig, key: IKey) =
         { config with
-            EncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
-
-    [<CustomOperation("encryptionKey")>]
-    member _.EncryptionKey(config: BucketConfig, key: KMSKeySpec) =
-        { config with
-            EncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
+            EncryptionKey = Some(key) }
 
     [<CustomOperation("enforceSSL")>]
     member _.EnforceSSL(config: BucketConfig, value: bool) = { config with EnforceSSL = Some value }
@@ -272,12 +272,7 @@ type BucketBuilder(name: string) =
     [<CustomOperation("serverAccessLogsBucket")>]
     member _.ServerAccessLogsBucket(config: BucketConfig, bucket: IBucket) =
         { config with
-            ServerAccessLogsBucket = Some(BucketRef.BucketInterface bucket) }
-
-    [<CustomOperation("serverAccessLogsBucket")>]
-    member _.ServerAccessLogsBucket(config: BucketConfig, bucket: BucketSpec) =
-        { config with
-            ServerAccessLogsBucket = Some(BucketRef.BucketSpecRef bucket) }
+            ServerAccessLogsBucket = Some(bucket) }
 
     [<CustomOperation("serverAccessLogsPrefix")>]
     member _.ServerAccessLogsPrefix(config: BucketConfig, prefix: string) =
@@ -298,6 +293,91 @@ type BucketBuilder(name: string) =
     member _.WebsiteErrorDocument(config: BucketConfig, doc: string) =
         { config with
             WebsiteErrorDocument = Some doc }
+
+    /// <summary>Grants read data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive read data permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantRead lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantRead")>]
+    member _.GrantRead(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantRead grantee) }
+
+    /// <summary>Grants put data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive put data permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantPut lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantPut")>]
+    member _.GrantPut(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantPut grantee) }
+
+    /// <summary>Grants delete data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive delete data permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantDelete lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantDelete")>]
+    member _.GrantDelete(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantDelete grantee) }
+
+    /// <summary>Grants put ACL permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive put ACL permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantPutAcl lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantPutAcl")>]
+    member _.GrantPutAcl(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantPutAcl grantee) }
+
+    /// <summary>Grants replication permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive replication permissions.</param>
+    /// <param name="props">The replication permission properties.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///    grantReplicationPermission lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantReplicationPermission")>]
+    member _.GrantReplicationPermission
+        (
+            config: BucketConfig,
+            grantee: IGrantable,
+            props: IGrantReplicationPermissionProps
+        ) =
+        { config with
+            Grant = Some(GrantReplicationPermission(grantee, props)) }
+
+    /// <summary>Grants read and write data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive read and write data permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantReadWrite lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantReadWrite")>]
+    member _.GrantReadWrite(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantReadWrite grantee) }
+
 
 // ============================================================================
 // S3 CorsRule Builder DSL
@@ -395,48 +475,37 @@ type CorsRuleBuilder() =
     member _.MaxAgeSeconds(config: CorsRuleConfig, seconds: int) = { config with MaxAge = Some seconds }
 
 // ============================================================================
-// Lifecycle Rule Helpers
-// ============================================================================
-
-/// <summary>
-/// Helper functions for creating S3 lifecycle rules
-/// </summary>
-module LifecycleRuleHelpers =
-
-    /// <summary>
-    /// Creates a lifecycle rule that transitions objects to GLACIER storage after specified days
-    /// </summary>
-    let transitionToGlacier (days: int) (id: string) =
-        LifecycleRule(
-            Id = id,
-            Enabled = true,
-            Transitions =
-                [| Transition(StorageClass = StorageClass.GLACIER, TransitionAfter = Duration.Days(float days)) |]
-        )
-
-    /// <summary>
-    /// Creates a lifecycle rule that expires objects after specified days
-    /// </summary>
-    let expireAfter (days: int) (id: string) =
-        LifecycleRule(Id = id, Enabled = true, Expiration = Duration.Days(float days))
-
-    /// <summary>
-    /// Creates a lifecycle rule that deletes non-current versions after specified days
-    /// </summary>
-    let deleteNonCurrentVersions (days: int) (id: string) =
-        LifecycleRule(Id = id, Enabled = true, NoncurrentVersionExpiration = Duration.Days(float days))
-
-// ============================================================================
 // Builders
 // ============================================================================
 
 [<AutoOpen>]
 module S3Builders =
     let bucket name = BucketBuilder(name)
-    /// <summary>
-    /// Creates a new S3 bucket builder with secure defaults.
-    /// Example: s3Bucket "my-bucket" { versioned true }
-    /// Alias for bucket builder.
-    /// </summary>
+    /// <summary> Creates a new S3 bucket builder with secure defaults.</summary>
+    /// <param name="name">The bucket name.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-secure-bucket" {
+    ///     versioned true
+    ///     removalPolicy RemovalPolicy.DESTROY
+    /// }
+    /// </code>
     let s3Bucket name = BucketBuilder(name)
+
+    /// <summary> Creates a new S3 lifecycle rule builder.</summary>
+    /// <code lang="fsharp">
+    /// lifecycleRule {
+    ///     id "TransitionToGlacier"
+    ///     enabled true
+    ///     transitions [ Transition(StorageClass = StorageClass.GLACIER, TransitionAfter = Duration.Days(30.0)) ]
+    /// }
+    /// </code>
+    let lifecycleRule = LifecycleRuleBuilder()
+
+    /// <summary> Creates a new S3 CORS rule builder.</summary>
+    /// <code lang="fsharp">
+    /// corsRule {
+    ///    allowedMethods [ HttpMethods.GET; HttpMethods.PUT ]
+    ///    allowedOrigins [ "https://example.com" ]
+    /// }
+    /// </code>
     let corsRule = CorsRuleBuilder()

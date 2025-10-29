@@ -43,7 +43,7 @@ stack "BasicManagedPolicy" {
     managedPolicy "S3ReadPolicy" {
         description "Read-only access to S3 bucket"
         managedPolicyName "S3ReadOnlyPolicy"
-        statement readOnlyStatement
+        statements [ readOnlyStatement ]
     }
 }
 
@@ -76,8 +76,7 @@ stack "MultiStatementPolicy" {
 
     managedPolicy "DataAccessPolicy" {
         description "Access to S3 and DynamoDB"
-        statement s3Statement
-        statement dynamoStatement
+        statements [ s3Statement; dynamoStatement ]
     }
 }
 
@@ -90,8 +89,23 @@ FsCDK provides convenient helpers for common permission patterns.
 stack "HelperMethodsPolicy" {
     managedPolicy "QuickAccessPolicy" {
         description "Quick policy using helpers"
-        allow [ "s3:GetObject"; "s3:ListBucket" ] [ "arn:aws:s3:::my-bucket/*" ]
-        deny [ "s3:DeleteObject" ] [ "arn:aws:s3:::my-bucket/*" ]
+
+        statements
+            [ policyStatement {
+                  sid "S3ReadOnly"
+                  effect Effect.ALLOW
+                  actions [ "s3:GetObject"; "s3:ListBucket" ]
+                  resources [ "arn:aws:s3:::my-bucket"; "arn:aws:s3:::my-bucket/*" ]
+              }
+
+              policyStatement {
+                  sid "S3DenyDelete"
+                  effect Effect.DENY
+                  actions [ "s3:DeleteObject" ]
+                  resources [ "arn:aws:s3:::my-bucket/*" ]
+              }
+
+              ]
     }
 }
 
@@ -107,9 +121,28 @@ stack "PreBuiltStatements" {
 
     managedPolicy "ApplicationPolicy" {
         description "Standard application permissions"
-        statement (ManagedPolicyStatements.s3ReadOnly bucketArn)
-        statement (ManagedPolicyStatements.dynamoDBFullAccess tableArn)
-        statement (ManagedPolicyStatements.cloudWatchLogsWrite "/aws/lambda/my-function")
+
+        statements
+            [ policyStatement {
+                  sid "S3ReadOnlyAccess"
+                  effect Effect.ALLOW
+                  actions [ "s3:GetObject"; "s3:ListBucket" ]
+                  resources [ bucketArn; bucketArn + "/*" ]
+              }
+
+              policyStatement {
+                  sid "DynamoDBFullAccess"
+                  effect Effect.ALLOW
+                  actions [ "dynamodb:*" ]
+                  resources [ tableArn ]
+              }
+
+              policyStatement {
+                  sid "CloudWatchLogsWrite"
+                  effect Effect.ALLOW
+                  actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                  resources [ "/aws/lambda/my-function" ]
+              } ]
     }
 }
 
@@ -119,24 +152,59 @@ stack "PreBuiltStatements" {
 Attach policies to IAM roles for EC2, Lambda, or other services.
 *)
 
-
 stack "PolicyWithRole" {
+    let! basicLambdaRole = managedPolicy "LambdaBasicExecution" { managedPolicyName "AWSLambdaBasicExecutionRole" }
+
+    let! s3ReadOnlyPolicy = managedPolicy "S3ReadOnlyAccess" { managedPolicyName "AmazonS3ReadOnlyAccess" }
+
+    let! vpcExecutionPolicy =
+        managedPolicy "LambdaVPCAccessExecution" { managedPolicyName "AWSLambdaVPCAccessExecutionRole" }
+
+    let! kmsDecryptPolicy = managedPolicy "KMSDecryptAccess" { managedPolicyName "AWSKeyManagementServicePowerUser" }
+
+    let! xrayWritePolicy = managedPolicy "XRayDaemonWriteAccess" { managedPolicyName "AWSXRayDaemonWriteAccess" }
+
     // Create a role for Lambda
-    let lambdaRole1 =
-        lambdaRole "my-function-role" {
-            basicExecution
-            vpcExecution
-            kmsDecrypt
-            xrayTracing
-            managedPolicy "AmazonS3ReadOnlyAccess"
-            inlinePolicy (IAM.allow [ "dynamodb:Query" ] [ "arn:aws:dynamodb:*:*:table/MyTable" ])
+    let! lambdaRole1 =
+        role "my-function-role" {
+            assumedBy (ServicePrincipal("lambda.amazonaws.com"))
+            managedPolicies [ basicLambdaRole; s3ReadOnlyPolicy; vpcExecutionPolicy; xrayWritePolicy ]
+
+            inlinePolicies
+                [ "MyPolicy",
+                  policyDocument {
+                      statements
+                          [ policyStatement {
+                                sid "DynamoDBQueryAccess"
+                                effect Effect.ALLOW
+                                actions [ "dynamodb:Query" ]
+                                resources [ "arn:aws:dynamodb:*:*:table/MyTable" ]
+                            } ]
+                  } ]
         }
+
+    let policy2 =
+        policyStatement {
+            sid "KMSDecryptAccess"
+            effect Effect.ALLOW
+            actions [ "kms:Decrypt"; "kms:DescribeKey" ]
+            resources [ "*" ]
+        }
+
+    (lambdaRole1 :?> Role).AddToPolicy(policy2) |> ignore
 
     // Create and attach policy
     managedPolicy "LambdaS3Policy" {
         description "Lambda S3 access"
-        statement (ManagedPolicyStatements.s3FullAccess "arn:aws:s3:::lambda-bucket")
-        attachToRole lambdaRole1.Role
+
+        policyStatement {
+            sid "S3FullAccess"
+            effect Effect.ALLOW
+            actions [ "s3:*" ]
+            resources [ "arn:aws:s3:::lambda-bucket"; "arn:aws:s3:::lambda-bucket/*" ]
+        }
+
+        roles [ lambdaRole1 ]
     }
 }
 
@@ -160,7 +228,7 @@ stack "CrossAccountPolicy" {
 
     managedPolicy "CrossAccountPolicy" {
         description "Allow access from partner account"
-        statement crossAccountStatement
+        statements [ crossAccountStatement ]
     }
 }
 
@@ -187,7 +255,7 @@ stack "ConditionalPolicy" {
 
     managedPolicy "IPRestrictedPolicy" {
         description "S3 access only from specific IP range"
-        statement conditionalStatement
+        statements [ conditionalStatement ]
     }
 }
 
@@ -201,9 +269,20 @@ stack "SecretsPolicy" {
     let secretArn =
         "arn:aws:secretsmanager:us-east-1:123456789012:secret:MySecret-AbCdEf"
 
+    let secretsManagerRead (secretArn: string) =
+        PolicyStatement(
+            props =
+                PolicyStatementProps(
+                    Sid = "SecretsManagerRead",
+                    Effect = System.Nullable Effect.ALLOW,
+                    Actions = [| "secretsmanager:GetSecretValue"; "secretsmanager:DescribeSecret" |],
+                    Resources = [| secretArn |]
+                )
+        )
+
     managedPolicy "SecretsAccessPolicy" {
         description "Access to application secrets"
-        statement (ManagedPolicyStatements.secretsManagerRead secretArn)
+        statements [ secretsManagerRead secretArn ]
     }
 }
 
@@ -217,9 +296,19 @@ stack "KMSPolicy" {
     let kmsKeyArn =
         "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
 
+    let kmsDecrypt (keyArn: string) =
+        PolicyStatement(
+            PolicyStatementProps(
+                Sid = "KMSDecrypt",
+                Effect = System.Nullable Effect.ALLOW,
+                Actions = [| "kms:Decrypt"; "kms:DescribeKey" |],
+                Resources = [| keyArn |]
+            )
+        )
+
     managedPolicy "KMSAccessPolicy" {
         description "KMS key usage for encryption"
-        statement (ManagedPolicyStatements.kmsDecrypt kmsKeyArn)
+        statements [ kmsDecrypt kmsKeyArn ]
     }
 }
 
@@ -235,11 +324,64 @@ stack "LambdaExecutionPolicy" {
     let bucketArn = "arn:aws:s3:::lambda-data"
     let tableArn = "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable"
 
+    /// Creates a statement for CloudWatch Logs write access
+    let cloudWatchLogsWrite (logGroupArn: string) =
+        PolicyStatement(
+            PolicyStatementProps(
+                Sid = "CloudWatchLogsWrite",
+                Effect = System.Nullable Effect.ALLOW,
+                Actions =
+                    [| "logs:CreateLogGroup"
+                       "logs:CreateLogStream"
+                       "logs:PutLogEvents"
+                       "logs:DescribeLogStreams" |],
+                Resources = [| logGroupArn; logGroupArn + ":*" |]
+            )
+        )
+
+    /// Creates a statement for SQS full access
+    let sqsFullAccess (queueArn: string) =
+        PolicyStatement(
+            PolicyStatementProps(
+                Sid = "SQSFullAccess",
+                Effect = System.Nullable Effect.ALLOW,
+                Actions =
+                    [| "sqs:SendMessage"
+                       "sqs:ReceiveMessage"
+                       "sqs:DeleteMessage"
+                       "sqs:GetQueueAttributes"
+                       "sqs:GetQueueUrl" |],
+                Resources = [| queueArn |]
+            )
+        )
+
+    /// Creates a statement for S3 full access
+    let s3FullAccess (bucketArn: string) =
+        PolicyStatement(
+            PolicyStatementProps(
+                Sid = "S3FullAccess",
+                Effect = System.Nullable Effect.ALLOW,
+                Actions = [| "s3:*" |],
+                Resources = [| bucketArn; bucketArn + "/*" |]
+            )
+        )
+
+    /// Creates a statement for DynamoDB full access
+    let dynamoDBFullAccess (tableArn: string) =
+        policyStatement {
+            sid "DynamoDBFullAccess"
+            effect Effect.ALLOW
+            actions [ "dynamodb:*" ]
+            resources [ tableArn; tableArn + "/index/*" ]
+        }
+
     managedPolicy "LambdaFullAccessPolicy" {
         description "Complete Lambda execution permissions"
-        statement (ManagedPolicyStatements.cloudWatchLogsWrite logGroupArn)
-        statement (ManagedPolicyStatements.s3FullAccess bucketArn)
-        statement (ManagedPolicyStatements.dynamoDBFullAccess tableArn)
+
+        statements
+            [ cloudWatchLogsWrite logGroupArn
+              s3FullAccess bucketArn
+              dynamoDBFullAccess tableArn ]
     }
 }
 
@@ -250,11 +392,58 @@ Create a read-only policy for auditors or monitoring.
 *)
 
 stack "ReadOnlyPolicy" {
+
+    /// Creates a statement for EC2 describe permissions (read-only)
+    let ec2Describe =
+        policyStatement {
+            sid "EC2Describe"
+            effect Effect.ALLOW
+
+            actions
+                [ "ec2:DescribeInstances"
+                  "ec2:DescribeImages"
+                  "ec2:DescribeKeyPairs"
+                  "ec2:DescribeSecurityGroups"
+                  "ec2:DescribeAvailabilityZones"
+                  "ec2:DescribeSubnets"
+                  "ec2:DescribeVpcs" ]
+
+            resources [ "*" ]
+        }
+
+    /// Creates a statement for S3 read-only access
+    let s3ReadOnly (bucketArn: string) =
+        PolicyStatement(
+            PolicyStatementProps(
+                Sid = "S3ReadOnly",
+                Effect = System.Nullable Effect.ALLOW,
+                Actions = [| "s3:GetObject"; "s3:ListBucket" |],
+                Resources = [| bucketArn; bucketArn + "/*" |]
+            )
+        )
+
+    let dynamoDBReadOnly (tableArn: string) =
+        policyStatement {
+            sid "DynamoDBReadOnly"
+            effect Effect.ALLOW
+
+            actions
+                [ "dynamodb:GetItem"
+                  "dynamodb:Query"
+                  "dynamodb:Scan"
+                  "dynamodb:BatchGetItem"
+                  "dynamodb:DescribeTable" ]
+
+            resources [ tableArn; tableArn + "/index/*" ]
+        }
+
     managedPolicy "AuditorPolicy" {
         description "Read-only access for auditing"
-        statement (ManagedPolicyStatements.ec2Describe ())
-        statement (ManagedPolicyStatements.s3ReadOnly "arn:aws:s3:::audit-logs")
-        statement (ManagedPolicyStatements.dynamoDBReadOnly "arn:aws:dynamodb:us-east-1:123456789012:table/*")
+
+        statements
+            [ ec2Describe
+              s3ReadOnly "arn:aws:s3:::audit-logs"
+              dynamoDBReadOnly "arn:aws:dynamodb:us-east-1:123456789012:table/*" ]
     }
 }
 
@@ -287,8 +476,7 @@ stack "DenyOverridePolicy" {
 
     managedPolicy "SafeS3Policy" {
         description "S3 access without delete permissions"
-        statement allowStatement
-        statement denyStatement
+        statements [ allowStatement; denyStatement ]
     }
 }
 

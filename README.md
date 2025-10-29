@@ -35,21 +35,12 @@ open FsCDK
 let config = Config.get () // e.g., reads AWS account and region from env
 
 stack "MyFirstStack" {
-    app {
-        context "environment" "production"
-        context "feature-flag" true
-        context "version" "1.2.3"
-    }
-
     environment {
         account config.Account
         region config.Region
     }
 
-    stackProps {
-        stackEnv
-        description "My first FsCDK stack"
-    }
+    description "My first FsCDK stack"
 
     // S3 bucket
     bucket "MyBucket" {

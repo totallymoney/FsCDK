@@ -33,7 +33,7 @@ Run Lambda functions on a schedule using EventBridge rules.
 
 stack "ScheduledEvents" {
     // Lambda function
-    let processFunction =
+    let! processFunction =
         lambda "ProcessDaily" {
             runtime Runtime.DOTNET_8
             handler "App::Handler"
@@ -44,7 +44,7 @@ stack "ScheduledEvents" {
     eventBridgeRule "DailyProcessing" {
         description "Process data daily at midnight"
         schedule (Schedule.Cron(CronOptions(Hour = "0", Minute = "0")))
-        target (LambdaFunction(processFunction.Function.Value))
+        target (LambdaFunction(processFunction))
     }
 }
 
@@ -55,7 +55,7 @@ Execute tasks at regular intervals.
 *)
 
 stack "RateBasedEvents" {
-    let monitorFunction =
+    let! monitorFunction =
         lambda "Monitor" {
             runtime Runtime.DOTNET_8
             handler "App::Monitor"
@@ -66,7 +66,7 @@ stack "RateBasedEvents" {
     eventBridgeRule "HealthCheck" {
         description "Health check every 5 minutes"
         schedule (Schedule.Rate(Duration.Minutes(5.0)))
-        target (LambdaFunction(monitorFunction.Function.Value))
+        target (LambdaFunction(monitorFunction))
         enabled true
     }
 }
@@ -78,7 +78,7 @@ React to specific AWS events using event patterns.
 *)
 
 stack "EventPatterns" {
-    let alertFunction =
+    let! alertFunction =
         lambda "AlertHandler" {
             runtime Runtime.DOTNET_8
             handler "App::HandleAlert"
@@ -99,7 +99,7 @@ stack "EventPatterns" {
     eventBridgeRule "EC2Termination" {
         description "Alert on EC2 instance termination"
         eventPattern ec2StateChangePattern
-        target (LambdaFunction(alertFunction.Function.Value))
+        target (LambdaFunction(alertFunction))
     }
 }
 
@@ -118,14 +118,14 @@ Send events to multiple targets.
 *)
 
 stack "MultiTarget" {
-    let logFunction =
+    let! logFunction =
         lambda "Logger" {
             runtime Runtime.DOTNET_8
             handler "App::Log"
             code "./lambda"
         }
 
-    let notifyFunction =
+    let! notifyFunction =
         lambda "Notifier" {
             runtime Runtime.DOTNET_8
             handler "App::Notify"
@@ -135,8 +135,8 @@ stack "MultiTarget" {
     eventBridgeRule "CriticalEvents" {
         description "Handle critical system events"
         schedule (Schedule.Rate(Duration.Hours(1.0)))
-        target (LambdaFunction(logFunction.Function.Value))
-        target (LambdaFunction(notifyFunction.Function.Value))
+        target (LambdaFunction(logFunction))
+        target (LambdaFunction(notifyFunction))
     }
 }
 
@@ -147,7 +147,7 @@ Use cron expressions for complex scheduling.
 *)
 
 stack "CronSchedule" {
-    let reportFunction =
+    let! reportFunction =
         lambda "WeeklyReport" {
             runtime Runtime.DOTNET_8
             handler "App::GenerateReport"
@@ -158,7 +158,7 @@ stack "CronSchedule" {
     eventBridgeRule "WeeklyReport" {
         description "Generate weekly report"
         schedule (Schedule.Cron(CronOptions(Minute = "0", Hour = "9", WeekDay = "MON")))
-        target (LambdaFunction(reportFunction.Function.Value))
+        target (LambdaFunction(reportFunction))
     }
 }
 
@@ -169,7 +169,7 @@ Create rules that are initially disabled.
 *)
 
 stack "DisabledRule" {
-    let maintenanceFunction =
+    let! maintenanceFunction =
         lambda "Maintenance" {
             runtime Runtime.DOTNET_8
             handler "App::RunMaintenance"
@@ -180,7 +180,7 @@ stack "DisabledRule" {
         description "Maintenance task (manually enabled)"
         schedule (Schedule.Rate(Duration.Days(1.0)))
         enabled false // Start disabled
-        target (LambdaFunction(maintenanceFunction.Function.Value))
+        target (LambdaFunction(maintenanceFunction))
     }
 }
 

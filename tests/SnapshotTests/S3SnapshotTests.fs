@@ -29,26 +29,57 @@ let s3_snapshot_tests =
               Expect.equal bucketResource.BucketName "test-bucket" "BucketName should be set"
           }
 
-          test "s3Bucket builder with lifecycle rule" {
-              let lifecycleRule = LifecycleRuleHelpers.expireAfter 30 "expire-old-objects"
-              let bucketResource = s3Bucket "test-bucket" { lifecycleRule }
-
-              Expect.equal bucketResource.BucketName "test-bucket" "BucketName should be set"
-          }
-
           test "s3Bucket lifecycle helper functions" {
-              let expireRule = LifecycleRuleHelpers.expireAfter 30 "expire-30-days"
+              let expireRule =
+                  lifecycleRule {
+                      id "expire-30-days"
+                      enabled true
+                      expiration (Duration.Days(30.0))
+                  }
+
               Expect.equal expireRule.Id "expire-30-days" "Rule ID should be set"
               Expect.isTrue (expireRule.Enabled.HasValue && expireRule.Enabled.Value) "Rule should be enabled"
               Expect.isNotNull expireRule.Expiration "Expiration should be set"
 
-              let glacierRule = LifecycleRuleHelpers.transitionToGlacier 90 "glacier-90-days"
+              let glacierRule =
+                  lifecycleRule {
+                      id "glacier-90-days"
+                      enabled true
+
+                      transition {
+                          storageClass StorageClass.GLACIER
+                          transitionAfter (Duration.Days(90.0))
+                      }
+
+                      transitions
+                          [ transition {
+                                storageClass StorageClass.GLACIER
+                                transitionAfter (Duration.Days(90.0))
+                            } ]
+                  }
+
               Expect.equal glacierRule.Id "glacier-90-days" "Rule ID should be set"
               Expect.isTrue (glacierRule.Enabled.HasValue && glacierRule.Enabled.Value) "Rule should be enabled"
               Expect.isNotNull glacierRule.Transitions "Transitions should be set"
 
               let deleteVersionsRule =
-                  LifecycleRuleHelpers.deleteNonCurrentVersions 180 "delete-old-versions"
+                  lifecycleRule {
+                      id "delete-old-versions"
+                      enabled true
+
+                      noncurrentVersionTransitions
+                          [ noncurrentVersionTransition {
+                                storageClass StorageClass.GLACIER
+                                transitionAfter (Duration.Days(180.0))
+                                noncurrentVersionsToRetain 5.0
+                            } ]
+
+                      noncurrentVersionTransition {
+                          storageClass StorageClass.GLACIER
+                          transitionAfter (Duration.Days(180.0))
+                          noncurrentVersionsToRetain 5.0
+                      }
+                  }
 
               Expect.equal deleteVersionsRule.Id "delete-old-versions" "Rule ID should be set"
 
@@ -57,8 +88,9 @@ let s3_snapshot_tests =
                   "Rule should be enabled"
 
               Expect.isNotNull
-                  deleteVersionsRule.NoncurrentVersionExpiration
-                  "NoncurrentVersionExpiration should be set"
+                  deleteVersionsRule.NoncurrentVersionTransitions
+                  "NoncurrentVersionTransitions should be set"
+
           }
 
           test "s3Bucket builder with custom construct ID" {

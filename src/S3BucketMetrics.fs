@@ -1,30 +1,29 @@
 namespace FsCDK
 
-open System.Collections.Generic
 open Amazon.CDK.AWS.S3
 
 type BucketMetricsConfig =
     { Id: string option
       Prefix: string option
-      TagFilters: (string * obj) seq }
+      TagFilters: Map<string, obj> option }
 
 type BucketMetricsBuilder() =
     member _.Yield _ : BucketMetricsConfig =
         { Id = None
           Prefix = None
-          TagFilters = [] }
+          TagFilters = None }
 
     member _.Zero() : BucketMetricsConfig =
         { Id = None
           Prefix = None
-          TagFilters = [] }
+          TagFilters = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> BucketMetricsConfig) : BucketMetricsConfig = f ()
 
     member _.Combine(state1: BucketMetricsConfig, state2: BucketMetricsConfig) : BucketMetricsConfig =
         { Id = state2.Id |> Option.orElse state1.Id
           Prefix = state2.Prefix |> Option.orElse state1.Prefix
-          TagFilters = Seq.toList state2.TagFilters @ Seq.toList state1.TagFilters }
+          TagFilters = state1.TagFilters |> Option.orElse state2.TagFilters }
 
     member inline x.For
         (
@@ -46,9 +45,7 @@ type BucketMetricsBuilder() =
 
         config.Prefix |> Option.iter (fun p -> metrics.Prefix <- p)
 
-        let tagFilters = config.TagFilters |> Seq.toList |> Map.ofList |> Dictionary
-
-        metrics.TagFilters <- tagFilters
+        config.TagFilters |> Option.iter (fun tf -> metrics.TagFilters <- tf)
 
         metrics :> IBucketMetrics
 
@@ -59,7 +56,9 @@ type BucketMetricsBuilder() =
     member _.Prefix(config: BucketMetricsConfig, prefix: string) = { config with Prefix = Some prefix }
 
     [<CustomOperation("tagFilters")>]
-    member _.TagFilters(config: BucketMetricsConfig, filters: (string * obj) seq) = { config with TagFilters = filters }
+    member _.TagFilters(config: BucketMetricsConfig, filters: (string * obj) seq) =
+        { config with
+            TagFilters = Some(filters |> Map.ofSeq) }
 
 // ============================================================================
 // Builders

@@ -253,7 +253,7 @@ type CloudWatchAlarmSpec =
     { AlarmName: string
       ConstructId: string
       Props: AlarmProps
-      mutable Alarm: IAlarm option }
+      mutable Alarm: IAlarm }
 
 type CloudWatchAlarmBuilder(name: string) =
     member _.Yield _ : CloudWatchAlarmConfig =
@@ -343,7 +343,7 @@ type CloudWatchAlarmBuilder(name: string) =
             { AlarmName = config.AlarmName
               ConstructId = constructId
               Props = props
-              Alarm = None }
+              Alarm = null }
 
         | None, None, _
         | None, _, None -> failwith "CloudWatch alarm requires both metricNamespace and metricName"
@@ -375,7 +375,7 @@ type CloudWatchAlarmBuilder(name: string) =
             { AlarmName = config.AlarmName
               ConstructId = constructId
               Props = props
-              Alarm = None }
+              Alarm = null }
 
     /// <summary>Sets the construct ID for the alarm.</summary>
     [<CustomOperation("constructId")>]
@@ -441,4 +441,4 @@ type CloudWatchAlarmBuilder(name: string) =
 
 [<AutoOpen>]
 module CloudWatchBuilders =
-    let cloudwatchAlarm = CloudWatchAlarmBuilder
+    let cloudwatchAlarm name = CloudWatchAlarmBuilder(name)

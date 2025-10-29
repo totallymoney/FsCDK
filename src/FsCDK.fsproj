@@ -24,7 +24,7 @@
       <Compile Include="EventSourceMapping.fs" />
       <Compile Include="FunctionPermissions.fs" />
       <Compile Include="FunctionUrl.fs" />
-      <Compile Include="DynamoDB.fs" />
+      <Compile Include="Table.fs" />
       <Compile Include="DockerImageFunction.fs" />
       <Compile Include="Function.fs" />
       <Compile Include="Cognito.fs" />
@@ -33,7 +33,6 @@
       <Compile Include="Grants.fs" />
       <!-- High-level builders with best practices -->
       <Compile Include="Tags.fs" />
-      <Compile Include="IAM.fs" />
       <Compile Include="Observability.fs" />
       <!-- New service builders -->
       <Compile Include="EC2.fs" />
@@ -46,9 +45,10 @@
       <Compile Include="BastionHost.fs" />
       <Compile Include="BucketPolicy.fs" />
       <Compile Include="CertificateManager.fs" />
-      <Compile Include="CloudWatchDashboard.fs" />
+      <Compile Include="Dashboard.fs" />
       <Compile Include="EventBridge.fs" />
       <Compile Include="ManagedPolicy.fs" />
+      <Compile Include="IAM.fs" />
       <Compile Include="NetworkLoadBalancer.fs" />
       <Compile Include="OIDCProvider.fs" />
       <Compile Include="RouteTable.fs" />

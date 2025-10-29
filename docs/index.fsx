@@ -76,12 +76,6 @@ stack "Dev" {
         topic "user-events"
         queue "users-queue"
     }
-
-    grant {
-        table "users"
-        lambda "users-api-dev"
-        readWriteAccess
-    }
 }
 
 stack "Prod" {
@@ -103,12 +97,6 @@ stack "Prod" {
         memory 1024
         timeout 15.0
         description "CRUD over the users table"
-    }
-
-    grant {
-        table "users"
-        lambda "users-api"
-        readWriteAccess
     }
 }
 

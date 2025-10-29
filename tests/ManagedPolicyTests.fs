@@ -16,16 +16,48 @@ let managed_policy_tests =
           }
 
           test "accepts policy statements" {
-              let statement1 =
-                  PolicyStatement(PolicyStatementProps(Actions = [| "s3:GetObject" |], Resources = [| "*" |]))
+              stack "s3-stack" {
+                  let! u =
+                      user {
+                          userName "TestUser"
+                          password (Amazon.CDK.SecretValue.SsmSecure("", ""))
+                      }
 
-              let policySpec =
-                  managedPolicy "MyPolicy" {
-                      description "S3 read policy"
-                      statement statement1
+                  policy "MyPolicyDocument" {
+                      policyStatement {
+                          effect Effect.ALLOW
+                          actions [ "s3:GetObject" ]
+                          resources [ "arn:aws:s3:::bucket/*" ]
+                      }
+
+                      users [ u ]
                   }
 
-              Expect.isNotNull policySpec.Props.Document "Should have policy document"
+                  let policySpec =
+                      managedPolicy "MyPolicy" {
+                          description "S3 read policy"
+
+                          policyStatement {
+                              actions [ "s3:ListBucket" ]
+                              resources [ "*" ]
+                          }
+
+                          policyDocument {
+                              assignSids true
+                              minimize false
+
+                              policyStatement {
+                                  effect Effect.ALLOW
+                                  actions [ "s3:ListBucket" ]
+                                  resources [ "*" ]
+                              }
+                          }
+
+                      }
+
+                  Expect.isNotNull policySpec.Props.Document "Should have policy document"
+              }
+
           }
 
           test "accepts multiple statements" {
@@ -37,8 +69,19 @@ let managed_policy_tests =
 
               let policySpec =
                   managedPolicy "MyPolicy" {
-                      statement statement1
-                      statement statement2
+                      description "S3 read/write policy"
+                      statements [ statement1; statement2 ]
+
+                      policyDocument {
+                          assignSids true
+                          minimize false
+
+                          policyStatement {
+                              effect Effect.ALLOW
+                              actions [ "s3:GetObject" ]
+                              resources [ "*" ]
+                          }
+                      }
                   }
 
               Expect.isNotNull policySpec.Props.Document "Should have policy document with statements"
@@ -68,7 +111,24 @@ let managed_policy_tests =
               let policySpec =
                   managedPolicy "MyPolicy" {
                       description "Test"
-                      allow [ "s3:GetObject"; "s3:PutObject" ] [ "arn:aws:s3:::bucket/*" ]
+
+                      policyStatement {
+                          effect Effect.ALLOW
+                          actions [ "s3:GetObject"; "s3:PutObject" ]
+                          resources [ "arn:aws:s3:::bucket/*" ]
+                      }
+
+                      policyDocument {
+                          assignSids true
+                          minimize false
+
+                          policyStatement {
+                              effect Effect.ALLOW
+                              actions [ "s3:GetObject" ]
+                              resources [ "*" ]
+                          }
+                      }
+
                   }
 
               Expect.isNotNull policySpec.Props.Document "Should have policy document"
@@ -78,7 +138,23 @@ let managed_policy_tests =
               let policySpec =
                   managedPolicy "MyPolicy" {
                       description "Test"
-                      deny [ "s3:DeleteObject" ] [ "arn:aws:s3:::bucket/*" ]
+
+                      policyStatement {
+                          effect Effect.DENY
+                          actions [ "s3:DeleteObject" ]
+                          resources [ "arn:aws:s3:::bucket/*" ]
+                      }
+
+                      policyDocument {
+                          assignSids true
+                          minimize false
+
+                          policyStatement {
+                              effect Effect.DENY
+                              actions [ "s3:DeleteObject" ]
+                              resources [ "*" ]
+                          }
+                      }
                   }
 
               Expect.isNotNull policySpec.Props.Document "Should have policy document"
@@ -97,88 +173,6 @@ let managed_policy_tests =
               Expect.equal policySpec.Props.Description "Custom description for testing" "Should use custom description"
           }
 
-          test "ManagedPolicyStatements.s3ReadOnly creates correct statement" {
-              let statement = ManagedPolicyStatements.s3ReadOnly "arn:aws:s3:::my-bucket"
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-              Expect.contains (statement.Actions |> Seq.toList) "s3:GetObject" "Should include GetObject"
-              Expect.contains (statement.Actions |> Seq.toList) "s3:ListBucket" "Should include ListBucket"
-          }
-
-          test "ManagedPolicyStatements.dynamoDBFullAccess creates correct statement" {
-              let statement =
-                  ManagedPolicyStatements.dynamoDBFullAccess "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable"
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-              Expect.contains (statement.Actions |> Seq.toList) "dynamodb:*" "Should include wildcard action"
-          }
-
-          test "ManagedPolicyStatements.lambdaInvoke creates correct statement" {
-              let statement =
-                  ManagedPolicyStatements.lambdaInvoke "arn:aws:lambda:us-east-1:123456789012:function:MyFunction"
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-              Expect.contains (statement.Actions |> Seq.toList) "lambda:InvokeFunction" "Should include InvokeFunction"
-          }
-
-          test "ManagedPolicyStatements.cloudWatchLogsWrite creates correct statement" {
-              let statement =
-                  ManagedPolicyStatements.cloudWatchLogsWrite "/aws/lambda/my-function"
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-
-              Expect.contains (statement.Actions |> Seq.toList) "logs:CreateLogGroup" "Should include CreateLogGroup"
-          }
-
-          test "ManagedPolicyStatements.sqsFullAccess creates correct statement" {
-              let statement =
-                  ManagedPolicyStatements.sqsFullAccess "arn:aws:sqs:us-east-1:123456789012:my-queue"
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-              Expect.contains (statement.Actions |> Seq.toList) "sqs:SendMessage" "Should include SendMessage"
-          }
-
-          test "ManagedPolicyStatements.snsPublish creates correct statement" {
-              let statement =
-                  ManagedPolicyStatements.snsPublish "arn:aws:sns:us-east-1:123456789012:my-topic"
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-              Expect.contains (statement.Actions |> Seq.toList) "sns:Publish" "Should include Publish"
-          }
-
-          test "ManagedPolicyStatements.secretsManagerRead creates correct statement" {
-              let statement =
-                  ManagedPolicyStatements.secretsManagerRead
-                      "arn:aws:secretsmanager:us-east-1:123456789012:secret:MySecret"
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-
-              Expect.contains
-                  (statement.Actions |> Seq.toList)
-                  "secretsmanager:GetSecretValue"
-                  "Should include GetSecretValue"
-          }
-
-          test "ManagedPolicyStatements.kmsDecrypt creates correct statement" {
-              let statement =
-                  ManagedPolicyStatements.kmsDecrypt
-                      "arn:aws:kms:us-east-1:123456789012:key/12345678-1234-1234-1234-123456789012"
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-              Expect.contains (statement.Actions |> Seq.toList) "kms:Decrypt" "Should include Decrypt"
-          }
-
-          test "ManagedPolicyStatements.ec2Describe creates correct statement" {
-              let statement = ManagedPolicyStatements.ec2Describe ()
-
-              Expect.equal statement.Effect Effect.ALLOW "Should be ALLOW"
-
-              Expect.contains
-                  (statement.Actions |> Seq.toList)
-                  "ec2:DescribeInstances"
-                  "Should include DescribeInstances"
-          }
-
           test "policy with no statements has no document" {
               let policySpec = managedPolicy "EmptyPolicy" { description "No statements" }
 
@@ -192,8 +186,33 @@ let managed_policy_tests =
               let policySpec =
                   managedPolicy "MixedPolicy" {
                       description "Mixed permissions"
-                      allow [ "s3:GetObject" ] [ "arn:aws:s3:::bucket/*" ]
-                      deny [ "s3:DeleteObject" ] [ "arn:aws:s3:::bucket/*" ]
+
+                      statements
+                          [ PolicyStatement(
+                                PolicyStatementProps(
+                                    Effect = Effect.ALLOW,
+                                    Actions = [| "s3:GetObject" |],
+                                    Resources = [| "arn:aws:s3:::bucket/*" |]
+                                )
+                            )
+                            PolicyStatement(
+                                PolicyStatementProps(
+                                    Effect = Effect.DENY,
+                                    Actions = [| "s3:DeleteObject" |],
+                                    Resources = [| "arn:aws:s3:::bucket/*" |]
+                                )
+                            ) ]
+
+                      policyDocument {
+                          assignSids true
+                          minimize false
+
+                          policyStatement {
+                              effect Effect.ALLOW
+                              actions [ "s3:ListBucket" ]
+                              resources [ "*" ]
+                          }
+                      }
                   }
 
               Expect.isNotNull policySpec.Props.Document "Should have policy document"
