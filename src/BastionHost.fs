@@ -27,18 +27,18 @@ open Amazon.CDK.AWS.EC2
 /// Bastion hosts should use strict security groups and key-based authentication.
 /// Consider AWS Systems Manager Session Manager as a more secure alternative.
 ///
-/// **Escape Hatch:**
+/// **Escape Hatch: **
 /// Access the underlying CDK BastionHostLinux via the `BastionHost` property
 /// for advanced scenarios not covered by this builder.
 /// </summary>
 type BastionHostConfig =
     { BastionName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       InstanceType: InstanceType option
       MachineImage: IMachineImage option
       SubnetSelection: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       InstanceName: string option
       RequireImdsv2: bool option }
 
@@ -46,15 +46,7 @@ type BastionHostSpec =
     { BastionName: string
       ConstructId: string
       Props: BastionHostLinuxProps
-      mutable BastionHost: BastionHostLinux option }
-
-    /// Gets the underlying BastionHostLinux resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.BastionHost with
-        | Some bastion -> bastion
-        | None ->
-            failwith
-                $"BastionHost '{this.BastionName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+      mutable BastionHost: BastionHostLinux }
 
 type BastionHostBuilder(name: string) =
     member _.Yield _ : BastionHostConfig =
@@ -130,7 +122,7 @@ type BastionHostBuilder(name: string) =
 
         // VPC is required
         match config.Vpc with
-        | Some vpcRef -> props.Vpc <- VpcHelpers.resolveVpcRef vpcRef
+        | Some vpcRef -> props.Vpc <- vpcRef
         | None -> printfn "Warning: VPC is required for Network Load Balancer"
 
         // AWS Best Practice: Use minimal instance type for cost optimization
@@ -148,15 +140,14 @@ type BastionHostBuilder(name: string) =
 
         config.SubnetSelection |> Option.iter (fun s -> props.SubnetSelection <- s)
 
-        config.SecurityGroup
-        |> Option.iter (fun sg -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef sg)
+        config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
 
         config.InstanceName |> Option.iter (fun n -> props.InstanceName <- n)
 
         { BastionName = config.BastionName
           ConstructId = constructId
           Props = props
-          BastionHost = None }
+          BastionHost = null }
 
     /// <summary>Sets the construct ID for the Bastion Host.</summary>
     [<CustomOperation("constructId")>]
@@ -164,15 +155,7 @@ type BastionHostBuilder(name: string) =
 
     /// <summary>Sets the VPC for the Bastion Host.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: BastionHostConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the Bastion Host from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: BastionHostConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: BastionHostConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the instance type.</summary>
     [<CustomOperation("instanceType")>]
@@ -195,14 +178,7 @@ type BastionHostBuilder(name: string) =
     /// <summary>Sets the security group.</summary>
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: BastionHostConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupInterface sg) }
-
-    /// <summary>Sets the security group from a SecurityGroupSpec.</summary>
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: BastionHostConfig, sgSpec: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupSpecRef sgSpec) }
+        { config with SecurityGroup = Some(sg) }
 
     /// <summary>Sets the instance name.</summary>
     [<CustomOperation("instanceName")>]

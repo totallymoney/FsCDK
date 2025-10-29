@@ -60,7 +60,7 @@ stack "BasicEKSStack" {
 
 
     // Create VPC for EKS cluster
-    let clusterVpc =
+    let! clusterVpc =
         vpc "EKSVpc" {
             maxAzs 3
             natGateways 1
@@ -115,7 +115,7 @@ Run pods without managing EC2 instances using AWS Fargate.
 stack "FargateEKSStack" {
     description "EKS cluster with Fargate profiles"
 
-    let fargateVpc =
+    let! fargateVpc =
         vpc "FargateVpc" {
             maxAzs 2
             cidr "10.0.0.0/16"
@@ -156,7 +156,7 @@ Support both x86 and ARM workloads for cost optimization.
 stack "MultiArchEKSStack" {
     description "EKS cluster with x86 and ARM node groups"
 
-    let multiArchVpc =
+    let! multiArchVpc =
         vpc "MultiArchVpc" {
             maxAzs 2
             cidr "10.0.0.0/16"
@@ -211,7 +211,7 @@ Use Spot Instances for fault-tolerant workloads to save up to 90%.
 stack "SpotEKSStack" {
     description "EKS cluster with Spot instance node group"
 
-    let spotVpc =
+    let! spotVpc =
         vpc "SpotVpc" {
             maxAzs 2
             cidr "10.0.0.0/16"
@@ -273,7 +273,7 @@ Grant Kubernetes pods fine-grained IAM permissions without sharing credentials.
 stack "IRSAEKSStack" {
     description "EKS cluster with IRSA for pod permissions"
 
-    let irsaVpc =
+    let! irsaVpc =
         vpc "IRSAVpc" {
             maxAzs 2
             cidr "10.0.0.0/16"
@@ -315,7 +315,7 @@ Enable envelope encryption for Kubernetes secrets at rest.
 stack "SecureEKSStack" {
     description "EKS cluster with KMS secrets encryption"
 
-    let secureVpc =
+    let! secureVpc =
         vpc "SecureVpc" {
             maxAzs 2
             cidr "10.0.0.0/16"
@@ -441,7 +441,7 @@ Install applications using Helm package manager.
 stack "HelmChartsStack" {
     description "EKS cluster with Helm chart installations"
 
-    let helmVpc =
+    let! helmVpc =
         vpc "HelmVpc" {
             maxAzs 2
             cidr "10.0.0.0/16"
@@ -508,7 +508,7 @@ Automatically adjust node group size based on pod resource requests.
 stack "AutoScalingEKSStack" {
     description "EKS cluster with autoscaling"
 
-    let autoScaleVpc =
+    let! autoScaleVpc =
         vpc "AutoScaleVpc" {
             maxAzs 2
             cidr "10.0.0.0/16"
@@ -566,7 +566,7 @@ stack "ProductionEKSStack" {
     tags [ "Environment", "Production"; "Project", "K8sCluster"; "ManagedBy", "FsCDK" ]
 
     // Production VPC with high availability
-    let prodVpc =
+    let! prodVpc =
         vpc "ProductionVPC" {
             maxAzs 3
             natGateways 3 // One NAT gateway per AZ for HA

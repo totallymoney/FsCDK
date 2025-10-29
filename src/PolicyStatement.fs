@@ -12,24 +12,22 @@ type PolicyStatementConfig =
       Resources: string seq option
       Effect: Effect option
       Principals: IPrincipal seq option
+      Conditions: Map<string, obj> option
       Sid: string option }
 
-type PolicyStatementBuilder() =
-    member _.Yield(_: unit) : PolicyStatementConfig =
+    static member inline Empty =
         { Props = None
           Actions = None
           Resources = None
           Effect = None
           Principals = None
+          Conditions = None
           Sid = None }
 
-    member _.Zero() : PolicyStatementConfig =
-        { Props = None
-          Actions = None
-          Resources = None
-          Effect = None
-          Principals = None
-          Sid = None }
+type PolicyStatementBuilder() =
+    member _.Yield(_: unit) : PolicyStatementConfig = PolicyStatementConfig.Empty
+
+    member _.Zero() : PolicyStatementConfig = PolicyStatementConfig.Empty
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> PolicyStatementConfig) : PolicyStatementConfig = f ()
 
@@ -47,6 +45,7 @@ type PolicyStatementBuilder() =
           Resources = state1.Resources |> Option.orElse state2.Resources
           Effect = state1.Effect |> Option.orElse state2.Effect
           Principals = state1.Principals |> Option.orElse state2.Principals
+          Conditions = state1.Conditions |> Option.orElse state2.Conditions
           Sid = state1.Sid |> Option.orElse state2.Sid }
 
     member _.Run(config: PolicyStatementConfig) : PolicyStatement =
@@ -57,6 +56,8 @@ type PolicyStatementBuilder() =
 
         config.Principals
         |> Option.iter (fun pr -> props.Principals <- (pr |> Seq.toArray))
+
+        config.Conditions |> Option.iter (fun c -> props.Conditions <- c)
 
         config.Sid |> Option.iter (fun sid -> props.Sid <- sid)
         PolicyStatement(props)
@@ -109,6 +110,21 @@ type PolicyStatementBuilder() =
         { config with
             Principals = Some principals }
 
+
+    /// <summary>Sets the conditions for the policy statement.</summary>
+    /// <param name="config">The current policy statement configuration.</param>
+    /// <param name="conditions">The map of conditions.</param>
+    /// <code lang="fsharp">
+    /// policyStatement {
+    ///     conditions [ ("Bool", dict [ "aws:SecureTransport", box "false" ]) ]
+    /// }    /// </code>
+    [<CustomOperation("conditions")>]
+    member _.Conditions(config: PolicyStatementConfig, conditions: (string * obj) seq) =
+        let conditionMap = conditions |> Map.ofSeq
+
+        { config with
+            Conditions = Some conditionMap }
+
     /// <summary>Sets the SID for the policy statement.</summary>
     /// <param name="config">The current policy statement configuration.</param>
     /// <param name="sid">The statement identifier (SID).</param>
@@ -129,7 +145,7 @@ module PolicyStatementBuilders =
     /// <summary>Creates an AWS CDK IAM PolicyStatement.</summary>
     /// <code lang="fsharp">
     /// policyStatement {
-    ///     actions [ "s3:GetObject"; "s3:ListBucket" ]
+    ///     actions [ "s3: GetObject"; "s3:ListBucket" ]
     ///     resources [ "arn:aws:s3:::my-bucket"; "arn:aws:s3:::my-bucket/*" ]
     ///     effect Effect.ALLOW
     /// }

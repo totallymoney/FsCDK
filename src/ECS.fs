@@ -20,7 +20,7 @@ open Amazon.CDK.AWS.ElasticLoadBalancingV2
 type ECSClusterConfig =
     { ClusterName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       ContainerInsights: ContainerInsights option
       EnableFargateCapacityProviders: bool option }
 
@@ -65,8 +65,7 @@ type ECSClusterBuilder(name: string) =
         let props = ClusterProps()
         props.ClusterName <- clusterName
 
-        config.Vpc
-        |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
 
         config.ContainerInsights
         |> Option.iter (fun v -> props.ContainerInsightsV2 <- v)
@@ -83,14 +82,12 @@ type ECSClusterBuilder(name: string) =
     member _.ConstructId(config: ECSClusterConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
+    //
+    // [<CustomOperation("vpc")>]
+    // member _.Vpc(config: ECSClusterConfig, vpcSpec: FsCDK.VpcSpec) =
+    //     { config with
+    //         Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
 
     [<CustomOperation("containerInsights")>]
     member _.ContainerInsights(config: ECSClusterConfig, insights: ContainerInsights) =
@@ -123,7 +120,7 @@ type ECSFargateServiceConfig =
       TaskDefinition: TaskDefinition option
       DesiredCount: int option
       AssignPublicIp: bool option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       VpcSubnets: SubnetSelection option }
 
 type ECSFargateServiceSpec =
@@ -190,10 +187,7 @@ type ECSFargateServiceBuilder(name: string) =
         config.AssignPublicIp |> Option.iter (fun v -> props.AssignPublicIp <- v)
 
         if not config.SecurityGroups.IsEmpty then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.map id |> Array.ofList
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
@@ -225,17 +219,17 @@ type ECSFargateServiceBuilder(name: string) =
 
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: ISecurityGroup list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
+        let sgsrefs = sgs |> List.map id
 
         { config with
             SecurityGroups = sgsrefs @ config.SecurityGroups }
 
-    [<CustomOperation("securityGroups")>]
-    member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: SecurityGroupSpec list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
-
-        { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
+    // [<CustomOperation("securityGroups")>]
+    // member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: SecurityGroupSpec list) =
+    //     let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
+    //
+    //     { config with
+    //         SecurityGroups = sgsrefs @ config.SecurityGroups }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: ECSFargateServiceConfig, subnets: SubnetSelection) =

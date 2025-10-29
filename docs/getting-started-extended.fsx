@@ -173,7 +173,7 @@ stack "ProductionApp" {
     tags [ "environment", "production"; "managed-by", "FsCDK" ]
 
     // 1. Network layer
-    let myVpc =
+    let! myVpc =
         vpc "AppVpc" {
             maxAzs 2
             natGateways 1
@@ -277,7 +277,7 @@ stack "WebApp" {
 *)
 
 stack "DataPipeline" {
-    let myVpc = vpc "DataVpc" { () }
+    let! myVpc = vpc "DataVpc" { () }
 
     rdsInstance "DataWarehouse" {
         vpc myVpc
@@ -357,7 +357,7 @@ stack "EnhancedStack" {
     }
 
     // New services
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     rdsInstance "MyDB" {
         vpc myVpc

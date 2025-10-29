@@ -4,64 +4,6 @@ open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 
 // ============================================================================
-// Resource Reference Types - for cross-referencing resources in the same stack
-// ============================================================================
-
-/// Represents a reference to a VPC that can be resolved later
-type VpcRef =
-    | VpcInterface of IVpc
-    | VpcSpecRef of VpcSpec
-
-// Forward declaration - VpcSpec is defined below
-and VpcSpec =
-    { VpcName: string
-      ConstructId: string
-      Props: VpcProps
-      mutable Vpc: IVpc option }
-
-    /// Gets the underlying IVpc resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Vpc with
-        | Some vpc -> vpc
-        | None ->
-            failwith
-                $"VPC '{this.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-type SecurityGroupSpec =
-    { SecurityGroupName: string
-      ConstructId: string
-      Props: SecurityGroupProps
-      mutable SecurityGroup: ISecurityGroup option }
-
-type SecurityGroupRef =
-    | SecurityGroupInterface of ISecurityGroup
-    | SecurityGroupSpecRef of SecurityGroupSpec
-
-module VpcHelpers =
-    /// Resolves a VPC reference to an IVpc
-    let resolveVpcRef (ref: VpcRef) =
-        match ref with
-        | VpcInterface vpc -> vpc
-        | VpcSpecRef spec ->
-            match spec.Vpc with
-            | Some vpc -> vpc
-            | None ->
-                failwith
-                    $"VPC '{spec.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-    /// Resolves a VPC reference to an IVpc
-    let resolveSecurityGroupRef (ref: SecurityGroupRef) =
-        match ref with
-        | SecurityGroupInterface sgi -> sgi
-        | SecurityGroupSpecRef spec ->
-            match spec.SecurityGroup with
-            | Some sg -> sg
-            | None ->
-                failwith
-                    $"SecurityGroup '{spec.SecurityGroupName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-
-// ============================================================================
 // VPC Configuration DSL
 // ============================================================================
 
@@ -76,6 +18,12 @@ type VpcConfig =
       DefaultInstanceTenancy: DefaultInstanceTenancy option
       IpAddresses: IIpAddresses option
       RemovalPolicy: RemovalPolicy option }
+
+type VpcSpec =
+    { VpcName: string
+      ConstructId: string
+      Props: VpcProps
+      mutable Vpc: IVpc }
 
 type VpcBuilder(name: string) =
 
@@ -176,62 +124,116 @@ type VpcBuilder(name: string) =
         { VpcName = config.VpcName
           ConstructId = constructId
           Props = props
-          Vpc = None }
+          Vpc = null }
 
     /// <summary>Sets the construct ID for the VPC.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     constructId "MyCustomVpc"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: VpcConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the maximum number of Availability Zones to use.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="maxAzs">The maximum number of AZs (default: 2 for HA).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     maxAzs 3
+    /// }
+    /// </code>
     [<CustomOperation("maxAzs")>]
     member _.MaxAzs(config: VpcConfig, maxAzs: int) = { config with MaxAzs = Some maxAzs }
 
     /// <summary>Sets the number of NAT Gateways.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="natGateways">The number of NAT gateways (default: 1 for cost optimization).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     natGateways 2
+    /// }
+    /// </code>
     [<CustomOperation("natGateways")>]
     member _.NatGateways(config: VpcConfig, natGateways: int) =
         { config with
             NatGateways = Some natGateways }
 
     /// <summary>Adds a subnet configuration.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="subnetConfig">The subnet configuration.</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     subnet (SubnetConfiguration(Name = "Isolated", SubnetType = SubnetType.PRIVATE_ISOLATED, CidrMask = 28))
+    /// }
+    /// </code>
     [<CustomOperation("subnet")>]
     member _.Subnet(config: VpcConfig, subnetConfig: SubnetConfiguration) =
         { config with
             SubnetConfiguration = subnetConfig :: config.SubnetConfiguration }
 
     /// <summary>Sets whether to enable DNS hostnames.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="enabled">Whether DNS hostnames are enabled (default: true).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     enableDnsHostnames true
+    /// }
+    /// </code>
     [<CustomOperation("enableDnsHostnames")>]
     member _.EnableDnsHostnames(config: VpcConfig, enabled: bool) =
         { config with
             EnableDnsHostnames = Some enabled }
 
     /// <summary>Sets whether to enable DNS support.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="enabled">Whether DNS support is enabled (default: true).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     enableDnsSupport true
+    /// }
+    /// </code>
     [<CustomOperation("enableDnsSupport")>]
     member _.EnableDnsSupport(config: VpcConfig, enabled: bool) =
         { config with
             EnableDnsSupport = Some enabled }
 
     /// <summary>Sets the default instance tenancy.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="tenancy">The instance tenancy.</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     defaultInstanceTenancy DefaultInstanceTenancy.DEDICATED
+    /// }
+    /// </code>
     [<CustomOperation("defaultInstanceTenancy")>]
     member _.DefaultInstanceTenancy(config: VpcConfig, tenancy: DefaultInstanceTenancy) =
         { config with
             DefaultInstanceTenancy = Some tenancy }
 
     /// <summary>Sets the IP address configuration.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="ipAddresses">The IP addresses configuration.</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///    ipAddresses myIpAddressesConfig
+    /// }
+    /// </code>
     [<CustomOperation("ipAddresses")>]
     member _.IpAddresses(config: VpcConfig, ipAddresses: IIpAddresses) =
         { config with
             IpAddresses = Some ipAddresses }
 
     /// <summary>Sets the CIDR block for the VPC.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="cidr">The CIDR block (e.g., "10.0.0.0/16").</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     cidr "cidrBlock"
+    /// }
+    /// </code>
     [<CustomOperation("cidr")>]
     member _.Cidr(config: VpcConfig, cidr: string) =
         { config with
@@ -244,10 +246,16 @@ type VpcBuilder(name: string) =
 type SecurityGroupConfig =
     { SecurityGroupName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       Description: string option
       AllowAllOutbound: bool option
       DisableInlineRules: bool option }
+
+type SecurityGroupSpec =
+    { SecurityGroupName: string
+      ConstructId: string
+      Props: SecurityGroupProps
+      mutable SecurityGroup: ISecurityGroup }
 
 type SecurityGroupBuilder(name: string) =
 
@@ -307,7 +315,7 @@ type SecurityGroupBuilder(name: string) =
         // VPC is required
         props.Vpc <-
             match config.Vpc with
-            | Some vpcRef -> VpcHelpers.resolveVpcRef vpcRef
+            | Some vpcRef -> vpcRef
             | None -> invalidArg "vpc" "VPC is required for Security Group"
 
         // AWS Best Practice: Least privilege - don't allow all outbound by default
@@ -322,43 +330,64 @@ type SecurityGroupBuilder(name: string) =
         { SecurityGroupName = config.SecurityGroupName
           ConstructId = constructId
           Props = props
-          SecurityGroup = None }
+          SecurityGroup = null }
 
     /// <summary>Sets the construct ID for the Security Group.</summary>
+    /// <param name="config">The current security group configuration.</param>
     /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     constructId "MyCustomSG"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: SecurityGroupConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the VPC for the Security Group.</summary>
+    /// <param name="config">The current security group configuration.</param>
     /// <param name="vpc">The VPC.</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     vpc myVpc
+    /// }
+    /// </code>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: SecurityGroupConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the Security Group from a VpcSpec.</summary>
-    /// <param name="vpcSpec">The VPC specification.</param>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: SecurityGroupConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: SecurityGroupConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the description for the Security Group.</summary>
+    /// <param name="config">The current security group configuration.</param>
     /// <param name="description">The description.</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     description "Security group for my application"
+    /// }
+    /// </code>
     [<CustomOperation("description")>]
     member _.Description(config: SecurityGroupConfig, description: string) =
         { config with
             Description = Some description }
 
     /// <summary>Sets whether to allow all outbound traffic.</summary>
+    /// <param name="config">The current security group configuration.</param>
     /// <param name="allow">Whether to allow all outbound (default: false for least privilege).</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     allowAllOutbound false
+    /// }
+    /// </code>
     [<CustomOperation("allowAllOutbound")>]
     member _.AllowAllOutbound(config: SecurityGroupConfig, allow: bool) =
         { config with
             AllowAllOutbound = Some allow }
 
     /// <summary>Sets whether to disable inline rules.</summary>
+    /// <param name="config">The current security group configuration.</param>
     /// <param name="disable">Whether to disable inline rules.</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     disableInlineRules true
+    /// }
+    /// </code>
     [<CustomOperation("disableInlineRules")>]
     member _.DisableInlineRules(config: SecurityGroupConfig, disable: bool) =
         { config with
@@ -379,7 +408,7 @@ module VpcBuilders =
     ///     cidr "10.0.0.0/16"
     /// }
     /// </code>
-    let vpc (name: string) = VpcBuilder(name)
+    let vpc name = VpcBuilder(name)
 
     /// <summary>Creates a Security Group configuration.</summary>
     /// <param name="name">The Security Group name.</param>
@@ -390,4 +419,4 @@ module VpcBuilders =
     ///     allowAllOutbound false
     /// }
     /// </code>
-    let securityGroup (name: string) = SecurityGroupBuilder(name)
+    let securityGroup name = SecurityGroupBuilder(name)

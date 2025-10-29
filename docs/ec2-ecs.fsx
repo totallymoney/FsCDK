@@ -41,7 +41,7 @@ stack "EC2Stack" {
     description "EC2 instance example"
 
     // Create VPC first
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 2
             natGateways 1
@@ -72,7 +72,7 @@ stack "ECSStack" {
     description "ECS cluster with Fargate service"
 
     // Create VPC
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 2
             natGateways 1

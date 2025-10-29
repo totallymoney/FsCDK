@@ -40,14 +40,14 @@ type FunctionConfig =
       Architecture: Architecture option
       Tracing: Tracing option
       VpcSubnets: SubnetSelection option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       FileSystem: FileSystem option
       DeadLetterQueue: IQueue option
       DeadLetterQueueEnabled: bool option
       LoggingFormat: LoggingFormat option
       MaxEventAge: Duration option
       RetryAttempts: int option
-      EnvironmentEncryption: KMSKeyRef option }
+      EnvironmentEncryption: IKey option }
 
 type FunctionSpec =
     { FunctionName: string
@@ -55,7 +55,7 @@ type FunctionSpec =
       Props: IFunctionProps
       Actions: (Function -> unit) list
       EventSources: ResizeArray<IEventSource>
-      mutable Function: IFunction option }
+      mutable Function: IFunction }
 
 type FunctionBuilder(name: string) =
     member _.Yield(spec: EventInvokeConfigSpec) : FunctionConfig =
@@ -515,10 +515,7 @@ type FunctionBuilder(name: string) =
         config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
 
         if not (List.isEmpty config.SecurityGroups) then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.map id |> Array.ofList
 
         config.FileSystem |> Option.iter (fun fs -> props.Filesystem <- fs)
         config.DeadLetterQueue |> Option.iter (fun dlq -> props.DeadLetterQueue <- dlq)
@@ -531,14 +528,7 @@ type FunctionBuilder(name: string) =
         config.RetryAttempts |> Option.iter (fun r -> props.RetryAttempts <- r)
 
         config.EnvironmentEncryption
-        |> Option.iter (fun v ->
-            props.EnvironmentEncryption <-
-                match v with
-                | KMSKeyRef.KMSKeyInterface i -> i
-                | KMSKeyRef.KMSKeySpecRef pr ->
-                    match pr.Key with
-                    | Some k -> k
-                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+        |> Option.iter (fun v -> props.EnvironmentEncryption <- v)
 
         // Actions to perform on the Function after creation
         let actions =
@@ -574,7 +564,7 @@ type FunctionBuilder(name: string) =
           Props = props
           Actions = actions
           EventSources = ResizeArray()
-          Function = None }
+          Function = null }
 
     // Custom operations for primitive values
     /// <summary>Sets the construct ID for the Lambda function.</summary>
@@ -753,21 +743,17 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("tracing")>]
     member _.Tracing(config: FunctionConfig, tracing: Tracing) = { config with Tracing = Some tracing }
 
-    /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: FunctionConfig, sgs: ISecurityGroup list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
+        let sgsrefs = sgs |> List.map id
 
         { config with
             SecurityGroups = sgsrefs @ config.SecurityGroups }
 
-    /// Add groups to securityGroups
-    [<CustomOperation("securityGroups")>]
-    member _.SecurityGroups(config: FunctionConfig, sgs: SecurityGroupSpec list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
-
+    [<CustomOperation("subnets")>]
+    member _.Subnets(config: FunctionConfig, subnets: SubnetSelection) =
         { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
+            VpcSubnets = Some subnets }
 
     [<CustomOperation("deadLetterQueue")>]
     member _.DeadLetterQueue(config: FunctionConfig, queue: IQueue) =
@@ -795,12 +781,7 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("environmentEncryption")>]
     member _.EnvironmentEncryption(config: FunctionConfig, key: IKey) =
         { config with
-            EnvironmentEncryption = Some(KMSKeyRef.KMSKeyInterface key) }
-
-    [<CustomOperation("environmentEncryption")>]
-    member _.EnvironmentEncryption(config: FunctionConfig, key: KMSKeySpec) =
-        { config with
-            EnvironmentEncryption = Some(KMSKeyRef.KMSKeySpecRef key) }
+            EnvironmentEncryption = Some(key) }
 
     [<CustomOperation("xrayEnabled")>]
     member _.XRayEnabled(config: FunctionConfig) =
@@ -810,7 +791,6 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("role")>]
     member _.Role(config: FunctionConfig, role: IRole) = { config with Role = Some role }
 
-    // Implicit yields for complex types
     member _.Yield(logGroup: ILogGroup) : FunctionConfig =
         { FunctionName = name
           ConstructId = None

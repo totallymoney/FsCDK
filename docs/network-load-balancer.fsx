@@ -29,7 +29,7 @@ By default, NLBs are created as internal (not internet-facing) for security.
 
 stack "InternalNLB" {
     // Create VPC
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     // Create internal NLB (default)
     networkLoadBalancer "MyNLB" {
@@ -45,7 +45,7 @@ For public-facing applications, explicitly set `internetFacing true`.
 *)
 
 stack "PublicNLB" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     networkLoadBalancer "PublicNLB" {
         vpc myVpc
@@ -61,7 +61,7 @@ Enable deletion protection for production workloads.
 *)
 
 stack "ProductionNLB" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     networkLoadBalancer "ProdNLB" {
         vpc myVpc
@@ -78,7 +78,7 @@ stack "ProductionNLB" {
 *)
 
 stack "HighAvailabilityNLB" {
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 3
             natGateways 3
