@@ -2,6 +2,7 @@ namespace FsCDK
 
 open System
 open Amazon.CDK
+open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.KMS
 
@@ -9,10 +10,20 @@ open Amazon.CDK.AWS.KMS
 // S3 Bucket Configuration DSL
 // ============================================================================
 
+type BucketGrantAccessType =
+    | GrantRead of IGrantable
+    | GrantDelete of IGrantable
+    | GrantPublicAccess of string
+    | GrantPut of IGrantable
+    | GrantPutAcl of IGrantable
+    | GrantReplicationPermission of (IGrantable * IGrantReplicationPermissionProps)
+    | GrantReadWrite of IGrantable
+
 type BucketSpec =
     { BucketName: string
       ConstructId: string
       Props: BucketProps
+      Grant: BucketGrantAccessType option
       mutable Bucket: IBucket }
 
 /// <summary>
@@ -51,7 +62,8 @@ type BucketConfig =
       WebsiteErrorDocument: string option
       LifecycleRules: ILifecycleRule list
       Cors: ICorsRule list
-      Metrics: IBucketMetrics list }
+      Metrics: IBucketMetrics list
+      Grant: BucketGrantAccessType option }
 
 type BucketBuilder(name: string) =
     member _.Yield _ : BucketConfig =
@@ -70,7 +82,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = []
           Cors = []
-          Metrics = [] }
+          Metrics = []
+          Grant = None }
 
     member _.Yield(corsRule: ICorsRule) : BucketConfig =
         { BucketName = name
@@ -88,7 +101,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = []
           Cors = [ corsRule ]
-          Metrics = [] }
+          Metrics = []
+          Grant = None }
 
     member _.Yield(lifecycleRule: ILifecycleRule) : BucketConfig =
         { BucketName = name
@@ -106,7 +120,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = [ lifecycleRule ]
           Cors = []
-          Metrics = [] }
+          Metrics = []
+          Grant = None }
 
     member _.Yield(metrics: IBucketMetrics) : BucketConfig =
         { BucketName = name
@@ -124,7 +139,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = []
           Cors = []
-          Metrics = [ metrics ] }
+          Metrics = [ metrics ]
+          Grant = None }
 
     member _.Zero() : BucketConfig =
         { BucketName = name
@@ -142,7 +158,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = None
           LifecycleRules = []
           Cors = []
-          Metrics = [] }
+          Metrics = []
+          Grant = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> BucketConfig) : BucketConfig = f ()
 
@@ -162,7 +179,8 @@ type BucketBuilder(name: string) =
           WebsiteErrorDocument = state2.WebsiteErrorDocument |> Option.orElse state1.WebsiteErrorDocument
           LifecycleRules = state1.LifecycleRules @ state2.LifecycleRules
           Cors = state1.Cors @ state2.Cors
-          Metrics = state1.Metrics @ state2.Metrics }
+          Metrics = state1.Metrics @ state2.Metrics
+          Grant = None }
 
     member inline x.For(config: BucketConfig, [<InlineIfLambda>] f: unit -> BucketConfig) : BucketConfig =
         let newConfig = f ()
@@ -212,6 +230,7 @@ type BucketBuilder(name: string) =
         { BucketName = bucketName
           ConstructId = constructId
           Props = props
+          Grant = config.Grant
           Bucket = null } // Will be created during stack construction
 
     /// <summary> Sets the construct ID for the S3 bucket. </summary>
@@ -274,6 +293,91 @@ type BucketBuilder(name: string) =
     member _.WebsiteErrorDocument(config: BucketConfig, doc: string) =
         { config with
             WebsiteErrorDocument = Some doc }
+
+    /// <summary>Grants read data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive read data permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantRead lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantRead")>]
+    member _.GrantRead(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantRead grantee) }
+
+    /// <summary>Grants put data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive put data permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantPut lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantPut")>]
+    member _.GrantPut(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantPut grantee) }
+
+    /// <summary>Grants delete data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive delete data permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantDelete lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantDelete")>]
+    member _.GrantDelete(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantDelete grantee) }
+
+    /// <summary>Grants put ACL permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive put ACL permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantPutAcl lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantPutAcl")>]
+    member _.GrantPutAcl(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantPutAcl grantee) }
+
+    /// <summary>Grants replication permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive replication permissions.</param>
+    /// <param name="props">The replication permission properties.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///    grantReplicationPermission lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantReplicationPermission")>]
+    member _.GrantReplicationPermission
+        (
+            config: BucketConfig,
+            grantee: IGrantable,
+            props: IGrantReplicationPermissionProps
+        ) =
+        { config with
+            Grant = Some(GrantReplicationPermission(grantee, props)) }
+
+    /// <summary>Grants read and write data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive read and write data permissions.</param>
+    /// <code lang="fsharp">
+    /// s3Bucket "my-bucket" {
+    ///     grantReadWrite lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantReadWrite")>]
+    member _.GrantReadWrite(config: BucketConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantReadWrite grantee) }
+
 
 // ============================================================================
 // S3 CorsRule Builder DSL

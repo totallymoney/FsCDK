@@ -27,7 +27,7 @@ type Operation =
     | TableOp of TableSpec
     | FunctionOp of FunctionSpec
     | DockerImageFunctionOp of DockerImageFunctionSpec
-    | GrantOp of GrantSpec
+    // | GrantOp of GrantSpec
     | TopicOp of TopicSpec
     | QueueOp of QueueSpec
     | BucketOp of BucketSpec
@@ -80,30 +80,17 @@ module StackOperations =
             let table = Table(stack, tableSpec.ConstructId, tableSpec.Props)
             tableSpec.Table <- table
 
-            tableSpec.GrantReadData
-            |> Option.iter (fun grantTarget -> table.GrantReadData(grantTarget) |> ignore)
-
-            tableSpec.GrantFullAccess
-            |> Option.iter (fun grantTarget -> table.GrantFullAccess(grantTarget) |> ignore)
-
-            tableSpec.GrantReadWriteData
-            |> Option.iter (fun grantTarget -> table.GrantReadWriteData(grantTarget) |> ignore)
-
-            tableSpec.GrantWriteData
-            |> Option.iter (fun grantTarget -> table.GrantWriteData(grantTarget) |> ignore)
-
-            tableSpec.GrantStreamRead
-            |> Option.iter (fun grantTarget -> table.GrantStreamRead(grantTarget) |> ignore)
-
-            tableSpec.GrantStream
-            |> Option.iter (fun (grantTarget, actions) -> table.GrantStream(grantTarget, Seq.toArray actions) |> ignore)
-
-            tableSpec.GrantTableListStreams
-            |> Option.iter (fun grantTarget -> table.GrantTableListStreams(grantTarget) |> ignore)
-
-            tableSpec.Grant
-            |> Option.iter (fun (grantTarget, actions) -> table.Grant(grantTarget, Seq.toArray actions) |> ignore)
-
+            tableSpec.Grants
+            |> Option.iter (fun grants ->
+                match grants with
+                | GrantReadData fn -> table.GrantReadData(fn) |> ignore
+                | GrantFullAccess grantable -> table.GrantFullAccess(grantable) |> ignore
+                | GrantReadWriteData grantable -> table.GrantReadWriteData(grantable) |> ignore
+                | GrantWriteData grantable -> table.GrantWriteData(grantable) |> ignore
+                | GrantStreamRead grantable -> table.GrantStreamRead(grantable) |> ignore
+                | GrantStream(grantable, actions) -> table.GrantStream(grantable, Seq.toArray actions) |> ignore
+                | GrantTableListStreams grantable -> table.GrantTableListStreams(grantable) |> ignore
+                | Grant(grantable, actions) -> table.Grant(grantable, Seq.toArray actions) |> ignore)
 
         | FunctionOp lambdaSpec ->
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
@@ -124,7 +111,7 @@ module StackOperations =
 
             imageLambdaSpec.Function <- fn
 
-        | GrantOp grantSpec -> Grants.processGrant stack grantSpec
+        // | GrantOp grantSpec -> Grants.processGrant stack grantSpec
 
         | TopicOp topicSpec -> Topic(stack, topicSpec.ConstructId, topicSpec.Props) |> ignore
 
@@ -161,6 +148,19 @@ module StackOperations =
 
         | BucketOp bucketSpec ->
             let bucket = Bucket(stack, bucketSpec.ConstructId, bucketSpec.Props)
+
+            bucketSpec.Grant
+            |> Option.iter (fun grants ->
+                match grants with
+                | GrantRead fn -> bucket.GrantRead(fn) |> ignore
+                | GrantDelete grantable -> bucket.GrantDelete(grantable) |> ignore
+                | GrantPublicAccess grantable -> bucket.GrantPublicAccess(grantable) |> ignore
+                | GrantPut grantable -> bucket.GrantPut(grantable) |> ignore
+                | GrantPutAcl grantable -> bucket.GrantPutAcl(grantable) |> ignore
+                | GrantReplicationPermission(grantable, props) ->
+                    bucket.GrantReplicationPermission(grantable, props) |> ignore
+                | GrantReadWrite(grantable) -> bucket.GrantReadWrite(grantable) |> ignore)
+
             bucketSpec.Bucket <- bucket
 
         | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec

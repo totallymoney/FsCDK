@@ -13,7 +13,6 @@ open Amazon.CDK.AWS.S3
 // ============================================================================
 // ImportSourceSpecification Builder DSL
 // ============================================================================
-
 type ImportSourceSpec = { Source: IImportSourceSpecification }
 
 type ImportSourceConfig =
@@ -137,6 +136,16 @@ type ImportSourceBuilder() =
     [<CustomOperation("keyPrefix")>]
     member _.KeyPrefix(config: ImportSourceConfig, prefix: string) = { config with KeyPrefix = Some prefix }
 
+type TableGrantAccessType =
+    | GrantReadData of IGrantable
+    | GrantFullAccess of IGrantable
+    | GrantReadWriteData of IGrantable
+    | GrantWriteData of IGrantable
+    | GrantStreamRead of IGrantable
+    | GrantStream of (IGrantable * string seq)
+    | GrantTableListStreams of IGrantable
+    | Grant of (IGrantable * string seq)
+
 type TableConfig =
     { TableName: string
       ConstructId: string option
@@ -148,28 +157,13 @@ type TableConfig =
       ImportSource: IImportSourceSpecification option
       Stream: StreamViewType option
       KinesisStream: IStream option
-      GrantReadData: IGrantable option
-      GrantFullAccess: IGrantable option
-      GrantReadWriteData: IGrantable option
-      GrantWriteData: IGrantable option
-      GrantStreamRead: IGrantable option
-      GrantStream: (IGrantable * string seq) option
-      GrantTableListStreams: IGrantable option
-      Grant: (IGrantable * string seq) option }
-
+      Grant: TableGrantAccessType option }
 
 type TableSpec =
     { TableName: string
       ConstructId: string
       Props: TableProps
-      GrantReadData: IGrantable option
-      GrantFullAccess: IGrantable option
-      GrantReadWriteData: IGrantable option
-      GrantWriteData: IGrantable option
-      GrantStreamRead: IGrantable option
-      GrantStream: (IGrantable * string seq) option
-      GrantTableListStreams: IGrantable option
-      Grant: (IGrantable * string seq) option
+      Grants: TableGrantAccessType option
       mutable Table: ITable }
 
 type TableBuilder(name: string) =
@@ -184,13 +178,6 @@ type TableBuilder(name: string) =
           ImportSource = None
           Stream = None
           KinesisStream = None
-          GrantReadData = None
-          GrantFullAccess = None
-          GrantReadWriteData = None
-          GrantWriteData = None
-          GrantStreamRead = None
-          GrantStream = None
-          GrantTableListStreams = None
           Grant = None }
 
     member _.Yield(spec: ImportSourceSpec) : TableConfig =
@@ -204,13 +191,6 @@ type TableBuilder(name: string) =
           ImportSource = Some spec.Source
           Stream = None
           KinesisStream = None
-          GrantReadData = None
-          GrantFullAccess = None
-          GrantReadWriteData = None
-          GrantWriteData = None
-          GrantStreamRead = None
-          GrantStream = None
-          GrantTableListStreams = None
           Grant = None }
 
     member _.Yield(spec: IImportSourceSpecification) : TableConfig =
@@ -224,13 +204,6 @@ type TableBuilder(name: string) =
           ImportSource = Some spec
           Stream = None
           KinesisStream = None
-          GrantReadData = None
-          GrantFullAccess = None
-          GrantReadWriteData = None
-          GrantWriteData = None
-          GrantStreamRead = None
-          GrantStream = None
-          GrantTableListStreams = None
           Grant = None }
 
     member _.Zero() : TableConfig =
@@ -244,13 +217,6 @@ type TableBuilder(name: string) =
           ImportSource = None
           Stream = None
           KinesisStream = None
-          GrantReadData = None
-          GrantFullAccess = None
-          GrantReadWriteData = None
-          GrantWriteData = None
-          GrantStreamRead = None
-          GrantStream = None
-          GrantTableListStreams = None
           Grant = None }
 
     member _.Combine(config1: TableConfig, config2: TableConfig) : TableConfig =
@@ -306,14 +272,7 @@ type TableBuilder(name: string) =
         { TableName = tableName
           ConstructId = constructId
           Props = props
-          GrantReadData = config.GrantReadData
-          GrantFullAccess = config.GrantFullAccess
-          GrantReadWriteData = config.GrantReadWriteData
-          GrantWriteData = config.GrantWriteData
-          GrantStreamRead = config.GrantStreamRead
-          GrantStream = config.GrantStream
-          GrantTableListStreams = config.GrantTableListStreams
-          Grant = config.Grant
+          Grants = config.Grant
           Table = null }
 
     /// <summary>Sets the construct ID for the table.</summary>
@@ -429,7 +388,7 @@ type TableBuilder(name: string) =
     [<CustomOperation("grantReadData")>]
     member _.GrantReadData(config: TableConfig, grantee: IGrantable) =
         { config with
-            GrantReadData = Some grantee }
+            Grant = Some(GrantReadData(grantee)) }
 
     /// <summary>Grants full access permissions to the specified grantee.</summary>
     /// <param name="config">The current table configuration.</param>
@@ -442,7 +401,7 @@ type TableBuilder(name: string) =
     [<CustomOperation("grantFullAccess")>]
     member _.GrantFullAccess(config: TableConfig, grantee: IGrantable) =
         { config with
-            GrantFullAccess = Some grantee }
+            Grant = Some(GrantFullAccess(grantee)) }
 
     /// <summary>Grants read and write data permissions to the specified grantee.</summary>
     /// <param name="config">The current table configuration.</param>
@@ -455,7 +414,7 @@ type TableBuilder(name: string) =
     [<CustomOperation("grantReadWriteData")>]
     member _.GrantReadWriteData(config: TableConfig, grantee: IGrantable) =
         { config with
-            GrantReadWriteData = Some grantee }
+            Grant = Some(GrantReadWriteData(grantee)) }
 
     /// <summary>Grants write data permissions to the specified grantee.</summary>
     /// <param name="config">The current table configuration.</param>
@@ -468,7 +427,7 @@ type TableBuilder(name: string) =
     [<CustomOperation("grantWriteData")>]
     member _.GrantWriteData(config: TableConfig, grantee: IGrantable) =
         { config with
-            GrantWriteData = Some grantee }
+            Grant = Some(GrantWriteData(grantee)) }
 
     /// <summary>Grants stream read permissions to the specified grantee.</summary>
     /// <param name="config">The current table configuration.</param>
@@ -481,7 +440,7 @@ type TableBuilder(name: string) =
     [<CustomOperation("grantStreamRead")>]
     member _.GrantStreamRead(config: TableConfig, grantee: IGrantable) =
         { config with
-            GrantStreamRead = Some grantee }
+            Grant = Some(GrantStreamRead(grantee)) }
 
     /// <summary>Grants stream permissions to the specified grantee with specific actions.</summary>
     /// <param name="config">The current table configuration.</param>
@@ -495,7 +454,7 @@ type TableBuilder(name: string) =
     [<CustomOperation("grantStream")>]
     member _.GrantStream(config: TableConfig, grantee: IGrantable, actions: string seq) =
         { config with
-            GrantStream = Some(grantee, actions) }
+            Grant = Some(GrantStream(grantee, actions)) }
 
     /// <summary>Grants table list streams permissions to the specified grantee.</summary>
     /// <param name="config">The current table configuration.</param>
@@ -508,7 +467,7 @@ type TableBuilder(name: string) =
     [<CustomOperation("grantTableListStreams")>]
     member _.GrantTableListStreams(config: TableConfig, grantee: IGrantable) =
         { config with
-            GrantTableListStreams = Some grantee }
+            Grant = Some(GrantTableListStreams(grantee)) }
 
     /// <summary>Grants custom permissions to the specified grantee with specific actions.</summary>
     /// <param name="config">The current table configuration.</param>
@@ -522,7 +481,7 @@ type TableBuilder(name: string) =
     [<CustomOperation("grant")>]
     member _.Grant(config: TableConfig, grantee: IGrantable, actions: string seq) =
         { config with
-            Grant = Some(grantee, actions) }
+            Grant = Some(Grant(grantee, actions)) }
 
 // ============================================================================
 // Builders
