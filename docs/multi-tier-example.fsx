@@ -82,7 +82,7 @@ stack "MultiTierApp" {
 
     // Step 1: Create VPC with public and private subnets
     // AWS Best Practice: Multi-AZ for high availability
-    let myVpc =
+    let! myVpc =
         vpc "AppVpc" {
             maxAzs 2
             natGateways 1 // Cost optimized - 1 NAT gateway
@@ -99,7 +99,7 @@ stack "MultiTierApp" {
         }
 
     // Step 3: Create Security Group for RDS
-    let dbSecurityGroup =
+    let! dbSecurityGroup =
         securityGroup "DatabaseSecurityGroup" {
             vpc myVpc
             description "Security group for RDS PostgreSQL"
@@ -126,7 +126,7 @@ stack "MultiTierApp" {
 
         // Networking
         vpcSubnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
-        securityGroup dbSecurityGroup
+        securityGroups [ dbSecurityGroup ]
 
         // Maintenance
         preferredBackupWindow "03:00-04:00"
@@ -168,15 +168,14 @@ stack "MultiTierApp" {
             selfSignUpEnabled true
             mfa Mfa.OPTIONAL
 
-            passwordPolicy (
-                PasswordPolicy(
-                    MinLength = 12,
-                    RequireLowercase = true,
-                    RequireUppercase = true,
-                    RequireDigits = true,
-                    RequireSymbols = true
-                )
-            )
+            passwordPolicy {
+                minLength 10
+                requireLowercase true
+                requireUppercase true
+                requireDigits true
+                requireSymbols false
+
+            }
 
             accountRecovery AccountRecovery.EMAIL_ONLY
         }
@@ -205,9 +204,9 @@ stack "MultiTierApp" {
         description "API handler for the web application"
 
         // VPC configuration for database access
-        vpcSubnets { yield SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) }
+        //vpcSubnets { yield SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) }
 
-        securityGroups [ lambdaSecurityGroup ]
+        //securityGroups [ lambdaSecurityGroup ]
 
         // Environment variables
         environment

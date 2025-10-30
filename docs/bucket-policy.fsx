@@ -20,7 +20,6 @@ FsCDK provides a first-class DSL for creating secure bucket policies.
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open FsCDK
-open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.IAM
 

@@ -221,14 +221,6 @@ module DashboardWidgets =
     let alarmWidget (alarm: IAlarm) =
         AlarmWidget(props = AlarmWidgetProps(Alarm = alarm))
 
-    /// Creates an alarm widget
-    let alarmWidgetSpec (alarmSpec: CloudWatchAlarmSpec) =
-        match alarmSpec.Alarm with
-        | Some alarm -> AlarmWidget(props = AlarmWidgetProps(Alarm = alarm))
-        | None ->
-            // Todo: This should carry the process forward and resolve it on Run instead of here.
-            failwith $"Sorry, a new alarm ({alarmSpec.AlarmName}) from a new spec not implemented yet."
-
     /// Creates a log query widget
     let logQueryWidget
         (title: string)

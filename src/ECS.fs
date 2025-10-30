@@ -20,17 +20,15 @@ open Amazon.CDK.AWS.ElasticLoadBalancingV2
 type ECSClusterConfig =
     { ClusterName: string
       ConstructId: string option
-      Vpc: FsCDK.VpcRef option
+      Vpc: IVpc option
       ContainerInsights: ContainerInsights option
       EnableFargateCapacityProviders: bool option }
 
-type ECSClusterResource =
-    {
-        ClusterName: string
-        ConstructId: string
-        /// The underlying CDK Cluster construct
-        Cluster: Cluster
-    }
+type ECSClusterSpec =
+    { ClusterName: string
+      ConstructId: string
+      Props: ClusterProps
+      mutable Cluster: Cluster }
 
 type ECSClusterBuilder(name: string) =
     member _.Yield _ : ECSClusterConfig =
@@ -60,15 +58,14 @@ type ECSClusterBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ECSClusterConfig) : ECSClusterResource =
+    member _.Run(config: ECSClusterConfig) : ECSClusterSpec =
         let clusterName = config.ClusterName
         let constructId = config.ConstructId |> Option.defaultValue clusterName
 
         let props = ClusterProps()
         props.ClusterName <- clusterName
 
-        config.Vpc
-        |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
 
         config.ContainerInsights
         |> Option.iter (fun v -> props.ContainerInsightsV2 <- v)
@@ -78,20 +75,19 @@ type ECSClusterBuilder(name: string) =
 
         { ClusterName = clusterName
           ConstructId = constructId
-          Cluster = null }
+          Cluster = null
+          Props = props }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ECSClusterConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
+    //
+    // [<CustomOperation("vpc")>]
+    // member _.Vpc(config: ECSClusterConfig, vpcSpec: FsCDK.VpcSpec) =
+    //     { config with
+    //         Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
 
     [<CustomOperation("containerInsights")>]
     member _.ContainerInsights(config: ECSClusterConfig, insights: ContainerInsights) =
@@ -124,16 +120,14 @@ type ECSFargateServiceConfig =
       TaskDefinition: TaskDefinition option
       DesiredCount: int option
       AssignPublicIp: bool option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       VpcSubnets: SubnetSelection option }
 
-type ECSFargateServiceResource =
-    {
-        ServiceName: string
-        ConstructId: string
-        /// The underlying CDK FargateService construct
-        Service: FargateService
-    }
+type ECSFargateServiceSpec =
+    { ServiceName: string
+      ConstructId: string
+      Props: FargateServiceProps
+      mutable Service: FargateService }
 
 type ECSFargateServiceBuilder(name: string) =
     member _.Yield _ : ECSFargateServiceConfig =
@@ -178,7 +172,7 @@ type ECSFargateServiceBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ECSFargateServiceConfig) : ECSFargateServiceResource =
+    member _.Run(config: ECSFargateServiceConfig) : ECSFargateServiceSpec =
         let serviceName = config.ServiceName
         let constructId = config.ConstructId |> Option.defaultValue serviceName
 
@@ -193,16 +187,14 @@ type ECSFargateServiceBuilder(name: string) =
         config.AssignPublicIp |> Option.iter (fun v -> props.AssignPublicIp <- v)
 
         if not config.SecurityGroups.IsEmpty then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.map id |> Array.ofList
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
         { ServiceName = serviceName
           ConstructId = constructId
-          Service = null }
+          Service = null
+          Props = props }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ECSFargateServiceConfig, id: string) = { config with ConstructId = Some id }
@@ -225,21 +217,19 @@ type ECSFargateServiceBuilder(name: string) =
         { config with
             AssignPublicIp = Some assign }
 
-    /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: ISecurityGroup list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
+        let sgsrefs = sgs |> List.map id
 
         { config with
             SecurityGroups = sgsrefs @ config.SecurityGroups }
 
-    /// Add groups to securityGroups
-    [<CustomOperation("securityGroups")>]
-    member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: SecurityGroupSpec list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
-
-        { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
+    // [<CustomOperation("securityGroups")>]
+    // member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: SecurityGroupSpec list) =
+    //     let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
+    //
+    //     { config with
+    //         SecurityGroups = sgsrefs @ config.SecurityGroups }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: ECSFargateServiceConfig, subnets: SubnetSelection) =
@@ -252,10 +242,10 @@ module ECSBuilders =
     /// Creates a new ECS cluster builder with best practices.
     /// Example: ecsCluster "my-cluster" { vpc myVpc }
     /// </summary>
-    let ecsCluster name = ECSClusterBuilder name
+    let ecsCluster name = ECSClusterBuilder(name)
 
     /// <summary>
     /// Creates a new Fargate service builder.
     /// Example: ecsFargateService "my-service" { cluster myCluster; taskDefinition myTaskDef }
     /// </summary>
-    let ecsFargateService name = ECSFargateServiceBuilder name
+    let ecsFargateService name = ECSFargateServiceBuilder(name)

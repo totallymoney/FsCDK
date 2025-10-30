@@ -61,20 +61,17 @@ stack "KinesisStack" {
         }
 
     // Lambda function to process stream records
-    let processor =
-        lambda "stream-processor" {
-            handler "index.handler"
-            runtime Runtime.NODEJS_18_X
-            code "./lambda-code"
-            memory 512
-            timeout 60.0
+    lambda "stream-processor" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./lambda-code"
+        memory 512
+        timeout 60.0
 
-            environment [ "STREAM_NAME", stream.StreamName ]
+        environment [ "STREAM_NAME", stream.StreamName ]
 
-            description "Processes records from Kinesis stream"
-        }
-
-    ()
+        description "Processes records from Kinesis stream"
+    }
 }
 
 (**
@@ -170,7 +167,7 @@ stack "AnalyticsPipelineStack" {
         }
 
     // This value-cross-linking would need some nicer API.
-    clickstream.GrantReads.Add(analyticsProcessor.Function.Value.Role) |> ignore
+    clickstream.GrantReads.Add(analyticsProcessor.Function.Role) |> ignore
 
     analyticsProcessor.EventSources.Add(
         KinesisEventSource(
@@ -217,7 +214,7 @@ stack "EventStreamingStack" {
             description "Archives events to S3"
         }
 
-    eventStream.GrantReads.Add(archiver.Function.Value.Role) |> ignore
+    eventStream.GrantReads.Add(archiver.Function.Role) |> ignore
 
     archiver.EventSources.Add(
         KinesisEventSource(
@@ -238,7 +235,7 @@ stack "EventStreamingStack" {
             description "Aggregates metrics from events"
         }
 
-    eventStream.GrantReads.Add(metricsAggregator.Function.Value.Role) |> ignore
+    eventStream.GrantReads.Add(metricsAggregator.Function.Role) |> ignore
 
     metricsAggregator.EventSources.Add(
         KinesisEventSource(
@@ -283,7 +280,7 @@ stack "LogAggregationStack" {
             description "Processes and filters log data"
         }
 
-    logStream.GrantReads.Add(logProcessor.Function.Value.Role) |> ignore
+    logStream.GrantReads.Add(logProcessor.Function.Role) |> ignore
 
     logProcessor.EventSources.Add(
         KinesisEventSource(
@@ -440,7 +437,7 @@ stack "OptimizedProcessingStack" {
             description "Optimized batch processor"
         }
 
-    stream.GrantReads.Add(optimizedConsumer.Function.Value.Role) |> ignore
+    stream.GrantReads.Add(optimizedConsumer.Function.Role) |> ignore
 
     // Optimized event source mapping
     optimizedConsumer.EventSources.Add(
@@ -499,7 +496,7 @@ stack "ProductionKinesisStack" {
             description "Produces events to Kinesis stream"
         }
 
-    prodStream.GrantWrites.Add(producer.Function.Value.Role) |> ignore
+    prodStream.GrantWrites.Add(producer.Function.Role) |> ignore
 
     // Consumer Lambda with optimal settings
     let consumer =
@@ -516,7 +513,7 @@ stack "ProductionKinesisStack" {
             description "Consumes and processes events from Kinesis"
         }
 
-    prodStream.GrantReads.Add(consumer.Function.Value.Role) |> ignore
+    prodStream.GrantReads.Add(consumer.Function.Role) |> ignore
 
     consumer.EventSources.Add(
         KinesisEventSource(

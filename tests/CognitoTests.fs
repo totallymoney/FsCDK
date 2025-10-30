@@ -5,6 +5,7 @@ open Expecto
 open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.Cognito
+open Amazon.CDK.AWS.Lambda
 
 [<Tests>]
 let tests =
@@ -60,8 +61,8 @@ let tests =
 
               let spec =
                   userPool "PoolWithAttrs" {
-                      customAttribute attr1
-                      customAttribute attr2
+                      attr1
+                      attr2
                   }
 
               Expect.isNotNull spec.Props.CustomAttributes "CustomAttributes dictionary should be set"
@@ -88,9 +89,9 @@ let tests =
           testCase "userPoolClient applies secure client defaults"
           <| fun _ ->
               // Create a minimal real UserPool to satisfy required prop type
-              let app = new App()
-              let stack = new Stack(app, "TestStack")
-              let up = new UserPool(stack, "UP")
+              let app = App()
+              let stack = Stack(app, "TestStack")
+              let up = UserPool(stack, "UP")
 
               let spec = userPoolClient "Client" { userPool up }
 
@@ -103,4 +104,119 @@ let tests =
 
               // Auth flows default to SRP + password
               Expect.isTrue spec.Props.AuthFlows.UserSrp.Value "SRP auth flow should be enabled"
-              Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled" ]
+              Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled"
+
+          testCase "userPool accepts signInAliases builder yield"
+          <| fun _ ->
+              let spec =
+                  userPool "PoolWithAliases" {
+                      signInAliases {
+                          email true
+                          phone true
+                          preferredUsername true
+                          username false
+                      }
+                  }
+
+              Expect.isTrue spec.Props.SignInAliases.Email.HasValue "Email flag should be set"
+              Expect.isTrue spec.Props.SignInAliases.Email.Value "Email enabled"
+              Expect.isTrue spec.Props.SignInAliases.Phone.HasValue "Phone flag should be set"
+              Expect.isTrue spec.Props.SignInAliases.Phone.Value "Phone enabled"
+              Expect.isTrue spec.Props.SignInAliases.PreferredUsername.HasValue "PreferredUsername flag should be set"
+              Expect.isTrue spec.Props.SignInAliases.PreferredUsername.Value "PreferredUsername enabled"
+              Expect.isTrue spec.Props.SignInAliases.Username.HasValue "Username flag should be present"
+              Expect.isFalse spec.Props.SignInAliases.Username.Value "Username explicitly disabled"
+
+          testCase "userPool accepts autoVerifiedAttrs builder yield"
+          <| fun _ ->
+              let spec =
+                  userPool "PoolWithAutoVerify" {
+                      autoVerifiedAttrs {
+                          email false
+                          phone true
+                      }
+                  }
+
+              Expect.isTrue spec.Props.AutoVerify.Email.HasValue "Email auto-verify flag should be set"
+              Expect.isFalse spec.Props.AutoVerify.Email.Value "Email auto-verify disabled"
+              Expect.isTrue spec.Props.AutoVerify.Phone.HasValue "Phone auto-verify flag should be set"
+              Expect.isTrue spec.Props.AutoVerify.Phone.Value "Phone auto-verify enabled"
+
+          testCase "userPool accepts standardAttributes builder and leaf standardAttribute"
+          <| fun _ ->
+              let spec =
+                  userPool "PoolWithStandardAttrs" {
+                      standardAttributes {
+                          email (standardAttribute { required true })
+                          phoneNumber (standardAttribute { mutable' true })
+                          fullname (standardAttribute { required true })
+                      }
+                  }
+
+              let sa = spec.Props.StandardAttributes
+              // Email required
+              Expect.isTrue sa.Email.Required.Value "Email should be required"
+              // PhoneNumber mutable
+              Expect.isTrue sa.PhoneNumber.Mutable.Value "PhoneNumber should be mutable"
+              // Fullname required
+              Expect.isTrue sa.Fullname.Required.Value "Fullname should be required"
+
+          testCase "userPool accepts mfaSecondFactor builder yield"
+          <| fun _ ->
+              let spec =
+                  userPool "PoolWithMfaSecondFactor" {
+                      mfaSecondFactor {
+                          otp true
+                          sms true
+                      }
+                  }
+
+              let m = spec.Props.MfaSecondFactor
+              Expect.isTrue m.Otp "Otp enabled"
+              Expect.isTrue m.Sms "Sms enabled"
+
+          test "userPool accepts userPoolTriggers builder yield" {
+              stack "TriggerStack" {
+
+                  let! fn1 =
+                      lambda "PostConfirmationFn" {
+                          runtime Runtime.NODEJS_18_X
+                          handler "index.handler"
+                          code (Code.FromInline("exports.handler = async () => { return {}; }"))
+                      }
+
+                  let! fn2 =
+                      lambda "PreSignUpFn" {
+                          runtime Runtime.NODEJS_18_X
+                          handler "index.handler"
+                          code (Code.FromInline("exports.handler = async () => { return {}; }"))
+                      }
+
+                  let spec =
+                      userPool "PoolWithTriggers" {
+                          userPoolTriggers {
+                              preSignUp fn1
+                              postConfirmation fn2
+                          }
+                      }
+
+                  let t = spec.Props.LambdaTriggers
+                  Expect.equal t.PreSignUp fn1 "PreSignUp trigger should be assigned"
+                  Expect.equal t.PostConfirmation fn2 "PostConfirmation trigger should be assigned"
+
+              }
+
+          }
+          testCase "userPool supports implicit yield of ICustomAttribute instances"
+          <| fun _ ->
+              let attr1 = BooleanAttribute(CustomAttributeProps(Mutable = Nullable<_>(true)))
+              let attr2 = DateTimeAttribute()
+
+              let spec =
+                  userPool "PoolWithImplicitAttrs" {
+                      attr1
+                      attr2
+                  }
+
+              Expect.isNotNull spec.Props.CustomAttributes "CustomAttributes dictionary should be set"
+              Expect.isTrue (spec.Props.CustomAttributes.Count >= 2) "At least two custom attributes expected" ]
