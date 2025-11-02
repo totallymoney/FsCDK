@@ -8,6 +8,7 @@ open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.RDS
+open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.Cognito
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
@@ -1138,32 +1139,82 @@ type StackBuilder(name: string) =
 
     member _.Yield(sfResource: StepFunctionResource) : StackConfig =
         { Name = name
-          App = None
-          Props = None
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
           Operations = [ StepFunctionOp sfResource ] }
 
     member _.Yield(xrayGroupResource: XRayGroupResource) : StackConfig =
         { Name = name
-          App = None
-          Props = None
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
           Operations = [ XRayGroupOp xrayGroupResource ] }
 
     member _.Yield(xraySamplingRuleResource: XRaySamplingRuleResource) : StackConfig =
         { Name = name
-          App = None
-          Props = None
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
           Operations = [ XRaySamplingRuleOp xraySamplingRuleResource ] }
 
     member _.Yield(appSyncApiResource: AppSyncApiResource) : StackConfig =
         { Name = name
-          App = None
-          Props = None
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
           Operations = [ AppSyncApiOp appSyncApiResource ] }
 
     member _.Yield(appSyncDataSourceResource: AppSyncDataSourceResource) : StackConfig =
         { Name = name
-          App = None
-          Props = None
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
           Operations = [ AppSyncDataSourceOp appSyncDataSourceResource ] }
 
     member _.Zero() : StackConfig =
