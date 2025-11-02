@@ -154,6 +154,12 @@ stack "Prod" {
 | **Event BridgeRule** | `eventBridgeRule` | `constructId`, `ruleName`, `description`, `enabled`, `eventPattern`, `schedule`, `target`, `eventBus` |
 | **Event Bus** | `eventBus` | `constructId`, `eventSourceName`, `customEventBusName` |
 | **Kinesis Stream** | `kinesisStream` | `constructId`, `streamName`, `shardCount`, `retentionPeriod`, `streamMode`, `onDemand`, `unencrypted`, `encryptionKey`, `encryption`, `grantRead`, `grantWrite` |
+| **ECR Repository** | `ecrRepository` | `constructId`, `repositoryName`, `imageScanOnPush`, `imageTagMutability`, `lifecycleRule`, `removalPolicy`, `emptyOnDelete` |
+| **Step Functions** | `stepFunction` | `constructId`, `stateMachineName`, `stateMachineType`, `definition`, `role`, `timeout`, `comment`, `logs`, `loggingLevel`, `logDestination`, `tracingEnabled` |
+| **HTTP API (API Gateway V2)** | `httpApi` | `constructId`, `apiName`, `description`, `cors`, `defaultIntegration`, `createDefaultStage`, `disableExecuteApiEndpoint` |
+| **CloudWatch Log Group** | `logGroup` | `constructId`, `retention`, `removalPolicy`, `encryptionKey`, `logGroupClass` |
+| **ECR Lifecycle Rule** | (helpers) | `deleteUntaggedAfterDays`, `keepLastNImages`, `deleteTaggedAfterDays`, `standardDevLifecycleRules`, `standardProdLifecycleRules` |
+| **AppSync GraphQL API** | `appSyncGraphqlApi` | `constructId`, `name`, `schema`, `authorizationConfig`, `xrayEnabled`, `logConfig`, `domainName` |
 | **Stack** | `stack` | - |
 
 *)

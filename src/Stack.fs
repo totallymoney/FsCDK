@@ -18,6 +18,13 @@ open Amazon.CDK.AWS.CloudWatch
 open Amazon.CDK.AWS.ECS
 open Amazon.CDK.AWS.Kinesis
 open Amazon.CDK.AWS.Route53
+open Amazon.CDK.AWS.AppRunner
+open Amazon.CDK.AWS.ElastiCache
+open Amazon.CDK.AWS.DocDB
+open Amazon.CDK.CustomResources
+open Amazon.CDK.AWS.StepFunctions
+open Amazon.CDK.AWS.XRay
+open Amazon.CDK.AWS.AppSync
 //open Amazon.CDK.AWS.CloudHSMV2
 
 // ============================================================================
@@ -60,6 +67,15 @@ type Operation =
     | LambdaRoleOp of IAM.LambdaRoleSpec
     | CloudWatchAlarmOp of CloudWatchAlarmSpec
     | KMSKeyOp of KMSKeySpec
+    | AppRunnerServiceOp of AppRunnerServiceResource
+    | ElastiCacheRedisOp of ElastiCacheRedisResource
+    | DocumentDBClusterOp of DocumentDBClusterResource
+    | CustomResourceOp of CustomResourceResource
+    | StepFunctionOp of StepFunctionResource
+    | XRayGroupOp of XRayGroupResource
+    | XRaySamplingRuleOp of XRaySamplingRuleResource
+    | AppSyncApiOp of AppSyncApiResource
+    | AppSyncDataSourceOp of AppSyncDataSourceResource
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -74,7 +90,38 @@ module StackOperations =
             tableSpec.Table <- Some t
 
         | FunctionOp lambdaSpec ->
-            let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
+            // Yan Cui Production Best Practice: Auto-create DLQ if enabled
+            // Check if DeadLetterQueueEnabled is set but no queue provided
+            let propsToUse =
+                if
+                    lambdaSpec.Props.DeadLetterQueueEnabled.HasValue
+                    && lambdaSpec.Props.DeadLetterQueueEnabled.Value
+                    && lambdaSpec.Props.DeadLetterQueue = null
+                then
+                    // Auto-create SQS DLQ
+                    let dlqName = $"{lambdaSpec.FunctionName}-dlq"
+                    let dlqProps = QueueProps()
+                    dlqProps.QueueName <- dlqName
+                    dlqProps.RetentionPeriod <- Duration.Days(14.0) // Keep failed events for 14 days
+                    let dlq = Queue(stack, $"{lambdaSpec.ConstructId}-DLQ", dlqProps)
+
+                    // Update props with the DLQ
+                    lambdaSpec.Props.DeadLetterQueue <- dlq
+                    lambdaSpec.Props
+                else
+                    lambdaSpec.Props
+
+            // Yan Cui Production Best Practice: Auto-add Powertools layer if ARN is provided
+            match lambdaSpec.PowertoolsLayerArn with
+            | Some arn ->
+                let powertoolsLayer =
+                    LayerVersion.FromLayerVersionArn(stack, $"{lambdaSpec.ConstructId}-PowertoolsLayer", arn)
+
+                let existingLayers = if propsToUse.Layers = null then [||] else propsToUse.Layers
+                propsToUse.Layers <- Array.append existingLayers [| powertoolsLayer |]
+            | None -> ()
+
+            let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, propsToUse)
 
             let _ =
                 lambdaSpec.EventSources |> Seq.map (fun e -> fn.AddEventSource e) |> Seq.toList
@@ -111,6 +158,10 @@ module StackOperations =
             queueSpec.DelaySeconds
             |> Option.iter (fun d -> props.DeliveryDelay <- Duration.Seconds(float d))
 
+            queueSpec.Encryption |> Option.iter (fun e -> props.Encryption <- e)
+
+            queueSpec.EncryptionMasterKey |> Option.iter (fun k -> props.EncryptionMasterKey <- k)
+
             match queueSpec.DeadLetterQueueName, queueSpec.MaxReceiveCount with
             | Some dlqName, Some maxReceive ->
                 try
@@ -121,7 +172,8 @@ module StackOperations =
                     printfn $"Warning: Could not configure DLQ for queue %s{queueSpec.QueueName}: %s{ex.Message}"
             | _ -> ()
 
-            Queue(stack, queueSpec.ConstructId, props) |> ignore
+            let queue = Queue(stack, queueSpec.ConstructId, props)
+            queueSpec.Queue <- Some queue
 
         | BucketOp bucketSpec ->
             match bucketSpec.Bucket with
@@ -145,7 +197,7 @@ module StackOperations =
             let sg = SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props)
             sgSpec.SecurityGroup <- Some sg
 
-        | RdsInstanceOp rdsSpec -> DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
+        | RdsInstanceOp rdsSpec -> AWS.RDS.DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
 
         | CloudFrontDistributionOp cfSpec -> Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
 
@@ -276,6 +328,84 @@ module StackOperations =
             // Role is already created in the builder, just store reference if needed
             // The role is available in roleSpec.Role
             ()
+
+        | AppRunnerServiceOp serviceSpec ->
+            let props = CfnServiceProps()
+            props.ServiceName <- serviceSpec.ServiceName
+
+            serviceSpec.Config.SourceConfiguration
+            |> Option.iter (fun v -> props.SourceConfiguration <- v)
+
+            serviceSpec.Config.InstanceConfiguration
+            |> Option.iter (fun v -> props.InstanceConfiguration <- v)
+
+            serviceSpec.Config.HealthCheckConfiguration
+            |> Option.iter (fun v -> props.HealthCheckConfiguration <- v)
+
+            serviceSpec.Config.AutoScalingConfigurationArn
+            |> Option.iter (fun v -> props.AutoScalingConfigurationArn <- v)
+
+            if not serviceSpec.Config.Tags.IsEmpty then
+                props.Tags <-
+                    serviceSpec.Config.Tags
+                    |> List.map (fun (k, v) -> CfnTag(Key = k, Value = v) :> ICfnTag)
+                    |> Array.ofList
+
+            let service = CfnService(stack, serviceSpec.ConstructId, props)
+            serviceSpec.Service <- Some service
+
+        | ElastiCacheRedisOp clusterSpec ->
+            let cluster =
+                CfnCacheCluster(
+                    stack,
+                    clusterSpec.ConstructId,
+                    CfnCacheClusterProps(ClusterName = clusterSpec.ClusterName)
+                )
+            // Note: Full configuration handled in builder
+            ()
+
+        | DocumentDBClusterOp clusterSpec ->
+            // Note: DocumentDB cluster creation requires VPC and credentials
+            // Full implementation would use DatabaseCluster
+            ()
+
+        | CustomResourceOp resourceSpec ->
+            // Note: Custom resource creation handled in builder
+            ()
+
+        | StepFunctionOp sfResource ->
+            let sm = StateMachine(stack, sfResource.ConstructId, sfResource.Props)
+            sfResource.StateMachine <- Some sm
+
+        | XRayGroupOp xrayGroupResource ->
+            let group = CfnGroup(stack, xrayGroupResource.ConstructId, xrayGroupResource.Props)
+            xrayGroupResource.Group <- Some group
+
+        | XRaySamplingRuleOp xraySamplingRuleResource ->
+            let rule =
+                CfnSamplingRule(stack, xraySamplingRuleResource.ConstructId, xraySamplingRuleResource.Props)
+
+            xraySamplingRuleResource.SamplingRule <- Some rule
+
+        | AppSyncApiOp appSyncApiResource ->
+            let api =
+                GraphqlApi(stack, appSyncApiResource.ConstructId, appSyncApiResource.Props)
+
+            appSyncApiResource.GraphqlApi <- Some api
+
+        | AppSyncDataSourceOp dsResource ->
+            match dsResource.Config.Api with
+            | None -> failwith "GraphQL API is required for AppSync Data Source"
+            | Some api ->
+                let ds: BaseDataSource =
+                    match dsResource.Config.DynamoDBTable, dsResource.Config.LambdaFunction with
+                    | Some table, None -> api.AddDynamoDbDataSource(dsResource.ConstructId, table) :> BaseDataSource
+                    | None, Some func -> api.AddLambdaDataSource(dsResource.ConstructId, func) :> BaseDataSource
+                    | Some _, Some _ ->
+                        failwith "AppSync Data Source cannot have both DynamoDB table and Lambda function"
+                    | None, None -> failwith "AppSync Data Source must have either DynamoDB table or Lambda function"
+
+                dsResource.DataSource <- Some ds
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
@@ -510,6 +640,36 @@ type StackBuilder(name: string) =
           App = None
           Props = None
           Operations = [ CloudWatchAlarmOp alarmSpec ] }
+
+    member _.Yield(sfResource: StepFunctionResource) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ StepFunctionOp sfResource ] }
+
+    member _.Yield(xrayGroupResource: XRayGroupResource) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ XRayGroupOp xrayGroupResource ] }
+
+    member _.Yield(xraySamplingRuleResource: XRaySamplingRuleResource) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ XRaySamplingRuleOp xraySamplingRuleResource ] }
+
+    member _.Yield(appSyncApiResource: AppSyncApiResource) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ AppSyncApiOp appSyncApiResource ] }
+
+    member _.Yield(appSyncDataSourceResource: AppSyncDataSourceResource) : StackConfig =
+        { Name = name
+          App = None
+          Props = None
+          Operations = [ AppSyncDataSourceOp appSyncDataSourceResource ] }
 
     member _.Zero() : StackConfig =
         { Name = name

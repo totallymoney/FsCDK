@@ -13,10 +13,10 @@ Welcome to the extended FsCDK! This guide will help you understand the new featu
 
 FsCDK now includes builders for:
 
-- 🌐 **VPC & Networking** - Secure, multi-AZ virtual private clouds
-- 🗄️ **RDS PostgreSQL** - Managed databases with automated backups
-- ⚡ **CloudFront** - Global CDN for fast content delivery
-- 🔐 **Cognito** - User authentication with MFA support
+- **VPC & Networking** - Secure, multi-AZ virtual private clouds
+- **RDS PostgreSQL** - Managed databases with automated backups
+- **CloudFront** - Global CDN for fast content delivery
+- **Cognito** - User authentication with MFA support
 
 All following AWS Well-Architected Framework best practices!
 
@@ -64,10 +64,10 @@ rdsInstance "MyDatabase" {
     allocatedStorage 20
     
     // Automatic best practices:
-    // ✅ Encrypted storage
-    // ✅ 7-day automated backups
-    // ✅ Auto minor version upgrades
-    // ✅ Private subnet placement
+    // Encrypted storage
+    // 7-day automated backups
+    // Auto minor version upgrades
+    // Private subnet placement
     
     multiAz true                       // High availability
     databaseName "myapp"
@@ -94,9 +94,9 @@ let myUserPool =
         mfa Mfa.OPTIONAL // Users can enable MFA
 
     // Automatic best practices:
-    // ✅ Strong password policy (8+ chars, mixed case, digits, symbols)
-    // ✅ Email verification required
-    // ✅ Account recovery via email
+    // Strong password policy (8+ chars, mixed case, digits, symbols)
+    // Email verification required
+    // Account recovery via email
     }
 
 // Create app client
@@ -105,9 +105,9 @@ userPoolClient "MyAppClient" {
     generateSecret false // For web/mobile apps
 
 // Automatic best practices:
-// ✅ SRP authentication flow
-// ✅ Prevents user existence errors
-// ✅ Reasonable token expiration times
+// SRP authentication flow
+// Prevents user existence errors
+// Reasonable token expiration times
 }
 
 (**
@@ -132,10 +132,10 @@ cloudFrontDistribution "MyCDN" {
     defaultRootObject "index.html"
 
 // Automatic best practices:
-// ✅ HTTP/2 enabled
-// ✅ TLS 1.2 minimum
-// ✅ IPv6 enabled
-// ✅ Cost-optimized (US/Canada/Europe)
+// HTTP/2 enabled
+// TLS 1.2 minimum
+// IPv6 enabled
+// Cost-optimized (US/Canada/Europe)
 }
 
 (**
@@ -233,26 +233,26 @@ stack "ProductionApp" {
 
 FsCDK automatically applies AWS best practices:
 
-### Security 🔒
+### Security
 - Encryption enabled by default (S3, RDS)
 - Security groups deny all by default
 - Strong password policies
 - Private subnet placement for databases
 - No public database access
 
-### High Availability 🏢
+### High Availability
 - Multi-AZ VPC configuration
 - Multi-AZ database replication
 - Automated backups (7-day retention)
 - Global CDN distribution
 
-### Cost Optimization 💰
+### Cost Optimization
 - Right-sized instance defaults (t3.micro)
 - Single NAT gateway for dev/test
 - Regional CDN pricing (PriceClass100)
 - Pay-per-request database options
 
-### Performance ⚡
+### Performance
 - HTTP/2 enabled for CDN
 - IPv6 support
 - Proper subnet segmentation
@@ -384,18 +384,18 @@ stack "EnhancedStack" {
 
 ## Next Steps
 
-1. ✅ Install FsCDK: `dotnet add package FsCDK`
-2. ✅ Create your first VPC: `vpc "MyVpc" { }`
-3. ✅ Add a database: `rdsInstance "MyDB" { vpc myVpc; postgresEngine }`
-4. ✅ Deploy: `cdk deploy`
-5. ✅ Monitor in AWS Console
+1. Install FsCDK: `dotnet add package FsCDK`
+2. Create your first VPC: `vpc "MyVpc" { }`
+3. Add a database: `rdsInstance "MyDB" { vpc myVpc; postgresEngine }`
+4. Deploy: `cdk deploy`
+5. Monitor in AWS Console
 
 ## Getting Help
 
-- 📖 Read the examples in the docs
-- 🔍 Check the test files for usage patterns
-- 💬 Ask questions in GitHub Issues
-- 📚 Reference AWS CDK documentation
+- Read the examples in the docs
+- Check the test files for usage patterns
+- Ask questions in GitHub Issues
+- Reference AWS CDK documentation
 
 ## Tips for Success
 
@@ -457,7 +457,7 @@ Future enhancements may include:
 
 ---
 
-Ready to build secure, scalable infrastructure with F#? Let's go! 🚀
+Ready to build secure, scalable infrastructure with F#? Let's go!
 *)
 
 (*** hide ***)

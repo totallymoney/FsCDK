@@ -146,6 +146,8 @@ type ImportSourceBuilder() =
     [<CustomOperation("keyPrefix")>]
     member _.KeyPrefix(config: ImportSourceConfig, prefix: string) = { config with KeyPrefix = Some prefix }
 
+open Amazon.CDK.AWS.KMS
+
 type TableConfig =
     { TableName: string
       ConstructId: string option
@@ -156,7 +158,9 @@ type TableConfig =
       PointInTimeRecovery: bool option
       ImportSource: IImportSourceSpecification option
       Stream: StreamViewType option
-      KinesisStream: IStream option }
+      KinesisStream: IStream option
+      Encryption: TableEncryption option
+      EncryptionKey: IKey option }
 
 type TableSpec =
     { TableName: string
@@ -175,7 +179,9 @@ type TableBuilder(name: string) =
           PointInTimeRecovery = None
           ImportSource = None
           Stream = None
-          KinesisStream = None }
+          KinesisStream = None
+          Encryption = None
+          EncryptionKey = None }
 
     member _.Yield(spec: ImportSourceSpec) : TableConfig =
         { TableName = name
@@ -187,7 +193,9 @@ type TableBuilder(name: string) =
           PointInTimeRecovery = None
           ImportSource = Some spec.Source
           Stream = None
-          KinesisStream = None }
+          KinesisStream = None
+          Encryption = None
+          EncryptionKey = None }
 
     member _.Zero() : TableConfig =
         { TableName = name
@@ -199,7 +207,9 @@ type TableBuilder(name: string) =
           PointInTimeRecovery = None
           ImportSource = None
           Stream = None
-          KinesisStream = None }
+          KinesisStream = None
+          Encryption = None
+          EncryptionKey = None }
 
     member _.Combine(config1: TableConfig, config2: TableConfig) : TableConfig =
         { config1 with
@@ -211,7 +221,9 @@ type TableBuilder(name: string) =
             PointInTimeRecovery = config2.PointInTimeRecovery |> Option.orElse config1.PointInTimeRecovery
             ImportSource = config2.ImportSource |> Option.orElse config1.ImportSource
             Stream = config2.Stream |> Option.orElse config1.Stream
-            KinesisStream = config2.KinesisStream |> Option.orElse config1.KinesisStream }
+            KinesisStream = config2.KinesisStream |> Option.orElse config1.KinesisStream
+            Encryption = config2.Encryption |> Option.orElse config1.Encryption
+            EncryptionKey = config2.EncryptionKey |> Option.orElse config1.EncryptionKey }
 
     member inline x.For(config: TableConfig, [<InlineIfLambda>] f: unit -> TableConfig) : TableConfig =
         let newConfig = f ()
@@ -250,6 +262,10 @@ type TableBuilder(name: string) =
 
         config.KinesisStream
         |> Option.iter (fun kinesisStream -> props.KinesisStream <- kinesisStream)
+
+        config.Encryption |> Option.iter (fun enc -> props.Encryption <- enc)
+
+        config.EncryptionKey |> Option.iter (fun key -> props.EncryptionKey <- key)
 
         { TableName = tableName
           ConstructId = constructId
@@ -337,7 +353,9 @@ type TableBuilder(name: string) =
           PointInTimeRecovery = None
           ImportSource = Some spec
           Stream = None
-          KinesisStream = None }
+          KinesisStream = None
+          Encryption = None
+          EncryptionKey = None }
 
     /// <summary>Enables DynamoDB Streams for the table.</summary>
     /// <param name="streamType">The stream view type (KEYS_ONLY, NEW_IMAGE, OLD_IMAGE, or NEW_AND_OLD_IMAGES).</param>
@@ -361,6 +379,33 @@ type TableBuilder(name: string) =
     member _.KinesisStream(config: TableConfig, stream: IStream) =
         { config with
             KinesisStream = Some stream }
+
+    /// <summary>Sets the encryption type for the table.</summary>
+    /// <param name="encryption">The encryption type (AWS_MANAGED, CUSTOMER_MANAGED, or DEFAULT).</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "id" AttributeType.STRING
+    ///     encryption TableEncryption.AWS_MANAGED
+    /// }
+    /// </code>
+    [<CustomOperation("encryption")>]
+    member _.Encryption(config: TableConfig, encryption: TableEncryption) =
+        { config with
+            Encryption = Some encryption }
+
+    /// <summary>Sets the KMS encryption key for the table.</summary>
+    /// <param name="key">The KMS key.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "id" AttributeType.STRING
+    ///     encryption TableEncryption.CUSTOMER_MANAGED
+    ///     encryptionKey myKmsKey
+    /// }
+    /// </code>
+    [<CustomOperation("encryptionKey")>]
+    member _.EncryptionKey(config: TableConfig, key: IKey) =
+        { config with
+            EncryptionKey = Some key }
 
 // ============================================================================
 // Builders

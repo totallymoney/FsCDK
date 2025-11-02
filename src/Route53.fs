@@ -345,6 +345,169 @@ module Route53Helpers =
     let cloudFrontTarget (distribution: IDistribution) =
         RecordTarget.FromAlias(CloudFrontTarget distribution)
 
+// ============================================================================
+// Health Check Configuration DSL
+// ============================================================================
+
+/// <summary>
+/// High-level Route 53 Health Check builder following AWS best practices.
+///
+/// **Default Settings:**
+/// - Type = HTTPS (more secure than HTTP)
+/// - Port = 443
+/// - Request interval = 30 seconds (standard)
+/// - Failure threshold = 3 (balanced sensitivity)
+///
+/// **Rationale:**
+/// Health checks monitor endpoint availability for failover routing.
+/// HTTPS health checks verify both connectivity and SSL/TLS validity.
+///
+/// **Use Cases:**
+/// - Failover routing policies
+/// - Weighted routing with health-based failover
+/// - CloudWatch alarms for endpoint health
+/// </summary>
+type Route53HealthCheckConfig =
+    { HealthCheckName: string
+      ConstructId: string option
+      Type: string option
+      ResourcePath: string option
+      FullyQualifiedDomainName: string option
+      Port: int voption
+      RequestInterval: int voption
+      FailureThreshold: int voption
+      MeasureLatency: bool voption
+      EnableSNI: bool voption }
+
+type Route53HealthCheckResource =
+    {
+        HealthCheckName: string
+        ConstructId: string
+        /// The underlying CDK CfnHealthCheck construct
+        HealthCheck: CfnHealthCheck
+    }
+
+    /// Gets the health check ID
+    member this.HealthCheckId = this.HealthCheck.AttrHealthCheckId
+
+type Route53HealthCheckBuilder(name: string) =
+    member _.Yield _ : Route53HealthCheckConfig =
+        { HealthCheckName = name
+          ConstructId = None
+          Type = Some "HTTPS"
+          ResourcePath = Some "/"
+          FullyQualifiedDomainName = None
+          Port = ValueSome 443
+          RequestInterval = ValueSome 30
+          FailureThreshold = ValueSome 3
+          MeasureLatency = ValueSome false
+          EnableSNI = ValueSome true }
+
+    member _.Zero() : Route53HealthCheckConfig =
+        { HealthCheckName = name
+          ConstructId = None
+          Type = Some "HTTPS"
+          ResourcePath = Some "/"
+          FullyQualifiedDomainName = None
+          Port = ValueSome 443
+          RequestInterval = ValueSome 30
+          FailureThreshold = ValueSome 3
+          MeasureLatency = ValueSome false
+          EnableSNI = ValueSome true }
+
+    member _.Combine(state1: Route53HealthCheckConfig, state2: Route53HealthCheckConfig) : Route53HealthCheckConfig =
+        { HealthCheckName = state2.HealthCheckName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          Type = state2.Type |> Option.orElse state1.Type
+          ResourcePath = state2.ResourcePath |> Option.orElse state1.ResourcePath
+          FullyQualifiedDomainName = state2.FullyQualifiedDomainName |> Option.orElse state1.FullyQualifiedDomainName
+          Port = state2.Port |> ValueOption.orElse state1.Port
+          RequestInterval = state2.RequestInterval |> ValueOption.orElse state1.RequestInterval
+          FailureThreshold = state2.FailureThreshold |> ValueOption.orElse state1.FailureThreshold
+          MeasureLatency = state2.MeasureLatency |> ValueOption.orElse state1.MeasureLatency
+          EnableSNI = state2.EnableSNI |> ValueOption.orElse state1.EnableSNI }
+
+    member inline x.For
+        (
+            config: Route53HealthCheckConfig,
+            [<InlineIfLambda>] f: unit -> Route53HealthCheckConfig
+        ) : Route53HealthCheckConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: Route53HealthCheckConfig) : Route53HealthCheckResource =
+        let healthCheckName = config.HealthCheckName
+        let constructId = config.ConstructId |> Option.defaultValue healthCheckName
+
+        let healthCheckConfig = CfnHealthCheck.HealthCheckConfigProperty()
+        config.Type |> Option.iter (fun v -> healthCheckConfig.Type <- v)
+
+        config.ResourcePath
+        |> Option.iter (fun v -> healthCheckConfig.ResourcePath <- v)
+
+        config.FullyQualifiedDomainName
+        |> Option.iter (fun v -> healthCheckConfig.FullyQualifiedDomainName <- v)
+
+        config.Port
+        |> ValueOption.iter (fun v -> healthCheckConfig.Port <- System.Nullable<float>(float v))
+
+        config.RequestInterval
+        |> ValueOption.iter (fun v -> healthCheckConfig.RequestInterval <- System.Nullable<float>(float v))
+
+        config.FailureThreshold
+        |> ValueOption.iter (fun v -> healthCheckConfig.FailureThreshold <- System.Nullable<float>(float v))
+
+        config.MeasureLatency
+        |> ValueOption.iter (fun v -> healthCheckConfig.MeasureLatency <- System.Nullable<bool>(v))
+
+        config.EnableSNI
+        |> ValueOption.iter (fun v -> healthCheckConfig.EnableSni <- System.Nullable<bool>(v))
+
+        let props = CfnHealthCheckProps()
+        props.HealthCheckConfig <- healthCheckConfig
+
+        { HealthCheckName = healthCheckName
+          ConstructId = constructId
+          HealthCheck = null }
+
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: Route53HealthCheckConfig, id: string) = { config with ConstructId = Some id }
+
+    [<CustomOperation("healthCheckType")>]
+    member _.HealthCheckType(config: Route53HealthCheckConfig, hcType: string) = { config with Type = Some hcType }
+
+    [<CustomOperation("resourcePath")>]
+    member _.ResourcePath(config: Route53HealthCheckConfig, path: string) =
+        { config with ResourcePath = Some path }
+
+    [<CustomOperation("domainName")>]
+    member _.DomainName(config: Route53HealthCheckConfig, domain: string) =
+        { config with
+            FullyQualifiedDomainName = Some domain }
+
+    [<CustomOperation("port")>]
+    member _.Port(config: Route53HealthCheckConfig, port: int) = { config with Port = ValueSome port }
+
+    [<CustomOperation("requestInterval")>]
+    member _.RequestInterval(config: Route53HealthCheckConfig, interval: int) =
+        { config with
+            RequestInterval = ValueSome interval }
+
+    [<CustomOperation("failureThreshold")>]
+    member _.FailureThreshold(config: Route53HealthCheckConfig, threshold: int) =
+        { config with
+            FailureThreshold = ValueSome threshold }
+
+    [<CustomOperation("measureLatency")>]
+    member _.MeasureLatency(config: Route53HealthCheckConfig, measure: bool) =
+        { config with
+            MeasureLatency = ValueSome measure }
+
+    [<CustomOperation("enableSNI")>]
+    member _.EnableSNI(config: Route53HealthCheckConfig, enable: bool) =
+        { config with
+            EnableSNI = ValueSome enable }
+
 [<AutoOpen>]
 module Route53Builders =
     /// <summary>
@@ -365,3 +528,9 @@ module Route53Builders =
     /// Example: aRecord "www" { zone myZone; target myTarget }
     /// </summary>
     let aRecord recordName = Route53ARecordBuilder recordName
+
+    /// <summary>
+    /// Creates a new Route 53 health check builder.
+    /// Example: healthCheck "my-endpoint" { domainName "api.example.com"; resourcePath "/health" }
+    /// </summary>
+    let healthCheck name = Route53HealthCheckBuilder name
