@@ -9,15 +9,15 @@ open Amazon.CDK.AWS.EC2
 /// <summary>
 /// High-level VPC Gateway Attachment builder for connecting internet and VPN gateways to VPCs.
 ///
-/// **Use Cases:**
+/// **Use Cases: **
 /// - Attach an Internet Gateway to enable internet access
 /// - Attach a Virtual Private Gateway for VPN connections
 ///
-/// **Rationale:**
+/// **Rationale: **
 /// Explicit gateway attachments provide fine-grained control over network connectivity
 /// and follow the principle of explicit configuration.
 ///
-/// **Escape Hatch:**
+/// **Escape Hatch: **
 /// Access the underlying CDK VPCGatewayAttachment via the `Attachment` property
 /// for advanced scenarios not covered by this builder.
 /// </summary>

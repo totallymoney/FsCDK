@@ -56,7 +56,7 @@ type EKSClusterSpec =
       AddServiceAccount: (string * ServiceAccountOptions) list
       AddHelmChart: (string * HelmChartOptions) list
       AddFargateProfile: (string * FargateProfileOptions) list
-      mutable Cluster: AWS.EKS.ICluster option }
+      mutable Cluster: ICluster option }
 
     /// Gets the underlying ICluster resource. Must be called after the stack is built.
     member this.Resource =

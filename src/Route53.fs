@@ -234,17 +234,15 @@ type Route53ARecordConfig =
       Ttl: Duration option
       Comment: string option }
 
-type Route53ARecordResource =
-    {
-        RecordName: string
-        ConstructId: string
-        /// The underlying CDK ARecord construct
-        ARecord: ARecord
-    }
+type Route53ARecordSpec =
+    { RecordName: string
+      ConstructId: string
+      mutable ARecord: ARecord
+      Props: ARecordProps }
 
-type Route53ARecordBuilder(recordName: string) =
+type Route53ARecordBuilder(name: string) =
     member _.Yield _ : Route53ARecordConfig =
-        { RecordName = recordName
+        { RecordName = name
           ConstructId = None
           Zone = None
           Target = None
@@ -252,7 +250,7 @@ type Route53ARecordBuilder(recordName: string) =
           Comment = None }
 
     member _.Zero() : Route53ARecordConfig =
-        { RecordName = recordName
+        { RecordName = name
           ConstructId = None
           Zone = None
           Target = None
@@ -275,7 +273,7 @@ type Route53ARecordBuilder(recordName: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: Route53ARecordConfig) : Route53ARecordResource =
+    member _.Run(config: Route53ARecordConfig) : Route53ARecordSpec =
         let recordName = config.RecordName
         let constructId = config.ConstructId |> Option.defaultValue recordName
 
@@ -300,7 +298,8 @@ type Route53ARecordBuilder(recordName: string) =
 
         { RecordName = recordName
           ConstructId = constructId
-          ARecord = null }
+          ARecord = null
+          Props = props }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: Route53ARecordConfig, id: string) = { config with ConstructId = Some id }
@@ -527,7 +526,7 @@ module Route53Builders =
     /// Creates a new Route 53 A record builder.
     /// Example: aRecord "www" { zone myZone; target myTarget }
     /// </summary>
-    let aRecord recordName = Route53ARecordBuilder recordName
+    let aRecord name = Route53ARecordBuilder(name)
 
     /// <summary>
     /// Creates a new Route 53 health check builder.

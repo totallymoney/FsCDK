@@ -43,7 +43,6 @@
         <Compile Include="ProductionDefaultsTests.fs" />
         <Compile Include="FunctionUrlOptionsTests.fs" />
         <Compile Include="FunctionAddOptionsBuildersTests.fs" />
-        <Compile Include="StackPropsTests.fs" />
         <Compile Include="ElastiCacheTests.fs" />
         <Compile Include="AppRunnerTests.fs" />
         <Compile Include="DocumentDBTests.fs" />

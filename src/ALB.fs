@@ -26,7 +26,7 @@ open Amazon.CDK.AWS.EC2
 type ALBConfig =
     { LoadBalancerName: string
       ConstructId: string option
-      Vpc: FsCDK.VpcRef option
+      Vpc: VpcRef option
       InternetFacing: bool option
       VpcSubnets: SubnetSelection option
       SecurityGroup: SecurityGroupRef option
@@ -34,13 +34,11 @@ type ALBConfig =
       Http2Enabled: bool option
       DropInvalidHeaderFields: bool option }
 
-type ALBResource =
-    {
-        LoadBalancerName: string
-        ConstructId: string
-        /// The underlying CDK ApplicationLoadBalancer construct
-        LoadBalancer: ApplicationLoadBalancer
-    }
+type ALBSpec =
+    { LoadBalancerName: string
+      ConstructId: string
+      mutable LoadBalancer: ApplicationLoadBalancer
+      Props: ApplicationLoadBalancerProps }
 
 type ALBBuilder(name: string) =
     member _.Yield _ : ALBConfig =
@@ -80,7 +78,7 @@ type ALBBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ALBConfig) : ALBResource =
+    member _.Run(config: ALBConfig) : ALBSpec =
         let loadBalancerName = config.LoadBalancerName
         let constructId = config.ConstructId |> Option.defaultValue loadBalancerName
 
@@ -106,7 +104,8 @@ type ALBBuilder(name: string) =
 
         { LoadBalancerName = loadBalancerName
           ConstructId = constructId
-          LoadBalancer = null }
+          LoadBalancer = null
+          Props = props }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ALBConfig, id: string) = { config with ConstructId = Some id }
@@ -468,7 +467,7 @@ module ALBBuilders =
     /// Creates a new Application Load Balancer builder with secure defaults.
     /// Example: applicationLoadBalancer "my-alb" { vpc myVpc; internetFacing true }
     /// </summary>
-    let applicationLoadBalancer name = ALBBuilder name
+    let applicationLoadBalancer name = ALBBuilder(name)
 
     /// <summary>
     /// Creates a new ALB Target Group builder with secure defaults.

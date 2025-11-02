@@ -41,7 +41,7 @@ type FunctionConfig =
       Tracing: Tracing option
       VpcSubnets: SubnetSelection option
       SecurityGroups: SecurityGroupRef list
-      FileSystem: Amazon.CDK.AWS.Lambda.FileSystem option
+      FileSystem: FileSystem option
       DeadLetterQueue: QueueRef option
       DeadLetterQueueEnabled: bool option
       AutoCreateDLQ: bool option // Auto-create SQS DLQ if not provided (Yan Cui recommendation)
@@ -701,7 +701,7 @@ type FunctionBuilder(name: string) =
         { defaultConfig () with
             VpcSubnets = Some vpcSubnets }
 
-    member _.Yield(fileSystem: Amazon.CDK.AWS.Lambda.FileSystem) : FunctionConfig =
+    member _.Yield(fileSystem: FileSystem) : FunctionConfig =
         { defaultConfig () with
             FileSystem = Some fileSystem }
 

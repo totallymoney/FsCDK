@@ -62,13 +62,13 @@ rdsInstance "MyDatabase" {
     postgresEngine                     // PostgreSQL 15
     instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
     allocatedStorage 20
-    
+
     // Automatic best practices:
     // Encrypted storage
     // 7-day automated backups
     // Auto minor version upgrades
     // Private subnet placement
-    
+
     multiAz true                       // High availability
     databaseName "myapp"
 }
@@ -174,10 +174,8 @@ stack "ProductionApp" {
         region config.Region
     }
 
-    stackProps {
-        description "Production application stack"
-        tags [ "environment", "production"; "managed-by", "FsCDK" ]
-    }
+    description "Production application stack"
+    tags [ "environment", "production"; "managed-by", "FsCDK" ]
 
     // 1. Network layer
     let myVpc =
