@@ -65,7 +65,7 @@ stack "BasicStateMachine" {
         stepFunction "DataPipeline" {
             comment "Validates and processes data"
             // definition definition
-            logDestination logGroup.LogGroup.Value
+            logDestination logGroup.LogGroup
             timeout (Duration.Hours(2.0))
         }
 
@@ -90,7 +90,7 @@ stack "StateMachineTypes" {
         stepFunction "StandardWorkflow" {
             stateMachineType StateMachineType.STANDARD
             comment "Long-running workflow with exactly-once semantics"
-            logDestination logGroup.LogGroup.Value
+            logDestination logGroup.LogGroup
             timeout (Duration.Days(1.0))
         }
 
@@ -99,7 +99,7 @@ stack "StateMachineTypes" {
         stepFunction "ExpressWorkflow" {
             stateMachineType StateMachineType.EXPRESS
             comment "High-volume, short-duration workflow"
-            logDestination logGroup.LogGroup.Value
+            logDestination logGroup.LogGroup
             timeout (Duration.Minutes(5.0))
         }
 
@@ -206,7 +206,7 @@ stack "MonitoredStateMachine" {
             comment "Workflow with full logging and tracing"
             // Full logging (ALL events)
             loggingLevel LogLevel.ALL
-            logDestination logGroup.LogGroup.Value
+            logDestination logGroup.LogGroup
             // X-Ray tracing enabled by default
             tracingEnabled true
         }
@@ -334,8 +334,8 @@ let smResource = stepFunction "MyWorkflow" {
 let cdkSM = smResource.StateMachine.Value
 
 // Grant execution permissions
-cdkSM.GrantStartExecution(myRole)
-cdkSM.GrantStartSyncExecution(myRole)
+cdkSM.GrantStartExecution myRole
+cdkSM.GrantStartSyncExecution myRole
 
 // Get state machine ARN
 let arn = cdkSM.StateMachineArn
