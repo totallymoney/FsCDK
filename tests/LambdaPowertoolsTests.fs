@@ -36,8 +36,9 @@ let lambda_powertools_tests =
               let envVars = config
               Expect.isNonEmpty envVars "Should provide environment variables"
               let logLevel = envVars |> List.tryFind (fun (k, _) -> k = "LOG_LEVEL")
+
               match logLevel with
-              | Some (_, level) -> Expect.equal level "DEBUG" "Development should use DEBUG level"
+              | Some(_, level) -> Expect.equal level "DEBUG" "Development should use DEBUG level"
               | None -> failtest "Log level not found"
           }
 
@@ -46,7 +47,8 @@ let lambda_powertools_tests =
               let envVars = config
               Expect.isNonEmpty envVars "Should provide environment variables"
               let logLevel = envVars |> List.tryFind (fun (k, _) -> k = "LOG_LEVEL")
+
               match logLevel with
-              | Some (_, level) -> Expect.equal level "INFO" "Production should use INFO level"
+              | Some(_, level) -> Expect.equal level "INFO" "Production should use INFO level"
               | None -> failtest "Log level not found"
           } ]

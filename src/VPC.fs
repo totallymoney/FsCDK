@@ -365,6 +365,272 @@ type SecurityGroupBuilder(name: string) =
             DisableInlineRules = Some disable }
 
 // ============================================================================
+// VPC Endpoint Configuration DSL
+// ============================================================================
+
+type GatewayVpcEndpointConfig =
+    { EndpointName: string
+      ConstructId: string option
+      Vpc: VpcRef option
+      Service: IGatewayVpcEndpointService option
+      Subnets: SubnetSelection list }
+
+type GatewayVpcEndpointSpec =
+    { EndpointName: string
+      ConstructId: string
+      Props: GatewayVpcEndpointProps
+      mutable VpcEndpoint: IGatewayVpcEndpoint option }
+
+    /// Gets the underlying IGatewayVpcEndpoint resource. Must be called after the stack is built.
+    member this.Resource =
+        match this.VpcEndpoint with
+        | Some ep -> ep
+        | None ->
+            failwith
+                $"GatewayVpcEndpoint '{this.EndpointName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+type GatewayVpcEndpointBuilder(name: string) =
+
+    member _.Yield _ : GatewayVpcEndpointConfig =
+        { EndpointName = name
+          ConstructId = None
+          Vpc = None
+          Service = None
+          Subnets = [] }
+
+    member _.Zero() : GatewayVpcEndpointConfig =
+        { EndpointName = name
+          ConstructId = None
+          Vpc = None
+          Service = None
+          Subnets = [] }
+
+    member _.Combine(state1: GatewayVpcEndpointConfig, state2: GatewayVpcEndpointConfig) : GatewayVpcEndpointConfig =
+        { EndpointName = state2.EndpointName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          Vpc = state2.Vpc |> Option.orElse state1.Vpc
+          Service = state2.Service |> Option.orElse state1.Service
+          Subnets =
+            if state2.Subnets.IsEmpty then
+                state1.Subnets
+            else
+                state2.Subnets @ state1.Subnets }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> GatewayVpcEndpointConfig) : GatewayVpcEndpointConfig = f ()
+
+    member inline x.For
+        (
+            config: GatewayVpcEndpointConfig,
+            [<InlineIfLambda>] f: unit -> GatewayVpcEndpointConfig
+        ) : GatewayVpcEndpointConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: GatewayVpcEndpointConfig) : GatewayVpcEndpointSpec =
+        let endpointName = config.EndpointName
+        let constructId = config.ConstructId |> Option.defaultValue endpointName
+
+        let props = GatewayVpcEndpointProps()
+
+        match config.Vpc with
+        | Some vpc -> props.Vpc <- VpcHelpers.resolveVpcRef vpc
+        | None -> invalidArg "vpc" "VPC is required for Gateway VPC Endpoint"
+
+        match config.Service with
+        | Some service -> props.Service <- service
+        | None -> invalidArg "service" "Service is required for Gateway VPC Endpoint"
+
+        if not config.Subnets.IsEmpty then
+            props.Subnets <- config.Subnets |> List.map (fun s -> s :> ISubnetSelection) |> Array.ofList
+
+        { EndpointName = endpointName
+          ConstructId = constructId
+          Props = props
+          VpcEndpoint = None }
+
+    /// <summary>Sets a custom construct ID.</summary>
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: GatewayVpcEndpointConfig, id: string) = { config with ConstructId = Some id }
+
+    /// <summary>Sets the VPC for the endpoint.</summary>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: GatewayVpcEndpointConfig, vpc: IVpc) =
+        { config with
+            Vpc = Some(VpcInterface vpc) }
+
+    /// <summary>Sets the VPC for the endpoint from a VpcSpec.</summary>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: GatewayVpcEndpointConfig, vpcSpec: VpcSpec) =
+        { config with
+            Vpc = Some(VpcSpecRef vpcSpec) }
+
+    /// <summary>Sets the service for the endpoint (e.g., S3, DynamoDB).</summary>
+    [<CustomOperation("service")>]
+    member _.Service(config: GatewayVpcEndpointConfig, service: IGatewayVpcEndpointService) =
+        { config with Service = Some service }
+
+    /// <summary>Adds subnet selection for the endpoint.</summary>
+    [<CustomOperation("subnet")>]
+    member _.Subnet(config: GatewayVpcEndpointConfig, subnet: SubnetSelection) =
+        { config with
+            Subnets = subnet :: config.Subnets }
+
+    /// <summary>Adds multiple subnets for the endpoint.</summary>
+    [<CustomOperation("subnets")>]
+    member _.Subnets(config: GatewayVpcEndpointConfig, subnets: SubnetSelection list) =
+        { config with
+            Subnets = subnets @ config.Subnets }
+
+type InterfaceVpcEndpointConfig =
+    { EndpointName: string
+      ConstructId: string option
+      Vpc: VpcRef option
+      Service: IInterfaceVpcEndpointService option
+      PrivateDnsEnabled: bool option
+      SecurityGroups: SecurityGroupRef list
+      Subnets: SubnetSelection option }
+
+type InterfaceVpcEndpointSpec =
+    { EndpointName: string
+      ConstructId: string
+      Props: InterfaceVpcEndpointProps
+      mutable VpcEndpoint: IInterfaceVpcEndpoint option }
+
+    /// Gets the underlying IInterfaceVpcEndpoint resource. Must be called after the stack is built.
+    member this.Resource =
+        match this.VpcEndpoint with
+        | Some ep -> ep
+        | None ->
+            failwith
+                $"InterfaceVpcEndpoint '{this.EndpointName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+type InterfaceVpcEndpointBuilder(name: string) =
+
+    member _.Yield _ : InterfaceVpcEndpointConfig =
+        { EndpointName = name
+          ConstructId = None
+          Vpc = None
+          Service = None
+          PrivateDnsEnabled = Some true
+          SecurityGroups = []
+          Subnets = None }
+
+    member _.Zero() : InterfaceVpcEndpointConfig =
+        { EndpointName = name
+          ConstructId = None
+          Vpc = None
+          Service = None
+          PrivateDnsEnabled = Some true
+          SecurityGroups = []
+          Subnets = None }
+
+    member _.Combine
+        (
+            state1: InterfaceVpcEndpointConfig,
+            state2: InterfaceVpcEndpointConfig
+        ) : InterfaceVpcEndpointConfig =
+        { EndpointName = state2.EndpointName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          Vpc = state2.Vpc |> Option.orElse state1.Vpc
+          Service = state2.Service |> Option.orElse state1.Service
+          PrivateDnsEnabled = state2.PrivateDnsEnabled |> Option.orElse state1.PrivateDnsEnabled
+          SecurityGroups =
+            if state2.SecurityGroups.IsEmpty then
+                state1.SecurityGroups
+            else
+                state2.SecurityGroups @ state1.SecurityGroups
+          Subnets = state2.Subnets |> Option.orElse state1.Subnets }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> InterfaceVpcEndpointConfig) : InterfaceVpcEndpointConfig = f ()
+
+    member inline x.For
+        (
+            config: InterfaceVpcEndpointConfig,
+            [<InlineIfLambda>] f: unit -> InterfaceVpcEndpointConfig
+        ) : InterfaceVpcEndpointConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: InterfaceVpcEndpointConfig) : InterfaceVpcEndpointSpec =
+        let endpointName = config.EndpointName
+        let constructId = config.ConstructId |> Option.defaultValue endpointName
+
+        let props = InterfaceVpcEndpointProps()
+
+        match config.Vpc with
+        | Some vpc -> props.Vpc <- VpcHelpers.resolveVpcRef vpc
+        | None -> invalidArg "vpc" "VPC is required for Interface VPC Endpoint"
+
+        match config.Service with
+        | Some service -> props.Service <- service
+        | None -> invalidArg "service" "Service is required for Interface VPC Endpoint"
+
+        config.PrivateDnsEnabled |> Option.iter (fun v -> props.PrivateDnsEnabled <- v)
+
+        if not config.SecurityGroups.IsEmpty then
+            props.SecurityGroups <-
+                config.SecurityGroups
+                |> List.map VpcHelpers.resolveSecurityGroupRef
+                |> Array.ofList
+
+        config.Subnets |> Option.iter (fun v -> props.Subnets <- v)
+
+        { EndpointName = endpointName
+          ConstructId = constructId
+          Props = props
+          VpcEndpoint = None }
+
+    /// <summary>Sets a custom construct ID.</summary>
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: InterfaceVpcEndpointConfig, id: string) = { config with ConstructId = Some id }
+
+    /// <summary>Sets the VPC for the endpoint.</summary>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: InterfaceVpcEndpointConfig, vpc: IVpc) =
+        { config with
+            Vpc = Some(VpcInterface vpc) }
+
+    /// <summary>Sets the VPC for the endpoint from a VpcSpec.</summary>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: InterfaceVpcEndpointConfig, vpcSpec: VpcSpec) =
+        { config with
+            Vpc = Some(VpcSpecRef vpcSpec) }
+
+    /// <summary>Sets the service for the endpoint.</summary>
+    [<CustomOperation("service")>]
+    member _.Service(config: InterfaceVpcEndpointConfig, service: IInterfaceVpcEndpointService) =
+        { config with Service = Some service }
+
+    /// <summary>Controls whether to enable private DNS for the endpoint.</summary>
+    [<CustomOperation("privateDnsEnabled")>]
+    member _.PrivateDnsEnabled(config: InterfaceVpcEndpointConfig, enabled: bool) =
+        { config with
+            PrivateDnsEnabled = Some enabled }
+
+    /// <summary>Adds a security group to the endpoint.</summary>
+    [<CustomOperation("securityGroup")>]
+    member _.SecurityGroup(config: InterfaceVpcEndpointConfig, sg: ISecurityGroup) =
+        { config with
+            SecurityGroups = SecurityGroupInterface sg :: config.SecurityGroups }
+
+    /// <summary>Adds a security group to the endpoint from a SecurityGroupSpec.</summary>
+    [<CustomOperation("securityGroup")>]
+    member _.SecurityGroup(config: InterfaceVpcEndpointConfig, sg: SecurityGroupSpec) =
+        { config with
+            SecurityGroups = SecurityGroupSpecRef sg :: config.SecurityGroups }
+
+    /// <summary>Adds multiple security groups to the endpoint.</summary>
+    [<CustomOperation("securityGroups")>]
+    member _.SecurityGroups(config: InterfaceVpcEndpointConfig, sgs: ISecurityGroup list) =
+        { config with
+            SecurityGroups = (sgs |> List.map SecurityGroupInterface) @ config.SecurityGroups }
+
+    /// <summary>Sets the subnets for the endpoint.</summary>
+    [<CustomOperation("subnets")>]
+    member _.Subnets(config: InterfaceVpcEndpointConfig, subnets: SubnetSelection) =
+        { config with Subnets = Some subnets }
+
+// ============================================================================
 // Builders
 // ============================================================================
 
@@ -391,3 +657,24 @@ module VpcBuilders =
     /// }
     /// </code>
     let securityGroup (name: string) = SecurityGroupBuilder(name)
+
+    /// <summary>Creates a Gateway VPC Endpoint (for S3, DynamoDB).</summary>
+    /// <param name="name">The endpoint name.</param>
+    /// <code lang="fsharp">
+    /// gatewayVpcEndpoint "S3Endpoint" {
+    ///     vpc myVpc
+    ///     service GatewayVpcEndpointAwsService.S3
+    /// }
+    /// </code>
+    let gatewayVpcEndpoint (name: string) = GatewayVpcEndpointBuilder(name)
+
+    /// <summary>Creates an Interface VPC Endpoint (for most AWS services).</summary>
+    /// <param name="name">The endpoint name.</param>
+    /// <code lang="fsharp">
+    /// interfaceVpcEndpoint "SecretsManagerEndpoint" {
+    ///     vpc myVpc
+    ///     service InterfaceVpcEndpointAwsService.SECRETS_MANAGER
+    ///     privateDnsEnabled true
+    /// }
+    /// </code>
+    let interfaceVpcEndpoint (name: string) = InterfaceVpcEndpointBuilder(name)

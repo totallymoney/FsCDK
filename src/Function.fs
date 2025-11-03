@@ -388,7 +388,7 @@ type FunctionBuilder(name: string) =
         let runtime = props.Runtime
 
         let powertoolsLayerArn =
-            if shouldAddPowertools && runtime <> null then
+            if shouldAddPowertools && (not (isNull runtime)) then
                 LambdaPowertoolsHelpers.getPowertoolsLayerArn runtime
             else
                 None

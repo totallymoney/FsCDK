@@ -111,3 +111,51 @@ let security_group_dsl_tests =
 
               Expect.throws thrower "Security Group builder should throw when VPC is missing even with constructId"
           } ]
+
+[<Tests>]
+let gatewayVpcEndpoint_tests =
+    testList
+        "Gateway VPC Endpoint DSL"
+        [ test "fails when VPC is missing" {
+              let thrower () =
+                  gatewayVpcEndpoint "MyEndpoint" { () } |> ignore
+
+              Expect.throws thrower "Gateway VPC Endpoint should throw when VPC is missing"
+          }
+
+          test "fails when service is missing" {
+              let vpcSpec = vpc "TestVpc" { () }
+
+              let thrower () =
+                  gatewayVpcEndpoint "MyEndpoint" { vpc vpcSpec } |> ignore
+
+              Expect.throws thrower "Gateway VPC Endpoint should throw when service is missing"
+          }
+
+          // NOTE: Full integration tests would need actual VPC resources
+          // These tests verify the builder validates required parameters
+          ]
+
+[<Tests>]
+let interfaceVpcEndpoint_tests =
+    testList
+        "Interface VPC Endpoint DSL"
+        [ test "fails when VPC is missing" {
+              let thrower () =
+                  interfaceVpcEndpoint "MyEndpoint" { () } |> ignore
+
+              Expect.throws thrower "Interface VPC Endpoint should throw when VPC is missing"
+          }
+
+          test "fails when service is missing" {
+              let vpcSpec = vpc "TestVpc" { () }
+
+              let thrower () =
+                  interfaceVpcEndpoint "MyEndpoint" { vpc vpcSpec } |> ignore
+
+              Expect.throws thrower "Interface VPC Endpoint should throw when service is missing"
+          }
+
+          // NOTE: Full integration tests would need actual VPC resources
+          // These tests verify the builder validates required parameters
+          ]

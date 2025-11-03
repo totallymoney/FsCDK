@@ -42,6 +42,7 @@
       <Compile Include="ALB.fs" />
       <Compile Include="ECR.fs" />
       <Compile Include="CloudWatchLogs.fs" />
+      <Compile Include="ApiGateway.fs" />
       <Compile Include="ApiGatewayV2.fs" />
       <Compile Include="SecretsManager.fs" />
       <Compile Include="ElasticBeanstalk.fs" />

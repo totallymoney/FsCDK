@@ -6,8 +6,8 @@ open Amazon.CDK
 
 [<Tests>]
 let xray_group_tests =
-  testSequenced
-  <| testList
+    testSequenced
+    <| testList
         "X-Ray Group DSL"
         [ test "defaults constructId to group name" {
               let group = xrayGroup "MyGroup" { () }
@@ -16,9 +16,7 @@ let xray_group_tests =
           }
 
           test "uses custom constructId when provided" {
-              let group = xrayGroup "MyGroup" {
-                  constructId "CustomGroupId"
-              }
+              let group = xrayGroup "MyGroup" { constructId "CustomGroupId" }
               Expect.equal group.ConstructId "CustomGroupId" "Should use custom construct ID"
           }
 
@@ -30,44 +28,45 @@ let xray_group_tests =
           }
 
           test "accepts custom filter expression" {
-              let group = xrayGroup "MyGroup" {
-                  filterExpression "service(\"my-service\")"
-              }
+              let group = xrayGroup "MyGroup" { filterExpression "service(\"my-service\")" }
               Expect.equal group.Props.FilterExpression "service(\"my-service\")" "Filter expression should be set"
           }
 
           test "accepts tags" {
-              let group = xrayGroup "MyGroup" {
-                  tag "Environment" "Production"
-                  tag "Team" "Backend"
-              }
+              let group =
+                  xrayGroup "MyGroup" {
+                      tag "Environment" "Production"
+                      tag "Team" "Backend"
+                  }
+
               Expect.equal group.GroupName "MyGroup" "Should have correct group name"
               Expect.isTrue (group.Props.Tags.Length > 0) "Tags should be set"
           }
 
           test "creates X-Ray Group in Stack" {
               let app = App()
-              
-              let _ = stack "TestStack" {
-                  app
-                  
-                  xrayGroup "ProductionErrors" {
-                      filterExpression XRayHelpers.FilterExpressions.serverErrors
-                      insightsEnabled true
-                      tag "Environment" "Production"
+
+              let _ =
+                  stack "TestStack" {
+                      app
+
+                      xrayGroup "ProductionErrors" {
+                          filterExpression XRayHelpers.FilterExpressions.serverErrors
+                          insightsEnabled true
+                          tag "Environment" "Production"
+                      }
                   }
-              }
-              
+
               Expect.isTrue true "Stack should create without errors"
           }
 
           test "FilterExpressions helpers provide common patterns" {
               let httpErrors = XRayHelpers.FilterExpressions.httpErrors
               Expect.isNotEmpty httpErrors "HTTP errors filter should be defined"
-              
+
               let serverErrors = XRayHelpers.FilterExpressions.serverErrors
               Expect.isNotEmpty serverErrors "Server errors filter should be defined"
-              
+
               Expect.isNotEmpty httpErrors "Filters should work"
           } ]
 
@@ -82,9 +81,7 @@ let xray_sampling_rule_tests =
           }
 
           test "uses custom constructId when provided" {
-              let rule = xraySamplingRule "MyRule" {
-                  constructId "CustomRuleId"
-              }
+              let rule = xraySamplingRule "MyRule" { constructId "CustomRuleId" }
               Expect.equal rule.ConstructId "CustomRuleId" "Should use custom construct ID"
           }
 
@@ -96,41 +93,36 @@ let xray_sampling_rule_tests =
           }
 
           test "accepts custom priority" {
-              let rule = xraySamplingRule "MyRule" {
-                  priority 100
-              }
+              let rule = xraySamplingRule "MyRule" { priority 100 }
               Expect.isNotNull rule.Props "Props should be created"
           }
 
           test "accepts custom sampling rate" {
-              let rule = xraySamplingRule "MyRule" {
-                  fixedRate 0.10
-              }
+              let rule = xraySamplingRule "MyRule" { fixedRate 0.10 }
               Expect.isNotNull rule.Props "Props should be created"
           }
 
           test "accepts custom reservoir size" {
-              let rule = xraySamplingRule "MyRule" {
-                  reservoirSize 5
-              }
+              let rule = xraySamplingRule "MyRule" { reservoirSize 5 }
               Expect.isNotNull rule.Props "Props should be created"
           }
 
           // Works but is too slow, causing other tests to jam:
           ptest "creates X-Ray Sampling Rule in Stack" {
               let app = App()
-              
-              let _ = stack "TestStack" {
-                  app
-                  
-                  xraySamplingRule "HighPrioritySampling" {
-                      priority 100
-                      fixedRate XRayHelpers.SamplingRates.tenPercent
-                      reservoirSize 10
-                      serviceName "order-service"
+
+              let _ =
+                  stack "TestStack" {
+                      app
+
+                      xraySamplingRule "HighPrioritySampling" {
+                          priority 100
+                          fixedRate XRayHelpers.SamplingRates.tenPercent
+                          reservoirSize 10
+                          serviceName "order-service"
+                      }
                   }
-              }
-              
+
               Expect.isTrue true "Stack should create without errors"
           }
 

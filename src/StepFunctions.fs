@@ -47,7 +47,7 @@ type StepFunctionConfig =
       TracingEnabled: bool voption
       LoggingLevel: LogLevel voption
       LogDestination: ILogGroup option
-      Role: IRole option
+      Role: RoleRef option
       Comment: string option }
 
 type StepFunctionResource =
@@ -131,7 +131,16 @@ type StepFunctionBuilder(name: string) =
         config.TracingEnabled
         |> ValueOption.iter (fun v -> props.TracingEnabled <- System.Nullable<bool>(v))
 
-        config.Role |> Option.iter (fun role -> props.Role <- role)
+        config.Role
+        |> Option.iter (fun role ->
+            props.Role <-
+                match role with
+                | RoleRef.RoleInterface i -> i
+                | RoleRef.RoleSpecRef r ->
+                    match r.Role with
+                    | Some i -> i
+                    | None -> failwith $"Role has to be specified first {r.RoleName}")
+
         config.Comment |> Option.iter (fun v -> props.Comment <- v)
 
         // Logging configuration
@@ -183,12 +192,14 @@ type StepFunctionBuilder(name: string) =
             LogDestination = Some destination }
 
     [<CustomOperation("role")>]
-    member _.Role(config: StepFunctionConfig, role: IRole) = { config with Role = Some role }
+    member _.Role(config: StepFunctionConfig, role: IRole) =
+        { config with
+            Role = Some(RoleRef.RoleInterface role) }
 
     [<CustomOperation("role")>]
-    member _.Role(config: StepFunctionConfig, roleSpec: IAM.LambdaRoleSpec) =
+    member _.Role(config: StepFunctionConfig, roleSpec: LambdaRoleSpec) =
         { config with
-            Role = Some roleSpec.Role }
+            Role = Some(RoleRef.RoleSpecRef roleSpec) }
 
     [<CustomOperation("comment")>]
     member _.Comment(config: StepFunctionConfig, comment: string) = { config with Comment = Some comment }

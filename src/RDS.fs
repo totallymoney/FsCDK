@@ -463,6 +463,295 @@ type DatabaseInstanceBuilder(name: string) =
             IamAuthentication = Some enabled }
 
 // ============================================================================
+// RDS Proxy Configuration DSL
+// ============================================================================
+
+open Amazon.CDK.AWS.SecretsManager
+
+/// <summary>
+/// High-level RDS Proxy builder following AWS best practices.
+///
+/// **Default Settings:**
+/// - Debug logging = false (opt-in for troubleshooting)
+/// - IAM authentication = true (recommended for security)
+/// - Require TLS = true (enforce encrypted connections)
+/// - Idle timeout = 30 minutes
+///
+/// **Rationale:**
+/// RDS Proxy provides connection pooling and improves failover times.
+/// IAM authentication removes the need for password management.
+/// </summary>
+type DatabaseProxyConfig =
+    { ProxyName: string
+      ConstructId: string option
+      Vpc: FsCDK.VpcRef option
+      VpcSubnets: SubnetSelection option
+      SecurityGroups: SecurityGroupRef list
+      Secrets: ISecret list
+      DbProxyName: string option
+      BorrowTimeout: Duration option
+      DebugLogging: bool option
+      IamAuth: bool option
+      IdleClientTimeout: Duration option
+      MaxConnectionsPercent: int option
+      MaxIdleConnectionsPercent: int option
+      RequireTLS: bool option
+      ProxyTarget: DatabaseProxyProxyTargetConfig option }
+
+and DatabaseProxyProxyTargetConfig =
+    | InstanceProxyTarget of IDatabaseInstance
+    | ClusterProxyTarget of IDatabaseCluster
+
+type DatabaseProxySpec =
+    { ProxyName: string
+      ConstructId: string
+      Props: DatabaseProxyProps
+      mutable DatabaseProxy: IDatabaseProxy option }
+
+    /// Gets the underlying IDatabaseProxy resource. Must be called after the stack is built.
+    member this.Resource =
+        match this.DatabaseProxy with
+        | Some proxy -> proxy
+        | None ->
+            failwith
+                $"DatabaseProxy '{this.ProxyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+type DatabaseProxyBuilder(name: string) =
+
+    member _.Yield _ : DatabaseProxyConfig =
+        { ProxyName = name
+          ConstructId = None
+          Vpc = None
+          VpcSubnets = None
+          SecurityGroups = []
+          Secrets = []
+          DbProxyName = None
+          BorrowTimeout = None
+          DebugLogging = Some false
+          IamAuth = Some true
+          IdleClientTimeout = Some(Duration.Minutes(30.0))
+          MaxConnectionsPercent = None
+          MaxIdleConnectionsPercent = None
+          RequireTLS = Some true
+          ProxyTarget = None }
+
+    member _.Zero() : DatabaseProxyConfig =
+        { ProxyName = name
+          ConstructId = None
+          Vpc = None
+          VpcSubnets = None
+          SecurityGroups = []
+          Secrets = []
+          DbProxyName = None
+          BorrowTimeout = None
+          DebugLogging = Some false
+          IamAuth = Some true
+          IdleClientTimeout = Some(Duration.Minutes(30.0))
+          MaxConnectionsPercent = None
+          MaxIdleConnectionsPercent = None
+          RequireTLS = Some true
+          ProxyTarget = None }
+
+    member _.Combine(state1: DatabaseProxyConfig, state2: DatabaseProxyConfig) : DatabaseProxyConfig =
+        { ProxyName = state2.ProxyName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          Vpc = state2.Vpc |> Option.orElse state1.Vpc
+          VpcSubnets = state2.VpcSubnets |> Option.orElse state1.VpcSubnets
+          SecurityGroups =
+            if state2.SecurityGroups.IsEmpty then
+                state1.SecurityGroups
+            else
+                state2.SecurityGroups @ state1.SecurityGroups
+          Secrets =
+            if state2.Secrets.IsEmpty then
+                state1.Secrets
+            else
+                state2.Secrets @ state1.Secrets
+          DbProxyName = state2.DbProxyName |> Option.orElse state1.DbProxyName
+          BorrowTimeout = state2.BorrowTimeout |> Option.orElse state1.BorrowTimeout
+          DebugLogging = state2.DebugLogging |> Option.orElse state1.DebugLogging
+          IamAuth = state2.IamAuth |> Option.orElse state1.IamAuth
+          IdleClientTimeout = state2.IdleClientTimeout |> Option.orElse state1.IdleClientTimeout
+          MaxConnectionsPercent = state2.MaxConnectionsPercent |> Option.orElse state1.MaxConnectionsPercent
+          MaxIdleConnectionsPercent =
+            state2.MaxIdleConnectionsPercent
+            |> Option.orElse state1.MaxIdleConnectionsPercent
+          RequireTLS = state2.RequireTLS |> Option.orElse state1.RequireTLS
+          ProxyTarget = state2.ProxyTarget |> Option.orElse state1.ProxyTarget }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> DatabaseProxyConfig) : DatabaseProxyConfig = f ()
+
+    member inline x.For
+        (
+            config: DatabaseProxyConfig,
+            [<InlineIfLambda>] f: unit -> DatabaseProxyConfig
+        ) : DatabaseProxyConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: DatabaseProxyConfig) : DatabaseProxySpec =
+        let proxyName = config.ProxyName
+        let constructId = config.ConstructId |> Option.defaultValue proxyName
+
+        let props = DatabaseProxyProps()
+
+        match config.Vpc with
+        | Some vpc -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef vpc
+        | None -> invalidArg "vpc" "VPC is required for Database Proxy"
+
+        match config.ProxyTarget with
+        | Some target ->
+            match target with
+            | InstanceProxyTarget instance ->
+                let instanceTarget = ProxyTarget.FromInstance(instance)
+                props.ProxyTarget <- instanceTarget
+            | ClusterProxyTarget cluster ->
+                let clusterTarget = ProxyTarget.FromCluster(cluster)
+                props.ProxyTarget <- clusterTarget
+        | None -> invalidArg "proxyTarget" "Proxy target (instance or cluster) is required"
+
+        if config.Secrets.IsEmpty then
+            invalidArg "secrets" "At least one secret is required for Database Proxy"
+        else
+            props.Secrets <- Array.ofList config.Secrets
+
+        config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
+
+        if not config.SecurityGroups.IsEmpty then
+            props.SecurityGroups <-
+                config.SecurityGroups
+                |> List.map VpcHelpers.resolveSecurityGroupRef
+                |> Array.ofList
+
+        config.DbProxyName |> Option.iter (fun v -> props.DbProxyName <- v)
+        config.BorrowTimeout |> Option.iter (fun v -> props.BorrowTimeout <- v)
+        config.DebugLogging |> Option.iter (fun v -> props.DebugLogging <- v)
+        config.IamAuth |> Option.iter (fun v -> props.IamAuth <- v)
+        config.IdleClientTimeout |> Option.iter (fun v -> props.IdleClientTimeout <- v)
+
+        config.MaxConnectionsPercent
+        |> Option.iter (fun v -> props.MaxConnectionsPercent <- System.Nullable<float>(float v))
+
+        config.MaxIdleConnectionsPercent
+        |> Option.iter (fun v -> props.MaxIdleConnectionsPercent <- System.Nullable<float>(float v))
+
+        config.RequireTLS |> Option.iter (fun v -> props.RequireTLS <- v)
+        // Note: RoleArn is automatically created by CDK, not set manually
+
+        { ProxyName = proxyName
+          ConstructId = constructId
+          Props = props
+          DatabaseProxy = None }
+
+    /// <summary>Sets a custom construct ID.</summary>
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: DatabaseProxyConfig, id: string) = { config with ConstructId = Some id }
+
+    /// <summary>Sets the VPC for the proxy.</summary>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: DatabaseProxyConfig, vpc: IVpc) =
+        { config with
+            Vpc = Some(FsCDK.VpcInterface vpc) }
+
+    /// <summary>Sets the VPC for the proxy from a VpcSpec.</summary>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: DatabaseProxyConfig, vpcSpec: FsCDK.VpcSpec) =
+        { config with
+            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+
+    /// <summary>Sets the VPC subnets for the proxy.</summary>
+    [<CustomOperation("vpcSubnets")>]
+    member _.VpcSubnets(config: DatabaseProxyConfig, subnets: SubnetSelection) =
+        { config with
+            VpcSubnets = Some subnets }
+
+    /// <summary>Adds a security group to the proxy.</summary>
+    [<CustomOperation("securityGroup")>]
+    member _.SecurityGroup(config: DatabaseProxyConfig, sg: ISecurityGroup) =
+        { config with
+            SecurityGroups = SecurityGroupInterface sg :: config.SecurityGroups }
+
+    /// <summary>Adds a security group to the proxy from a SecurityGroupSpec.</summary>
+    [<CustomOperation("securityGroup")>]
+    member _.SecurityGroup(config: DatabaseProxyConfig, sg: SecurityGroupSpec) =
+        { config with
+            SecurityGroups = SecurityGroupSpecRef sg :: config.SecurityGroups }
+
+    /// <summary>Adds multiple security groups to the proxy.</summary>
+    [<CustomOperation("securityGroups")>]
+    member _.SecurityGroups(config: DatabaseProxyConfig, sgs: ISecurityGroup list) =
+        { config with
+            SecurityGroups = (sgs |> List.map SecurityGroupInterface) @ config.SecurityGroups }
+
+    /// <summary>Adds a secret for database credentials.</summary>
+    [<CustomOperation("secret")>]
+    member _.Secret(config: DatabaseProxyConfig, secret: ISecret) =
+        { config with
+            Secrets = secret :: config.Secrets }
+
+    /// <summary>Adds multiple secrets for database credentials.</summary>
+    [<CustomOperation("secrets")>]
+    member _.Secrets(config: DatabaseProxyConfig, secrets: ISecret list) =
+        { config with
+            Secrets = secrets @ config.Secrets }
+
+    /// <summary>Sets the DB proxy name.</summary>
+    [<CustomOperation("dbProxyName")>]
+    member _.DbProxyName(config: DatabaseProxyConfig, name: string) = { config with DbProxyName = Some name }
+
+    /// <summary>Sets the maximum time a connection can be borrowed before being returned.</summary>
+    [<CustomOperation("borrowTimeout")>]
+    member _.BorrowTimeout(config: DatabaseProxyConfig, timeout: Duration) =
+        { config with
+            BorrowTimeout = Some timeout }
+
+    /// <summary>Enables or disables debug logging.</summary>
+    [<CustomOperation("debugLogging")>]
+    member _.DebugLogging(config: DatabaseProxyConfig, enabled: bool) =
+        { config with
+            DebugLogging = Some enabled }
+
+    /// <summary>Enables or disables IAM authentication.</summary>
+    [<CustomOperation("iamAuth")>]
+    member _.IamAuth(config: DatabaseProxyConfig, enabled: bool) = { config with IamAuth = Some enabled }
+
+    /// <summary>Sets the idle client timeout.</summary>
+    [<CustomOperation("idleClientTimeout")>]
+    member _.IdleClientTimeout(config: DatabaseProxyConfig, timeout: Duration) =
+        { config with
+            IdleClientTimeout = Some timeout }
+
+    /// <summary>Sets the maximum percentage of database connections to use.</summary>
+    [<CustomOperation("maxConnectionsPercent")>]
+    member _.MaxConnectionsPercent(config: DatabaseProxyConfig, percent: int) =
+        { config with
+            MaxConnectionsPercent = Some percent }
+
+    /// <summary>Sets the maximum percentage of idle connections.</summary>
+    [<CustomOperation("maxIdleConnectionsPercent")>]
+    member _.MaxIdleConnectionsPercent(config: DatabaseProxyConfig, percent: int) =
+        { config with
+            MaxIdleConnectionsPercent = Some percent }
+
+    /// <summary>Requires TLS for connections.</summary>
+    [<CustomOperation("requireTLS")>]
+    member _.RequireTLS(config: DatabaseProxyConfig, require: bool) =
+        { config with
+            RequireTLS = Some require }
+
+    /// <summary>Sets the proxy target to a database instance.</summary>
+    [<CustomOperation("proxyTarget")>]
+    member _.ProxyTargetInstance(config: DatabaseProxyConfig, instance: IDatabaseInstance) =
+        { config with
+            ProxyTarget = Some(InstanceProxyTarget instance) }
+
+    /// <summary>Sets the proxy target to a database cluster.</summary>
+    [<CustomOperation("proxyTarget")>]
+    member _.ProxyTargetCluster(config: DatabaseProxyConfig, cluster: IDatabaseCluster) =
+        { config with
+            ProxyTarget = Some(ClusterProxyTarget cluster) }
+
+// ============================================================================
 // Builders
 // ============================================================================
 
@@ -480,3 +769,15 @@ module RdsBuilders =
     /// }
     /// </code>
     let rdsInstance (name: string) = DatabaseInstanceBuilder(name)
+
+    /// <summary>Creates an RDS Proxy with AWS best practices.</summary>
+    /// <param name="name">The proxy name.</param>
+    /// <code lang="fsharp">
+    /// rdsProxy "MyProxy" {
+    ///     vpc myVpc
+    ///     proxyTarget dbInstance
+    ///     secrets [ dbSecret ]
+    ///     iamAuth true
+    /// }
+    /// </code>
+    let rdsProxy (name: string) = DatabaseProxyBuilder(name)

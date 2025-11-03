@@ -13,7 +13,7 @@ let production_defaults_tests =
               // Need to create App first to initialize JSII runtime
               let app = App()
               let _ = Stack(app, "TestStack")
-              
+
               let spec =
                   lambda "TestFn" {
                       handler "Program::Handler"
@@ -63,17 +63,14 @@ let production_defaults_tests =
 
               // Test MaxEventAge default (6 hours)
               Expect.isNotNull spec.Props.MaxEventAge "MaxEventAge should be set"
-              Expect.equal
-                  (spec.Props.MaxEventAge.ToHours())
-                  6.0
-                  "MaxEventAge should default to 6 hours"
+              Expect.equal (spec.Props.MaxEventAge.ToHours()) 6.0 "MaxEventAge should default to 6 hours"
           }
 
           test "lambda allows overriding production defaults" {
               // Need to create App first to initialize JSII runtime
               let app = App()
               let _ = Stack(app, "TestStack")
-              
+
               let spec =
                   lambda "TestFn" {
                       handler "Program::Handler"

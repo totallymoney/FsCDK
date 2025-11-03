@@ -26,6 +26,8 @@ open Amazon.CDK.AWS.Logs
 open Amazon.CDK.AWS.StepFunctions
 open Amazon.CDK.AWS.XRay
 open Amazon.CDK.AWS.AppSync
+open Amazon.CDK.AWS.APIGateway
+open Amazon.CDK.AWS.ECS
 //open Amazon.CDK.AWS.CloudHSMV2
 
 // ============================================================================
@@ -64,7 +66,7 @@ type Operation =
     | HostedZoneOp of Route53HostedZoneSpec
     | OriginAccessIdentityOp of OriginAccessIdentitySpec
     //| CloudHSMClusterOp of CloudHSMClusterSpec
-    | LambdaRoleOp of IAM.LambdaRoleSpec
+    | LambdaRoleOp of LambdaRoleSpec
     | CloudWatchAlarmOp of CloudWatchAlarmSpec
     | KMSKeyOp of KMSKeySpec
     | EC2InstanceOp of EC2InstanceSpec
@@ -82,6 +84,15 @@ type Operation =
     | XRaySamplingRuleOp of XRaySamplingRuleResource
     | AppSyncApiOp of AppSyncApiResource
     | AppSyncDataSourceOp of AppSyncDataSourceResource
+    | RestApiOp of RestApiSpec
+    | TokenAuthorizerOp of TokenAuthorizerSpec
+    | VpcLinkOp of VpcLinkSpec
+    | FargateTaskDefinitionOp of FargateTaskDefinitionSpec
+    | ECSClusterOp of ECSClusterResource
+    | ECSFargateServiceOp of ECSFargateServiceResource
+    | GatewayVpcEndpointOp of GatewayVpcEndpointSpec
+    | InterfaceVpcEndpointOp of InterfaceVpcEndpointSpec
+    | DatabaseProxyOp of DatabaseProxySpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -363,7 +374,7 @@ module StackOperations =
             certSpec.Certificate <- cert
 
         | AppRunnerServiceOp serviceSpec ->
-            let props = CfnServiceProps()
+            let props = Amazon.CDK.AWS.AppRunner.CfnServiceProps()
             props.ServiceName <- serviceSpec.ServiceName
 
             serviceSpec.Config.SourceConfiguration
@@ -384,7 +395,9 @@ module StackOperations =
                     |> List.map (fun (k, v) -> CfnTag(Key = k, Value = v) :> ICfnTag)
                     |> Array.ofList
 
-            let service = CfnService(stack, serviceSpec.ConstructId, props)
+            let service =
+                Amazon.CDK.AWS.AppRunner.CfnService(stack, serviceSpec.ConstructId, props)
+
             serviceSpec.Service <- Some service
 
         | ElastiCacheRedisOp clusterSpec ->
@@ -441,6 +454,59 @@ module StackOperations =
                     | None, None -> failwith "AppSync Data Source must have either DynamoDB table or Lambda function"
 
                 dsResource.DataSource <- Some ds
+
+        | RestApiOp restApiSpec ->
+            let api = RestApi(stack, restApiSpec.ConstructId, restApiSpec.Props)
+            restApiSpec.RestApi <- Some api
+
+        | TokenAuthorizerOp authorizerSpec ->
+            let authorizer =
+                TokenAuthorizer(stack, authorizerSpec.ConstructId, authorizerSpec.Props)
+
+            authorizerSpec.Authorizer <- Some authorizer
+
+        | VpcLinkOp vpcLinkSpec ->
+            let vpcLink = VpcLink(stack, vpcLinkSpec.ConstructId, vpcLinkSpec.Props)
+            vpcLinkSpec.VpcLink <- Some vpcLink
+
+        | FargateTaskDefinitionOp taskDefSpec ->
+            let taskDef =
+                FargateTaskDefinition(stack, taskDefSpec.ConstructId, taskDefSpec.Props)
+
+            taskDefSpec.TaskDefinition <- Some taskDef
+
+        | ECSClusterOp clusterResource ->
+            let cluster =
+                Cluster(stack, clusterResource.ConstructId, ClusterProps(ClusterName = clusterResource.ClusterName))
+            // Note: Full configuration handled in builder
+            ()
+
+        | ECSFargateServiceOp serviceResource ->
+            let service =
+                FargateService(
+                    stack,
+                    serviceResource.ConstructId,
+                    FargateServiceProps(ServiceName = serviceResource.ServiceName)
+                )
+            // Note: Full configuration handled in builder
+            ()
+
+        | GatewayVpcEndpointOp endpointSpec ->
+            let endpoint =
+                GatewayVpcEndpoint(stack, endpointSpec.ConstructId, endpointSpec.Props)
+
+            endpointSpec.VpcEndpoint <- Some endpoint
+
+        | InterfaceVpcEndpointOp endpointSpec ->
+            let endpoint =
+                InterfaceVpcEndpoint(stack, endpointSpec.ConstructId, endpointSpec.Props)
+
+            endpointSpec.VpcEndpoint <- Some endpoint
+
+        | DatabaseProxyOp proxySpec ->
+            let proxy = DatabaseProxy(stack, proxySpec.ConstructId, proxySpec.Props)
+            proxySpec.DatabaseProxy <- Some proxy
+
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
@@ -1110,7 +1176,7 @@ type StackBuilder(name: string) =
     //      Props = None
     //      Operations = [ CloudHSMClusterOp hsmSpec ] }
 
-    member _.Yield(roleSpec: IAM.LambdaRoleSpec) : StackConfig =
+    member _.Yield(roleSpec: LambdaRoleSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1237,6 +1303,150 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ AppSyncDataSourceOp appSyncDataSourceResource ] }
+
+    member _.Yield(restApiSpec: RestApiSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ RestApiOp restApiSpec ] }
+
+    member _.Yield(authorizerSpec: TokenAuthorizerSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ TokenAuthorizerOp authorizerSpec ] }
+
+    member _.Yield(vpcLinkSpec: VpcLinkSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ VpcLinkOp vpcLinkSpec ] }
+
+    member _.Yield(taskDefSpec: FargateTaskDefinitionSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ FargateTaskDefinitionOp taskDefSpec ] }
+
+    member _.Yield(clusterResource: ECSClusterResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ ECSClusterOp clusterResource ] }
+
+    member _.Yield(serviceResource: ECSFargateServiceResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ ECSFargateServiceOp serviceResource ] }
+
+    member _.Yield(endpointSpec: GatewayVpcEndpointSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ GatewayVpcEndpointOp endpointSpec ] }
+
+    member _.Yield(endpointSpec: InterfaceVpcEndpointSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ InterfaceVpcEndpointOp endpointSpec ] }
+
+    member _.Yield(proxySpec: DatabaseProxySpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ DatabaseProxyOp proxySpec ] }
 
     member _.Zero() : StackConfig =
         { Name = name

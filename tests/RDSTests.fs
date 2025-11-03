@@ -48,3 +48,27 @@ let rds_instance_dsl_tests =
               Expect.throws configTest "RDS Instance builder should throw without VPC"
           } ]
     |> testSequenced
+
+[<Tests>]
+let rds_proxy_dsl_tests =
+    testList
+        "RDS Proxy DSL"
+        [ test "fails when VPC is missing" {
+              let thrower () = rdsProxy "MyProxy" { () } |> ignore
+
+              Expect.throws thrower "RDS Proxy should throw when VPC is missing"
+          }
+
+          test "fails when proxy target is missing" {
+              let vpcSpec = vpc "TestVpc" { () }
+
+              let thrower () =
+                  rdsProxy "MyProxy" { vpc vpcSpec } |> ignore
+
+              Expect.throws thrower "RDS Proxy should throw when proxy target is missing"
+          }
+
+          // NOTE: Full integration tests would need actual VPC and database resources
+          // These tests verify the builder validates required parameters
+          ]
+    |> testSequenced

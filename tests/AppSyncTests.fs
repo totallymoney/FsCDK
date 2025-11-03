@@ -16,9 +16,7 @@ let appsync_api_tests =
           }
 
           test "uses custom constructId when provided" {
-              let api = appSyncApi "MyAPI" {
-                  constructId "CustomApiId"
-              }
+              let api = appSyncApi "MyAPI" { constructId "CustomApiId" }
               Expect.equal api.ConstructId "CustomApiId" "Should use custom construct ID"
           }
 
@@ -35,9 +33,7 @@ let appsync_api_tests =
           }
 
           test "accepts custom log level" {
-              let api = appSyncApi "MyAPI" {
-                  logLevel FieldLogLevel.ERROR
-              }
+              let api = appSyncApi "MyAPI" { logLevel FieldLogLevel.ERROR }
               Expect.isNotNull api.Props.LogConfig "Log config should be created"
           }
 
@@ -45,12 +41,10 @@ let appsync_api_tests =
           // Use the CDK GraphqlApi construct directly for authorization configuration
 
           test "can disable X-Ray tracing" {
-              let api = appSyncApi "MyAPI" {
-                  xrayEnabled false
-              }
+              let api = appSyncApi "MyAPI" { xrayEnabled false }
               Expect.equal api.Props.XrayEnabled.Value false "X-Ray should be disabled"
           }
-          
+
           // Note: Stack integration test removed - AppSync requires a schema file
           // which is not available in unit tests. See integration tests for full examples.
           ]
@@ -62,31 +56,27 @@ let appsync_datasource_tests =
         [ test "fails when API is missing" {
               let thrower () =
                   appSyncDataSource "MyDS" { () } |> ignore
-              
+
               Expect.throws thrower "Data source builder should throw when API is missing"
           }
 
           test "defaults constructId to data source name" {
               let thrower () =
                   appSyncDataSource "MyDS" { () } |> ignore
-              
+
               Expect.throws thrower "Should require API"
           }
 
           test "accepts custom construct ID" {
               let thrower () =
-                  appSyncDataSource "MyDS" {
-                      constructId "CustomDsId"
-                  } |> ignore
-              
+                  appSyncDataSource "MyDS" { constructId "CustomDsId" } |> ignore
+
               Expect.throws thrower "Should require API even with custom construct ID"
           }
 
           test "accepts description" {
               let thrower () =
-                  appSyncDataSource "MyDS" {
-                      description "Orders table data source"
-                  } |> ignore
-              
+                  appSyncDataSource "MyDS" { description "Orders table data source" } |> ignore
+
               Expect.throws thrower "Should require API even with description"
           } ]

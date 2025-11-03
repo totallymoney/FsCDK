@@ -26,7 +26,7 @@ let elasticache_redis_tests =
                   }
                   |> ignore
 
-              Expect.isOk (Result.Ok(configTest())) "Should accept cache node type configuration"
+              Expect.isOk (Result.Ok(configTest ())) "Should accept cache node type configuration"
           }
 
           test "NodeTypes helpers provide standard sizes" {
