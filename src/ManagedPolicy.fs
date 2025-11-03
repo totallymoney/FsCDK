@@ -173,12 +173,7 @@ type ManagedPolicyBuilder(name: string) =
         if not (List.isEmpty config.Roles) then
             props.Roles <-
                 config.Roles
-                |> List.map (function
-                    | RoleRef.RoleInterface i -> i
-                    | RoleRef.RoleSpecRef r ->
-                        match r.Role with
-                        | Some rr -> rr
-                        | None -> failwith $"Role is not defined yet {r.RoleName}")
+                |> List.map RoleHelpers.resolveRoleRef
                 |> List.toArray
 
         { PolicyName = config.PolicyName
