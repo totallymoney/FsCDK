@@ -136,7 +136,7 @@ stack "PolicyWithRole" {
     managedPolicy "LambdaS3Policy" {
         description "Lambda S3 access"
         statement (ManagedPolicyStatements.s3FullAccess "arn:aws:s3:::lambda-bucket")
-        attachToRole lambdaRole1.Role
+        attachToRole lambdaRole1
     }
 }
 
