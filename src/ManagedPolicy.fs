@@ -171,10 +171,7 @@ type ManagedPolicyBuilder(name: string) =
             props.Users <- config.Users |> List.toArray
 
         if not (List.isEmpty config.Roles) then
-            props.Roles <-
-                config.Roles
-                |> List.map RoleHelpers.resolveRoleRef
-                |> List.toArray
+            props.Roles <- config.Roles |> List.map RoleHelpers.resolveRoleRef |> List.toArray
 
         { PolicyName = config.PolicyName
           ConstructId = constructId
