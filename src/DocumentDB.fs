@@ -140,6 +140,8 @@ type DocumentDBClusterBuilder(name: string) =
             else
                 state2.Tags @ state1.Tags }
 
+    member inline _.Delay([<InlineIfLambda>] f: unit -> DocumentDBClusterConfig) : DocumentDBClusterConfig = f ()
+
     member inline x.For
         (
             config: DocumentDBClusterConfig,

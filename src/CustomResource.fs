@@ -44,13 +44,18 @@ type CustomResourceResource =
     {
         ResourceName: string
         ConstructId: string
+        Props: AwsCustomResourceProps
         /// The underlying CDK AwsCustomResource construct
-        CustomResource: AwsCustomResource
+        mutable CustomResource: AwsCustomResource option
     }
 
     /// Gets the response from the custom resource
     member this.GetResponseField(fieldName: string) =
-        this.CustomResource.GetResponseField(fieldName)
+        match this.CustomResource with
+        | Some cr -> cr.GetResponseField(fieldName)
+        | None ->
+            failwith
+                $"Custom Resource '{this.ResourceName}' has not been created yet. Ensure it's yielded in the stack before accessing it."
 
 type CustomResourceBuilder(name: string) =
     member _.Yield _ : CustomResourceConfig =
@@ -120,7 +125,8 @@ type CustomResourceBuilder(name: string) =
 
         { ResourceName = resourceName
           ConstructId = constructId
-          CustomResource = null }
+          Props = props
+          CustomResource = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: CustomResourceConfig, id: string) = { config with ConstructId = Some id }

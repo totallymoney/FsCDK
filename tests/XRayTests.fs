@@ -116,23 +116,23 @@ let xray_sampling_rule_tests =
               Expect.isNotNull rule.Props "Props should be created"
           }
 
-          // Works but is too slow:
-          //test "creates X-Ray Sampling Rule in Stack" {
-          //    let app = App()
+          // Works but is too slow, causing other tests to jam:
+          ptest "creates X-Ray Sampling Rule in Stack" {
+              let app = App()
               
-          //    let _ = stack "TestStack" {
-          //        app
+              let _ = stack "TestStack" {
+                  app
                   
-          //        xraySamplingRule "HighPrioritySampling" {
-          //            priority 100
-          //            fixedRate XRayHelpers.SamplingRates.tenPercent
-          //            reservoirSize 10
-          //            serviceName "order-service"
-          //        }
-          //    }
+                  xraySamplingRule "HighPrioritySampling" {
+                      priority 100
+                      fixedRate XRayHelpers.SamplingRates.tenPercent
+                      reservoirSize 10
+                      serviceName "order-service"
+                  }
+              }
               
-          //    Expect.isTrue true "Stack should create without errors"
-          //}
+              Expect.isTrue true "Stack should create without errors"
+          }
 
           test "SamplingRates helpers provide standard rates" {
               Expect.equal XRayHelpers.SamplingRates.onePercent 0.01 "1% rate should be 0.01"

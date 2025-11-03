@@ -5,7 +5,8 @@ open FsCDK
 
 [<Tests>]
 let custom_resource_tests =
-    testList
+    testSequenced
+    <| testList
         "Custom Resource DSL"
         [ test "fails when onCreate is missing" {
               let thrower () =

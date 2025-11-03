@@ -22,6 +22,7 @@ open Amazon.CDK.AWS.AppRunner
 open Amazon.CDK.AWS.ElastiCache
 open Amazon.CDK.AWS.DocDB
 open Amazon.CDK.CustomResources
+open Amazon.CDK.AWS.Logs
 open Amazon.CDK.AWS.StepFunctions
 open Amazon.CDK.AWS.XRay
 open Amazon.CDK.AWS.AppSync
@@ -101,7 +102,7 @@ module StackOperations =
                 if
                     lambdaSpec.Props.DeadLetterQueueEnabled.HasValue
                     && lambdaSpec.Props.DeadLetterQueueEnabled.Value
-                    && lambdaSpec.Props.DeadLetterQueue = null
+                    && isNull lambdaSpec.Props.DeadLetterQueue
                 then
                     // Auto-create SQS DLQ
                     let dlqName = $"{lambdaSpec.FunctionName}-dlq"
@@ -122,14 +123,13 @@ module StackOperations =
                 let powertoolsLayer =
                     LayerVersion.FromLayerVersionArn(stack, $"{lambdaSpec.ConstructId}-PowertoolsLayer", arn)
 
-                let existingLayers = if propsToUse.Layers = null then [||] else propsToUse.Layers
+                let existingLayers = if isNull propsToUse.Layers then [||] else propsToUse.Layers
                 propsToUse.Layers <- Array.append existingLayers [| powertoolsLayer |]
             | None -> ()
 
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, propsToUse)
 
-            let _ =
-                lambdaSpec.EventSources |> Seq.map (fun e -> fn.AddEventSource e) |> Seq.toList
+            let _ = lambdaSpec.EventSources |> Seq.map (fn.AddEventSource) |> Seq.toList
 
             lambdaSpec.Function <- Some fn
 
@@ -165,7 +165,8 @@ module StackOperations =
 
             queueSpec.Encryption |> Option.iter (fun e -> props.Encryption <- e)
 
-            queueSpec.EncryptionMasterKey |> Option.iter (fun k -> props.EncryptionMasterKey <- k)
+            queueSpec.EncryptionMasterKey
+            |> Option.iter (fun k -> props.EncryptionMasterKey <- k)
 
             match queueSpec.DeadLetterQueueName, queueSpec.MaxReceiveCount with
             | Some dlqName, Some maxReceive ->
@@ -204,7 +205,9 @@ module StackOperations =
 
         | RdsInstanceOp rdsSpec -> AWS.RDS.DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
 
-        | CloudFrontDistributionOp cfSpec -> Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
+        | CloudFrontDistributionOp cfSpec ->
+            Amazon.CDK.AWS.CloudFront.Distribution(stack, cfSpec.ConstructId, cfSpec.Props)
+            |> ignore
 
         | UserPoolOp upSpec ->
             let up = UserPool(stack, upSpec.ConstructId, upSpec.Props)
@@ -216,7 +219,7 @@ module StackOperations =
         | NetworkLoadBalancerOp nlbSpec ->
             let nlb = NetworkLoadBalancer(stack, nlbSpec.ConstructId, nlbSpec.Props)
 
-            if nlb.Vpc = null then
+            if isNull nlb.Vpc then
                 failwith "VPC is required for Network Load Balancer"
 
             nlbSpec.LoadBalancer <- Some nlb
@@ -400,8 +403,10 @@ module StackOperations =
             ()
 
         | CustomResourceOp resourceSpec ->
-            // Note: Custom resource creation handled in builder
-            ()
+            let customResource =
+                AwsCustomResource(stack, resourceSpec.ConstructId, resourceSpec.Props)
+
+            resourceSpec.CustomResource <- Some customResource
 
         | StepFunctionOp sfResource ->
             let sm = StateMachine(stack, sfResource.ConstructId, sfResource.Props)
@@ -1136,6 +1141,22 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ CloudWatchAlarmOp alarmSpec ] }
+
+    member _.Yield(customResourceResource: CustomResourceResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CustomResourceOp customResourceResource ] }
 
     member _.Yield(sfResource: StepFunctionResource) : StackConfig =
         { Name = name

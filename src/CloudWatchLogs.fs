@@ -63,6 +63,8 @@ type CloudWatchLogGroupBuilder(name: string) =
           EncryptionKey = state2.EncryptionKey |> Option.orElse state1.EncryptionKey
           LogGroupClass = state2.LogGroupClass |> ValueOption.orElse state1.LogGroupClass }
 
+    member inline _.Delay([<InlineIfLambda>] f: unit -> CloudWatchLogGroupConfig) : CloudWatchLogGroupConfig = f ()
+
     member inline x.For
         (
             config: CloudWatchLogGroupConfig,

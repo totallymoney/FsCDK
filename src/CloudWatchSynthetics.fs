@@ -97,6 +97,8 @@ type CloudWatchCanaryBuilder(name: string) =
           Role = state2.Role |> Option.orElse state1.Role
           StartAfterCreation = state2.StartAfterCreation |> Option.orElse state1.StartAfterCreation }
 
+    member inline _.Delay([<InlineIfLambda>] f: unit -> CloudWatchCanaryConfig) : CloudWatchCanaryConfig = f ()
+
     member inline x.For
         (
             config: CloudWatchCanaryConfig,

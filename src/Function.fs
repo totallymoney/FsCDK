@@ -334,7 +334,9 @@ type FunctionBuilder(name: string) =
                 |> Array.ofList
 
         config.FileSystem |> Option.iter (fun fs -> props.Filesystem <- fs)
-        config.DeadLetterQueue |> Option.iter (fun dlq -> props.DeadLetterQueue <- QueueHelpers.resolveQueueRef dlq)
+
+        config.DeadLetterQueue
+        |> Option.iter (fun dlq -> props.DeadLetterQueue <- QueueHelpers.resolveQueueRef dlq)
 
         config.DeadLetterQueueEnabled
         |> Option.iter (fun e -> props.DeadLetterQueueEnabled <- e)

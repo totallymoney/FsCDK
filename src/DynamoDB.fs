@@ -404,8 +404,7 @@ type TableBuilder(name: string) =
     /// </code>
     [<CustomOperation("encryptionKey")>]
     member _.EncryptionKey(config: TableConfig, key: IKey) =
-        { config with
-            EncryptionKey = Some key }
+        { config with EncryptionKey = Some key }
 
 // ============================================================================
 // Builders

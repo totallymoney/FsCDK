@@ -57,6 +57,8 @@ type HttpApiBuilder(name: string) =
           CorsPreflightOptions = state2.CorsPreflightOptions |> Option.orElse state1.CorsPreflightOptions
           CreateDefaultStage = state2.CreateDefaultStage |> ValueOption.orElse state1.CreateDefaultStage }
 
+    member inline _.Delay([<InlineIfLambda>] f: unit -> HttpApiConfig) : HttpApiConfig = f ()
+
     member inline x.For(config: HttpApiConfig, [<InlineIfLambda>] f: unit -> HttpApiConfig) : HttpApiConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)

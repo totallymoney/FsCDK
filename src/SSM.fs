@@ -66,6 +66,8 @@ type SSMParameterBuilder(name: string) =
           ParameterTier = state2.ParameterTier |> Option.orElse state1.ParameterTier
           AllowedPattern = state2.AllowedPattern |> Option.orElse state1.AllowedPattern }
 
+    member inline _.Delay([<InlineIfLambda>] f: unit -> SSMParameterConfig) : SSMParameterConfig = f ()
+
     member inline x.For
         (
             config: SSMParameterConfig,
@@ -172,6 +174,8 @@ type SSMDocumentBuilder(name: string) =
           DocumentType = state2.DocumentType |> Option.orElse state1.DocumentType
           DocumentFormat = state2.DocumentFormat |> Option.orElse state1.DocumentFormat
           TargetType = state2.TargetType |> Option.orElse state1.TargetType }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> SSMDocumentConfig) : SSMDocumentConfig = f ()
 
     member inline x.For
         (

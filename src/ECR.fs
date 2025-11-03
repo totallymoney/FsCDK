@@ -73,6 +73,8 @@ type ECRRepositoryBuilder(name: string) =
           RemovalPolicy = state2.RemovalPolicy |> ValueOption.orElse state1.RemovalPolicy
           EmptyOnDelete = state2.EmptyOnDelete |> ValueOption.orElse state1.EmptyOnDelete }
 
+    member inline _.Delay([<InlineIfLambda>] f: unit -> ECRRepositoryConfig) : ECRRepositoryConfig = f ()
+
     member inline x.For
         (
             config: ECRRepositoryConfig,

@@ -80,6 +80,8 @@ type ElasticIPBuilder(name: string) =
             else
                 state2.Tags @ state1.Tags }
 
+    member inline _.Delay([<InlineIfLambda>] f: unit -> ElasticIPConfig) : ElasticIPConfig = f ()
+
     member inline x.For(config: ElasticIPConfig, [<InlineIfLambda>] f: unit -> ElasticIPConfig) : ElasticIPConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)

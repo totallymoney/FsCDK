@@ -101,6 +101,8 @@ type Route53RecordSetBuilder(name: string) =
           Region = state2.Region |> Option.orElse state1.Region
           GeoLocation = state2.GeoLocation |> Option.orElse state1.GeoLocation }
 
+    member inline _.Delay([<InlineIfLambda>] f: unit -> Route53RecordSetConfig) : Route53RecordSetConfig = f ()
+
     member inline x.For
         (
             config: Route53RecordSetConfig,
