@@ -198,8 +198,7 @@ let completeExample =
     stack "DatabaseStack" {
         // Create DynamoDB table
         table "UsersTable" {
-            tableName "Users"
-            partitionKey ("id", Amazon.CDK.AWS.DynamoDB.AttributeType.STRING)
+            partitionKey "id" Amazon.CDK.AWS.DynamoDB.AttributeType.STRING
             billingMode Amazon.CDK.AWS.DynamoDB.BillingMode.PAY_PER_REQUEST
         }
 
@@ -208,7 +207,7 @@ let completeExample =
         adminUser.["id"] <- box "admin-001"
         adminUser.["username"] <- box "admin"
         adminUser.["role"] <- box "administrator"
-        adminUser.["createdAt"] <- box (System.DateTime.UtcNow.ToString("o"))
+        adminUser.["createdAt"] <- box (System.DateTime.UtcNow.ToString "o")
 
         customResource "SeedAdminUser" {
             onCreate (CustomResourceHelpers.dynamoDBPutItem "Users" adminUser)
