@@ -32,7 +32,7 @@ type FunctionConfig =
       RolePolicyStatements: PolicyStatement list
       AsyncInvokeOptions: IEventInvokeConfigOptions option
       ReservedConcurrentExecutions: int option
-      LogGroup: ILogGroup option
+      LogGroup: LogGroupRef option
       Role: IRole option
       InsightsVersion: LambdaInsightsVersion option
       CurrentVersionOptions: VersionOptions option
@@ -314,7 +314,18 @@ type FunctionBuilder(name: string) =
         config.ReservedConcurrentExecutions
         |> Option.iter (fun r -> props.ReservedConcurrentExecutions <- r)
 
-        config.LogGroup |> Option.iter (fun lg -> props.LogGroup <- lg)
+        config.LogGroup
+        |> Option.iter (fun lgRef ->
+            props.LogGroup <-
+                match lgRef with
+                | LogGroupRef.LogGroupInterface i -> i
+                | LogGroupRef.LogGroupSpecRef lgSpec ->
+                    match lgSpec.LogGroup with
+                    | Some lg -> lg :> ILogGroup
+                    | None ->
+                        failwith
+                            $"LogGroup '{lgSpec.LogGroupName}' has not been created yet. Ensure it's yielded in the stack before the Lambda function.")
+
         config.Role |> Option.iter (fun r -> props.Role <- r)
         config.InsightsVersion |> Option.iter (fun v -> props.InsightsVersion <- v)
 
@@ -637,6 +648,16 @@ type FunctionBuilder(name: string) =
         { config with
             LoggingFormat = Some format }
 
+    [<CustomOperation("logGroup")>]
+    member _.LogGroup(config: FunctionConfig, logGroup: ILogGroup) =
+        { config with
+            LogGroup = Some(LogGroupRef.LogGroupInterface logGroup) }
+
+    [<CustomOperation("logGroup")>]
+    member _.LogGroup(config: FunctionConfig, logGroupResource: CloudWatchLogGroupResource) =
+        { config with
+            LogGroup = Some(LogGroupRef.LogGroupSpecRef logGroupResource) }
+
     [<CustomOperation("maxEventAge")>]
     member _.MaxEventAge(config: FunctionConfig, age: Duration) = { config with MaxEventAge = Some age }
 
@@ -689,7 +710,11 @@ type FunctionBuilder(name: string) =
     // Implicit yields for complex types
     member _.Yield(logGroup: ILogGroup) : FunctionConfig =
         { defaultConfig () with
-            LogGroup = Some logGroup }
+            LogGroup = Some(LogGroupRef.LogGroupInterface logGroup) }
+
+    member _.Yield(logGroupResource: CloudWatchLogGroupResource) : FunctionConfig =
+        { defaultConfig () with
+            LogGroup = Some(LogGroupRef.LogGroupSpecRef logGroupResource) }
 
     member _.Yield(role: IRole) : FunctionConfig =
         { defaultConfig () with

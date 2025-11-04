@@ -39,6 +39,11 @@ type CloudWatchLogGroupResource =
         mutable LogGroup: LogGroup option
     }
 
+/// Reference to a CloudWatch Log Group (either CDK ILogGroup or FsCDK CloudWatchLogGroupResource)
+type LogGroupRef =
+    | LogGroupInterface of ILogGroup
+    | LogGroupSpecRef of CloudWatchLogGroupResource
+
 type CloudWatchLogGroupBuilder(name: string) =
     member _.Yield _ : CloudWatchLogGroupConfig =
         { LogGroupName = name

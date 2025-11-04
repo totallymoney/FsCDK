@@ -65,7 +65,7 @@ stack "BasicStateMachine" {
         stepFunction "DataPipeline" {
             comment "Validates and processes data"
             // definition definition
-            logDestination logGroup.LogGroup
+            logDestination logGroup
             timeout (Duration.Hours(2.0))
         }
 
@@ -90,7 +90,7 @@ stack "StateMachineTypes" {
         stepFunction "StandardWorkflow" {
             stateMachineType StateMachineType.STANDARD
             comment "Long-running workflow with exactly-once semantics"
-            logDestination logGroup.LogGroup
+            logDestination logGroup
             timeout (Duration.Days(1.0))
         }
 
@@ -99,7 +99,7 @@ stack "StateMachineTypes" {
         stepFunction "ExpressWorkflow" {
             stateMachineType StateMachineType.EXPRESS
             comment "High-volume, short-duration workflow"
-            logDestination logGroup.LogGroup
+            logDestination logGroup
             timeout (Duration.Minutes(5.0))
         }
 
@@ -206,7 +206,7 @@ stack "MonitoredStateMachine" {
             comment "Workflow with full logging and tracing"
             // Full logging (ALL events)
             loggingLevel LogLevel.ALL
-            logDestination logGroup.LogGroup
+            logDestination logGroup
             // X-Ray tracing enabled by default
             tracingEnabled true
         }

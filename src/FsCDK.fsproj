@@ -29,6 +29,7 @@
       <Compile Include="DockerImageFunction.fs" />
       <Compile Include="SNS.fs" />
       <Compile Include="SQS.fs" />
+      <Compile Include="CloudWatchLogs.fs" />
       <Compile Include="LambdaPowertools.fs" />
       <Compile Include="Function.fs" />
       <Compile Include="Grants.fs" />
@@ -41,7 +42,6 @@
       <Compile Include="ECS.fs" />
       <Compile Include="ALB.fs" />
       <Compile Include="ECR.fs" />
-      <Compile Include="CloudWatchLogs.fs" />
       <Compile Include="ApiGateway.fs" />
       <Compile Include="ApiGatewayV2.fs" />
       <Compile Include="SecretsManager.fs" />

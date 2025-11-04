@@ -46,7 +46,7 @@ type StepFunctionConfig =
       Timeout: Duration option
       TracingEnabled: bool voption
       LoggingLevel: LogLevel voption
-      LogDestination: ILogGroup option
+      LogDestination: LogGroupRef option
       Role: RoleRef option
       Comment: string option }
 
@@ -146,10 +146,20 @@ type StepFunctionBuilder(name: string) =
         // Logging configuration
         // Note: AWS requires a log destination when logging level is not OFF
         match config.LoggingLevel, config.LogDestination with
-        | ValueSome level, Some dest ->
+        | ValueSome level, Some logGroupRef ->
+            let logGroup =
+                match logGroupRef with
+                | LogGroupRef.LogGroupInterface i -> i
+                | LogGroupRef.LogGroupSpecRef lgSpec ->
+                    match lgSpec.LogGroup with
+                    | Some lg -> lg :> ILogGroup
+                    | None ->
+                        failwith
+                            $"LogGroup '{lgSpec.LogGroupName}' has not been created yet. Ensure it's yielded in the stack before the step function."
+
             let logOptions = LogOptions()
             logOptions.Level <- level
-            logOptions.Destination <- dest
+            logOptions.Destination <- logGroup
             logOptions.IncludeExecutionData <- System.Nullable<bool>(true)
             props.Logs <- logOptions
         | _ -> ()
@@ -189,7 +199,12 @@ type StepFunctionBuilder(name: string) =
     [<CustomOperation("logDestination")>]
     member _.LogDestination(config: StepFunctionConfig, destination: ILogGroup) =
         { config with
-            LogDestination = Some destination }
+            LogDestination = Some(LogGroupRef.LogGroupInterface destination) }
+
+    [<CustomOperation("logDestination")>]
+    member _.LogDestination(config: StepFunctionConfig, logGroupResource: CloudWatchLogGroupResource) =
+        { config with
+            LogDestination = Some(LogGroupRef.LogGroupSpecRef logGroupResource) }
 
     [<CustomOperation("role")>]
     member _.Role(config: StepFunctionConfig, role: IRole) =
