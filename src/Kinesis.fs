@@ -1,6 +1,7 @@
 namespace FsCDK
 
 open Amazon.CDK
+open Amazon.CDK.AWS.KMS
 open Amazon.CDK.AWS.Kinesis
 
 // ============================================================================
@@ -35,7 +36,7 @@ type KinesisStreamConfig =
       RetentionPeriod: Duration option
       StreamMode: StreamMode option
       Encryption: StreamEncryption option
-      EncryptionKey: KMSKeyRef option
+      EncryptionKey: IKey option
       GrantReads: Amazon.CDK.AWS.IAM.IGrantable list
       GrantWrites: Amazon.CDK.AWS.IAM.IGrantable list }
 
@@ -43,18 +44,7 @@ type KinesisStreamSpec =
     { StreamName: string
       ConstructId: string
       Props: StreamProps
-      // Sadly resource with access might not be created yet:
-      GrantReads: ResizeArray<Amazon.CDK.AWS.IAM.IGrantable>
-      GrantWrites: ResizeArray<Amazon.CDK.AWS.IAM.IGrantable>
-      mutable Stream: IStream option }
-
-    /// Gets the underlying IStream resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Stream with
-        | Some stream -> stream
-        | None ->
-            failwith
-                $"Kinesis Stream '{this.StreamName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+      mutable Stream: IStream }
 
 type KinesisStreamBuilder(name: string) =
     member _.Yield _ : KinesisStreamConfig =
@@ -139,24 +129,14 @@ type KinesisStreamBuilder(name: string) =
         // AWS Best Practice: Enable encryption with AWS managed key
         props.Encryption <- config.Encryption |> Option.defaultValue StreamEncryption.MANAGED
 
-        config.EncryptionKey
-        |> Option.iter (fun v ->
-            props.EncryptionKey <-
-                match v with
-                | KMSKeyRef.KMSKeyInterface i -> i
-                | KMSKeyRef.KMSKeySpecRef pr ->
-                    match pr.Key with
-                    | Some k -> k
-                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+        config.EncryptionKey |> Option.iter (fun v -> props.EncryptionKey <- v)
 
         config.StreamMode |> Option.iter (fun m -> props.StreamMode <- m)
 
         { StreamName = config.StreamName
           ConstructId = constructId
           Props = props
-          GrantReads = ResizeArray(config.GrantReads)
-          GrantWrites = ResizeArray(config.GrantWrites)
-          Stream = None }
+          Stream = null }
 
     /// <summary>Sets the construct ID.</summary>
     [<CustomOperation("constructId")>]
@@ -180,32 +160,11 @@ type KinesisStreamBuilder(name: string) =
     [<CustomOperation("streamMode")>]
     member _.StreamMode(config: KinesisStreamConfig, mode: StreamMode) = { config with StreamMode = Some mode }
 
-    /// <summary>Uses on-demand stream mode.</summary>
-    [<CustomOperation("onDemand")>]
-    member _.OnDemand(config: KinesisStreamConfig) =
-        { config with
-            StreamMode = Some StreamMode.ON_DEMAND
-            ShardCount = None }
-
-    /// <summary>Disables encryption.</summary>
-    [<CustomOperation("unencrypted")>]
-    member _.Unencrypted(config: KinesisStreamConfig) =
-        { config with
-            Encryption = Some StreamEncryption.UNENCRYPTED }
-
     /// <summary>Uses a custom KMS key for encryption.</summary>
     [<CustomOperation("encryptionKey")>]
-    member _.EncryptionKey(config: KinesisStreamConfig, key: Amazon.CDK.AWS.KMS.IKey) =
+    member _.EncryptionKey(config: KinesisStreamConfig, key: IKey) =
         { config with
-            Encryption = Some StreamEncryption.KMS
-            EncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
-
-    /// <summary>Uses a custom KMS key for encryption.</summary>
-    [<CustomOperation("encryptionKey")>]
-    member _.EncryptionKey(config: KinesisStreamConfig, key: KMSKeySpec) =
-        { config with
-            Encryption = Some StreamEncryption.KMS
-            EncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
+            EncryptionKey = Some(key) }
 
     /// <summary>Uses a custom KMS key for encryption.</summary>
     [<CustomOperation("encryption")>]
@@ -213,17 +172,17 @@ type KinesisStreamBuilder(name: string) =
         { config with
             Encryption = Some encryption }
 
-    /// <summary>Grant read for role to stream.</summary>
-    [<CustomOperation("grantRead")>]
-    member _.GrantRead(config: KinesisStreamConfig, reader: Amazon.CDK.AWS.IAM.IGrantable) =
+    /// <summary>Grant read for a role to stream.</summary>
+    [<CustomOperation("grantReads")>]
+    member _.GrantReads(config: KinesisStreamConfig, readers: Amazon.CDK.AWS.IAM.IGrantable seq) =
         { config with
-            GrantReads = reader :: config.GrantReads }
+            GrantReads = (readers |> Seq.toList) }
 
-    /// <summary>Grant WRITE for role to stream.</summary>
+    /// <summary>Grant WRITE for a role to stream.</summary>
     [<CustomOperation("grantWrite")>]
-    member _.GrantWrite(config: KinesisStreamConfig, writer: Amazon.CDK.AWS.IAM.IGrantable) =
+    member _.GrantWrites(config: KinesisStreamConfig, writers: Amazon.CDK.AWS.IAM.IGrantable seq) =
         { config with
-            GrantWrites = writer :: config.GrantWrites }
+            GrantWrites = (writers |> Seq.toList) }
 // ============================================================================
 // Builders
 // ============================================================================
@@ -238,4 +197,4 @@ module KinesisBuilders =
     ///     retentionPeriod (Duration.Hours(48.0))
     /// }
     /// </code>
-    let kinesisStream (name: string) = KinesisStreamBuilder name
+    let kinesisStream (name: string) = KinesisStreamBuilder(name)

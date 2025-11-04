@@ -36,7 +36,7 @@ type CertificateConfig =
     { CertificateName: string
       ConstructId: string option
       DomainName: string option
-      SubjectAlternativeNames: string list
+      SubjectAlternativeNames: string seq
       Validation: CertificateValidation option
       CertificateName_: string option
       KeyAlgorithm: KeyAlgorithm option }
@@ -45,41 +45,10 @@ type CertificateSpec =
     { CertificateName: string
       ConstructId: string
       Props: CertificateProps
-      mutable Certificate: ICertificate option }
-
-    /// Gets the underlying ICertificate resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Certificate with
-        | Some cert -> cert
-        | None ->
-            failwith
-                $"Certificate '{this.CertificateName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-    /// Gets the certificate ARN
-    member this.Arn =
-        match this.Certificate with
-        | Some cert -> cert.CertificateArn
-        | None ->
-            failwith
-                $"Certificate '{this.CertificateName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-type CertificateRef =
-    | CertificateInterface of ICertificate
-    | CertificateSpecRef of CertificateSpec
-
-module CertificateHelpers =
-    let resolveCertificateRef (ref: CertificateRef) =
-        match ref with
-        | CertificateInterface cert -> cert
-        | CertificateSpecRef spec ->
-            match spec.Certificate with
-            | Some cert -> cert
-            | None ->
-                failwith
-                    $"Certificate '{spec.CertificateName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+      mutable Certificate: ICertificate }
 
 type CertificateBuilder(name: string) =
-    member _.Yield _ : CertificateConfig =
+    member _.Yield(_: unit) : CertificateConfig =
         { CertificateName = name
           ConstructId = None
           DomainName = None
@@ -117,7 +86,7 @@ type CertificateBuilder(name: string) =
             match a.DomainName with
             | Some _ -> a.DomainName
             | None -> b.DomainName
-          SubjectAlternativeNames = a.SubjectAlternativeNames @ b.SubjectAlternativeNames
+          SubjectAlternativeNames = Seq.toList a.SubjectAlternativeNames @ Seq.toList b.SubjectAlternativeNames
           Validation =
             match a.Validation with
             | Some _ -> a.Validation
@@ -147,55 +116,78 @@ type CertificateBuilder(name: string) =
         // AWS Best Practice: RSA_2048 provides good security with broad compatibility
         props.KeyAlgorithm <- config.KeyAlgorithm |> Option.defaultValue KeyAlgorithm.RSA_2048
 
-        if not (List.isEmpty config.SubjectAlternativeNames) then
-            props.SubjectAlternativeNames <- config.SubjectAlternativeNames |> List.toArray
+        if not (Seq.isEmpty config.SubjectAlternativeNames) then
+            props.SubjectAlternativeNames <- config.SubjectAlternativeNames |> Seq.toArray
 
         config.CertificateName_ |> Option.iter (fun n -> props.CertificateName <- n)
 
         { CertificateName = config.CertificateName
           ConstructId = constructId
           Props = props
-          Certificate = None }
+          Certificate = null }
 
     /// <summary>Sets the construct ID for the certificate.</summary>
+    /// <param name="config">The current certificate configuration.</param>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// certificate "MyCert" {
+    ///     constructId "MyCertificateConstruct"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: CertificateConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the primary domain name for the certificate.</summary>
+    /// <param name="config">The current certificate configuration.</param>
     /// <param name="domain">The domain name (e.g., "example.com").</param>
+    /// <code lang="fsharp">
+    /// certificate "MyCert" {
+    ///     domainName "example.com"
+    /// }
+    /// </code>
     [<CustomOperation("domainName")>]
     member _.DomainName(config: CertificateConfig, domain: string) =
         { config with DomainName = Some domain }
 
     /// <summary>Adds a subject alternative name (SAN).</summary>
+    /// <param name="config">The current certificate configuration.</param>
     /// <param name="san">Additional domain name (e.g., "*.example.com", "www.example.com").</param>
-    [<CustomOperation("subjectAlternativeName")>]
-    member _.SubjectAlternativeName(config: CertificateConfig, san: string) =
+    /// <code lang="fsharp">
+    /// certificate "MyCert" {
+    ///     subjectAlternativeName "*.example.com"
+    ///     subjectAlternativeName "www.example.com"
+    /// }
+    /// </code>
+    [<CustomOperation("subjectAlternativeNames")>]
+    member _.SubjectAlternativeNames(config: CertificateConfig, san: string seq) =
         { config with
-            SubjectAlternativeNames = san :: config.SubjectAlternativeNames }
+            SubjectAlternativeNames = san }
 
     /// <summary>Sets the validation method for the certificate.</summary>
+    /// <param name="config">The current certificate configuration.</param>
+    /// <param name="validation">The certificate validation method.</param>
+    /// <code lang="fsharp">
+    /// certificate "MyCert" {
+    ///     validation (CertificateValidation.FromDns(myHostedZone))
+    /// }
+    /// </code>
     [<CustomOperation("validation")>]
     member _.Validation(config: CertificateConfig, validation: CertificateValidation) =
         { config with
             Validation = Some validation }
 
     /// <summary>Uses DNS validation with a specific hosted zone.</summary>
+    /// <param name="config">The current certificate configuration.</param>
+    /// <param name="hostedZone">The Route53 hosted zone for DNS validation.</param>
+    /// <code lang="fsharp">
+    /// certificate "MyCert" {
+    ///     dnsValidation myHostedZone
+    /// }
+    /// </code>
     [<CustomOperation("dnsValidation")>]
     member _.DnsValidation(config: CertificateConfig, hostedZone: IHostedZone) =
         { config with
             Validation = Some(CertificateValidation.FromDns hostedZone) }
-
-    /// <summary>Uses DNS validation with a specific hosted zone.</summary>
-    [<CustomOperation("dnsValidation")>]
-    member _.DnsValidation(config: CertificateConfig, hostedZone: Route53HostedZoneSpec) =
-        match hostedZone.HostedZone with
-        | Some knownZone ->
-            { config with
-                Validation = Some(CertificateValidation.FromDns knownZone) }
-        | None ->
-            // Todo: This should carry the process forward and resolve it on Run instead of here.
-            failwith $"DNS-validation from new zone ({hostedZone.ZoneName}) not implemented yet"
 
     /// <summary>Uses email validation.</summary>
     [<CustomOperation("emailValidation")>]
@@ -224,7 +216,7 @@ type DnsValidatedCertificateConfig =
       ConstructId: string option
       DomainName: string option
       SubjectAlternativeNames: string list
-      HostedZone: Route53HostedZoneRef option
+      HostedZone: IHostedZone option
       Region: string option
       CertificateName_: string option
       KeyAlgorithm: KeyAlgorithm option }
@@ -310,16 +302,7 @@ type DnsValidatedCertificateBuilder(name: string) =
             | None -> invalidArg "domainName" "Domain name is required for DNS Validated Certificate"
 
         // Hosted zone is required for DNS validation
-        props.HostedZone <-
-            match config.HostedZone with
-            | Some hz ->
-                match hz with
-                | Route53HostedZoneRef.Route53HostedZoneInterface ihz -> ihz
-                | Route53HostedZoneRef.Route53HostedZoneSpecRef sp ->
-                    match sp.HostedZone with
-                    | Some hz -> hz
-                    | None -> invalidArg "hostedZone" $"Hosted zone {sp.ZoneName} has to be resolved first."
-            | None -> invalidArg "hostedZone" "Hosted zone is required for DNS Validated Certificate"
+        config.HostedZone |> Option.iter (fun hz -> props.HostedZone <- hz)
 
         if not (List.isEmpty config.SubjectAlternativeNames) then
             props.SubjectAlternativeNames <- config.SubjectAlternativeNames |> List.toArray
@@ -352,13 +335,7 @@ type DnsValidatedCertificateBuilder(name: string) =
     [<CustomOperation("hostedZone")>]
     member _.HostedZone(config: DnsValidatedCertificateConfig, hostedZone: IHostedZone) =
         { config with
-            HostedZone = Some(Route53HostedZoneRef.Route53HostedZoneInterface hostedZone) }
-
-    /// <summary>Sets the Route53 hosted zone for DNS validation.</summary>
-    [<CustomOperation("hostedZone")>]
-    member _.HostedZone(config: DnsValidatedCertificateConfig, hostedZone: Route53HostedZoneSpec) =
-        { config with
-            HostedZone = Some(Route53HostedZoneRef.Route53HostedZoneSpecRef hostedZone) }
+            HostedZone = Some(hostedZone) }
 
     /// <summary>Sets the region for the certificate (useful for CloudFront which requires us-east-1).</summary>
     [<CustomOperation("region")>]
@@ -386,7 +363,7 @@ module CertificateManagerBuilders =
     ///     dnsValidation myHostedZone
     /// }
     /// </code>
-    let certificate (name: string) = CertificateBuilder name
+    let certificate (name: string) = CertificateBuilder(name)
 
     /// <summary>Creates a DNS-validated certificate for cross-region use (e.g., CloudFront).</summary>
     /// <param name="name">The certificate name.</param>

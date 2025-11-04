@@ -34,7 +34,7 @@ Create a certificate for a domain with automatic DNS validation.
 stack "BasicCertificate" {
     certificate "MyCert" {
         domainName "example.com"
-        subjectAlternativeName "www.example.com"
+        subjectAlternativeNames [ "www.example.com" ]
     }
 }
 
@@ -47,7 +47,7 @@ Secure all subdomains with a wildcard certificate.
 stack "WildcardCert" {
     certificate "WildcardCert" {
         domainName "example.com"
-        subjectAlternativeName "*.example.com"
+        subjectAlternativeNames [ "*.example.com" ]
         certificateName "example-wildcard"
     }
 }
@@ -60,11 +60,11 @@ Use a Route53 hosted zone for automated DNS validation.
 
 
 stack "Route53Cert" {
-    let myHostedZone = hostedZone "example.com" { comment "Production domain" }
+    let! myHostedZone = hostedZone "example.com" { comment "Production domain" }
 
     certificate "Route53Cert" {
         domainName "example.com"
-        subjectAlternativeName "*.example.com"
+        subjectAlternativeNames [ "*.example.com" ]
         dnsValidation myHostedZone
     }
 }
@@ -77,7 +77,7 @@ CloudFront requires certificates in us-east-1. Use DnsValidatedCertificate for c
 *)
 
 stack "CloudFrontCert" {
-    let myHostedZone = hostedZone "example.com" { comment "Production domain" }
+    let! myHostedZone = hostedZone "example.com" { comment "Production domain" }
 
     dnsValidatedCertificate "CFCert" {
         domainName "cdn.example.com"
@@ -95,9 +95,7 @@ Include multiple domains in a single certificate.
 stack "MultiDomainCert" {
     certificate "MultiDomainCert" {
         domainName "example.com"
-        subjectAlternativeName "www.example.com"
-        subjectAlternativeName "api.example.com"
-        subjectAlternativeName "admin.example.com"
+        subjectAlternativeNames [ "www.example.com"; "api.example.com"; "admin.example.com" ]
     }
 }
 
@@ -121,7 +119,7 @@ stack "EmailValidatedCert" {
 
 stack "HTTPSWebsite" {
     // S3 bucket for website
-    let websiteBucket =
+    let! websiteBucket =
         bucket "WebsiteBucket" {
             versioned false
             websiteIndexDocument "index.html"
@@ -130,18 +128,18 @@ stack "HTTPSWebsite" {
         }
 
     // Certificate for custom domain
-    let cert =
+    let! cert =
         certificate "SiteCert" {
             domainName "www.example.com"
-            subjectAlternativeName "example.com"
+            subjectAlternativeNames [ "example.com" ]
         }
 
     // CloudFront distribution
     cloudFrontDistribution "CDN" {
-        s3DefaultBehavior (S3OriginType.StaticWebsiteOrigin websiteBucket.Bucket.Value)
+        s3DefaultBehavior (S3OriginType.StaticWebsiteOrigin websiteBucket)
         domainName "www.example.com"
         domainName "example.com"
-        certificate cert.Certificate.Value
+        certificate cert
         defaultRootObject "index.html"
     }
 }

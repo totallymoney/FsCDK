@@ -16,7 +16,7 @@ open Amazon.CDK.AWS.IAM
 ///
 /// **Rationale:**
 /// These defaults follow AWS Well-Architected Framework security pillar:
-/// - Principle of least privilege requires explicit permissions
+/// - Principle of the least privilege requires explicit permissions
 /// - No default deny-all to allow incremental policy building
 /// - Bucket-specific policies prevent accidental broad access
 ///
@@ -33,37 +33,22 @@ open Amazon.CDK.AWS.IAM
 type BucketPolicyConfig =
     { PolicyName: string
       ConstructId: string option
-      Bucket: BucketRef option
-      Statements: PolicyStatement list
+      Bucket: IBucket option
+      Statements: PolicyStatement seq
       RemovalPolicy: Amazon.CDK.RemovalPolicy option }
 
 type BucketPolicySpec =
     { PolicyName: string
       ConstructId: string
       Props: BucketPolicyProps
-      mutable Policy: BucketPolicy option }
-
-    /// Gets the underlying BucketPolicy resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Policy with
-        | Some policy -> policy
-        | None ->
-            failwith
-                $"BucketPolicy '{this.PolicyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+      mutable Policy: BucketPolicy }
 
 type BucketPolicyBuilder(name: string) =
-    member _.Yield _ : BucketPolicyConfig =
+    member _.Yield(_: unit) : BucketPolicyConfig =
         { PolicyName = name
           ConstructId = None
           Bucket = None
           Statements = []
-          RemovalPolicy = None }
-
-    member _.Yield(statement: PolicyStatement) : BucketPolicyConfig =
-        { PolicyName = name
-          ConstructId = None
-          Bucket = None
-          Statements = [ statement ]
           RemovalPolicy = None }
 
     member _.Zero() : BucketPolicyConfig =
@@ -93,7 +78,7 @@ type BucketPolicyBuilder(name: string) =
             match a.Bucket with
             | Some _ -> a.Bucket
             | None -> b.Bucket
-          Statements = a.Statements @ b.Statements
+          Statements = Seq.toList a.Statements @ Seq.toList b.Statements
           RemovalPolicy =
             match a.RemovalPolicy with
             | Some _ -> a.RemovalPolicy
@@ -103,20 +88,9 @@ type BucketPolicyBuilder(name: string) =
         let props = BucketPolicyProps()
         let constructId = config.ConstructId |> Option.defaultValue config.PolicyName
 
-        // Bucket is required
         props.Bucket <-
             match config.Bucket with
-            | Some bucketRef ->
-                match bucketRef with
-                | BucketInterface bucket -> bucket
-                | BucketSpecRef spec ->
-                    match spec.Bucket with
-                    | Some bucket -> bucket
-                    | None ->
-                        printfn
-                            $"Bucket '{spec.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-                        props.Bucket
+            | Some bucket -> bucket
             | None -> invalidArg "bucket" "Bucket is required for Bucket Policy"
 
         config.RemovalPolicy |> Option.iter (fun rp -> props.RemovalPolicy <- rp)
@@ -124,7 +98,7 @@ type BucketPolicyBuilder(name: string) =
         { PolicyName = config.PolicyName
           ConstructId = constructId
           Props = props
-          Policy = None }
+          Policy = null }
 
     /// <summary>Sets the construct ID for the bucket policy.</summary>
     [<CustomOperation("constructId")>]
@@ -132,179 +106,18 @@ type BucketPolicyBuilder(name: string) =
 
     /// <summary>Sets the bucket for the policy.</summary>
     [<CustomOperation("bucket")>]
-    member _.Bucket(config: BucketPolicyConfig, bucket: IBucket) =
-        { config with
-            Bucket = Some(BucketInterface bucket) }
-
-    /// <summary>Sets the bucket for the policy from a BucketSpec.</summary>
-    [<CustomOperation("bucket")>]
-    member _.Bucket(config: BucketPolicyConfig, bucketSpec: BucketSpec) =
-        { config with
-            Bucket = Some(BucketSpecRef bucketSpec) }
+    member _.Bucket(config: BucketPolicyConfig, bucket: IBucket) = { config with Bucket = Some(bucket) }
 
     /// <summary>Adds a policy statement.</summary>
-    [<CustomOperation("statement")>]
-    member _.Statement(config: BucketPolicyConfig, statement: PolicyStatement) =
-        { config with
-            Statements = statement :: config.Statements }
-
-    /// <summary>Adds a statement that denies non-HTTPS requests (security best practice).</summary>
-    [<CustomOperation("denyInsecureTransport")>]
-    member _.DenyInsecureTransport(config: BucketPolicyConfig) =
-        let conditions = System.Collections.Generic.Dictionary<string, obj>()
-        conditions.Add("aws:SecureTransport", box "false")
-
-        let statement =
-            PolicyStatement(
-                PolicyStatementProps(
-                    Sid = "DenyInsecureTransport",
-                    Effect = System.Nullable Effect.DENY,
-                    Principals = [| AnyPrincipal() :> IPrincipal |],
-                    Actions = [| "s3:*" |],
-                    Resources =
-                        [| match config.Bucket with
-                           | Some(BucketInterface b) -> b.BucketArn + "/*"
-                           | Some(BucketSpecRef spec) ->
-                               match spec.Bucket with
-                               | Some b -> b.BucketArn + "/*"
-                               | None -> "*"
-                           | None -> "*" |],
-                    Conditions = dict<string, obj> [ "Bool", conditions ]
-                )
-            )
-
-        { config with
-            Statements = statement :: config.Statements }
-
-    /// <summary>Adds a statement that allows CloudFront OAI access.</summary>
-    [<CustomOperation("allowCloudFrontOAI")>]
-    member _.AllowCloudFrontOAI(config: BucketPolicyConfig, oaiCanonicalUserId: string) =
-        let statement =
-            PolicyStatement(
-                PolicyStatementProps(
-                    Sid = "AllowCloudFrontOAI",
-                    Effect = System.Nullable Effect.ALLOW,
-                    Principals = [| CanonicalUserPrincipal(oaiCanonicalUserId) :> IPrincipal |],
-                    Actions = [| "s3:GetObject" |],
-                    Resources =
-                        [| match config.Bucket with
-                           | Some(BucketInterface b) -> b.BucketArn + "/*"
-                           | Some(BucketSpecRef spec) ->
-                               match spec.Bucket with
-                               | Some b -> b.BucketArn + "/*"
-                               | None -> "*"
-                           | None -> "*" |]
-                )
-            )
-
-        { config with
-            Statements = statement :: config.Statements }
-
-    /// <summary>Adds a statement that restricts access to specific IP addresses.</summary>
-    [<CustomOperation("allowFromIpAddresses")>]
-    member _.AllowFromIpAddresses(config: BucketPolicyConfig, ipAddresses: string list) =
-        let conditions = System.Collections.Generic.Dictionary<string, obj>()
-        conditions.Add("aws:SourceIp", box (ipAddresses |> List.toArray))
-
-        let statement =
-            PolicyStatement(
-                PolicyStatementProps(
-                    Sid = "AllowFromSpecificIPs",
-                    Effect = System.Nullable Effect.ALLOW,
-                    Principals = [| AnyPrincipal() :> IPrincipal |],
-                    Actions = [| "s3:GetObject" |],
-                    Resources =
-                        [| match config.Bucket with
-                           | Some(BucketInterface b) -> b.BucketArn + "/*"
-                           | Some(BucketSpecRef spec) ->
-                               match spec.Bucket with
-                               | Some b -> b.BucketArn + "/*"
-                               | None -> "*"
-                           | None -> "*" |],
-                    Conditions = dict [ "IpAddress", conditions ]
-                )
-            )
-
-        { config with
-            Statements = statement :: config.Statements }
-
-    /// <summary>Adds a statement that denies access from specific IP addresses.</summary>
-    [<CustomOperation("denyFromIpAddresses")>]
-    member _.DenyFromIpAddresses(config: BucketPolicyConfig, ipAddresses: string list) =
-        let conditions = System.Collections.Generic.Dictionary<string, obj>()
-        conditions.Add("aws:SourceIp", box (ipAddresses |> List.toArray))
-
-        let statement =
-            PolicyStatement(
-                PolicyStatementProps(
-                    Sid = "DenyFromSpecificIPs",
-                    Effect = System.Nullable Effect.DENY,
-                    Principals = [| AnyPrincipal() :> IPrincipal |],
-                    Actions = [| "s3:*" |],
-                    Resources =
-                        [| match config.Bucket with
-                           | Some(BucketInterface b) -> b.BucketArn + "/*"
-                           | Some(BucketSpecRef spec) ->
-                               match spec.Bucket with
-                               | Some b -> b.BucketArn + "/*"
-                               | None -> "*"
-                           | None -> "*" |],
-                    Conditions = dict [ "IpAddress", conditions ]
-                )
-            )
-
-        { config with
-            Statements = statement :: config.Statements }
+    [<CustomOperation("statements")>]
+    member _.Statements(config: BucketPolicyConfig, statements: PolicyStatement seq) =
+        { config with Statements = statements }
 
     /// <summary>Sets the removal policy for the bucket policy.</summary>
     [<CustomOperation("removalPolicy")>]
     member _.RemovalPolicy(config: BucketPolicyConfig, policy: Amazon.CDK.RemovalPolicy) =
         { config with
             RemovalPolicy = Some policy }
-
-// ============================================================================
-// Helper module for common policy statements
-// ============================================================================
-
-module BucketPolicyStatements =
-    /// Creates a statement to enforce HTTPS-only access
-    let denyInsecureTransport (bucket: IBucket) =
-        let conditions = System.Collections.Generic.Dictionary<string, obj>()
-        conditions.Add("aws:SecureTransport", box "false")
-
-        PolicyStatement(
-            PolicyStatementProps(
-                Sid = "DenyInsecureTransport",
-                Effect = System.Nullable Effect.DENY,
-                Principals = [| AnyPrincipal() :> IPrincipal |],
-                Actions = [| "s3:*" |],
-                Resources = [| bucket.BucketArn + "/*" |],
-                Conditions = dict [ "Bool", conditions ]
-            )
-        )
-
-    /// Creates a statement to allow public read access
-    let allowPublicRead (bucket: IBucket) =
-        PolicyStatement(
-            PolicyStatementProps(
-                Sid = "PublicReadGetObject",
-                Effect = System.Nullable Effect.ALLOW,
-                Principals = [| AnyPrincipal() :> IPrincipal |],
-                Actions = [| "s3:GetObject" |],
-                Resources = [| bucket.BucketArn + "/*" |]
-            )
-        )
-
-    /// Creates a statement to allow specific principal full access
-    let allowPrincipalFullAccess (bucket: IBucket) (principal: IPrincipal) =
-        PolicyStatement(
-            PolicyStatementProps(
-                Effect = System.Nullable Effect.ALLOW,
-                Principals = [| principal |],
-                Actions = [| "s3:*" |],
-                Resources = [| bucket.BucketArn; bucket.BucketArn + "/*" |]
-            )
-        )
 
 // ============================================================================
 // Builders
@@ -317,8 +130,6 @@ module BucketPolicyBuilders =
     /// <code lang="fsharp">
     /// bucketPolicy "MyBucketPolicy" {
     ///     bucket myBucket
-    ///     denyInsecureTransport
-    ///     allowFromIpAddresses ["203.0.113.0/24"; "198.51.100.0/24"]
     /// }
     /// </code>
-    let bucketPolicy (name: string) = BucketPolicyBuilder name
+    let bucketPolicy (name: string) = BucketPolicyBuilder(name)

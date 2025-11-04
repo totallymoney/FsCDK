@@ -4,6 +4,7 @@ open Amazon.CDK
 open Amazon.CDK.AWS.EKS
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.IAM
+open Amazon.CDK.AWS.KMS
 
 // ============================================================================
 // Elastic Kubernetes Service (EKS) Cluster Configuration DSL
@@ -33,14 +34,14 @@ type EKSClusterConfig =
     { ClusterName: string
       ConstructId: string option
       Version: KubernetesVersion option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       VpcSubnets: ISubnetSelection list
       DefaultCapacity: int option
       DefaultCapacityInstance: InstanceType option
       MastersRole: IRole option
       EndpointAccess: EndpointAccess option
       ClusterLogging: ClusterLoggingTypes list
-      SecretsEncryptionKey: KMSKeyRef option
+      SecretsEncryptionKey: IKey option
       AlbController: bool option
       CoreDnsComputeType: CoreDnsComputeType option
       AddNodegroupCapacity: (string * NodegroupOptions) list
@@ -183,7 +184,7 @@ type EKSClusterBuilder(name: string) =
         // VPC is required
         props.Vpc <-
             match config.Vpc with
-            | Some vpcRef -> VpcHelpers.resolveVpcRef vpcRef
+            | Some vpcRef -> vpcRef
             | None -> invalidArg "vpc" "VPC is required for EKS Cluster"
 
         // AWS Best Practice: Use latest stable Kubernetes version
@@ -207,14 +208,7 @@ type EKSClusterBuilder(name: string) =
             props.ClusterLogging <- config.ClusterLogging |> List.toArray
 
         config.SecretsEncryptionKey
-        |> Option.iter (fun v ->
-            props.SecretsEncryptionKey <-
-                match v with
-                | KMSKeyRef.KMSKeyInterface i -> i
-                | KMSKeyRef.KMSKeySpecRef pr ->
-                    match pr.Key with
-                    | Some k -> k
-                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+        |> Option.iter (fun v -> props.SecretsEncryptionKey <- v)
 
         config.AlbController
         |> Option.iter (fun alb -> props.AlbController <- AlbControllerOptions(Version = AlbControllerVersion.V2_6_2))
@@ -241,15 +235,13 @@ type EKSClusterBuilder(name: string) =
 
     /// <summary>Sets the VPC for the cluster.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: EKSClusterConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: EKSClusterConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: EKSClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
+    //
+    // /// <summary>Sets the VPC from a VpcSpec.</summary>
+    // [<CustomOperation("vpc")>]
+    // member _.Vpc(config: EKSClusterConfig, vpcSpec: VpcSpec) =
+    //     { config with
+    //         Vpc = Some(VpcSpecRef vpcSpec) }
 
     /// <summary>Adds VPC subnets for the cluster.</summary>
     [<CustomOperation("vpcSubnet")>]
@@ -305,13 +297,7 @@ type EKSClusterBuilder(name: string) =
     [<CustomOperation("encryptionKey")>]
     member _.SecretsEncryptionKey(config: EKSClusterConfig, key: AWS.KMS.IKey) =
         { config with
-            SecretsEncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
-
-    /// <summary>Enables the ALB controller.</summary>
-    [<CustomOperation("encryptionKey")>]
-    member _.SecretsEncryptionKey(config: EKSClusterConfig, key: KMSKeySpec) =
-        { config with
-            SecretsEncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
+            SecretsEncryptionKey = Some(key) }
 
     [<CustomOperation("addNodegroupCapacity")>]
     member _.AddNodegroupCapacity(config: EKSClusterConfig, nodes: (string * NodegroupOptions)) =

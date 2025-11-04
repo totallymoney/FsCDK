@@ -7,7 +7,7 @@ index: 10
 
 # Network Load Balancer (NLB)
 
-Network Load Balancers provide ultra-high performance, low latency, and TLS offloading at scale. 
+Network Load Balancers provide ultra-high performance, low latency, and TLS offloading at scale.
 They operate at Layer 4 (TCP/UDP) and are ideal for handling millions of requests per second.
 
 ## Quick Start
@@ -20,10 +20,7 @@ They operate at Layer 4 (TCP/UDP) and are ideal for handling millions of request
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open FsCDK
-open Amazon.CDK
 open Amazon.CDK.AWS.EC2
-open Amazon.CDK.AWS.ElasticLoadBalancingV2
-
 (**
 ## Basic Internal NLB
 
@@ -32,7 +29,7 @@ By default, NLBs are created as internal (not internet-facing) for security.
 
 stack "InternalNLB" {
     // Create VPC
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     // Create internal NLB (default)
     networkLoadBalancer "MyNLB" {
@@ -48,7 +45,7 @@ For public-facing applications, explicitly set `internetFacing true`.
 *)
 
 stack "PublicNLB" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     networkLoadBalancer "PublicNLB" {
         vpc myVpc
@@ -64,7 +61,7 @@ Enable deletion protection for production workloads.
 *)
 
 stack "ProductionNLB" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     networkLoadBalancer "ProdNLB" {
         vpc myVpc
@@ -81,7 +78,7 @@ stack "ProductionNLB" {
 *)
 
 stack "HighAvailabilityNLB" {
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 3
             natGateways 3

@@ -3,6 +3,7 @@ namespace FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.CloudFront.Origins
+open Amazon.CDK.AWS.KinesisFirehose
 open Amazon.CDK.AWS.S3
 
 // ============================================================================
@@ -23,7 +24,7 @@ type DistributionConfig =
       DomainNames: string list
       EnableIpv6: bool option
       EnableLogging: bool option
-      LogBucket: BucketRef option
+      LogBucket: IBucket option
       LogFilePrefix: string option
       LogIncludesCookies: bool option
       GeoRestriction: GeoRestriction option
@@ -199,17 +200,7 @@ type DistributionBuilder(name: string) =
 
         config.EnableLogging |> Option.iter (fun v -> props.EnableLogging <- v)
 
-        config.LogBucket
-        |> Option.iter (fun v ->
-            props.LogBucket <-
-                match v with
-                | BucketRef.BucketInterface b -> b
-                | BucketRef.BucketSpecRef b ->
-                    match b.Bucket with
-                    | None ->
-                        failwith
-                            $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-                    | Some bu -> bu)
+        config.LogBucket |> Option.iter (fun v -> props.LogBucket <- v)
 
         config.LogFilePrefix |> Option.iter (fun v -> props.LogFilePrefix <- v)
 
@@ -470,23 +461,37 @@ type DistributionBuilder(name: string) =
         { config with
             EnableIpv6 = Some enabled }
 
-    /// <summary>Enables logging to an S3 bucket (optionally with a prefix and cookies flag).</summary>
     [<CustomOperation("enableLogging")>]
-    member _.EnableLogging(config: DistributionConfig, bucket: IBucket, ?prefix: string, ?includeCookies: bool) =
+    member _.EnableLogging(config: DistributionConfig, enableLogging: bool) =
         { config with
-            EnableLogging = Some true
-            LogBucket = Some(BucketRef.BucketInterface bucket)
-            LogFilePrefix = prefix
-            LogIncludesCookies = includeCookies }
+            EnableLogging = Some enableLogging
+            LogBucket = None
+            LogFilePrefix = None
+            LogIncludesCookies = None }
 
-    /// <summary>Enables logging to an S3 bucket (optionally with a prefix and cookies flag).</summary>
-    [<CustomOperation("enableLogging")>]
-    member _.EnableLogging(config: DistributionConfig, bucket: BucketSpec, ?prefix: string, ?includeCookies: bool) =
+    [<CustomOperation("logBucket")>]
+    member _.LogBucket(config: DistributionConfig, bucket: IBucket) =
         { config with
-            EnableLogging = Some true
-            LogBucket = Some(BucketRef.BucketSpecRef bucket)
-            LogFilePrefix = prefix
-            LogIncludesCookies = includeCookies }
+            EnableLogging = None
+            LogBucket = Some(bucket)
+            LogFilePrefix = None
+            LogIncludesCookies = None }
+
+    [<CustomOperation("prefix")>]
+    member _.Prefix(config: DistributionConfig, prefix: string) =
+        { config with
+            EnableLogging = None
+            LogBucket = None
+            LogFilePrefix = Some prefix
+            LogIncludesCookies = None }
+
+    [<CustomOperation("logIncludesCookies")>]
+    member _.LogIncludesCookies(config: DistributionConfig, includeCookies: bool) =
+        { config with
+            EnableLogging = None
+            LogBucket = None
+            LogFilePrefix = None
+            LogIncludesCookies = Some includeCookies }
 
     /// <summary>Sets the associated WAF web ACL ID.</summary>
     [<CustomOperation("webAclId")>]
@@ -499,7 +504,7 @@ type DistributionBuilder(name: string) =
 /// <summary>
 /// High-level CloudFront Origin Access Identity (OAI) builder.
 ///
-/// **Use Case:**
+/// **Use Case: **
 /// OAI allows CloudFront to access private S3 buckets without making them public.
 /// This is a security best practice for serving static content.
 ///
@@ -519,23 +524,7 @@ type OriginAccessIdentitySpec =
     { IdentityName: string
       ConstructId: string
       Props: OriginAccessIdentityProps
-      mutable Identity: IOriginAccessIdentity option }
-
-    /// Gets the underlying IOriginAccessIdentity resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Identity with
-        | Some identity -> identity
-        | None ->
-            failwith
-                $"OriginAccessIdentity '{this.IdentityName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-/// Gets the canonical user ID for use in S3 bucket policies
-//member this.CanonicalUserId =
-//    match this.Identity with
-//    | Some identity -> identity.CloudFrontOriginAccessIdentityS3CanonicalUserId
-//    | None ->
-//        failwith
-//            $"OriginAccessIdentity '{this.IdentityName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+      mutable Identity: IOriginAccessIdentity }
 
 type OriginAccessIdentityBuilder(name: string) =
     member _.Yield _ : OriginAccessIdentityConfig =
@@ -570,7 +559,7 @@ type OriginAccessIdentityBuilder(name: string) =
         { IdentityName = config.IdentityName
           ConstructId = constructId
           Props = props
-          Identity = None }
+          Identity = null } // Identity to be set after creation
 
     /// <summary>Sets the construct ID.</summary>
     [<CustomOperation("constructId")>]
@@ -597,7 +586,7 @@ module CloudFrontBuilders =
     ///     priceClass PriceClass.PRICE_CLASS_100
     /// }
     /// </remarks>
-    let cloudFrontDistribution (name: string) = DistributionBuilder name
+    let cloudFrontDistribution (name: string) = DistributionBuilder(name)
 
     /// <summary>Creates a CloudFront Origin Access Identity.</summary>
     /// <param name="name">The OAI name.</param>
@@ -606,7 +595,7 @@ module CloudFrontBuilders =
     ///     comment "Access to private S3 bucket"
     /// }
     /// </code>
-    let originAccessIdentity (name: string) = OriginAccessIdentityBuilder name
+    let originAccessIdentity (name: string) = OriginAccessIdentityBuilder(name)
 
 /// <summary>
 /// Factory helpers to build common IBehaviorOptions for S3 and HTTP origins.

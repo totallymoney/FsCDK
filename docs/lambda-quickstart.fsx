@@ -74,6 +74,7 @@ The Lambda function builder applies these best practices by default:
 #r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
+open Amazon.CDK.AWS.IAM
 open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
@@ -254,13 +255,50 @@ The builder automatically creates an IAM execution role with:
 For advanced scenarios, provide your own role:
 *)
 
-let customRole = IAM.createLambdaExecutionRole "my-function" true
+// let createLambdaExecutionRole (functionName: string) (includeKmsDecrypt: bool) =
+//     let roleProps =
+//         createRole "lambda.amazonaws.com" (sprintf "%s-execution-role" functionName)
+//
+//     // Attach basic execution role for CloudWatch Logs
+//     let role = Role(null, sanitizeName (sprintf "%s-Role" functionName), roleProps)
+//     attachManagedPolicy role "service-role/AWSLambdaBasicExecutionRole"
+//
+//     // Optionally add KMS decrypt for environment variables
+//     if includeKmsDecrypt then
+//         let kmsStmt = allow [ "kms:Decrypt" ] [ "arn:aws:kms:*:*:key/*" ]
+//         role.AddToPolicy kmsStmt |> ignore
+//
+//     role
+stack "CustomRoleStack" {
+    let! managePol =
+        managedPolicy "service-role/AWSLambdaBasicExecutionRole" {
+            managedPolicyName "service-role/AWSLambdaBasicExecutionRole"
+        }
 
-lambda "my-function" {
-    handler "index.handler"
-    runtime Runtime.NODEJS_18_X
-    code "./code"
-    role customRole
+    let policyStatement =
+        policyDocument {
+            statements
+                [ policyStatement {
+                      effect Effect.ALLOW
+                      actions [ "kms:Decrypt" ]
+                      resources [ "arn:aws:kms:*:*:key/*" ]
+                  } ]
+        }
+
+    let! customRole =
+        role "my-function-execution-role" {
+            assumedBy (ServicePrincipal("lambda.amazonaws.com"))
+            managedPolicies [ managePol ]
+            inlinePolicies [ ("MyInlinePolicy", policyStatement) ]
+        }
+    //IAM.createLambdaExecutionRole "my-function" true
+
+    lambda "my-function" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./code"
+        role customRole
+    }
 }
 
 (**
@@ -355,19 +393,13 @@ let funcSpec =
 - [X-Ray Documentation](https://docs.aws.amazon.com/xray/latest/devguide/aws-xray.html)
 *)
 
-
-open Amazon.CDK
-open Amazon.CDK.AWS.Lambda
-open Amazon.CDK.AWS.Logs
-open FsCDK
-
 let app = App()
 
 // Get environment configuration from environment variables
 let accountId = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_ACCOUNT")
 let region = System.Environment.GetEnvironmentVariable("CDK_DEFAULT_REGION")
 
-// Create stack props with environment
+// Create stack props with the environment
 let envProps = StackProps()
 
 if

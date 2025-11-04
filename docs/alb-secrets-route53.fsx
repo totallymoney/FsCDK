@@ -19,8 +19,9 @@ This example demonstrates how to use Application Load Balancer, Secrets Manager,
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open Amazon.CDK
-open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
+open Amazon.CDK.AWS.Route53
+open Amazon.CDK.AWS.Route53.Targets
 open FsCDK
 
 (*** hide ***)
@@ -42,7 +43,7 @@ stack "ALBStack" {
     description "Application Load Balancer example"
 
     // Create VPC
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 2
             natGateways 1
@@ -61,8 +62,6 @@ stack "ALBStack" {
 (**
 ## Secrets Manager
 *)
-
-open Amazon.CDK.AWS.SecretsManager
 
 stack "SecretsStack" {
     app { context [ "environment", "production" ] }
@@ -91,8 +90,6 @@ stack "SecretsStack" {
 ## Route 53 (DNS)
 *)
 
-open Amazon.CDK.AWS.Route53
-
 stack "DNSStack" {
     app { context [ "environment", "production" ] }
 
@@ -104,7 +101,7 @@ stack "DNSStack" {
     description "Route 53 DNS example"
 
     // Create VPC and ALB first
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 2
             natGateways 1
@@ -123,7 +120,7 @@ stack "DNSStack" {
     // Create A record pointing to ALB
     aRecord "www" {
         zone myZone.HostedZone
-        target (Route53Helpers.albTarget myAlb.LoadBalancer)
+        target (RecordTarget.FromAlias(LoadBalancerTarget myAlb.LoadBalancer))
         ttl (Duration.Minutes(5.0))
     }
 }
@@ -131,8 +128,6 @@ stack "DNSStack" {
 (**
 ## Elastic Beanstalk
 *)
-
-open Amazon.CDK.AWS.ElasticBeanstalk
 
 stack "BeanstalkStack" {
     app { context [ "environment", "production" ] }

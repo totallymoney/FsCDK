@@ -93,7 +93,7 @@ All buckets use KMS encryption by default. This provides:
 - Fine-grained access control
 
 ### Blocking Public Access
-Public access is blocked at the bucket level by default. 
+Public access is blocked at the bucket level by default.
 
 **Warning**: Only disable public access blocking if absolutely necessary.
 
@@ -131,6 +131,7 @@ Use lifecycle rules to reduce storage costs by transitioning objects to cheaper 
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open Amazon.CDK
+open Amazon.CDK.AWS.S3.Deployment
 open FsCDK
 
 let app = App()
@@ -169,19 +170,68 @@ let basicBucket = s3Bucket "basic-secure-bucket" { () }
 // Example 2: Versioned bucket for data protection
 let versionedBucket = s3Bucket "versioned-bucket" { versioned true }
 
+// // ============================================================================
+// // Lifecycle Rule Helpers
+// // ============================================================================
+//
+// /// <summary>
+// /// Helper functions for creating S3 lifecycle rules
+// /// </summary>
+// module LifecycleRuleHelpers =
+//
+//     /// <summary>
+//     /// Creates a lifecycle rule that transitions objects to GLACIER storage after specified days
+//     /// </summary>
+//     let transitionToGlacier (days: int) (id: string) =
+//         LifecycleRule(
+//             Id = id,
+//             Enabled = true,
+//             Transitions =
+//                 [| Transition(StorageClass = StorageClass.GLACIER, TransitionAfter = Duration.Days(float days)) |]
+//         )
+//
+//     /// <summary>
+//     /// Creates a lifecycle rule that expires objects after specified days
+//     /// </summary>
+//     let expireAfter (days: int) (id: string) =
+//         LifecycleRule(Id = id, Enabled = true, Expiration = Duration.Days(float days))
+//
+//     /// <summary>
+//     /// Creates a lifecycle rule that deletes non-current versions after specified days
+//     /// </summary>
+//     let deleteNonCurrentVersions (days: int) (id: string) =
+//         LifecycleRule(Id = id, Enabled = true, NoncurrentVersionExpiration = Duration.Days(float days))
 // Example 3: Bucket with lifecycle rules for cost optimization
 let lifecycleBucket =
     s3Bucket "lifecycle-bucket" {
         versioned true
 
         // Expire old objects after 30 days
-        LifecycleRuleHelpers.expireAfter 30 "expire-old-objects"
+        lifecycleRule {
+            id "expire-old-objects"
+            enabled true
+            expiration (Duration.Days 30.0)
+        }
 
         // Transition to Glacier for archival after 90 days
-        LifecycleRuleHelpers.transitionToGlacier 90 "archive-to-glacier"
+        //LifecycleRuleHelpers.transitionToGlacier 90 "archive-to-glacier"
+        lifecycleRule {
+            id "archive-to-glacier"
+            enabled true
+
+            transitions
+                [ transition {
+                      storageClass AWS.S3.StorageClass.GLACIER
+                      transitionAfter (Duration.Days 90.0)
+                  } ]
+        }
 
         // Delete non-current versions after 180 days
-        LifecycleRuleHelpers.deleteNonCurrentVersions 180 "cleanup-old-versions"
+        lifecycleRule {
+            id "cleanup-old-versions"
+            enabled true
+            noncurrentVersionExpiration (Duration.Days 180.0)
+        }
     }
 
 // Example 4: Bucket with custom removal policy for dev/test

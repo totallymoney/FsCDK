@@ -33,22 +33,25 @@ Create a simple dashboard to monitor Lambda functions.
 
 
 stack "BasicDashboard" {
-    let myFunction =
+    let! myFunction =
         lambda "MyFunction" {
             runtime Runtime.DOTNET_8
             handler "App::Handler"
             code "./lambda"
         }
 
-    let invocationsMetric = myFunction.Function.Value.MetricInvocations()
-    let errorsMetric = myFunction.Function.Value.MetricErrors()
+    let invocationsMetric = myFunction.MetricInvocations()
+    let errorsMetric = myFunction.MetricErrors()
 
-    dashboard "LambdaDashboard" {
-        dashboardName "lambda-monitoring"
+    dashboard "lambda-monitoring" {
 
-        widgetRow
-            [ DashboardWidgets.metricWidget "Invocations" [ invocationsMetric ]
-              DashboardWidgets.metricWidget "Errors" [ errorsMetric ] ]
+        widgets
+            [ graphWidget "Invocations" { left [ invocationsMetric ] }
+              graphWidget "Errors" { left [ errorsMetric ] } ]
+
+    // widgets
+    //     [ DashboardWidgets.metricWidget "Invocations" [ invocationsMetric ]
+    //       DashboardWidgets.metricWidget "Errors" [ errorsMetric ] ]
     }
 }
 
@@ -61,37 +64,40 @@ Monitor multiple services in one dashboard.
 
 
 stack "MultiResourceDashboard" {
-    let apiFunction =
+    let! apiFunction =
         lambda "API" {
             runtime Runtime.DOTNET_8
             handler "App::API"
             code "./lambda"
         }
 
-    let dataTable =
+    let! dataTable =
         table "Data" {
             partitionKey "id" AttributeType.STRING
             billingMode BillingMode.PAY_PER_REQUEST
         }
 
-    let apiMetric = apiFunction.Function.Value.MetricInvocations()
-    let apiDuration = apiFunction.Function.Value.MetricDuration()
-    let tableReads = dataTable.Table.Value.MetricConsumedReadCapacityUnits()
-    let tableWrites = dataTable.Table.Value.MetricConsumedWriteCapacityUnits()
+    let apiMetric = apiFunction.MetricInvocations()
+    let apiDuration = apiFunction.MetricDuration()
+    let tableReads = dataTable.MetricConsumedReadCapacityUnits()
+    let tableWrites = dataTable.MetricConsumedWriteCapacityUnits()
 
-    dashboard "ApplicationDashboard" {
-        dashboardName "application-monitoring"
+    dashboard "application-monitoring" {
         defaultInterval (Duration.Minutes(5.0))
 
-        // First row: Lambda metrics
-        widgetRow
-            [ DashboardWidgets.metricWidget "API Invocations" [ apiMetric ]
-              DashboardWidgets.metricWidget "API Duration" [ apiDuration ] ]
+        widgets
+            [
+              // First row: Lambda metrics
+              graphWidget "API Invocations and Duration" {
+                  left [ apiMetric ]
+                  right [ apiDuration ]
+              }
 
-        // Second row: DynamoDB metrics
-        widgetRow
-            [ DashboardWidgets.metricWidget "Table Reads" [ tableReads ]
-              DashboardWidgets.metricWidget "Table Writes" [ tableWrites ] ]
+              //Second row: DynamoDB metrics
+              graphWidget "DynamoDB Read/Write Capacity" {
+                  left [ tableReads ]
+                  right [ tableWrites ]
+              } ]
     }
 }
 
@@ -104,16 +110,16 @@ Include CloudWatch alarms for critical metrics.
 
 
 stack "DashboardWithAlarms" {
-    let webFunction =
+    let! webFunction =
         lambda "WebApp" {
             runtime Runtime.DOTNET_8
             handler "App::Handle"
             code "./lambda"
         }
 
-    let errorMetric = webFunction.Function.Value.MetricErrors()
+    let errorMetric = webFunction.MetricErrors()
 
-    let errorAlarm =
+    let! errorAlarm =
         // CloudWatch Alarm for Lambda errors
         cloudwatchAlarm "lambda-error-alarm" {
             description "Alert when error rate is high"
@@ -125,12 +131,11 @@ stack "DashboardWithAlarms" {
             period (Duration.Minutes 5.0)
         }
 
-    dashboard "AlertingDashboard" {
-        dashboardName "web-app-alerts"
+    dashboard "web-app-alerts" {
 
-        widgetRow [ DashboardWidgets.metricWidget "Errors" [ errorMetric ] ]
-
-        widget (DashboardWidgets.alarmWidgetSpec errorAlarm)
+        widgets
+            [ graphWidget "Lambda Errors" { left [ errorMetric ] }
+              alarmWidget "Lambda Errors Alarm" { alarm errorAlarm } ]
     }
 }
 
@@ -141,15 +146,17 @@ Add explanatory text and documentation.
 *)
 
 stack "DocumentedDashboard" {
-    dashboard "ProductionDashboard" {
-        dashboardName "production-overview"
+    let mainText =
+        "# Production System Overview\n\nThis dashboard monitors critical production metrics.\n\n**Contact:**"
 
-        widget (
-            DashboardWidgets.textWidget
-                "# Production System Overview\n\nThis dashboard monitors critical production metrics.\n\n**Contact:** ops-team@example.com"
-        )
-
-    // Add metric widgets here
+    dashboard "production-overview" {
+        widgets
+            [ textWidget {
+                  markdown mainText
+                  width 24
+                  height 4
+                  background TextWidgetBackground.SOLID
+              } ]
     }
 }
 
@@ -160,8 +167,7 @@ Set specific time ranges for the dashboard.
 *)
 
 stack "CustomTimeRange" {
-    dashboard "HistoricalDashboard" {
-        dashboardName "last-7-days"
+    dashboard "HistoricalDashboard last-7-days" {
         defaultInterval (Duration.Days(7.0))
         startTime "-P7D" // ISO 8601 duration: 7 days ago
         endTime "PT0H" // Now
@@ -177,17 +183,19 @@ Query and visualize CloudWatch Logs.
 
 stack "LogsDashboard" {
     let logWidget =
-        DashboardWidgets.logQueryWidget
-            "Error Logs"
-            [ "/aws/lambda/my-function" ]
-            "fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 20"
-            (Some 12)
-            (Some 6)
+        logQueryWidget "Error Logs" {
+            queryLines
+                [ "fields @timestamp, @message"
+                  " | filter @message like /ERROR/"
+                  " | sort @timestamp desc"
+                  " | limit 20" ]
 
-    dashboard "LogsDashboard" {
-        dashboardName "application-logs"
-        widget logWidget
-    }
+            logGroupNames [ "/aws/lambda/my-function" ]
+            width 12
+            height 6
+        }
+
+    dashboard "LogsDashboard application-logs" { widgets [ logWidget ] }
 }
 
 
@@ -205,12 +213,10 @@ stack "SingleValueDashboard" {
     let currentRequests =
         Metric(MetricProps(Namespace = "MyApp", MetricName = "CurrentRequests"))
 
-    dashboard "CurrentStatsDashboard" {
-        dashboardName "current-stats"
-
-        widgetRow
-            [ DashboardWidgets.singleValueWidget "Active Users" [ activeUsers ]
-              DashboardWidgets.singleValueWidget "Current Requests" [ currentRequests ] ]
+    dashboard "CurrentStatsDashboard current-stats" {
+        widgets
+            [ singleValueWidget "Active Users" { metrics [ activeUsers ] }
+              singleValueWidget "Current Requests" { metrics [ currentRequests ] } ]
     }
 }
 

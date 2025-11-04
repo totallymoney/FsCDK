@@ -18,8 +18,7 @@ let certificate_manager_tests =
               let certSpec =
                   certificate "MyCert" {
                       domainName "example.com"
-                      subjectAlternativeName "*.example.com"
-                      subjectAlternativeName "www.example.com"
+                      subjectAlternativeNames [ "*.example.com"; "www.example.com" ]
                   }
 
               Expect.equal certSpec.Props.SubjectAlternativeNames.Length 2 "Should have 2 SANs"
@@ -61,13 +60,10 @@ let certificate_manager_tests =
               let certSpec =
                   certificate "MyCert" {
                       domainName "example.com"
-                      subjectAlternativeName "*.example.com"
-                      subjectAlternativeName "api.example.com"
-                      subjectAlternativeName "www.example.com"
+                      subjectAlternativeNames [ "*.example.com"; "api.example.com"; "www.example.com" ]
                   }
 
               Expect.equal certSpec.Props.SubjectAlternativeNames.Length 3 "Should have 3 SANs"
-              // SANs are added in reverse order due to list prepending
-              Expect.equal certSpec.Props.SubjectAlternativeNames.[0] "www.example.com" "First SAN should be last added"
-              Expect.equal certSpec.Props.SubjectAlternativeNames.[2] "*.example.com" "Last SAN should be first added"
+              Expect.equal certSpec.Props.SubjectAlternativeNames.[0] "*.example.com" "First SAN should be last added"
+              Expect.equal certSpec.Props.SubjectAlternativeNames.[2] "www.example.com" "Last SAN should be first added"
           } ]
