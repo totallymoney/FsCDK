@@ -34,6 +34,7 @@
         <Compile Include="BucketPolicyTests.fs" />
         <Compile Include="CertificateManagerTests.fs" />
         <Compile Include="CloudWatchDashboardTests.fs" />
+        <Compile Include="CloudWatchLogsTests.fs" />
         <Compile Include="EventBridgeTests.fs" />
         <Compile Include="ManagedPolicyTests.fs" />
         <Compile Include="NetworkLoadBalancerTests.fs" />

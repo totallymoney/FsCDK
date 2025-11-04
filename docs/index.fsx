@@ -126,6 +126,8 @@ stack "Prod" {
 | **CDK App** | `app` | `context`, `stackTraces`, `synthesizer` |
 | **CloudWatch Alarm** | `cloudwatchAlarm` | `constructId`, `description`, `metricNamespace`, `metricName`, `metric`, `dimensions`, `statistic`, `period`, `threshold`, `evaluationPeriods`, `comparisonOperator`, `treatMissingData` |
 | **CloudWatch Log Group** | `logGroup` | `constructId`, `retention`, `removalPolicy`, `encryptionKey`, `logGroupClass` |
+| **CloudWatch Metric Filter** | `metricFilter` | `constructId`, `logGroup`, `filterPattern`, `metricName`, `metricNamespace`, `metricValue`, `defaultValue`, `unit` |
+| **CloudWatch Subscription Filter** | `subscriptionFilter` | `constructId`, `logGroup`, `destination`, `filterPattern` |
 | **Cors Rule** | `corsRule` | `allowedMethods`, `allowedOrigins`, `allowedHeaders`, `exposedHeaders`, `id`, `maxAgeSeconds` |
 | **Database Instance** | `rdsInstance` | `constructId`, `engine`, `postgresEngine`, `instanceType`, `vpc`, `vpcSubnets`, `securityGroup`, `allocatedStorage`, `storageType`, `backupRetentionDays`, `deleteAutomatedBackups`, `removalPolicy`, `deletionProtection`, `multiAz`, `publiclyAccessible`, `databaseName`, `masterUsername`, `credentials`, `preferredBackupWindow`, `preferredMaintenanceWindow`, `storageEncrypted`, `monitoringInterval`, `enablePerformanceInsights`, `performanceInsightRetention`, `autoMinorVersionUpgrade`, `iamAuthentication` |
 | **Distribution** | `cloudFrontDistribution` | `constructId`, `defaultBehavior`, `s3DefaultBehavior`, `httpDefaultBehavior`, `additionalBehavior`, `additionalS3Behavior`, `additionalHttpBehavior`, `domainName`, `certificate`, `defaultRootObject`, `comment`, `enabled`, `priceClass`, `httpVersion`, `minimumProtocolVersion`, `enableIpv6`, `enableLogging`, `webAclId` |
@@ -178,7 +180,7 @@ The following AWS services are supported by FsCDK:
 | **Certificate Manager** | Manages SSL/TLS certificates for secure connections |
 | **CloudFront** | Content delivery network (CDN) for fast global content distribution |
 | **CloudHSM** | Hardware security modules for cryptographic key storage |
-| **CloudWatch** | Monitors resources with alarms, logs, metrics, dashboards, and synthetic canaries |
+| **CloudWatch** | Monitors resources with alarms, log groups, metric filters, subscription filters, dashboards, and synthetic canaries |
 | **Cognito** | User authentication and authorization for web and mobile apps |
 | **DocumentDB** | MongoDB-compatible document database |
 | **DynamoDB** | Fully managed NoSQL database for key-value and document data |

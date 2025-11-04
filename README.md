@@ -98,7 +98,7 @@ FsCDK provides F# builders for 30+ AWS services across all major categories:
 | **Certificate Manager** | Manages SSL/TLS certificates for secure connections |
 | **CloudFront** | Content delivery network (CDN) for fast global content distribution |
 | **CloudHSM** | Hardware security modules for cryptographic key storage |
-| **CloudWatch** | Monitors resources with alarms, logs, metrics, dashboards, and synthetic canaries |
+| **CloudWatch** | Monitors resources with alarms, log groups, metric filters, subscription filters, dashboards, and synthetic canaries |
 | **Cognito** | User authentication and authorization for web and mobile apps |
 | **DocumentDB** | MongoDB-compatible document database |
 | **DynamoDB** | Fully managed NoSQL database for key-value and document data |

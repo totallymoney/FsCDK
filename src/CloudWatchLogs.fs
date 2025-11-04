@@ -34,8 +34,9 @@ type CloudWatchLogGroupResource =
     {
         LogGroupName: string
         ConstructId: string
+        Props: LogGroupProps
         /// The underlying CDK LogGroup construct
-        LogGroup: LogGroup
+        mutable LogGroup: LogGroup option
     }
 
 type CloudWatchLogGroupBuilder(name: string) =
@@ -96,7 +97,8 @@ type CloudWatchLogGroupBuilder(name: string) =
 
         { LogGroupName = logGroupName
           ConstructId = constructId
-          LogGroup = null }
+          Props = props
+          LogGroup = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: CloudWatchLogGroupConfig, id: string) = { config with ConstructId = Some id }
@@ -173,3 +175,368 @@ module CloudWatchLogsBuilders =
     /// Example: logGroup "/aws/ecs/my-service" { retention RetentionDays.ONE_MONTH }
     /// </summary>
     let logGroup name = CloudWatchLogGroupBuilder name
+
+// ============================================================================
+// CloudWatch Metric Filter Builder
+// ============================================================================
+
+/// <summary>
+/// Configuration for CloudWatch Metric Filter.
+/// Extracts metrics from log events based on pattern matching.
+///
+/// **Use Cases:**
+/// - Extract custom business metrics from application logs
+/// - Monitor error patterns and frequencies
+/// - Track specific application events
+/// - Create alarms on log-based metrics
+///
+/// **Best Practices:**
+/// - Use structured logging (JSON) for easier pattern matching
+/// - Test filter patterns with CloudWatch Logs Insights
+/// - Set appropriate metric units
+/// - Use metric namespaces to organize custom metrics
+/// </summary>
+type CloudWatchMetricFilterConfig =
+    { FilterName: string
+      ConstructId: string option
+      LogGroup: LogGroup option
+      LogGroupResource: CloudWatchLogGroupResource option // Store the resource for later resolution
+      FilterPattern: IFilterPattern option
+      MetricName: string option
+      MetricNamespace: string option
+      MetricValue: string option
+      DefaultValue: float option
+      Unit: Amazon.CDK.AWS.CloudWatch.Unit voption }
+
+type CloudWatchMetricFilterResource =
+    {
+        FilterName: string
+        ConstructId: string
+        LogGroupToAttach: LogGroup option // Will be resolved in Stack.fs
+        LogGroupResourceRef: CloudWatchLogGroupResource option // Reference to the resource if using CloudWatchLogGroupResource
+        FilterOptions: MetricFilterOptions
+        /// The underlying CDK MetricFilter construct
+        mutable MetricFilter: MetricFilter option
+    }
+
+type CloudWatchMetricFilterBuilder(name: string) =
+    member _.Yield _ : CloudWatchMetricFilterConfig =
+        { FilterName = name
+          ConstructId = None
+          LogGroup = None
+          LogGroupResource = None
+          FilterPattern = None
+          MetricName = None
+          MetricNamespace = None
+          MetricValue = Some "1"
+          DefaultValue = None
+          Unit = ValueNone }
+
+    member _.Zero() : CloudWatchMetricFilterConfig =
+        { FilterName = name
+          ConstructId = None
+          LogGroup = None
+          LogGroupResource = None
+          FilterPattern = None
+          MetricName = None
+          MetricNamespace = None
+          MetricValue = Some "1"
+          DefaultValue = None
+          Unit = ValueNone }
+
+    member _.Combine
+        (
+            state1: CloudWatchMetricFilterConfig,
+            state2: CloudWatchMetricFilterConfig
+        ) : CloudWatchMetricFilterConfig =
+        { FilterName = state2.FilterName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          LogGroup = state2.LogGroup |> Option.orElse state1.LogGroup
+          LogGroupResource = state2.LogGroupResource |> Option.orElse state1.LogGroupResource
+          FilterPattern = state2.FilterPattern |> Option.orElse state1.FilterPattern
+          MetricName = state2.MetricName |> Option.orElse state1.MetricName
+          MetricNamespace = state2.MetricNamespace |> Option.orElse state1.MetricNamespace
+          MetricValue = state2.MetricValue |> Option.orElse state1.MetricValue
+          DefaultValue = state2.DefaultValue |> Option.orElse state1.DefaultValue
+          Unit = state2.Unit |> ValueOption.orElse state1.Unit }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> CloudWatchMetricFilterConfig) : CloudWatchMetricFilterConfig =
+        f ()
+
+    member inline x.For
+        (
+            config: CloudWatchMetricFilterConfig,
+            [<InlineIfLambda>] f: unit -> CloudWatchMetricFilterConfig
+        ) : CloudWatchMetricFilterConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: CloudWatchMetricFilterConfig) : CloudWatchMetricFilterResource =
+        let filterName = config.FilterName
+        let constructId = config.ConstructId |> Option.defaultValue filterName
+
+        // Validation - at least one log group reference must be provided
+        if config.LogGroup.IsNone && config.LogGroupResource.IsNone then
+            failwith "LogGroup is required for MetricFilter"
+
+        let filterPattern =
+            config.FilterPattern
+            |> Option.defaultWith (fun () -> failwith "FilterPattern is required for MetricFilter")
+
+        let metricName =
+            config.MetricName
+            |> Option.defaultWith (fun () -> failwith "MetricName is required for MetricFilter")
+
+        let metricNamespace =
+            config.MetricNamespace
+            |> Option.defaultWith (fun () -> failwith "MetricNamespace is required for MetricFilter")
+
+        let options = MetricFilterOptions()
+        options.FilterName <- filterName
+        options.FilterPattern <- filterPattern
+        options.MetricName <- metricName
+        options.MetricNamespace <- metricNamespace
+        options.MetricValue <- config.MetricValue |> Option.defaultValue "1"
+
+        config.DefaultValue
+        |> Option.iter (fun v -> options.DefaultValue <- System.Nullable(v))
+
+        config.Unit
+        |> ValueOption.iter (fun u -> options.Unit <- System.Nullable<Amazon.CDK.AWS.CloudWatch.Unit>(u))
+
+        // Store configuration but don't resolve LogGroup here - that happens in Stack.fs
+        { FilterName = filterName
+          ConstructId = constructId
+          LogGroupToAttach = config.LogGroup // Direct LogGroup or None
+          LogGroupResourceRef = config.LogGroupResource // Store resource reference for Stack.fs to resolve
+          FilterOptions = options
+          MetricFilter = None }
+
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: CloudWatchMetricFilterConfig, id: string) = { config with ConstructId = Some id }
+
+    [<CustomOperation("logGroup")>]
+    member _.LogGroup(config: CloudWatchMetricFilterConfig, logGroup: LogGroup) =
+        { config with LogGroup = Some logGroup }
+
+    [<CustomOperation("logGroup")>]
+    member _.LogGroup(config: CloudWatchMetricFilterConfig, logGroupResource: CloudWatchLogGroupResource) =
+        // Store the resource reference - actual LogGroup will be resolved in Stack.fs
+        { config with
+            LogGroupResource = Some logGroupResource }
+
+    [<CustomOperation("filterPattern")>]
+    member _.FilterPattern(config: CloudWatchMetricFilterConfig, pattern: IFilterPattern) =
+        { config with
+            FilterPattern = Some pattern }
+
+    [<CustomOperation("metricName")>]
+    member _.MetricName(config: CloudWatchMetricFilterConfig, name: string) = { config with MetricName = Some name }
+
+    [<CustomOperation("metricNamespace")>]
+    member _.MetricNamespace(config: CloudWatchMetricFilterConfig, ns: string) =
+        { config with
+            MetricNamespace = Some ns }
+
+    [<CustomOperation("metricValue")>]
+    member _.MetricValue(config: CloudWatchMetricFilterConfig, value: string) =
+        { config with MetricValue = Some value }
+
+    [<CustomOperation("defaultValue")>]
+    member _.DefaultValue(config: CloudWatchMetricFilterConfig, value: float) =
+        { config with
+            DefaultValue = Some value }
+
+    [<CustomOperation("unit")>]
+    member _.Unit(config: CloudWatchMetricFilterConfig, unit: Amazon.CDK.AWS.CloudWatch.Unit) =
+        { config with Unit = ValueSome unit }
+
+// ============================================================================
+// CloudWatch Subscription Filter Builder
+// ============================================================================
+
+/// <summary>
+/// Configuration for CloudWatch Subscription Filter.
+/// Streams log events to destinations in real-time.
+///
+/// **Common Destinations:**
+/// - Lambda functions (for log processing)
+/// - Kinesis streams (for log aggregation)
+/// - Kinesis Firehose (for S3 archival)
+/// - OpenSearch (for log analytics)
+///
+/// **Production Use Cases:**
+/// - Stream logs to centralized logging (ELK, Splunk)
+/// - Real-time log processing and alerting
+/// - Security event monitoring (SIEM integration)
+/// - Compliance log archival
+///
+/// **Best Practices:**
+/// - Use filter patterns to reduce unnecessary data transfer
+/// - Consider costs for high-volume log streaming
+/// - Set appropriate IAM permissions for destinations
+/// - Monitor subscription filter delivery failures
+/// </summary>
+type CloudWatchSubscriptionFilterConfig =
+    { FilterName: string
+      ConstructId: string option
+      LogGroup: LogGroup option
+      LogGroupResource: CloudWatchLogGroupResource option
+      Destination: ILogSubscriptionDestination option
+      FilterPattern: IFilterPattern option }
+
+type CloudWatchSubscriptionFilterResource =
+    {
+        FilterName: string
+        ConstructId: string
+        LogGroupToAttach: LogGroup option
+        LogGroupResourceRef: CloudWatchLogGroupResource option
+        Props: SubscriptionFilterProps
+        /// The underlying CDK SubscriptionFilter construct
+        mutable SubscriptionFilter: SubscriptionFilter option
+    }
+
+type CloudWatchSubscriptionFilterBuilder(name: string) =
+    member _.Yield _ : CloudWatchSubscriptionFilterConfig =
+        { FilterName = name
+          ConstructId = None
+          LogGroup = None
+          LogGroupResource = None
+          Destination = None
+          FilterPattern = None }
+
+    member _.Zero() : CloudWatchSubscriptionFilterConfig =
+        { FilterName = name
+          ConstructId = None
+          LogGroup = None
+          LogGroupResource = None
+          Destination = None
+          FilterPattern = None }
+
+    member _.Combine
+        (
+            state1: CloudWatchSubscriptionFilterConfig,
+            state2: CloudWatchSubscriptionFilterConfig
+        ) : CloudWatchSubscriptionFilterConfig =
+        { FilterName = state2.FilterName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          LogGroup = state2.LogGroup |> Option.orElse state1.LogGroup
+          LogGroupResource = state2.LogGroupResource |> Option.orElse state1.LogGroupResource
+          Destination = state2.Destination |> Option.orElse state1.Destination
+          FilterPattern = state2.FilterPattern |> Option.orElse state1.FilterPattern }
+
+    member inline _.Delay
+        ([<InlineIfLambda>] f: unit -> CloudWatchSubscriptionFilterConfig)
+        : CloudWatchSubscriptionFilterConfig =
+        f ()
+
+    member inline x.For
+        (
+            config: CloudWatchSubscriptionFilterConfig,
+            [<InlineIfLambda>] f: unit -> CloudWatchSubscriptionFilterConfig
+        ) : CloudWatchSubscriptionFilterConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: CloudWatchSubscriptionFilterConfig) : CloudWatchSubscriptionFilterResource =
+        let filterName = config.FilterName
+        let constructId = config.ConstructId |> Option.defaultValue filterName
+
+        // Validation
+        if config.LogGroup.IsNone && config.LogGroupResource.IsNone then
+            failwith "LogGroup is required for SubscriptionFilter"
+
+        let destination =
+            config.Destination
+            |> Option.defaultWith (fun () -> failwith "Destination is required for SubscriptionFilter")
+
+        let filterPattern =
+            config.FilterPattern
+            |> Option.defaultWith (fun () -> failwith "FilterPattern is required for SubscriptionFilter")
+
+        let props = SubscriptionFilterProps()
+        props.FilterName <- filterName
+        // LogGroup will be set in Stack.fs after resolution
+        props.Destination <- destination
+        props.FilterPattern <- filterPattern
+
+        { FilterName = filterName
+          ConstructId = constructId
+          LogGroupToAttach = config.LogGroup
+          LogGroupResourceRef = config.LogGroupResource
+          Props = props
+          SubscriptionFilter = None }
+
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: CloudWatchSubscriptionFilterConfig, id: string) = { config with ConstructId = Some id }
+
+    [<CustomOperation("logGroup")>]
+    member _.LogGroup(config: CloudWatchSubscriptionFilterConfig, logGroup: LogGroup) =
+        { config with LogGroup = Some logGroup }
+
+    [<CustomOperation("logGroup")>]
+    member _.LogGroup(config: CloudWatchSubscriptionFilterConfig, logGroupResource: CloudWatchLogGroupResource) =
+        // Store the resource reference - actual LogGroup will be resolved in Stack.fs
+        { config with
+            LogGroupResource = Some logGroupResource }
+
+    [<CustomOperation("destination")>]
+    member _.Destination(config: CloudWatchSubscriptionFilterConfig, destination: ILogSubscriptionDestination) =
+        { config with
+            Destination = Some destination }
+
+    [<CustomOperation("filterPattern")>]
+    member _.FilterPattern(config: CloudWatchSubscriptionFilterConfig, pattern: IFilterPattern) =
+        { config with
+            FilterPattern = Some pattern }
+
+/// Helper module for common filter patterns
+module FilterPatterns =
+    /// Match all log events
+    let allEvents () = FilterPattern.AllEvents()
+
+    /// Match log events containing specific text
+    let matchText (text: string) = FilterPattern.Literal(text)
+
+    /// Match JSON log events with specific field values
+    let matchJson (jsonPattern: string) =
+        FilterPattern.SpaceDelimited(jsonPattern)
+
+    /// Match log events by severity level
+    let errorLogs () = FilterPattern.Literal("ERROR")
+
+    let warningLogs () = FilterPattern.Literal("WARN")
+
+    let infoLogs () = FilterPattern.Literal("INFO")
+
+    /// Match HTTP 5xx errors
+    let http5xxErrors () = FilterPattern.Literal("5??")
+
+    /// Match HTTP 4xx errors
+    let http4xxErrors () = FilterPattern.Literal("4??")
+
+[<AutoOpen>]
+module CloudWatchLogsFilterBuilders =
+    /// <summary>
+    /// Creates a CloudWatch Metric Filter to extract metrics from logs.
+    /// Example:
+    /// metricFilter "ErrorCount" {
+    ///     logGroup myLogGroup
+    ///     filterPattern (FilterPatterns.errorLogs())
+    ///     metricName "ErrorCount"
+    ///     metricNamespace "MyApp"
+    /// }
+    /// </summary>
+    let metricFilter name = CloudWatchMetricFilterBuilder name
+
+    /// <summary>
+    /// Creates a CloudWatch Subscription Filter to stream logs to a destination.
+    /// Example:
+    /// subscriptionFilter "LogsToLambda" {
+    ///     logGroup myLogGroup
+    ///     destination lambdaDestination
+    ///     filterPattern (FilterPatterns.allEvents())
+    /// }
+    /// </summary>
+    let subscriptionFilter name =
+        CloudWatchSubscriptionFilterBuilder name

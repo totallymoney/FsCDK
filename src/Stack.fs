@@ -93,6 +93,9 @@ type Operation =
     | GatewayVpcEndpointOp of GatewayVpcEndpointSpec
     | InterfaceVpcEndpointOp of InterfaceVpcEndpointSpec
     | DatabaseProxyOp of DatabaseProxySpec
+    | CloudWatchLogGroupOp of CloudWatchLogGroupResource
+    | CloudWatchMetricFilterOp of CloudWatchMetricFilterResource
+    | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterResource
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -506,6 +509,49 @@ module StackOperations =
         | DatabaseProxyOp proxySpec ->
             let proxy = DatabaseProxy(stack, proxySpec.ConstructId, proxySpec.Props)
             proxySpec.DatabaseProxy <- Some proxy
+
+        | CloudWatchLogGroupOp logGroupResource ->
+            let logGroup = LogGroup(stack, logGroupResource.ConstructId, logGroupResource.Props)
+            logGroupResource.LogGroup <- Some logGroup
+
+        | CloudWatchMetricFilterOp filterResource ->
+            // Resolve LogGroup from either direct reference or CloudWatchLogGroupResource
+            let logGroup =
+                match filterResource.LogGroupToAttach, filterResource.LogGroupResourceRef with
+                | Some lg, _ -> lg
+                | None, Some lgResource ->
+                    match lgResource.LogGroup with
+                    | Some lg -> lg
+                    | None ->
+                        failwith
+                            $"LogGroup '{lgResource.LogGroupName}' must be yielded in the stack before the metric filter '{filterResource.FilterName}'"
+                | None, None -> failwith $"LogGroup is required for metric filter '{filterResource.FilterName}'"
+
+            let metricFilter =
+                logGroup.AddMetricFilter(filterResource.ConstructId, filterResource.FilterOptions)
+
+            filterResource.MetricFilter <- Some metricFilter
+
+        | CloudWatchSubscriptionFilterOp subscriptionResource ->
+            // Resolve LogGroup from either direct reference or CloudWatchLogGroupResource
+            let logGroup =
+                match subscriptionResource.LogGroupToAttach, subscriptionResource.LogGroupResourceRef with
+                | Some lg, _ -> lg
+                | None, Some lgResource ->
+                    match lgResource.LogGroup with
+                    | Some lg -> lg
+                    | None ->
+                        failwith
+                            $"LogGroup '{lgResource.LogGroupName}' must be yielded in the stack before the subscription filter '{subscriptionResource.FilterName}'"
+                | None, None ->
+                    failwith $"LogGroup is required for subscription filter '{subscriptionResource.FilterName}'"
+
+            subscriptionResource.Props.LogGroup <- logGroup
+
+            let subscriptionFilter =
+                SubscriptionFilter(stack, subscriptionResource.ConstructId, subscriptionResource.Props)
+
+            subscriptionResource.SubscriptionFilter <- Some subscriptionFilter
 
 // ============================================================================
 // Stack and App Configuration DSL
@@ -1447,6 +1493,54 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ DatabaseProxyOp proxySpec ] }
+
+    member _.Yield(logGroupResource: CloudWatchLogGroupResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CloudWatchLogGroupOp logGroupResource ] }
+
+    member _.Yield(filterResource: CloudWatchMetricFilterResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CloudWatchMetricFilterOp filterResource ] }
+
+    member _.Yield(subscriptionResource: CloudWatchSubscriptionFilterResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CloudWatchSubscriptionFilterOp subscriptionResource ] }
 
     member _.Zero() : StackConfig =
         { Name = name
