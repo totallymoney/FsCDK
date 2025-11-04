@@ -166,4 +166,54 @@ stack "Prod" {
 | **Vpc** | `vpc` | `constructId`, `maxAzs`, `natGateways`, `subnet`, `enableDnsHostnames`, `enableDnsSupport`, `defaultInstanceTenancy`, `ipAddresses`, `cidr` |
 | **VPC Link** | `vpcLink` | `constructId`, `description`, `targets`, `vpcLinkName` |
 
+The following AWS services are supported by FsCDK:
+
+| Service | What it does |
+|---------|--------------|
+| **ALB** (Application Load Balancer) | Distributes incoming HTTP/HTTPS traffic across multiple targets |
+| **API Gateway** (REST & HTTP API) | Creates REST and HTTP APIs to expose your backend services |
+| **App Runner** | Fully managed container service for web apps and APIs |
+| **AppSync** | Builds managed GraphQL APIs with real-time data synchronization |
+| **Bastion Host** | Secure SSH access to instances in private subnets |
+| **Certificate Manager** | Manages SSL/TLS certificates for secure connections |
+| **CloudFront** | Content delivery network (CDN) for fast global content distribution |
+| **CloudHSM** | Hardware security modules for cryptographic key storage |
+| **CloudWatch** | Monitors resources with alarms, logs, metrics, dashboards, and synthetic canaries |
+| **Cognito** | User authentication and authorization for web and mobile apps |
+| **DocumentDB** | MongoDB-compatible document database |
+| **DynamoDB** | Fully managed NoSQL database for key-value and document data |
+| **EC2** | Virtual servers in the cloud |
+| **ECR** (Elastic Container Registry) | Stores and manages Docker container images |
+| **ECS** (Elastic Container Service) | Runs containerized applications using Docker and Fargate |
+| **EFS** (Elastic File System) | Scalable file storage for Lambda and EC2 |
+| **EKS** (Elastic Kubernetes Service) | Managed Kubernetes clusters for container orchestration |
+| **ElastiCache** | In-memory caching with Redis and Memcached |
+| **Elastic Beanstalk** | Platform-as-a-Service (PaaS) for deploying applications |
+| **Elastic IP** | Static IPv4 addresses for dynamic cloud computing |
+| **EventBridge** | Event bus for connecting applications with event-driven architecture |
+| **IAM** (Identity & Access Management) | Controls access to AWS resources with users, roles, and policies |
+| **Kinesis** | Real-time data streaming for analytics and processing |
+| **KMS** (Key Management Service) | Creates and manages encryption keys |
+| **Lambda** | Runs code without managing servers (serverless functions) |
+| **Network Load Balancer** | High-performance TCP/UDP load balancer |
+| **OIDC Provider** | Federated identity using OpenID Connect |
+| **RDS** (Relational Database Service) | Managed relational databases (PostgreSQL, MySQL, etc.) |
+| **Route53** | DNS service and domain name management |
+| **S3** (Simple Storage Service) | Object storage for files, backups, and static websites |
+| **Secrets Manager** | Securely stores and rotates database credentials and API keys |
+| **SNS** (Simple Notification Service) | Pub/sub messaging for sending notifications |
+| **SQS** (Simple Queue Service) | Message queuing for decoupling and scaling applications |
+| **SSM** (Systems Manager) | Manages parameters and documents for configuration |
+| **Step Functions** | Coordinates multiple AWS services into serverless workflows |
+| **VPC** (Virtual Private Cloud) | Isolated network environment for your AWS resources |
+| **X-Ray** | Distributed tracing for debugging and analyzing microservices |
+
+#### Additional Capabilities
+
+- **Custom Resources** - Define custom CloudFormation resources
+- **Lambda Powertools** - Production-ready observability for Lambda functions
+- **Grants** - Simplified IAM permission management between resources
+- **Tags** - Resource tagging across stacks
+- **Production-Safe Defaults** - Security and reliability best practices built-in
+
 *)
