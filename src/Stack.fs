@@ -107,6 +107,46 @@ module StackOperations =
         match operation with
         | TableOp tableSpec ->
             let t = Table(stack, tableSpec.ConstructId, tableSpec.Props)
+
+            // Add Global Secondary Indexes
+            for gsi in tableSpec.GlobalSecondaryIndexes do
+                let gsiProps = GlobalSecondaryIndexProps()
+                gsiProps.IndexName <- gsi.IndexName
+                let pkName, pkType = gsi.PartitionKey
+                gsiProps.PartitionKey <- Attribute(Name = pkName, Type = pkType)
+
+                gsi.SortKey
+                |> Option.iter (fun (skName, skType) -> gsiProps.SortKey <- Attribute(Name = skName, Type = skType))
+
+                gsi.ProjectionType |> Option.iter (fun pt -> gsiProps.ProjectionType <- pt)
+
+                gsi.NonKeyAttributes
+                |> Option.iter (fun attrs ->
+                    if not (List.isEmpty attrs) then
+                        gsiProps.NonKeyAttributes <- Array.ofList attrs)
+
+                gsi.ReadCapacity |> Option.iter (fun rc -> gsiProps.ReadCapacity <- rc)
+
+                gsi.WriteCapacity |> Option.iter (fun wc -> gsiProps.WriteCapacity <- wc)
+
+                t.AddGlobalSecondaryIndex(gsiProps) |> ignore
+
+            // Add Local Secondary Indexes
+            for lsi in tableSpec.LocalSecondaryIndexes do
+                let lsiProps = LocalSecondaryIndexProps()
+                lsiProps.IndexName <- lsi.IndexName
+                let skName, skType = lsi.SortKey
+                lsiProps.SortKey <- Attribute(Name = skName, Type = skType)
+
+                lsi.ProjectionType |> Option.iter (fun pt -> lsiProps.ProjectionType <- pt)
+
+                lsi.NonKeyAttributes
+                |> Option.iter (fun attrs ->
+                    if not (List.isEmpty attrs) then
+                        lsiProps.NonKeyAttributes <- Array.ofList attrs)
+
+                t.AddLocalSecondaryIndex(lsiProps) |> ignore
+
             tableSpec.Table <- Some t
 
         | FunctionOp lambdaSpec ->

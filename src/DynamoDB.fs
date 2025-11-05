@@ -148,6 +148,21 @@ type ImportSourceBuilder() =
 
 open Amazon.CDK.AWS.KMS
 
+type GlobalSecondaryIndexConfig =
+    { IndexName: string
+      PartitionKey: string * AttributeType
+      SortKey: (string * AttributeType) option
+      ProjectionType: ProjectionType option
+      NonKeyAttributes: string list option
+      ReadCapacity: float option
+      WriteCapacity: float option }
+
+type LocalSecondaryIndexConfig =
+    { IndexName: string
+      SortKey: string * AttributeType
+      ProjectionType: ProjectionType option
+      NonKeyAttributes: string list option }
+
 type TableConfig =
     { TableName: string
       ConstructId: string option
@@ -156,6 +171,11 @@ type TableConfig =
       BillingMode: BillingMode option
       RemovalPolicy: RemovalPolicy option
       PointInTimeRecovery: bool option
+      TimeToLiveAttribute: string option
+      GlobalSecondaryIndexes: GlobalSecondaryIndexConfig list
+      LocalSecondaryIndexes: LocalSecondaryIndexConfig list
+      TableClass: TableClass option
+      ContributorInsightsEnabled: bool option
       ImportSource: IImportSourceSpecification option
       Stream: StreamViewType option
       KinesisStream: IStream option
@@ -166,6 +186,8 @@ type TableSpec =
     { TableName: string
       ConstructId: string
       Props: TableProps
+      GlobalSecondaryIndexes: GlobalSecondaryIndexConfig list
+      LocalSecondaryIndexes: LocalSecondaryIndexConfig list
       mutable Table: ITable option }
 
 type TableBuilder(name: string) =
@@ -177,6 +199,11 @@ type TableBuilder(name: string) =
           BillingMode = None
           RemovalPolicy = None
           PointInTimeRecovery = None
+          TimeToLiveAttribute = None
+          GlobalSecondaryIndexes = []
+          LocalSecondaryIndexes = []
+          TableClass = None
+          ContributorInsightsEnabled = None
           ImportSource = None
           Stream = None
           KinesisStream = None
@@ -191,6 +218,11 @@ type TableBuilder(name: string) =
           BillingMode = None
           RemovalPolicy = None
           PointInTimeRecovery = None
+          TimeToLiveAttribute = None
+          GlobalSecondaryIndexes = []
+          LocalSecondaryIndexes = []
+          TableClass = None
+          ContributorInsightsEnabled = None
           ImportSource = Some spec.Source
           Stream = None
           KinesisStream = None
@@ -205,6 +237,11 @@ type TableBuilder(name: string) =
           BillingMode = None
           RemovalPolicy = None
           PointInTimeRecovery = None
+          TimeToLiveAttribute = None
+          GlobalSecondaryIndexes = []
+          LocalSecondaryIndexes = []
+          TableClass = None
+          ContributorInsightsEnabled = None
           ImportSource = None
           Stream = None
           KinesisStream = None
@@ -219,6 +256,13 @@ type TableBuilder(name: string) =
             BillingMode = config2.BillingMode |> Option.orElse config1.BillingMode
             RemovalPolicy = config2.RemovalPolicy |> Option.orElse config1.RemovalPolicy
             PointInTimeRecovery = config2.PointInTimeRecovery |> Option.orElse config1.PointInTimeRecovery
+            TimeToLiveAttribute = config2.TimeToLiveAttribute |> Option.orElse config1.TimeToLiveAttribute
+            GlobalSecondaryIndexes = config1.GlobalSecondaryIndexes @ config2.GlobalSecondaryIndexes
+            LocalSecondaryIndexes = config1.LocalSecondaryIndexes @ config2.LocalSecondaryIndexes
+            TableClass = config2.TableClass |> Option.orElse config1.TableClass
+            ContributorInsightsEnabled =
+                config2.ContributorInsightsEnabled
+                |> Option.orElse config1.ContributorInsightsEnabled
             ImportSource = config2.ImportSource |> Option.orElse config1.ImportSource
             Stream = config2.Stream |> Option.orElse config1.Stream
             KinesisStream = config2.KinesisStream |> Option.orElse config1.KinesisStream
@@ -245,16 +289,30 @@ type TableBuilder(name: string) =
         config.SortKey
         |> Option.iter (fun (name, attrType) -> props.SortKey <- Attribute(Name = name, Type = attrType))
 
-        config.BillingMode |> Option.iter (fun mode -> props.BillingMode <- mode)
+        // Production defaults: PAY_PER_REQUEST billing mode (Alex DeBrie / Rick Houlihan best practice)
+        props.BillingMode <- config.BillingMode |> Option.defaultValue BillingMode.PAY_PER_REQUEST
 
         config.RemovalPolicy
         |> Option.iter (fun policy -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(policy))
 
-        config.PointInTimeRecovery
+        // Production defaults: Point-in-time recovery enabled (Alex DeBrie / Rick Houlihan best practice)
+        let pitrEnabled = config.PointInTimeRecovery |> Option.defaultValue true
+
+        if pitrEnabled then
+            props.PointInTimeRecoverySpecification <-
+                PointInTimeRecoverySpecification(PointInTimeRecoveryEnabled = true)
+
+        // Time-to-live attribute (use TimeToLiveAttribute property)
+        config.TimeToLiveAttribute
+        |> Option.iter (fun attr -> props.TimeToLiveAttribute <- attr)
+
+        // Table class
+        config.TableClass |> Option.iter (fun tc -> props.TableClass <- tc)
+
+        // Contributor insights
+        config.ContributorInsightsEnabled
         |> Option.iter (fun enabled ->
-            if enabled then
-                props.PointInTimeRecoverySpecification <-
-                    PointInTimeRecoverySpecification(PointInTimeRecoveryEnabled = true))
+            props.ContributorInsightsSpecification <- ContributorInsightsSpecification(Enabled = enabled))
 
         config.ImportSource |> Option.iter (fun spec -> props.ImportSource <- spec)
 
@@ -270,6 +328,8 @@ type TableBuilder(name: string) =
         { TableName = tableName
           ConstructId = constructId
           Props = props
+          GlobalSecondaryIndexes = config.GlobalSecondaryIndexes
+          LocalSecondaryIndexes = config.LocalSecondaryIndexes
           Table = None }
 
     /// <summary>Sets the construct ID for the table.</summary>
@@ -351,6 +411,11 @@ type TableBuilder(name: string) =
           BillingMode = None
           RemovalPolicy = None
           PointInTimeRecovery = None
+          TimeToLiveAttribute = None
+          GlobalSecondaryIndexes = []
+          LocalSecondaryIndexes = []
+          TableClass = None
+          ContributorInsightsEnabled = None
           ImportSource = Some spec
           Stream = None
           KinesisStream = None
@@ -405,6 +470,192 @@ type TableBuilder(name: string) =
     [<CustomOperation("encryptionKey")>]
     member _.EncryptionKey(config: TableConfig, key: IKey) =
         { config with EncryptionKey = Some key }
+
+    /// <summary>Sets the Time-to-Live attribute for automatic item expiration.</summary>
+    /// <param name="attributeName">The attribute name that stores the TTL timestamp (Unix epoch seconds).</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "id" AttributeType.STRING
+    ///     timeToLive "expiresAt"
+    /// }
+    /// </code>
+    [<CustomOperation("timeToLive")>]
+    member _.TimeToLive(config: TableConfig, attributeName: string) =
+        { config with
+            TimeToLiveAttribute = Some attributeName }
+
+    /// <summary>Adds a Global Secondary Index (GSI) to the table. Essential for Alex DeBrie's single-table design.</summary>
+    /// <param name="indexName">The name of the GSI.</param>
+    /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "pk" AttributeType.STRING
+    ///     sortKey "sk" AttributeType.STRING
+    ///     globalSecondaryIndex "GSI1" ("gsi1pk", AttributeType.STRING)
+    /// }
+    /// </code>
+    [<CustomOperation("globalSecondaryIndex")>]
+    member _.GlobalSecondaryIndex(config: TableConfig, indexName: string, partitionKey: string * AttributeType) =
+        let gsi =
+            { IndexName = indexName
+              PartitionKey = partitionKey
+              SortKey = None
+              ProjectionType = None
+              NonKeyAttributes = None
+              ReadCapacity = None
+              WriteCapacity = None }
+
+        { config with
+            GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
+
+    /// <summary>Adds a Global Secondary Index with a sort key.</summary>
+    /// <param name="indexName">The name of the GSI.</param>
+    /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
+    /// <param name="sortKey">The GSI sort key (attribute name and type).</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "pk" AttributeType.STRING
+    ///     sortKey "sk" AttributeType.STRING
+    ///     globalSecondaryIndexWithSort "GSI1" ("gsi1pk", AttributeType.STRING) ("gsi1sk", AttributeType.STRING)
+    /// }
+    /// </code>
+    [<CustomOperation("globalSecondaryIndexWithSort")>]
+    member _.GlobalSecondaryIndexWithSort
+        (
+            config: TableConfig,
+            indexName: string,
+            partitionKey: string * AttributeType,
+            sortKey: string * AttributeType
+        ) =
+        let gsi =
+            { IndexName = indexName
+              PartitionKey = partitionKey
+              SortKey = Some sortKey
+              ProjectionType = None
+              NonKeyAttributes = None
+              ReadCapacity = None
+              WriteCapacity = None }
+
+        { config with
+            GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
+
+    /// <summary>Adds a Global Secondary Index with custom projection.</summary>
+    /// <param name="indexName">The name of the GSI.</param>
+    /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
+    /// <param name="sortKey">The GSI sort key (optional).</param>
+    /// <param name="projectionType">The projection type (ALL, KEYS_ONLY, or INCLUDE).</param>
+    /// <param name="nonKeyAttributes">Additional attributes to include (for INCLUDE projection).</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "pk" AttributeType.STRING
+    ///     globalSecondaryIndexWithProjection "GSI1" ("gsi1pk", AttributeType.STRING) None ProjectionType.KEYS_ONLY []
+    /// }
+    /// </code>
+    [<CustomOperation("globalSecondaryIndexWithProjection")>]
+    member _.GlobalSecondaryIndexWithProjection
+        (
+            config: TableConfig,
+            indexName: string,
+            partitionKey: string * AttributeType,
+            sortKey: (string * AttributeType) option,
+            projectionType: ProjectionType,
+            nonKeyAttributes: string list
+        ) =
+        let gsi =
+            { IndexName = indexName
+              PartitionKey = partitionKey
+              SortKey = sortKey
+              ProjectionType = Some projectionType
+              NonKeyAttributes =
+                if List.isEmpty nonKeyAttributes then
+                    None
+                else
+                    Some nonKeyAttributes
+              ReadCapacity = None
+              WriteCapacity = None }
+
+        { config with
+            GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
+
+    /// <summary>Adds a Local Secondary Index (LSI) to the table.</summary>
+    /// <param name="indexName">The name of the LSI.</param>
+    /// <param name="sortKey">The LSI sort key (attribute name and type).</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "pk" AttributeType.STRING
+    ///     sortKey "sk" AttributeType.STRING
+    ///     localSecondaryIndex "LSI1" ("lsi1sk", AttributeType.NUMBER)
+    /// }
+    /// </code>
+    [<CustomOperation("localSecondaryIndex")>]
+    member _.LocalSecondaryIndex(config: TableConfig, indexName: string, sortKey: string * AttributeType) =
+        let lsi =
+            { IndexName = indexName
+              SortKey = sortKey
+              ProjectionType = None
+              NonKeyAttributes = None }
+
+        { config with
+            LocalSecondaryIndexes = config.LocalSecondaryIndexes @ [ lsi ] }
+
+    /// <summary>Adds a Local Secondary Index with custom projection.</summary>
+    /// <param name="indexName">The name of the LSI.</param>
+    /// <param name="sortKey">The LSI sort key (attribute name and type).</param>
+    /// <param name="projectionType">The projection type (ALL, KEYS_ONLY, or INCLUDE).</param>
+    /// <param name="nonKeyAttributes">Additional attributes to include (for INCLUDE projection).</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "pk" AttributeType.STRING
+    ///     localSecondaryIndexWithProjection "LSI1" ("lsi1sk", AttributeType.NUMBER) ProjectionType.ALL []
+    /// }
+    /// </code>
+    [<CustomOperation("localSecondaryIndexWithProjection")>]
+    member _.LocalSecondaryIndexWithProjection
+        (
+            config: TableConfig,
+            indexName: string,
+            sortKey: string * AttributeType,
+            projectionType: ProjectionType,
+            nonKeyAttributes: string list
+        ) =
+        let lsi =
+            { IndexName = indexName
+              SortKey = sortKey
+              ProjectionType = Some projectionType
+              NonKeyAttributes =
+                if List.isEmpty nonKeyAttributes then
+                    None
+                else
+                    Some nonKeyAttributes }
+
+        { config with
+            LocalSecondaryIndexes = config.LocalSecondaryIndexes @ [ lsi ] }
+
+    /// <summary>Sets the table class for cost optimization.</summary>
+    /// <param name="tableClass">The table class (STANDARD or STANDARD_INFREQUENT_ACCESS).</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "id" AttributeType.STRING
+    ///     tableClass TableClass.STANDARD_INFREQUENT_ACCESS
+    /// }
+    /// </code>
+    [<CustomOperation("tableClass")>]
+    member _.TableClass(config: TableConfig, tableClass: TableClass) =
+        { config with
+            TableClass = Some tableClass }
+
+    /// <summary>Enables or disables CloudWatch Contributor Insights for the table.</summary>
+    /// <param name="enabled">Whether to enable contributor insights.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "id" AttributeType.STRING
+    ///     contributorInsights true
+    /// }
+    /// </code>
+    [<CustomOperation("contributorInsights")>]
+    member _.ContributorInsights(config: TableConfig, enabled: bool) =
+        { config with
+            ContributorInsightsEnabled = Some enabled }
 
 // ============================================================================
 // Builders

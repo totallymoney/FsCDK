@@ -138,7 +138,10 @@ let cloudwatch_logs_tests =
                     // which is complex to test in unit tests
                     // Testing that the builder function exists and returns a builder type
                     let builder = subscriptionFilter "test"
-                    Expect.isTrue (builder.GetType().Name.Contains("SubscriptionFilter")) "Subscription filter builder should exist"
+
+                    Expect.isTrue
+                        (builder.GetType().Name.Contains("SubscriptionFilter"))
+                        "Subscription filter builder should exist"
                 } ]
 
           testList

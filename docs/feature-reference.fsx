@@ -142,10 +142,14 @@ Documentation:
 
 ### NoSQL
 - **DynamoDB** - Serverless NoSQL database
-  - Pay-per-request or provisioned billing
-  - Point-in-time recovery
-  - DynamoDB Streams
-  - Kinesis integration
+  - **Production defaults**: PAY_PER_REQUEST billing, PITR enabled
+  - **Global Secondary Indexes (GSIs)** - Single-table design support
+  - **Local Secondary Indexes (LSIs)** - Alternative sort keys
+  - **Time-to-Live (TTL)** - Automatic item expiration
+  - **Contributor Insights** - Hot key detection
+  - **Table Classes** - Standard-IA for cost optimization
+  - DynamoDB Streams for change data capture
+  - Kinesis stream integration
   - Import from S3
 
 Documentation: [DynamoDB](dynamodb.html)

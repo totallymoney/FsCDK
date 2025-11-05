@@ -28,12 +28,19 @@ open Amazon.CDK.AWS.DynamoDB
 ## Basic Table
 
 Create a simple DynamoDB table with a partition key.
+
+**Note:** FsCDK applies production-ready defaults:
+- Billing mode: `PAY_PER_REQUEST` (on-demand)
+- Point-in-time recovery: `enabled`
+
+These defaults follow best practices from Alex DeBrie and Rick Houlihan.
 *)
 
 stack "BasicDynamoDB" {
     table "Users" {
         partitionKey "userId" AttributeType.STRING
-        billingMode BillingMode.PAY_PER_REQUEST
+    // billingMode defaults to PAY_PER_REQUEST
+    // pointInTimeRecovery defaults to true
     }
 }
 
@@ -47,7 +54,6 @@ stack "TableWithSortKey" {
     table "Orders" {
         partitionKey "customerId" AttributeType.STRING
         sortKey "orderDate" AttributeType.NUMBER
-        billingMode BillingMode.PAY_PER_REQUEST
     }
 }
 
@@ -62,17 +68,137 @@ Note: Provisioned capacity configuration must be done using the CDK Table constr
 *)
 
 (**
-## Table with Point-in-Time Recovery
+## Single-Table Design with Global Secondary Indexes (GSIs)
 
-Enable point-in-time recovery for production tables.
+Following Alex DeBrie's single-table design pattern with multiple GSIs for different access patterns.
 *)
 
-stack "TableWithPITR" {
-    table "ProductionData" {
+stack "SingleTableDesign" {
+    table "AppData" {
+        partitionKey "pk" AttributeType.STRING
+        sortKey "sk" AttributeType.STRING
+
+        // GSI for querying by entity type and date
+        globalSecondaryIndexWithSort "GSI1" ("gsi1pk", AttributeType.STRING) ("gsi1sk", AttributeType.STRING)
+
+        // GSI for querying by status
+        globalSecondaryIndex "GSI2" ("gsi2pk", AttributeType.STRING)
+
+        // Enable TTL for automatic cleanup of expired items
+        timeToLive "expiresAt"
+    }
+}
+
+(**
+## Table with Local Secondary Index (LSI)
+
+Use LSIs to query with alternative sort keys while sharing the same partition key.
+*)
+
+stack "TableWithLSI" {
+    table "Products" {
+        partitionKey "category" AttributeType.STRING
+        sortKey "productId" AttributeType.STRING
+
+        // Query products by price within a category
+        localSecondaryIndex "PriceIndex" ("price", AttributeType.NUMBER)
+
+        // Query products by rating within a category
+        localSecondaryIndex "RatingIndex" ("rating", AttributeType.NUMBER)
+    }
+}
+
+(**
+## Table with Time-to-Live (TTL)
+
+Automatically delete expired items to manage data lifecycle and reduce costs.
+*)
+
+stack "SessionTable" {
+    table "UserSessions" {
+        partitionKey "sessionId" AttributeType.STRING
+
+        // Attribute storing Unix epoch timestamp for expiration
+        timeToLive "expiresAt"
+    }
+}
+
+(**
+## Advanced GSI with Custom Projection
+
+Control which attributes are projected into the GSI to optimize performance and cost.
+*)
+
+stack "OptimizedGSI" {
+    table "Orders" {
+        partitionKey "orderId" AttributeType.STRING
+        sortKey "timestamp" AttributeType.NUMBER
+
+        // Only include specific attributes in the GSI
+        globalSecondaryIndexWithProjection
+            "StatusIndex"
+            ("status", AttributeType.STRING)
+            (Some("updatedAt", AttributeType.NUMBER))
+            ProjectionType.INCLUDE
+            [ "customerId"; "totalAmount" ]
+    }
+}
+
+(**
+## Table with Contributor Insights
+
+Enable CloudWatch Contributor Insights to identify hot partition keys (Rick Houlihan best practice).
+*)
+
+stack "MonitoredTable" {
+    table "HighTrafficData" {
         partitionKey "id" AttributeType.STRING
-        billingMode BillingMode.PAY_PER_REQUEST
-        pointInTimeRecovery true
+        contributorInsights true
+    }
+}
+
+(**
+## Cost-Optimized Table with Infrequent Access
+
+Use Standard-IA table class for infrequently accessed data to reduce storage costs.
+*)
+
+stack "ArchivalTable" {
+    table "ArchivedOrders" {
+        partitionKey "orderId" AttributeType.STRING
+        sortKey "year" AttributeType.NUMBER
+        tableClass TableClass.STANDARD_INFREQUENT_ACCESS
+    }
+}
+
+(**
+## Production Table with All Best Practices
+
+Comprehensive example following all expert recommendations.
+*)
+
+stack "ProductionTable" {
+    table "ProductionData" {
+        partitionKey "pk" AttributeType.STRING
+        sortKey "sk" AttributeType.STRING
+
+        // Access pattern indexes
+        globalSecondaryIndexWithSort "GSI1" ("gsi1pk", AttributeType.STRING) ("gsi1sk", AttributeType.STRING)
+        globalSecondaryIndexWithSort "GSI2" ("gsi2pk", AttributeType.STRING) ("gsi2sk", AttributeType.NUMBER)
+
+        // Data lifecycle management
+        timeToLive "ttl"
+
+        // Operational excellence
+        contributorInsights true
+        stream StreamViewType.NEW_AND_OLD_IMAGES
+
+        // Production safety
         removalPolicy RemovalPolicy.RETAIN
+
+    // Defaults automatically applied:
+    // - billingMode = PAY_PER_REQUEST
+    // - pointInTimeRecovery = true
     }
 }
 
@@ -94,13 +220,13 @@ stack "TableWithStreams" {
 (**
 ## Development Table
 
-Optimized settings for development and testing.
+Optimized settings for development and testing. Disable PITR for dev/test environments.
 *)
 
 stack "DevTable" {
     table "DevData" {
         partitionKey "id" AttributeType.STRING
-        billingMode BillingMode.PAY_PER_REQUEST
+        pointInTimeRecovery false // Disable PITR for dev
         removalPolicy RemovalPolicy.DESTROY
     }
 }
@@ -108,14 +234,25 @@ stack "DevTable" {
 (**
 ## Best Practices
 
+### Data Modeling (Alex DeBrie & Rick Houlihan Principles)
+
+- **Start with access patterns** - Design your table structure based on how you'll query data
+- **Use Global Secondary Indexes (GSIs)** - Enable multiple query patterns on the same data
+- **Consider single-table design** - Store multiple entity types in one table for optimal performance
+- **Use composite keys** - Combine values in partition/sort keys for flexible queries (e.g., "USER#123", "ORDER#456")
+- **Leverage sparse indexes** - GSIs only include items that have the indexed attribute
+- **Use TTL for automatic cleanup** - Delete expired items without manual processes
+
 ### Performance
 
 - Use partition keys with high cardinality to distribute load
 - Design sort keys to support query patterns
-- Use sparse indexes for infrequent attributes
+- Use sparse indexes (GSIs) for infrequent attributes
+- Project only needed attributes in GSIs to reduce storage costs
 - Enable DAX (DynamoDB Accelerator) for read-heavy workloads
 - Use batch operations for bulk reads/writes
 - Implement exponential backoff for retries
+- **Use Contributor Insights** to identify hot partition keys
 
 ### Security
 
@@ -128,20 +265,22 @@ stack "DevTable" {
 
 ### Cost Optimization
 
-- Use PAY_PER_REQUEST for unpredictable workloads
-- Use PROVISIONED capacity for steady, predictable traffic
-- Enable auto-scaling for provisioned capacity
-- Use TTL to automatically delete expired items
-- Monitor unused indexes and remove them
-- Use DynamoDB Standard-IA for infrequently accessed data
+- **PAY_PER_REQUEST (default in FsCDK)** - Best for unpredictable workloads, no capacity planning
+- Use PROVISIONED capacity for steady, predictable traffic with auto-scaling
+- **Use TTL to automatically delete expired items** - Reduces storage costs
+- Monitor unused indexes and remove them - Each GSI costs storage and write capacity
+- **Use Standard-IA table class** for infrequently accessed data (lower storage cost)
+- **Optimize GSI projections** - Use KEYS_ONLY or INCLUDE instead of ALL when possible
+- Review CloudWatch metrics regularly to right-size capacity
 
 ### Reliability
 
-- Enable point-in-time recovery for production tables
+- **Point-in-time recovery enabled by default in FsCDK** - Continuous backups for up to 35 days
 - Use global tables for multi-region applications
 - Set appropriate removal policies (RETAIN for production)
 - Monitor capacity metrics and throttling
 - Implement circuit breakers for downstream failures
+- Use DynamoDB Streams for event-driven architectures and data replication
 
 ### Operational Excellence
 
@@ -340,18 +479,23 @@ stack "DevTable" {
 ### Common Pitfalls & How to Avoid Them
 
 **❌ DON'T:**
-1. **Use Scan for application queries** → Use Query with proper keys
-2. **Design tables like SQL** → Design for access patterns, not entities
-3. **Create a table per entity** → Consider single-table design
-4. **Ignore hot partition warnings** → Use high-cardinality partition keys
-5. **Over-index your table** → Each GSI costs storage and write capacity
+1. **Use Scan for application queries** → Use Query with proper keys and GSIs
+2. **Design tables like SQL** → Design for access patterns, not normalized entities
+3. **Create a table per entity** → Consider single-table design with composite keys
+4. **Ignore hot partition warnings** → Use high-cardinality partition keys and enable Contributor Insights
+5. **Over-index your table** → Each GSI costs storage and write capacity; design intentionally
+6. **Forget to set TTL** → Expired data accumulates and increases costs
+7. **Disable PITR in production** → FsCDK enables it by default, keep it enabled
 
 **✅ DO:**
-1. **Start with access patterns** → Know your queries before designing
-2. **Use composite sort keys** → Enable multiple query patterns
-3. **Leverage sparse indexes** → GSIs don't need all items
-4. **Enable point-in-time recovery** → Protect production data
-5. **Use DynamoDB Streams** → Build event-driven architectures
+1. **Start with access patterns** → Know your queries before designing (Alex DeBrie principle)
+2. **Use Global Secondary Indexes** → Enable multiple query patterns efficiently
+3. **Use composite sort keys** → Enable range queries and hierarchical data (e.g., "ORDER#2024-01")
+4. **Leverage sparse indexes** → GSIs only include items with the indexed attribute
+5. **Enable point-in-time recovery** → Enabled by default in FsCDK for data protection
+6. **Use DynamoDB Streams** → Build event-driven architectures and data pipelines
+7. **Implement TTL** → Automatic cleanup of expired sessions, logs, temporary data
+8. **Monitor with Contributor Insights** → Identify hot keys and optimize access patterns
 
 ### DynamoDB Experts to Follow
 
@@ -362,10 +506,45 @@ stack "DevTable" {
 
 ### FsCDK DynamoDB Features
 
-- Type-safe table definitions with computation expressions
-- Automatic encryption at rest (AWS managed keys)
-- Support for streams, TTL, and point-in-time recovery
+**Production-Ready Defaults (Following Expert Best Practices):**
+- ✅ **Billing mode defaults to PAY_PER_REQUEST** - No capacity planning needed (Alex DeBrie recommendation)
+- ✅ **Point-in-time recovery enabled by default** - Automatic continuous backups (Rick Houlihan best practice)
+- Override these defaults explicitly if needed for your use case
+
+**Advanced Features:**
+- **Global Secondary Indexes (GSIs)** - Essential for single-table design patterns
+- **Local Secondary Indexes (LSIs)** - Alternative sort keys for flexible queries
+- **Time-to-Live (TTL)** - Automatic item expiration for data lifecycle management
+- **Contributor Insights** - Identify hot partition keys and access patterns
+- **Table Classes** - Standard-IA for cost optimization on infrequent data
+- **DynamoDB Streams** - Change data capture for event-driven architectures
+- **Encryption at rest** - AWS managed or customer managed KMS keys
+
+**Developer Experience:**
+- Type-safe table definitions with F# computation expressions
 - Seamless integration with Lambda via grants
+- Multiple GSIs and LSIs per table
+- Custom projection types for index optimization
+- Comprehensive XML documentation with IntelliSense
+
+**Example: Complete Single-Table Design**
+```fsharp
+table "AppData" {
+    partitionKey "pk" AttributeType.STRING
+    sortKey "sk" AttributeType.STRING
+    
+    // Access pattern indexes
+    globalSecondaryIndexWithSort "GSI1" ("gsi1pk", AttributeType.STRING) ("gsi1sk", AttributeType.STRING)
+    globalSecondaryIndex "GSI2" ("gsi2pk", AttributeType.STRING)
+    
+    // Data lifecycle
+    timeToLive "expiresAt"
+    
+    // Monitoring
+    contributorInsights true
+    stream StreamViewType.NEW_AND_OLD_IMAGES
+}
+```
 
 For implementation details, see [src/DynamoDB.fs](../src/DynamoDB.fs) in the FsCDK repository.
 *)
