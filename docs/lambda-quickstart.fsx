@@ -345,14 +345,144 @@ let funcSpec =
 
 - Integrate with [S3 Quickstart](s3-quickstart.html) for event-driven processing
 - Read [IAM Best Practices](iam-best-practices.html) for advanced permissions
-- Review [Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
+- Review [Lambda Production Defaults](lambda-production-defaults.html) for production-ready patterns
 
-## Resources
+## 📚 Learning Resources
 
-- [FsCDK Documentation](index.html)
-- [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/)
-- [Lambda Security Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html)
-- [X-Ray Documentation](https://docs.aws.amazon.com/xray/latest/devguide/aws-xray.html)
+### AWS Lambda Fundamentals
+
+**Official AWS Documentation:**
+- [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html) - Complete Lambda documentation
+- [Lambda Operator Guide](https://docs.aws.amazon.com/lambda/latest/operatorguide/intro.html) - Best practices for operating Lambda at scale
+- [Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html) - Official AWS recommendations
+- [Lambda Security Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html) - Securing your functions
+
+**Getting Started Videos:**
+- [AWS Lambda Tutorial for Beginners](https://www.youtube.com/watch?v=eOBq__h4OJ4) - Introduction to serverless with Lambda
+- [Build Your First Lambda Function](https://www.youtube.com/watch?v=2g0LJjkcnU8) - Step-by-step tutorial
+- [Lambda with Python](https://www.youtube.com/watch?v=gPvb3G0mz_4) - Python-specific Lambda guide
+
+### Expert Insights from AWS Heroes
+
+**Yan Cui (The Burning Monk) - Must-Read Articles:**
+- [How AWS Lambda Works Under the Hood](https://theburningmonk.com/2018/01/aws-lambda-under-the-hood/) - Understanding Lambda's execution model
+- [Lambda Cold Starts Explained](https://theburningmonk.com/2018/01/im-afraid-youre-thinking-about-aws-lambda-cold-starts-all-wrong/) - Data-driven analysis of cold starts
+- [Lambda Memory vs Cost Optimization](https://theburningmonk.com/2020/07/how-to-reduce-your-aws-lambda-costs/) - Finding the sweet spot
+- [Lambda Power Tuning Tool](https://github.com/alexcasalboni/aws-lambda-power-tuning) - Automatically optimize memory allocation
+
+**Real-World Lambda Patterns:**
+- [Event-Driven Architecture with Lambda](https://aws.amazon.com/blogs/compute/operating-lambda-design-principles-in-event-driven-architectures-part-1/) - AWS compute blog series
+- [Lambda Destinations](https://aws.amazon.com/blogs/compute/introducing-aws-lambda-destinations/) - Better error handling than DLQ alone
+- [Lambda Extensions](https://aws.amazon.com/blogs/compute/introducing-aws-lambda-extensions-in-preview/) - Extend Lambda with custom tools
+
+### Lambda Runtime Deep Dives
+
+**Python Lambda:**
+- [Optimizing Python Lambda Functions](https://aws.amazon.com/blogs/compute/optimizing-aws-lambda-function-performance-for-python/) - Performance tips
+- [AWS Lambda Powertools Python](https://docs.powertools.aws.dev/lambda/python/) - Production-ready utilities
+- [Python Package Size Optimization](https://theburningmonk.com/2019/09/tips-and-tricks-for-smaller-lambda-deployment-packages/) - Reduce cold starts
+
+**Node.js/TypeScript Lambda:**
+- [Node.js Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html) - AWS official guide
+- [AWS Lambda Powertools TypeScript](https://docs.powertools.aws.dev/lambda/typescript/) - Structured logging and tracing
+- [Reduce Node.js Cold Starts](https://aws.amazon.com/blogs/compute/reducing-aws-lambda-cold-start-times-for-node-js-functions/) - Provisioned concurrency and optimization
+
+**.NET Lambda:**
+- [.NET 8 on AWS Lambda](https://aws.amazon.com/blogs/compute/introducing-the-net-8-runtime-for-aws-lambda/) - Latest .NET runtime
+- [Lambda with C# and F#](https://docs.aws.amazon.com/lambda/latest/dg/lambda-csharp.html) - .NET Lambda guide
+- [AWS Lambda Powertools .NET](https://docs.powertools.aws.dev/lambda/dotnet/) - Observability for .NET functions
+
+**Java Lambda:**
+- [Java Lambda Performance](https://aws.amazon.com/blogs/compute/optimizing-aws-lambda-function-performance-for-java/) - JVM warm-up and SnapStart
+- [Lambda SnapStart for Java](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) - Eliminate cold starts with snapshots
+
+### Lambda Performance & Cost Optimization
+
+**Memory & Timeout Tuning:**
+- [Right-Sizing Lambda Functions](https://aws.amazon.com/blogs/compute/operating-lambda-performance-optimization-part-1/) - Finding optimal memory
+- [Lambda Power Tuning](https://github.com/alexcasalboni/aws-lambda-power-tuning) - Automated performance testing tool
+- [Cost vs Performance Trade-offs](https://theburningmonk.com/2020/07/how-to-reduce-your-aws-lambda-costs/) - Yan Cui's analysis
+
+**Cold Start Optimization:**
+- [Provisioned Concurrency](https://aws.amazon.com/blogs/aws/new-provisioned-concurrency-for-lambda-functions/) - Keep functions warm
+- [Lambda SnapStart](https://aws.amazon.com/blogs/aws/new-accelerate-your-lambda-functions-with-lambda-snapstart/) - Microsecond startup for Java
+- [Minimizing Cold Starts](https://lumigo.io/blog/this-is-all-you-need-to-know-about-lambda-cold-starts/) - Comprehensive guide
+
+### Lambda Security
+
+**IAM & Permissions:**
+- [Lambda Execution Roles](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html) - Least privilege IAM
+- [Lambda Resource Policies](https://docs.aws.amazon.com/lambda/latest/dg/access-control-resource-based.html) - Who can invoke your functions
+- [Secrets Management](https://aws.amazon.com/blogs/compute/using-aws-secrets-manager-to-store-and-retrieve-database-credentials/) - Handling sensitive data
+
+**VPC & Network Security:**
+- [Lambda in VPC](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html) - Private resource access
+- [VPC Networking for Lambda](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/) - Hyperplane ENIs (no more NAT Gateway scaling issues)
+
+### Lambda Observability
+
+**CloudWatch & X-Ray:**
+- [Lambda Monitoring with CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) - Metrics and logs
+- [Lambda Insights](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-insights.html) - Enhanced monitoring
+- [Distributed Tracing with X-Ray](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html) - End-to-end request tracking
+
+**Structured Logging:**
+- [Structured Logging Best Practices](https://theburningmonk.com/2018/01/you-need-to-use-structured-logging-with-aws-lambda/) - Why and how
+- [CloudWatch Logs Insights](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AnalyzingLogData.html) - Query JSON logs
+- [Lambda Powertools Logging](https://docs.powertools.aws.dev/lambda/python/latest/core/logger/) - Automatic correlation IDs
+
+### Lambda Event Sources
+
+**Async Event Processing:**
+- [S3 Event Notifications](https://docs.aws.amazon.com/lambda/latest/dg/with-s3.html) - Process file uploads
+- [EventBridge with Lambda](https://docs.aws.amazon.com/lambda/latest/dg/services-cloudwatchevents.html) - Event-driven architectures
+- [SNS to Lambda](https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html) - Pub/sub patterns
+
+**Stream Processing:**
+- [DynamoDB Streams](https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html) - React to database changes
+- [Kinesis Streams](https://docs.aws.amazon.com/lambda/latest/dg/with-kinesis.html) - Real-time data processing
+- [SQS with Lambda](https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html) - Reliable message processing
+
+### Recommended Learning Path
+
+**Week 1 - Foundations:**
+1. [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html) - Read first 5 chapters
+2. [Lambda Tutorial Video](https://www.youtube.com/watch?v=eOBq__h4OJ4) - Watch introduction
+3. Build your first Lambda function with FsCDK (this quickstart!)
+
+**Week 2 - Best Practices:**
+1. [Lambda Production Defaults](lambda-production-defaults.html) - Understand FsCDK's safe defaults
+2. [Yan Cui's Cold Start Article](https://theburningmonk.com/2018/01/im-afraid-youre-thinking-about-aws-lambda-cold-starts-all-wrong/)
+3. Add [Lambda Powertools](https://docs.powertools.aws.dev/lambda/) to your functions
+
+**Week 3 - Advanced Patterns:**
+1. [Lambda Concurrency Deep Dive](https://theburningmonk.com/2019/09/all-you-need-to-know-about-lambda-concurrency/)
+2. [Event-Driven Architecture Series](https://aws.amazon.com/blogs/compute/operating-lambda-design-principles-in-event-driven-architectures-part-1/)
+3. Implement error handling with DLQs and Lambda Destinations
+
+**Ongoing - Mastery:**
+- Subscribe to [Off-by-none Newsletter](https://offbynone.io/) - Jeremy Daly's serverless updates
+- Follow [Yan Cui's Blog](https://theburningmonk.com/) - Latest serverless best practices
+- Watch [AWS re:Invent Serverless Sessions](https://www.youtube.com/results?search_query=aws+reinvent+serverless) - Annual updates
+
+### Community & Support
+
+**AWS Heroes & Experts:**
+- [Yan Cui (@theburningmonk)](https://twitter.com/theburningmonk) - Serverless Hero
+- [Jeremy Daly (@jeremy_daly)](https://twitter.com/jeremy_daly) - Serverless advocate
+- [Ben Kehoe (@ben11kehoe)](https://twitter.com/ben11kehoe) - IAM and serverless
+- [Heitor Lessa (@heitor_lessa)](https://twitter.com/heitor_lessa) - AWS Lambda Powertools creator
+
+**Communities:**
+- [Serverless Stack Community](https://sst.dev/discord) - Active Discord community
+- [AWS Serverless Forum](https://repost.aws/tags/TA4IvCeWI1TE66q4jEj4Z9zg/aws-lambda) - Official AWS forum
+- [r/aws Subreddit](https://www.reddit.com/r/aws/) - General AWS discussions
+
+### FsCDK-Specific Resources
+
+- [FsCDK Documentation](index.html) - Main documentation
+- [Lambda Production Defaults](lambda-production-defaults.html) - Why FsCDK uses these defaults
+- [IAM Best Practices](iam-best-practices.html) - Securing your Lambda functions
 *)
 
 

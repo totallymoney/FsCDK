@@ -605,12 +605,102 @@ productionApp.Synth() |> ignore
 
 ---
 
-## External Resources
+## 📚 Learning Resources from AWS Heroes
 
-- [Yan Cui's Serverless Best Practices](https://theburningmonk.com/tag/best-practice/)
-- [AWS Lambda Powertools Documentation](https://docs.powertools.aws.dev/lambda/)
-- [AWS Lambda X-Ray Integration](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html)
-- [AWS Lambda DLQ Configuration](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#invocation-dlq)
+### Yan Cui (The Burning Monk) - AWS Serverless Hero
+
+**Essential Reading:**
+- [Production-Ready Serverless Course](https://productionreadyserverless.com/) - Yan Cui's comprehensive 10-module course covering everything from Lambda basics to production observability
+- [AWS Lambda Concurrency Deep Dive](https://theburningmonk.com/2019/09/all-you-need-to-know-about-lambda-concurrency/) - Understanding reserved concurrency, burst limits, and throttling
+- [Lambda Cold Starts: You're Thinking About It Wrong](https://theburningmonk.com/2018/01/im-afraid-youre-thinking-about-aws-lambda-cold-starts-all-wrong/) - Data-driven analysis of cold start performance
+- [Lambda Best Practices Series](https://theburningmonk.com/tag/best-practice/) - Comprehensive collection of serverless best practices
+
+**Cost Optimization:**
+- [How to Reduce Lambda Costs](https://theburningmonk.com/2020/07/how-to-reduce-your-aws-lambda-costs/) - Practical strategies including memory optimization and reserved concurrency
+- [Lambda Power Tuning](https://github.com/alexcasalboni/aws-lambda-power-tuning) - Data-driven tool to optimize Lambda memory/cost (created by AWS SA)
+- [Serverless Cost Calculator](https://cost-calculator.bref.sh/) - Estimate Lambda costs vs traditional infrastructure
+
+**Observability & Debugging:**
+- [Serverless Observability Best Practices](https://theburningmonk.com/2019/03/serverless-observability-what-can-you-use-out-of-the-box/) - Built-in vs third-party observability tools
+- [Distributed Tracing with X-Ray](https://theburningmonk.com/2018/04/you-need-to-use-x-ray-with-lambda/) - Why X-Ray is essential for serverless
+- [Structured Logging in Lambda](https://theburningmonk.com/2018/01/you-need-to-use-structured-logging-with-aws-lambda/) - Moving beyond console.log
+
+**Video Content:**
+- [AWS re:Invent 2023 - Production-Ready Serverless](https://www.youtube.com/watch?v=4_ZEBN8EuG8) - Latest Lambda best practices from AWS
+- [Yan Cui - Serverless Observability](https://www.youtube.com/watch?v=YX4BNX_B6hg) - How to achieve observability in serverless apps
+- [Lambda Performance Optimization](https://www.youtube.com/watch?v=bLVROrCj5ug) - Practical tips from AWS experts
+
+### AWS Lambda Powertools
+
+**Official Documentation:**
+- [Lambda Powertools Python](https://docs.powertools.aws.dev/lambda/python/) - Structured logging, metrics, and tracing for Python
+- [Lambda Powertools TypeScript](https://docs.powertools.aws.dev/lambda/typescript/) - Enterprise-grade utilities for Node.js/TypeScript
+- [Lambda Powertools Java](https://docs.powertools.aws.dev/lambda/java/) - Production-ready utilities for Java Lambda functions
+- [Lambda Powertools .NET](https://docs.powertools.aws.dev/lambda/dotnet/) - Observability utilities for .NET Lambda functions
+
+**Key Features Explained:**
+- [Structured Logging](https://docs.powertools.aws.dev/lambda/python/latest/core/logger/) - Automatically log correlation IDs and context
+- [Custom Metrics](https://docs.powertools.aws.dev/lambda/python/latest/core/metrics/) - Emit CloudWatch metrics without API calls
+- [Distributed Tracing](https://docs.powertools.aws.dev/lambda/python/latest/core/tracer/) - X-Ray integration with minimal code
+- [Validation](https://docs.powertools.aws.dev/lambda/python/latest/utilities/validation/) - JSON Schema validation for Lambda events
+
+### AWS Official Resources
+
+**Lambda Best Practices:**
+- [Lambda Operator Guide](https://docs.aws.amazon.com/lambda/latest/operatorguide/intro.html) - Comprehensive guide for operating Lambda at scale
+- [Lambda Security Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html) - IAM, VPC, and encryption guidance
+- [Lambda Performance Optimization](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html) - Memory, timeout, and concurrency tuning
+
+**Async Invocation & Error Handling:**
+- [Asynchronous Invocation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html) - How Lambda processes async events
+- [Dead Letter Queues (DLQ)](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#invocation-dlq) - Capturing failed events
+- [Event Source Mapping](https://docs.aws.amazon.com/lambda/latest/dg/invocation-eventsourcemapping.html) - Stream processing with Lambda
+
+**X-Ray Tracing:**
+- [Using X-Ray with Lambda](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html) - Enable distributed tracing
+- [X-Ray SDK for Lambda](https://docs.aws.amazon.com/xray/latest/devguide/xray-sdk-nodejs.html) - Instrument your Lambda code
+- [X-Ray Service Map](https://docs.aws.amazon.com/xray/latest/devguide/xray-console.html#xray-console-servicemap) - Visualize your architecture
+
+### Community Tools
+
+**Lambda Development:**
+- [Serverless Framework](https://www.serverless.com/) - Popular IaC framework for serverless
+- [SAM (Serverless Application Model)](https://aws.amazon.com/serverless/sam/) - AWS-native serverless framework
+- [LocalStack](https://localstack.cloud/) - Local AWS cloud emulator for testing
+- [Lumigo](https://lumigo.io/) - Serverless observability platform (commercial)
+
+**Monitoring & Alerting:**
+- [CloudWatch Logs Insights](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AnalyzingLogData.html) - Query structured logs
+- [CloudWatch Lambda Insights](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-insights.html) - Enhanced Lambda monitoring
+- [AWS Distro for OpenTelemetry](https://aws-otel.github.io/) - Open-source observability
+
+### Recommended Reading Order
+
+**Beginner → Intermediate:**
+1. Start with [AWS Lambda Operator Guide](https://docs.aws.amazon.com/lambda/latest/operatorguide/intro.html)
+2. Read [Yan Cui's Cold Start Article](https://theburningmonk.com/2018/01/im-afraid-youre-thinking-about-aws-lambda-cold-starts-all-wrong/)
+3. Implement [Lambda Powertools](https://docs.powertools.aws.dev/lambda/) in your functions
+4. Learn [X-Ray Tracing](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html)
+
+**Intermediate → Advanced:**
+1. Deep dive into [Lambda Concurrency](https://theburningmonk.com/2019/09/all-you-need-to-know-about-lambda-concurrency/)
+2. Take [Production-Ready Serverless Course](https://productionreadyserverless.com/)
+3. Implement [Cost Optimization Strategies](https://theburningmonk.com/2020/07/how-to-reduce-your-aws-lambda-costs/)
+4. Master [Serverless Observability](https://theburningmonk.com/2019/03/serverless-observability-what-can-you-use-out-of-the-box/)
+
+### Why FsCDK Uses These Defaults
+
+FsCDK's production defaults are based on lessons learned by AWS Heroes and the broader serverless community:
+
+1. **Reserved Concurrency (10)** - Prevents the "$30,000 Lambda bill" scenario ([source](https://theburningmonk.com/2020/07/how-to-reduce-your-aws-lambda-costs/))
+2. **Auto-create DLQ** - Never lose events, always have audit trail ([AWS DLQ docs](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#invocation-dlq))
+3. **X-Ray Tracing** - Essential for debugging distributed systems ([Yan Cui](https://theburningmonk.com/2018/04/you-need-to-use-x-ray-with-lambda/))
+4. **Structured JSON Logging** - Enables CloudWatch Logs Insights queries ([Yan Cui](https://theburningmonk.com/2018/01/you-need-to-use-structured-logging-with-aws-lambda/))
+5. **Lambda Powertools** - Battle-tested utilities from AWS ([official docs](https://docs.powertools.aws.dev/lambda/))
+
+### FsCDK Implementation Details
+
+These defaults are implemented in `src/Function.fs` and `src/LambdaPowertools.fs`. See [AGENTS.md](../AGENTS.md) for architectural details.
 
 ---
 

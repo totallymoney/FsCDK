@@ -377,11 +377,268 @@ let arn = cdkSM.StateMachineArn
 - Implement saga pattern
 - Ensure data consistency
 
-## Resources
+## 📚 Learning Resources for AWS Step Functions
 
-- [AWS Step Functions Documentation](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html)
-- [Step Functions Best Practices](https://docs.aws.amazon.com/step-functions/latest/dg/best-practices.html)
-- [Amazon States Language](https://states-language.net/spec.html)
-- [Step Functions Integrations](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-service-integrations.html)
-- [Error Handling](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html)
+### AWS Official Documentation
+
+**Getting Started:**
+- [AWS Step Functions Developer Guide](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) - Complete documentation
+- [Step Functions Tutorials](https://docs.aws.amazon.com/step-functions/latest/dg/tutorials.html) - Hands-on learning
+- [Amazon States Language (ASL)](https://states-language.net/spec.html) - JSON-based workflow language
+- [Step Functions Workflow Studio](https://aws.amazon.com/blogs/aws/new-aws-step-functions-workflow-studio-a-low-code-visual-tool-for-building-state-machines/) - Visual workflow builder
+
+**Core Concepts:**
+- [State Types](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-states.html) - Task, Choice, Parallel, Map, Wait, etc.
+- [Service Integrations](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-service-integrations.html) - 220+ AWS service integrations
+- [Error Handling](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html) - Retry and Catch patterns
+- [Standard vs Express Workflows](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-standard-vs-express.html) - When to use each
+
+**Best Practices:**
+- [Step Functions Best Practices](https://docs.aws.amazon.com/step-functions/latest/dg/best-practices.html) - Official recommendations
+- [Design Patterns](https://docs.aws.amazon.com/step-functions/latest/dg/design-patterns.html) - Common workflow patterns
+- [Cost Optimization](https://aws.amazon.com/blogs/compute/optimizing-costs-in-aws-step-functions/) - Strategies to reduce costs
+
+### Serverless Orchestration Patterns
+
+**Yan Cui (The Burning Monk) - Orchestration Expert:**
+- [Step Functions vs Lambda Orchestration](https://theburningmonk.com/2019/06/why-you-should-use-step-functions-more/) - When to use Step Functions
+- [Step Functions Error Handling](https://theburningmonk.com/2019/07/thoughts-on-error-handling-with-step-functions/) - Retry strategies and best practices
+- [Saga Pattern with Step Functions](https://theburningmonk.com/2017/07/applying-the-saga-pattern-with-aws-lambda-and-step-functions/) - Distributed transactions
+- [Step Functions vs EventBridge](https://theburningmonk.com/2020/08/choreography-vs-orchestration-in-the-land-of-serverless/) - Choreography vs Orchestration
+
+**AWS Compute Blog - Essential Reading:**
+- [Event-Driven Orchestration](https://aws.amazon.com/blogs/compute/building-event-driven-architectures-with-step-functions/) - Modern patterns
+- [Callback Pattern](https://aws.amazon.com/blogs/compute/using-the-aws-step-functions-callback-pattern/) - Human approval workflows
+- [Map State Deep Dive](https://aws.amazon.com/blogs/compute/handling-batch-operations-with-aws-step-functions/) - Process arrays efficiently
+- [Wait for Callback with Task Token](https://docs.aws.amazon.com/step-functions/latest/dg/connect-to-resource.html#connect-wait-token) - Integrate with external systems
+
+### Advanced Patterns & Architectures
+
+**Saga Pattern (Distributed Transactions):**
+- [Saga Pattern Implementation](https://aws.amazon.com/blogs/compute/implementing-the-saga-pattern-with-aws-step-functions-and-amazon-dynamodb/) - Official AWS guide
+- [Compensating Transactions](https://docs.aws.amazon.com/prescriptive-guidance/latest/patterns/implement-the-serverless-saga-pattern-by-using-aws-step-functions.html) - Rollback failed operations
+- [Event Sourcing with Step Functions](https://aws.amazon.com/blogs/compute/using-aws-step-functions-and-amazon-eventbridge-to-orchestrate-event-driven-applications/) - Building audit trails
+
+**Parallel & Map State Patterns:**
+- [Distributed Map State](https://aws.amazon.com/blogs/aws/step-functions-distributed-map-a-serverless-solution-for-large-scale-parallel-data-processing/) - Process millions of items
+- [Dynamic Parallelism](https://docs.aws.amazon.com/step-functions/latest/dg/sample-project-dynamodb-streams.html) - Fan-out patterns
+- [Batch Processing](https://aws.amazon.com/blogs/compute/handling-batch-operations-with-aws-step-functions/) - Large-scale data processing
+
+**Choice & Branching:**
+- [Choice State Examples](https://docs.aws.amazon.com/step-functions/latest/dg/amazon-states-language-choice-state.html) - Conditional logic
+- [InputPath, OutputPath, ResultPath](https://docs.aws.amazon.com/step-functions/latest/dg/input-output-example.html) - Data flow management
+- [JSONPath in Step Functions](https://docs.aws.amazon.com/step-functions/latest/dg/amazon-states-language-paths.html) - Extract and transform data
+
+**Wait & Timer Patterns:**
+- [Wait State](https://docs.aws.amazon.com/step-functions/latest/dg/amazon-states-language-wait-state.html) - Fixed or dynamic waits
+- [Schedule-Based Workflows](https://aws.amazon.com/blogs/compute/scheduling-aws-lambda-functions-with-step-functions/) - Cron-like execution
+- [Polling Patterns](https://docs.aws.amazon.com/step-functions/latest/dg/sample-project-job-poller.html) - Wait for external job completion
+
+### Step Functions Service Integrations
+
+**Direct SDK Integrations (220+ Services):**
+- [Lambda Integration](https://docs.aws.amazon.com/step-functions/latest/dg/connect-lambda.html) - Invoke functions sync or async
+- [DynamoDB Integration](https://docs.aws.amazon.com/step-functions/latest/dg/connect-ddb.html) - Read/write tables directly
+- [ECS/Fargate Integration](https://docs.aws.amazon.com/step-functions/latest/dg/connect-ecs.html) - Run containerized tasks
+- [SNS/SQS Integration](https://docs.aws.amazon.com/step-functions/latest/dg/connect-sns.html) - Message pub/sub
+- [Glue Integration](https://docs.aws.amazon.com/step-functions/latest/dg/connect-glue.html) - ETL workflows
+- [Athena Integration](https://docs.aws.amazon.com/step-functions/latest/dg/connect-athena.html) - Query S3 data
+- [SageMaker Integration](https://docs.aws.amazon.com/step-functions/latest/dg/connect-sagemaker.html) - ML training/inference
+
+**Optimized Integrations:**
+- [Lambda Optimized](https://docs.aws.amazon.com/step-functions/latest/dg/connect-lambda.html) - Automatic payload handling
+- [Service Integrations Deep Dive](https://aws.amazon.com/blogs/compute/introducing-aws-step-functions-synchronous-express-workflows/) - Sync vs async patterns
+
+### Error Handling & Resilience
+
+**Retry Strategies:**
+- [Retry Configuration](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html#error-handling-retrying-after-an-error) - ErrorEquals, IntervalSeconds, MaxAttempts, BackoffRate
+- [Exponential Backoff](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/) - Prevent thundering herd
+- [Best Practices for Retries](https://theburningmonk.com/2019/07/thoughts-on-error-handling-with-step-functions/) - Yan Cui's guidance
+
+**Catch & Fallback:**
+- [Catch Errors](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html#error-handling-catching-errors) - Handle specific errors
+- [Fallback Chains](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html#error-handling-fallback-chains) - Multiple catch handlers
+- [States.ALL](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html) - Catch-all error handler
+
+**Circuit Breaker Pattern:**
+- [Circuit Breaker with Step Functions](https://aws.amazon.com/blogs/compute/building-a-circuit-breaker-for-aws-step-functions/) - Prevent cascading failures
+- [Health Checks](https://docs.aws.amazon.com/step-functions/latest/dg/sample-project-health-check.html) - Monitor external dependencies
+
+### Standard vs Express Workflows
+
+**When to Use Standard:**
+- Long-running workflows (up to 1 year)
+- Exactly-once execution semantics required
+- Need full execution history and visual debugging
+- Audit trail is critical
+- Slower execution rate (< 2,000/second)
+
+**When to Use Express:**
+- High-volume, short-duration workflows (< 5 minutes)
+- Can tolerate at-least-once execution
+- Cost is primary concern (100x cheaper for high volume)
+- Need high throughput (100,000/second)
+- Streaming data processing
+
+**Cost Comparison Example:**
+```
+Standard: $0.025 per 1,000 state transitions
+Express: $1.00 per 1 million executions + $0.0000167 per GB-second
+
+For 100 million executions/month with 3 states each:
+Standard: (100M * 3 * $0.025) / 1000 = $7,500/month
+Express: (100M * $1.00) / 1M + compute = ~$100/month
+```
+
+### Monitoring & Observability
+
+**CloudWatch Integration:**
+- [Step Functions Metrics](https://docs.aws.amazon.com/step-functions/latest/dg/procedure-cw-metrics.html) - Execution metrics
+- [CloudWatch Logs](https://docs.aws.amazon.com/step-functions/latest/dg/cw-logs.html) - Detailed execution logs
+- [CloudWatch Alarms](https://docs.aws.amazon.com/step-functions/latest/dg/procedure-cw-alarms.html) - Alert on failures
+
+**X-Ray Tracing:**
+- [Enable X-Ray](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-xray-tracing.html) - End-to-end tracing
+- [Service Map](https://docs.aws.amazon.com/xray/latest/devguide/xray-console.html#xray-console-servicemap) - Visualize workflow dependencies
+- [Trace Analysis](https://docs.aws.amazon.com/xray/latest/devguide/xray-console-analytics.html) - Find bottlenecks
+
+**EventBridge Integration:**
+- [Execution Events](https://docs.aws.amazon.com/step-functions/latest/dg/cw-events.html) - React to workflow events
+- [Failed Execution Alerts](https://aws.amazon.com/blogs/compute/using-amazon-eventbridge-to-capture-aws-step-functions-failures/) - Automated notifications
+
+### Real-World Use Cases
+
+**Order Processing:**
+1. Validate order (Lambda)
+2. Check inventory (DynamoDB)
+3. Charge payment (External API with callback)
+4. Update inventory (DynamoDB)
+5. Ship order (SQS)
+6. Send confirmation (SNS)
+7. **On Error:** Refund payment, restore inventory
+
+**ETL Pipeline:**
+1. Trigger Glue job (extract)
+2. Wait for completion
+3. Parallel transform jobs (Map state)
+4. Load to Redshift
+5. Run validation queries (Athena)
+6. Generate reports (Lambda)
+
+**ML Training Workflow:**
+1. Prepare data (Glue)
+2. Train model (SageMaker)
+3. Evaluate model (Lambda)
+4. If accuracy > 95%: Deploy (SageMaker endpoint)
+5. Else: Tune hyperparameters, retry
+6. Send notification (SNS)
+
+**Human Approval Workflow:**
+1. Submit expense report (Lambda)
+2. Wait for manager approval (callback with task token)
+3. If approved: Process payment (Lambda)
+4. If rejected: Notify employee (SNS)
+5. Archive (S3)
+
+### Video Tutorials
+
+**Beginner:**
+- [Step Functions Tutorial](https://www.youtube.com/watch?v=Dh7h3lkpeP4) - AWS official introduction
+- [Building Workflows with Workflow Studio](https://www.youtube.com/watch?v=f0maCDqW41k) - Visual builder demo
+- [Step Functions for Beginners](https://www.youtube.com/watch?v=8C96jgAj4Es) - Complete walkthrough
+
+**Advanced:**
+- [AWS re:Invent - Step Functions Deep Dive](https://www.youtube.com/results?search_query=aws+reinvent+step+functions) - Annual advanced sessions
+- [Distributed Map State](https://www.youtube.com/watch?v=6-jfKDJLbVo) - Large-scale processing
+- [Step Functions Best Practices](https://www.youtube.com/watch?v=o6-7BAUWaqg) - AWS Serverless Land
+
+### Community Tools & Libraries
+
+**Infrastructure as Code:**
+- [CDK Patterns for Step Functions](https://github.com/cdk-patterns/serverless) - Reusable patterns
+- [Serverless Framework Plugin](https://www.serverless.com/framework/docs/providers/aws/guide/workflow) - Define workflows in YAML
+- [SAM Support](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-statemachine.html) - Step Functions in SAM
+
+**Testing & Development:**
+- [Step Functions Local](https://docs.aws.amazon.com/step-functions/latest/dg/sfn-local.html) - Test workflows locally
+- [LocalStack](https://localstack.cloud/) - Emulate Step Functions
+- [ASL Validator](https://github.com/ChristopheBougere/asl-validator) - Validate state machine definitions
+
+**Visualization:**
+- [Step Functions Graph](https://github.com/aws/aws-toolkit-vscode) - VS Code extension
+- [Render ASL as SVG](https://github.com/kddejong/cfn-diagram) - Generate diagrams from code
+
+### Workshops & Hands-On Labs
+
+**Official AWS Workshops:**
+- [Step Functions Workshop](https://catalog.workshops.aws/stepfunctions/en-US) - Comprehensive hands-on tutorial
+- [Serverless Patterns](https://serverlessland.com/patterns?services=step-functions) - Step Functions patterns collection
+- [Build a Saga Pattern](https://catalog.workshops.aws/stepfunctions/en-US/module-5) - Distributed transaction workshop
+
+**Community Resources:**
+- [Serverless Land](https://serverlessland.com/) - Step Functions examples and patterns
+- [AWS Samples GitHub](https://github.com/aws-samples?q=step-functions) - Official code samples
+
+### Recommended Learning Path
+
+**Week 1 - Fundamentals:**
+1. Read [Step Functions Developer Guide](https://docs.aws.amazon.com/step-functions/latest/dg/welcome.html) - First 5 chapters
+2. Watch [Step Functions Tutorial Video](https://www.youtube.com/watch?v=Dh7h3lkpeP4)
+3. Build your first workflow with FsCDK (examples above)
+4. Explore [Workflow Studio](https://aws.amazon.com/blogs/aws/new-aws-step-functions-workflow-studio-a-low-code-visual-tool-for-building-state-machines/)
+
+**Week 2 - Patterns & Best Practices:**
+1. Study [Step Functions Design Patterns](https://docs.aws.amazon.com/step-functions/latest/dg/design-patterns.html)
+2. Read [Yan Cui's orchestration articles](https://theburningmonk.com/2019/06/why-you-should-use-step-functions-more/)
+3. Implement error handling with Retry and Catch
+4. Learn [Service Integrations](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-service-integrations.html)
+
+**Week 3 - Advanced:**
+1. Implement [Saga Pattern](https://aws.amazon.com/blogs/compute/implementing-the-saga-pattern-with-aws-step-functions-and-amazon-dynamodb/)
+2. Use [Map State for parallel processing](https://aws.amazon.com/blogs/compute/handling-batch-operations-with-aws-step-functions/)
+3. Add [X-Ray tracing](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-xray-tracing.html)
+4. Take [Step Functions Workshop](https://catalog.workshops.aws/stepfunctions/en-US)
+
+**Ongoing - Mastery:**
+- Build complex orchestration patterns
+- Optimize costs (Standard vs Express)
+- Implement circuit breakers and resilience patterns
+- Follow [AWS Compute Blog](https://aws.amazon.com/blogs/compute/) for new features
+
+### AWS Experts to Follow
+
+**AWS Heroes & Advocates:**
+- **[Yan Cui (@theburningmonk)](https://twitter.com/theburningmonk)** - Serverless orchestration expert
+- **[Ben Kehoe (@ben11kehoe)](https://twitter.com/ben11kehoe)** - Serverless workflow patterns
+- **[Jeremy Daly (@jeremy_daly)](https://twitter.com/jeremy_daly)** - Serverless advocate
+- **[Danilo Poccia (@danilop)](https://twitter.com/danilop)** - AWS Principal Developer Advocate
+
+**AWS Step Functions Team:**
+- Follow [AWS Compute Blog](https://aws.amazon.com/blogs/compute/category/compute/aws-step-functions/) for official updates
+
+### Common Pitfalls & Solutions
+
+**❌ DON'T:**
+1. **Use Step Functions for high-frequency loops** → Use Lambda or Fargate
+2. **Pass large payloads between states** → Use S3 for data, pass S3 keys
+3. **Ignore error handling** → Always add Retry and Catch
+4. **Use Standard for high-volume, short tasks** → Use Express workflows
+5. **Forget timeouts** → Set realistic TimeoutSeconds for each state
+
+**✅ DO:**
+1. **Design for idempotency** → Same input = same output
+2. **Use parallel states** → Execute independent tasks concurrently
+3. **Implement compensating transactions** → Saga pattern for rollbacks
+4. **Monitor execution metrics** → Set up CloudWatch alarms
+5. **Use service integrations** → Avoid Lambda for simple AWS API calls
+
+### FsCDK Step Functions Features
+
+- Type-safe state machine definitions
+- Production-safe defaults (STANDARD type, ALL logging, X-Ray enabled)
+- Helper functions for common patterns
+- Seamless integration with Lambda, DynamoDB, and other services
+
+For implementation details, see [src/StepFunctions.fs](../src/StepFunctions.fs) in the FsCDK repository.
 *)
