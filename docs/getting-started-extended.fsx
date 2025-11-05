@@ -443,15 +443,22 @@ cdk import
 vpc "MyVpc-v2" { ... }
 ```
 
-## What's Coming Next?
+## What's Available?
 
-Future enhancements may include:
+FsCDK supports 30+ AWS services including:
 
-- Application Load Balancer (ALB)
-- Network Load Balancer (NLB)
-- Route53 DNS zones
-- Additional database engines
-- ECS/Fargate support
+- **Load Balancers**: Application Load Balancer (ALB), Network Load Balancer (NLB)
+- **DNS & Certificates**: Route53 hosted zones, private zones, A records, Certificate Manager
+- **Containers**: ECS/Fargate task definitions and services, ECR repositories, EKS clusters
+- **Databases**: RDS (PostgreSQL, MySQL, etc.), DynamoDB, DocumentDB, ElastiCache
+- **Messaging**: SNS, SQS, Kinesis streams, EventBridge
+- **Monitoring**: CloudWatch alarms, dashboards, log groups, metric filters, X-Ray, Synthetics
+- **Security**: KMS encryption, Secrets Manager, IAM roles and policies, OIDC providers
+- **API & Integration**: API Gateway (REST & HTTP), AppSync GraphQL, Step Functions
+- **Storage & CDN**: S3, CloudFront distributions
+- **Compute**: Lambda functions with Powertools, App Runner, Elastic Beanstalk
+
+See the [full list of supported services](https://totallymoney.github.io/FsCDK/) in the documentation.
 
 ---
 
