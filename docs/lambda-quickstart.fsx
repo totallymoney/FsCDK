@@ -137,6 +137,9 @@ Enables AWS X-Ray for distributed tracing.
 ### Example 5: Cost optimization with custom ephemeral storage
 *)
 
+let logGroupItm =
+    logGroup "optimized-function-logs" { retention RetentionDays.THREE_DAYS }
+
 lambda "optimized-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
@@ -144,7 +147,7 @@ lambda "optimized-function" {
     ephemeralStorageSize 1024 // Increase /tmp storage to 1 GB
 
     // For custom log retention, use logGroup builder:
-    logGroup (logGroup "optimized-function-logs" { retention RetentionDays.THREE_DAYS })
+    logGroup logGroupItm
 }
 
 (**
