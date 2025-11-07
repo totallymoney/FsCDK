@@ -312,19 +312,19 @@ Logs are retained for 1 week by default (via CloudWatch Log Groups) following Co
 - **Compliance**: 90 days or longer (regulatory requirements)
 
 To customize, use the `logGroup` builder:
+**)
 
-```fsharp
+let logGrp = logGroup "MyFunction-logs" { retention RetentionDays.ONE_MONTH }
+
 lambda "MyFunction" {
     handler "index.handler"
     runtime Runtime.NODEJS_18_X
     code "./code"
-    
-    logGroup (logGroup "MyFunction-logs" {
-        retention RetentionDays.ONE_MONTH
-    })
-}
-```
 
+    logGroup logGrp
+}
+
+(*
 ## Performance Optimization
 
 ### Memory configuration
