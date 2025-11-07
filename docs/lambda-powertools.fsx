@@ -680,9 +680,9 @@ def lambda_handler(event, context):
 
 ## Related Documentation
 
-- [Lambda Production Defaults](lambda-production-defaults.fsx) - Overview of all production features
-- [Lambda Quickstart](lambda-quickstart.fsx) - Basic Lambda usage
-- [CloudWatch Dashboard](cloudwatch-dashboard.fsx) - Visualizing metrics
+- [Lambda Production Defaults](lambda-production-defaults.html) - Overview of all production features
+- [Lambda Quickstart](lambda-quickstart.html) - Basic Lambda usage
+- [CloudWatch Dashboard](cloudwatch-dashboard.html) - Visualizing metrics
 
 ---
 

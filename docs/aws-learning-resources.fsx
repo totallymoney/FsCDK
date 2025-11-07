@@ -26,7 +26,7 @@ Build depth in AWS while keeping FsCDK at your fingertips. Every resource listed
 | Hands-on labs | Learn fundamentals with structured walkthroughs | [AWS Skill Builder – Cloud Practitioner Essentials](https://explore.skillbuilder.aws/learn/course/internal/view/elearning/134/aws-cloud-practitioner-essentials) |
 | Architectural playbook | Review reference designs and decision guides | [AWS Architecture Center](https://aws.amazon.com/architecture/) |
 
-Add the following FsCDK notebooks after each lab to cement concepts: `getting-started-extended.fsx`, `multi-tier-example.fsx`, and `feature-reference.fsx`.
+Add the following FsCDK notebooks after each lab to cement concepts: [Getting Started Extended](getting-started-extended.html), [Multi-Tier Example](multi-tier-example.html), and [Feature Reference](feature-reference.html).
 
 ---
 
@@ -41,7 +41,7 @@ Add the following FsCDK notebooks after each lab to cement concepts: `getting-st
 
 ### Apply with FsCDK
 
-- Walk through `lambda-quickstart.fsx`, `lambda-production-defaults.fsx`, `step-functions.fsx`, and `eventbridge.fsx`.
+- Walk through [Lambda Quickstart](lambda-quickstart.html), [Lambda Production Defaults](lambda-production-defaults.html), [Step Functions](step-functions.html), and [EventBridge](eventbridge.html).
 - Implement deliberate practice: build an ingestion pipeline with DLQs, latency alarms, and Powertools observability.
 
 ---
@@ -57,7 +57,7 @@ Add the following FsCDK notebooks after each lab to cement concepts: `getting-st
 
 ### Apply with FsCDK
 
-- Run `dynamodb.fsx`, `s3-quickstart.fsx`, `bucket-policy.fsx`, and `kms-encryption.fsx`.
+- Run [DynamoDB](dynamodb.html), [S3 Quickstart](s3-quickstart.html), [Bucket Policy](bucket-policy.html), and [KMS Encryption](kms-encryption.html).
 - Practice modeling access patterns, enforcing TLS-only S3 policies, and wiring DynamoDB streams into downstream processing with FsCDK builders.
 
 ---
@@ -69,7 +69,7 @@ Add the following FsCDK notebooks after each lab to cement concepts: `getting-st
 - **Scott Piper – Top AWS Security Mistakes** – [Blog](https://summitroute.com/blog/2020/05/21/aws_security_mistakes/) – Field-tested precautions from an AWS Security Hero.
 - **AWS Identity Workshops** – [Interactive labs](https://catalog.workshops.aws/iam/en-US) – Build and validate guard rails.
 
-Apply with `iam-best-practices.fsx`, `managed-policy.fsx`, `custom-resources.fsx`, and `alb-secrets-route53.fsx`. Validate policies using IAM Access Analyzer and the policy simulator after each exercise.
+Apply with [IAM Best Practices](iam-best-practices.html), [Managed Policy](managed-policy.html), [Custom Resources](custom-resources.html), and [ALB Secrets Route53](alb-secrets-route53.html). Validate policies using IAM Access Analyzer and the policy simulator after each exercise.
 
 ---
 
@@ -78,7 +78,7 @@ Apply with `iam-best-practices.fsx`, `managed-policy.fsx`, `custom-resources.fsx
 - **Abby Fuller – Containers on AWS: Best Practices (re:Invent 2022)** – [Video](https://www.youtube.com/watch?v=2vOEQap1WMQ)
 - **Nathan Peck – ECS/Fargate Production Readiness Checklist** – [Blog](https://nathanpeck.com/ecs-production-readiness-checklist/)
 - **EKS Best Practices Guide** – [GitHub](https://aws.github.io/aws-eks-best-practices/) – Maintained by AWS container specialists.
-- Pair with `ec2-ecs.fsx`, `ecr-repository.fsx`, and `eks-kubernetes.fsx` to learn deployment, image hygiene, and multi-architecture node groups.
+- Pair with [EC2 ECS](ec2-ecs.html), [ECR Repository](ecr-repository.html), and [EKS Kubernetes](eks-kubernetes.html) to learn deployment, image hygiene, and multi-architecture node groups.
 
 ---
 
@@ -87,16 +87,16 @@ Apply with `iam-best-practices.fsx`, `managed-policy.fsx`, `custom-resources.fsx
 ### Beginner (4 weeks)
 
 1. **Week 1 – Foundations**: Complete Cloud Practitioner Essentials, read the Well-Architected overview, and deploy the FsCDK getting-started stack.
-2. **Week 2 – Serverless fundamentals**: Follow `lambda-quickstart.fsx`, watch the AWS Lambda tutorial by Danilo Poccia (4.8★ on Manning LiveBook), and implement Powertools logging.
-3. **Week 3 – Data layer**: Work through `s3-quickstart.fsx` and `dynamodb.fsx`, then compare your design with Alex DeBrie’s single-table examples.
-4. **Week 4 – Integration**: Combine SNS, SQS, and EventBridge (`sns-sqs-messaging.fsx`, `eventbridge.fsx`). Review your architecture against the Serverless Lens of Well-Architected.
+2. **Week 2 – Serverless fundamentals**: Follow [Lambda Quickstart](lambda-quickstart.html), watch the AWS Lambda tutorial by Danilo Poccia (4.8★ on Manning LiveBook), and implement Powertools logging.
+3. **Week 3 – Data layer**: Work through [S3 Quickstart](s3-quickstart.html) and [DynamoDB](dynamodb.html), then compare your design with Alex DeBrie's single-table examples.
+4. **Week 4 – Integration**: Combine SNS, SQS, and EventBridge ([SNS SQS Messaging](sns-sqs-messaging.html), [EventBridge](eventbridge.html)). Review your architecture against the Serverless Lens of Well-Architected.
 
 ### Intermediate (4 weeks)
 
-- **Week 1 – Production Lambda**: Study `lambda-production-defaults.fsx`, Yan Cui’s concurrency guide, and enable reserved concurrency + DLQs.
+- **Week 1 – Production Lambda**: Study [Lambda Production Defaults](lambda-production-defaults.html), Yan Cui’s concurrency guide, and enable reserved concurrency + DLQs.
 - **Week 2 – Data mastery**: Read 3 chapters of The DynamoDB Book, watch Houlihan’s talk, and model 5 access patterns in FsCDK.
-- **Week 3 – Security**: Complete the IAM workshop, refactor policies using `managed-policy.fsx`, and run Access Analyzer.
-- **Week 4 – Orchestration**: Dive into `step-functions.fsx`, follow the AWS saga pattern blog, and build a rollback-capable workflow.
+- **Week 3 – Security**: Complete the IAM workshop, refactor policies using [Managed Policy](managed-policy.html), and run Access Analyzer.
+- **Week 4 – Orchestration**: Dive into [Step Functions](step-functions.html), follow the AWS saga pattern blog, and build a rollback-capable workflow.
 
 ### Advanced (continuous)
 

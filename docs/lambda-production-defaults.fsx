@@ -570,9 +570,9 @@ productionApp.Synth() |> ignore
 
 ## Related Documentation
 
-- [Lambda Quickstart](lambda-quickstart.fsx) - Basic Lambda usage
-- [Getting Started](getting-started-extended.fsx) - FsCDK fundamentals
-- [IAM Best Practices](iam-best-practices.fsx) - Securing Lambda permissions
+- [Lambda Quickstart](lambda-quickstart.html) - Basic Lambda usage
+- [Getting Started](getting-started-extended.html) - FsCDK fundamentals
+- [IAM Best Practices](iam-best-practices.html) - Securing Lambda permissions
 
 ---
 

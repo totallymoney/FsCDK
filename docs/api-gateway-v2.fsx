@@ -77,7 +77,7 @@ stack "HttpAPIWithCORS" {
 (**
 ## HTTP API with Lambda Integration
 
-FsCDK keeps the Lambda integration lightweight so you can focus on business logic. Follow the playbook shared in **re:Invent SVS402 – Deep dive on serverless APIs**: separate route definitions from function code, enable structured logging via Powertools, and surface integration metrics in CloudWatch. The snippet below establishes the foundation; pair it with reserved concurrency and DLQs as shown in `lambda-production-defaults.fsx` to hit production-readiness quickly.
+FsCDK keeps the Lambda integration lightweight so you can focus on business logic. Follow the playbook shared in **re:Invent SVS402 – Deep dive on serverless APIs**: separate route definitions from function code, enable structured logging via Powertools, and surface integration metrics in CloudWatch. The snippet below establishes the foundation; pair it with reserved concurrency and DLQs as shown in [Lambda Production Defaults](lambda-production-defaults.html) to hit production-readiness quickly.
 *)
 
 stack "HttpAPIWithLambda" {
@@ -223,5 +223,5 @@ FsCDK’s builder defaults—auto-deployed `$default` stage, throttling, and dis
 - **AWS API Gateway Security Workshop** (Hands-on labs)
 - **AWS Docs** – [HTTP API developer guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html)
 
-Combine these resources with the FsCDK notebooks (`lambda-production-defaults.fsx`, `eventbridge.fsx`, `iam-best-practices.fsx`) to deliver secure, observable APIs with confidence.
+Combine these resources with the FsCDK notebooks ([Lambda Production Defaults](lambda-production-defaults.html), [EventBridge](eventbridge.html), [IAM Best Practices](iam-best-practices.html)) to deliver secure, observable APIs with confidence.
 *)

@@ -382,8 +382,8 @@ All resources below are curated for quality (4.5★+ ratings or repeated recomme
 
 ### Suggested learning path
 1. Build this quickstart and review the generated CloudFormation.
-2. Enable Powertools and explore the tracing/logging features in `lambda-production-defaults.fsx`.
-3. Model event-driven architectures with `eventbridge.fsx` and `sns-sqs-messaging.fsx`.
+2. Enable Powertools and explore the tracing/logging features in [Lambda Production Defaults](lambda-production-defaults.html).
+3. Model event-driven architectures with [EventBridge](eventbridge.html) and [SNS SQS Messaging](sns-sqs-messaging.html).
 4. Subscribe to **Off-by-none** (Jeremy Daly) and watch the latest **re:Invent serverless** sessions to stay current.
 
 ### Community hubs
