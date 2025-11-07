@@ -117,17 +117,20 @@ stack "Prod" {
 ## Why FsCDK?
 
 **Production-Safe Defaults**
+
 - Implements [Yan Cui's serverless best practices](https://theburningmonk.com/) by default
 - Auto-creates Dead Letter Queues (DLQs) for Lambda functions
 - Enables X-Ray tracing and structured JSON logging
 - Sets conservative concurrency limits to prevent runaway costs
 
 **Security by Default**
+
 - S3 buckets block public access and enforce SSL/TLS
 - Lambda environment variables encrypted with KMS
 - Security groups deny all outbound traffic by default (opt-in model)
 
 **F# Developer Experience**
+
 - Type-safe computation expressions for all AWS resources
 - Immutable configuration with compile-time checks
 - IntelliSense support for discovering available options

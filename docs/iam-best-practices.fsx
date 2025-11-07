@@ -505,12 +505,14 @@ Use this before prod deploys (inspired by Piper's audits):
 ### AWS Official Documentation
 
 **IAM Fundamentals:**
+
 - [IAM User Guide](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html) - Complete IAM documentation
 - [IAM Best Practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html) - Official AWS recommendations
 - [IAM Policies and Permissions](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html) - Policy structure explained
 - [IAM Policy Simulator](https://policysim.aws.amazon.com/) - Test policies before deployment
 
 **Security Best Practices:**
+
 - [AWS Security Best Practices](https://docs.aws.amazon.com/security/) - Comprehensive security guidance
 - [AWS Well-Architected Framework - Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html) - The 5 pillars of security
 - [AWS Security Hub](https://aws.amazon.com/security-hub/) - Centralized security monitoring
@@ -519,18 +521,21 @@ Use this before prod deploys (inspired by Piper's audits):
 ### AWS Heroes & Security Experts
 
 **Ben Kehoe (@ben11kehoe) - AWS Serverless Hero:**
+
 - [IAM for Humans](https://ben11kehoe.medium.com/iam-is-complicated-but-it-doesnt-have-to-be-b71e7b0b6c5c) - Simplifying IAM concepts
 - [AWS IAM Policies in a Nutshell](https://ben11kehoe.medium.com/aws-iam-policies-in-a-nutshell-63d42d1caec5) - Understanding policy evaluation
 - [Temporary Security Credentials](https://ben11kehoe.medium.com/you-should-never-use-aws-access-keys-or-iam-users-5d8e8e9f3d8e) - Why you should use roles
 - [IAM Roles Everywhere](https://www.youtube.com/watch?v=aISWoPf_XNE) - AWS re:Invent talk on IAM roles
 
 **Scott Piper (@0xdabbad00) - AWS Security Hero:**
+
 - [Flaws.cloud](http://flaws.cloud/) - Learn AWS security through CTF challenges
 - [CloudSploit](https://github.com/aquasecurity/cloudsploit) - AWS security scanning tool
 - [AWS Security Mistakes](https://summitroute.com/blog/2020/05/21/aws_security_mistakes/) - Common pitfalls
 - [IAM Vulnerable](https://github.com/BishopFox/iam-vulnerable) - Learn IAM privilege escalation
 
 **Yan Cui (The Burning Monk) - Serverless Security:**
+
 - [Serverless Security Best Practices](https://theburningmonk.com/2018/01/serverless-security-best-practices/) - Lambda-specific security
 - [API Gateway Security](https://theburningmonk.com/2019/02/securing-api-gateway-with-lambda-authorizer/) - Custom authorizers
 - [Secrets Management in Lambda](https://theburningmonk.com/2019/09/why-you-should-use-temporary-stack-credentials-for-your-aws-cloudformation-deployments/) - Handling sensitive data
@@ -538,18 +543,21 @@ Use this before prod deploys (inspired by Piper's audits):
 ### IAM Deep Dives
 
 **Policy Evaluation Logic:**
+
 - [Policy Evaluation Logic](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html) - How AWS evaluates permissions
 - [IAM JSON Policy Elements](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements.html) - Effect, Action, Resource, Condition
 - [Policy Variables](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_variables.html) - Dynamic policy values
 - [Service Control Policies (SCPs)](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html) - Organization-wide guardrails
 
 **Least Privilege:**
+
 - [Grant Least Privilege](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege) - Only grant what's needed
 - [IAM Access Analyzer](https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html) - Find overly permissive policies
 - [Access Advisor](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_access-advisor.html) - See unused permissions
 - [Policy Generator](https://awspolicygen.s3.amazonaws.com/policygen.html) - Create policies visually
 
 **IAM Roles & Temporary Credentials:**
+
 - [IAM Roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html) - Temporary credentials for services
 - [Assume Role](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html) - Cross-account access
 - [Session Policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html#policies_session) - Further restrict temporary credentials
@@ -558,18 +566,21 @@ Use this before prod deploys (inspired by Piper's audits):
 ### Serverless Security
 
 **Lambda Security Best Practices:**
+
 - [Lambda Security Overview](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html) - Official security guide
 - [Lambda Execution Roles](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html) - Least privilege for functions
 - [Lambda Resource Policies](https://docs.aws.amazon.com/lambda/latest/dg/access-control-resource-based.html) - Who can invoke your functions
 - [VPC Security for Lambda](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/) - Private resource access
 
 **API Gateway Security:**
+
 - [API Gateway Authorization](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-to-api.html) - IAM, Cognito, Lambda authorizers
 - [Lambda Authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html) - Custom authentication
 - [API Keys](https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-api-usage-plans.html) - Rate limiting and quotas
 - [WAF Integration](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-control-access-aws-waf.html) - Protect against attacks
 
 **Secrets Management:**
+
 - [AWS Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html) - Rotate and manage secrets
 - [Systems Manager Parameter Store](https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html) - Secure configuration storage
 - [Lambda Environment Variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html) - Encrypted with KMS
@@ -578,18 +589,21 @@ Use this before prod deploys (inspired by Piper's audits):
 ### AWS Security Services
 
 **Detection & Response:**
+
 - [AWS GuardDuty](https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html) - Threat detection
 - [AWS Security Hub](https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html) - Centralized security findings
 - [Amazon Detective](https://docs.aws.amazon.com/detective/latest/userguide/what-is-detective.html) - Security investigation
 - [AWS Macie](https://docs.aws.amazon.com/macie/latest/user/what-is-macie.html) - Discover sensitive data in S3
 
 **Compliance & Auditing:**
+
 - [AWS CloudTrail](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html) - Audit all API calls
 - [AWS Config](https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html) - Resource configuration tracking
 - [AWS Audit Manager](https://docs.aws.amazon.com/audit-manager/latest/userguide/what-is.html) - Continuous auditing
 - [AWS Artifact](https://docs.aws.amazon.com/artifact/latest/ug/what-is-aws-artifact.html) - Compliance reports
 
 **Encryption & Key Management:**
+
 - [AWS KMS](https://docs.aws.amazon.com/kms/latest/developerguide/overview.html) - Managed encryption keys
 - [KMS Key Policies](https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html) - Control key access
 - [Envelope Encryption](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#enveloping) - Data encryption pattern
@@ -598,12 +612,14 @@ Use this before prod deploys (inspired by Piper's audits):
 ### Security Frameworks & Compliance
 
 **Compliance Standards:**
+
 - [AWS Compliance Programs](https://aws.amazon.com/compliance/programs/) - HIPAA, PCI-DSS, SOC 2, etc.
 - [HIPAA on AWS](https://aws.amazon.com/compliance/hipaa-compliance/) - Healthcare compliance
 - [PCI-DSS on AWS](https://aws.amazon.com/compliance/pci-dss-level-1-faqs/) - Payment card industry
 - [GDPR on AWS](https://aws.amazon.com/compliance/gdpr-center/) - Data privacy
 
 **Security Frameworks:**
+
 - [AWS Well-Architected Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html) - 7 design principles
 - [CIS AWS Foundations Benchmark](https://www.cisecurity.org/benchmark/amazon_web_services) - Industry best practices
 - [NIST Cybersecurity Framework](https://aws.amazon.com/compliance/nist/) - Federal security standards
@@ -617,11 +633,13 @@ Use this before prod deploys (inspired by Piper's audits):
 - [IAM Roles Explained](https://www.youtube.com/watch?v=qpvbHwP3U_M) - Understanding roles
 
 **Advanced Security:**
+
 - [AWS re:Inforce Security Conference](https://www.youtube.com/results?search_query=aws+reinforce) - Annual security-focused event
 - [IAM Policy Deep Dive](https://www.youtube.com/watch?v=ExjW3HCFVSI) - Advanced policy patterns
 - [Cross-Account Access](https://www.youtube.com/watch?v=HPfGG8xLqCk) - Secure multi-account strategies
 
 **Serverless Security:**
+
 - [Serverless Security Best Practices](https://www.youtube.com/watch?v=kmSdyN9qiXY) - AWS re:Invent
 - [Lambda Security Deep Dive](https://www.youtube.com/watch?v=ODg9LG5JxXM) - Production patterns
 - [API Gateway Authorization](https://www.youtube.com/watch?v=VZqG7HjT2AQ) - Custom authorizers
@@ -629,18 +647,21 @@ Use this before prod deploys (inspired by Piper's audits):
 ### Security Tools & Utilities
 
 **Policy Analysis:**
+
 - [Parliament](https://github.com/duo-labs/parliament) - IAM policy linter
 - [IAM Policy Validator](https://github.com/aws-cloudformation/cloudformation-cli/tree/master/src/cfn_policy_validator) - Validate CloudFormation IAM
 - [Cloudsplaining](https://github.com/salesforce/cloudsplaining) - Identify overprivileged policies
 - [IAMbic](https://github.com/noqdev/iambic) - IAM as code
 
 **Security Scanning:**
+
 - [Prowler](https://github.com/prowler-cloud/prowler) - AWS security best practices scanner
 - [ScoutSuite](https://github.com/nccgroup/ScoutSuite) - Multi-cloud security auditing
 - [CloudMapper](https://github.com/duo-labs/cloudmapper) - Visualize AWS environments
 - [PMapper](https://github.com/nccgroup/PMapper) - IAM privilege escalation analysis
 
 **Secrets Detection:**
+
 - [git-secrets](https://github.com/awslabs/git-secrets) - Prevent committing secrets
 - [TruffleHog](https://github.com/trufflesecurity/truffleHog) - Find secrets in git history
 - [detect-secrets](https://github.com/Yelp/detect-secrets) - Prevent secrets in code
@@ -648,12 +669,14 @@ Use this before prod deploys (inspired by Piper's audits):
 ### Hands-On Learning
 
 **AWS Security Workshops:**
+
 - [AWS Security Workshops](https://workshops.aws/categories/Security) - Official hands-on labs
 - [IAM Workshop](https://catalog.workshops.aws/iam/en-US) - Deep dive into IAM
 - [Serverless Security Workshop](https://catalog.workshops.aws/serverless-security/en-US) - Secure serverless apps
 - [Well-Architected Security Labs](https://www.wellarchitectedlabs.com/security/) - Security best practices
 
 **Security Challenges:**
+
 - [flaws.cloud](http://flaws.cloud/) - CTF-style AWS security challenges
 - [flaws2.cloud](http://flaws2.cloud/) - Advanced AWS security challenges
 - [CloudGoat](https://github.com/RhinoSecurityLabs/cloudgoat) - Vulnerable AWS environments
@@ -661,30 +684,35 @@ Use this before prod deploys (inspired by Piper's audits):
 ### Recommended Learning Path
 
 **Week 1 - IAM Fundamentals:**
+
 1. Read [IAM User Guide](https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction.html) - Chapters 1-5
 2. Watch [IAM Primer Video](https://www.youtube.com/watch?v=SXSqhTn2DuE)
 3. Practice with [IAM Policy Simulator](https://policysim.aws.amazon.com/)
 4. Review [FsCDK IAM examples](iam-best-practices.html) (this document)
 
 **Week 2 - Policy Mastery:**
+
 1. Study [Policy Evaluation Logic](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html)
 2. Read [Ben Kehoe's IAM Posts](https://ben11kehoe.medium.com/)
 3. Use [IAM Access Analyzer](https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html)
 4. Take [IAM Workshop](https://catalog.workshops.aws/iam/en-US)
 
 **Week 3 - Security Services:**
+
 1. Enable [AWS GuardDuty](https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html)
 2. Configure [Security Hub](https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html)
 3. Set up [CloudTrail](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-user-guide.html)
 4. Run [Prowler](https://github.com/prowler-cloud/prowler) security scan
 
 **Week 4 - Serverless Security:**
+
 1. Read [Lambda Security Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html)
 2. Implement [Secrets Manager](https://docs.aws.amazon.com/secretsmanager/latest/userguide/intro.html) in Lambda
 3. Add [Lambda authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-use-lambda-authorizer.html) to API Gateway
 4. Take [Serverless Security Workshop](https://catalog.workshops.aws/serverless-security/en-US)
 
 **Ongoing - Security Mastery:**
+
 - Complete [flaws.cloud](http://flaws.cloud/) and [flaws2.cloud](http://flaws2.cloud/) challenges
 - Watch [AWS re:Inforce sessions](https://www.youtube.com/results?search_query=aws+reinforce)
 - Follow [AWS Security Blog](https://aws.amazon.com/blogs/security/)
@@ -693,23 +721,27 @@ Use this before prod deploys (inspired by Piper's audits):
 ### AWS Security Experts to Follow
 
 **AWS Heroes:**
+
 - **[Ben Kehoe (@ben11kehoe)](https://twitter.com/ben11kehoe)** - IAM and serverless security
 - **[Scott Piper (@0xdabbad00)](https://twitter.com/0xdabbad00)** - Cloud security, IAM privilege escalation
 - **[Chris Farris (@jcfarris)](https://twitter.com/jcfarris)** - AWS security and compliance
 - **[Yan Cui (@theburningmonk)](https://twitter.com/theburningmonk)** - Serverless security
 
 **Security Researchers:**
+
 - **[Mark Nunnikhoven (@marknca)](https://twitter.com/marknca)** - Cloud security best practices
 - **[Corey Quinn (@QuinnyPig)](https://twitter.com/QuinnyPig)** - AWS cost and security
 - **[Ian Mckay (@iann0036)](https://twitter.com/iann0036)** - AWS security tools
 
 **AWS Security Team:**
+
 - Follow [AWS Security Blog](https://aws.amazon.com/blogs/security/)
 - Subscribe to [AWS Security Bulletins](https://aws.amazon.com/security/security-bulletins/)
 
 ### Common Security Pitfalls
 
 **❌ DON'T:**
+
 1. **Use root account for daily tasks** → Create IAM users with least privilege
 2. **Hardcode AWS credentials** → Use IAM roles for services, temporary credentials for users
 3. **Use wildcard (*) in policies** → Be specific with actions and resources
@@ -720,6 +752,7 @@ Use this before prod deploys (inspired by Piper's audits):
 8. **Disable MFA** → Enable MFA for all human users, especially admins
 
 **✅ DO:**
+
 1. **Use IAM roles for services** → Lambda, EC2, ECS should use roles
 2. **Enable MFA for all users** → Especially for privileged accounts
 3. **Rotate credentials regularly** → 90-day rotation policy
@@ -732,6 +765,7 @@ Use this before prod deploys (inspired by Piper's audits):
 ### FsCDK Security Features
 
 **Security by Default:**
+
 - Lambda functions use least-privilege execution roles
 - S3 buckets block public access and enforce SSL
 - Security groups deny all outbound by default
@@ -739,6 +773,7 @@ Use this before prod deploys (inspired by Piper's audits):
 - CloudWatch Logs retention configured
 
 **IAM Helpers:**
+
 - `grant` builder for simple IAM permissions
 - `policyStatement` for custom policies
 - Automatic role creation with minimal permissions

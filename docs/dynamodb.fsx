@@ -237,6 +237,7 @@ stack "DevTable" {
 Drawing from Alex DeBrie's *The DynamoDB Book* (rated 4.9/5 on GoodReads) and Rick Houlihan's re:Invent sessions (e.g., [Advanced Design Patterns](https://www.youtube.com/watch?v=6yqfmXiZTlM) with 250k+ views and 4.8/5 community rating), these best practices ensure scalable, efficient DynamoDB usage.
 
 ### Data Modeling Fundamentals
+
 - **Access Patterns First**: As DeBrie advises, "List your app's access patterns before touching DynamoDB." Identify all queries, then design keys and indexes to support them efficiently.
 - **Single-Table Design**: Store related entities in one table to minimize joins and latency—Houlihan's "golden rule" for performance at scale.
 - **Composite Keys**: Use prefixes like "USER#123#STATUS#ACTIVE" for flexible sorting and filtering.
@@ -244,27 +245,32 @@ Drawing from Alex DeBrie's *The DynamoDB Book* (rated 4.9/5 on GoodReads) and Ri
 - **Hierarchical Data**: Model trees with adjacency lists in sort keys.
 
 ### Performance Optimization
+
 - **High-Cardinality Keys**: Distribute writes evenly to avoid hot partitions—monitor with Contributor Insights (Houlihan recommendation).
 - **Batch Operations**: Use BatchGetItem/BatchWriteItem for efficiency; implement retries with exponential backoff.
 - **DAX for Reads**: Add in-memory caching for microsecond latency on read-heavy apps.
 - **Query vs. Scan**: Always prefer Query; Scans are anti-patterns for production (DeBrie warning).
 
 ### Security and Compliance
+
 - **Encryption & Access Control**: Default encryption at rest; use IAM condition keys for row-level security (e.g., based on user ID).
 - **PITR and Backups**: Enabled by default in FsCDK—essential for compliance (e.g., GDPR, HIPAA).
 - **Private Networking**: Route traffic via VPC endpoints to avoid public internet exposure.
 
 ### Cost Management
+
 - **On-Demand Mode**: FsCDK default—pay only for what you use, ideal for variable traffic (DeBrie fave).
 - **TTL Automation**: Expire data to cut storage costs; combine with Standard-IA for archives.
 - **Index Optimization**: Use INCLUDE projections sparingly; delete unused GSIs via metrics analysis.
 
 ### Reliability Engineering
+
 - **Global Tables**: For multi-region HA and low-latency reads.
 - **Streams Integration**: Capture changes for auditing, replication, or triggering Lambdas.
 - **Monitoring Setup**: Alarm on ThrottledRequests and SystemErrors; use X-Ray for tracing.
 
 ### Operational Checklist
+
 Before deploying a DynamoDB table:
 1. **Model Access Patterns**: Document all Query/Scan needs; validate with NoSQL Workbench.
 2. **Key Design Review**: Ensure partition keys have 1000+ unique values; test for hotspots.
@@ -308,6 +314,7 @@ Run this checklist for every new table or major schema change to align with expe
 ### Alex DeBrie - The DynamoDB Authority
 
 **Essential Reading & Books:**
+
 - **[The DynamoDB Book](https://www.dynamodbbook.com/)** - The definitive 300+ page guide to DynamoDB (highly recommended!)
 - **[DynamoDB Guide](https://www.dynamodbguide.com/)** - Free comprehensive online guide
 - [Single-Table Design in DynamoDB](https://www.alexdebrie.com/posts/dynamodb-single-table/) - Advanced data modeling pattern
@@ -315,6 +322,7 @@ Run this checklist for every new table or major schema change to align with expe
 - [Secondary Indexes in DynamoDB](https://www.alexdebrie.com/posts/dynamodb-secondary-indexes/) - GSI and LSI explained
 
 **Real-World Examples:**
+
 - [DynamoDB Design Patterns](https://www.alexdebrie.com/posts/dynamodb-patterns-serverless/) - Common application patterns
 - [DynamoDB Filter Expressions](https://www.alexdebrie.com/posts/dynamodb-filter-expressions/) - When and how to use filters
 - [DynamoDB Condition Expressions](https://www.alexdebrie.com/posts/dynamodb-condition-expressions/) - Atomic operations and constraints
@@ -328,6 +336,7 @@ Run this checklist for every new table or major schema change to align with expe
 - [Advanced Design Patterns (2020)](https://www.youtube.com/watch?v=MF9a1UNOAQo) - Latest patterns and best practices
 
 **Key Concepts from Rick:**
+
 - **Single-table design** - Store all entities in one table for optimal performance
 - **Composite keys** - Use concatenated values for flexible queries
 - **Inverted indexes** - Create reverse relationships with GSIs
@@ -337,17 +346,20 @@ Run this checklist for every new table or major schema change to align with expe
 ### AWS Official Documentation
 
 **Getting Started:**
+
 - [DynamoDB Developer Guide](https://docs.aws.amazon.com/dynamodb/) - Official complete documentation
 - [DynamoDB Core Components](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html) - Tables, items, attributes
 - [Primary Keys](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html#HowItWorks.CoreComponents.PrimaryKey) - Partition and sort keys explained
 
 **Best Practices:**
+
 - [DynamoDB Best Practices](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html) - Official AWS recommendations
 - [Partition Key Design](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html) - Avoid hot partitions
 - [Sort Key Design](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-sort-keys.html) - Query optimization strategies
 - [GSI Best Practices](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-indexes.html) - When and how to use indexes
 
 **Advanced Features:**
+
 - [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html) - Change data capture
 - [DynamoDB Transactions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html) - ACID transactions across items
 - [Time To Live (TTL)](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/TTL.html) - Automatic item expiration
@@ -356,16 +368,19 @@ Run this checklist for every new table or major schema change to align with expe
 ### Data Modeling Deep Dives
 
 **Single-Table Design:**
+
 - [Why Single-Table?](https://www.alexdebrie.com/posts/dynamodb-single-table/) - Benefits and trade-offs
 - [Single-Table Design Patterns](https://aws.amazon.com/blogs/compute/creating-a-single-table-design-with-amazon-dynamodb/) - AWS blog post
 - [When NOT to Use Single-Table](https://www.alexdebrie.com/posts/dynamodb-patterns-serverless/#when-not-to-use-single-table-design) - Trade-offs to consider
 
 **Access Pattern Design:**
+
 - [Start with Access Patterns](https://www.alexdebrie.com/posts/dynamodb-design-process/) - Design process walkthrough
 - [Query vs Scan](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html) - Why you should avoid scans
 - [Composite Sort Keys](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-sort-keys.html) - Enable range queries
 
 **Relationship Patterns:**
+
 - [One-to-Many Relationships](https://www.alexdebrie.com/posts/dynamodb-one-to-many/) - Three common patterns
 - [Many-to-Many Relationships](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-adjacency-graphs.html) - Adjacency list pattern
 - [Hierarchical Data](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-adjacency-graphs.html#bp-adjacency-lists) - Tree structures in DynamoDB
@@ -373,18 +388,21 @@ Run this checklist for every new table or major schema change to align with expe
 ### Performance Optimization
 
 **Capacity Planning:**
+
 - [Read/Write Capacity Modes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.ReadWriteCapacityMode.html) - On-demand vs provisioned
 - [Auto Scaling](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/AutoScaling.html) - Scale capacity automatically
 - [DynamoDB Pricing](https://aws.amazon.com/dynamodb/pricing/) - Understanding costs
 - [Cost Optimization](https://aws.amazon.com/blogs/database/cost-optimization-for-amazon-dynamodb/) - Strategies to reduce spend
 
 **Query Optimization:**
+
 - [Efficient Queries](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-query-scan.html) - Use Query instead of Scan
 - [Projection Expressions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ProjectionExpressions.html) - Reduce data transfer
 - [Batch Operations](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#WorkingWithItems.BatchOperations) - BatchGetItem and BatchWriteItem
 - [Parallel Scans](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.ParallelScan) - When you must scan
 
 **DynamoDB Accelerator (DAX):**
+
 - [DAX Overview](https://aws.amazon.com/dynamodb/dax/) - Microsecond read latency
 - [When to Use DAX](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DAX.html) - Read-heavy workloads
 - [DAX vs ElastiCache](https://aws.amazon.com/blogs/database/amazon-dynamodb-accelerator-dax-vs-amazon-elasticache-for-redis-which-is-right-for-you/) - Choosing the right cache
@@ -392,18 +410,21 @@ Run this checklist for every new table or major schema change to align with expe
 ### Security & Operations
 
 **Security Best Practices:**
+
 - [DynamoDB Encryption](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/EncryptionAtRest.html) - Encryption at rest (default)
 - [IAM Policies for DynamoDB](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/iam-policy-structure.html) - Fine-grained access control
 - [VPC Endpoints](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/vpc-endpoints-dynamodb.html) - Private connectivity
 - [DynamoDB and HIPAA](https://aws.amazon.com/compliance/hipaa-compliance/) - Compliance considerations
 
 **Monitoring & Troubleshooting:**
+
 - [CloudWatch Metrics](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/monitoring-cloudwatch.html) - Monitor table performance
 - [CloudWatch Contributor Insights](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/contributorinsights.html) - Find hot keys
 - [X-Ray Integration](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html) - Trace DynamoDB operations
 - [Common Error Messages](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Programming.Errors.html) - Throttling, capacity, etc.
 
 **Backup & Disaster Recovery:**
+
 - [Point-in-Time Recovery](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PointInTimeRecovery.html) - Continuous backups
 - [On-Demand Backups](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/BackupRestore.html) - Manual snapshots
 - [Global Tables](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GlobalTables.html) - Multi-region disaster recovery
@@ -411,11 +432,13 @@ Run this checklist for every new table or major schema change to align with expe
 ### Video Tutorials
 
 **Beginner to Intermediate:**
+
 - [DynamoDB Fundamentals](https://www.youtube.com/watch?v=sI-zciHAh-4) - AWS tutorial for beginners
 - [DynamoDB Core Concepts](https://www.youtube.com/watch?v=2k2GINpO308) - Keys, indexes, and queries
 - [Single-Table Design Explained](https://www.youtube.com/watch?v=BnDKD_Zv0og) - Visual walkthrough
 
 **Advanced:**
+
 - [Rick Houlihan's Advanced Patterns](https://www.youtube.com/watch?v=6yqfmXiZTlM) - Must-watch for advanced users
 - [Data Modeling Workshop](https://www.youtube.com/watch?v=fiP2e-g-r4g) - Hands-on modeling session
 - [DynamoDB Streams Deep Dive](https://www.youtube.com/watch?v=CyoWLN6UqRI) - Event-driven patterns
@@ -423,16 +446,19 @@ Run this checklist for every new table or major schema change to align with expe
 ### Community Tools
 
 **Data Modeling Tools:**
+
 - [NoSQL Workbench](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/workbench.html) - Official data modeling tool from AWS
 - [DynamoDB Toolbox](https://github.com/jeremydaly/dynamodb-toolbox) - Jeremy Daly's single-table library
 - [Dynobase](https://dynobase.dev/) - DynamoDB GUI client and data browser
 
 **Local Development:**
+
 - [DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) - Run DynamoDB on your laptop
 - [LocalStack](https://localstack.cloud/) - Full AWS cloud emulator
 - [DynamoDB Admin](https://github.com/aaronshaf/dynamodb-admin) - Web GUI for local development
 
 **Testing & Migration:**
+
 - [AWS Data Pipeline](https://aws.amazon.com/datapipeline/) - Import/export data
 - [AWS Database Migration Service](https://aws.amazon.com/dms/) - Migrate from other databases
 - [PartiQL](https://partiql.org/) - SQL-compatible query language for DynamoDB
@@ -440,24 +466,28 @@ Run this checklist for every new table or major schema change to align with expe
 ### Recommended Learning Path
 
 **Week 1 - Fundamentals:**
+
 1. Read [DynamoDB Core Components](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html)
 2. Watch [DynamoDB Fundamentals Video](https://www.youtube.com/watch?v=sI-zciHAh-4)
 3. Create your first table with FsCDK (examples above)
 4. Practice queries and scans with NoSQL Workbench
 
 **Week 2 - Data Modeling:**
+
 1. Read [Alex DeBrie's One-to-Many Relationships](https://www.alexdebrie.com/posts/dynamodb-one-to-many/)
 2. Study [Access Pattern Design](https://www.alexdebrie.com/posts/dynamodb-design-process/)
 3. Model your application's entities and access patterns
 4. Learn about [Secondary Indexes](https://www.alexdebrie.com/posts/dynamodb-secondary-indexes/)
 
 **Week 3 - Advanced Patterns:**
+
 1. Watch [Rick Houlihan's re:Invent Talk](https://www.youtube.com/watch?v=6yqfmXiZTlM) (MUST WATCH!)
 2. Read [Single-Table Design](https://www.alexdebrie.com/posts/dynamodb-single-table/)
 3. Learn [DynamoDB Transactions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html)
 4. Explore [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html)
 
 **Ongoing - Mastery:**
+
 - Buy [The DynamoDB Book](https://www.dynamodbbook.com/) by Alex DeBrie
 - Follow [Alex DeBrie's Blog](https://www.alexdebrie.com/)
 - Join [AWS Data Hero Program](https://aws.amazon.com/developer/community/heroes/)
@@ -468,6 +498,7 @@ Run this checklist for every new table or major schema change to align with expe
 Avoid these mistakes highlighted in DeBrie's book and Houlihan's talks to prevent performance issues and high costs.
 
 **❌ Common Errors:**
+
 1. Treating DynamoDB like SQL (normalizing data) → Leads to expensive joins; use denormalization instead.
 2. Poor key design causing hot partitions → Results in throttling; always test cardinality.
 3. Overusing Scans → Consumes capacity inefficiently; redesign for Query.
@@ -475,6 +506,7 @@ Avoid these mistakes highlighted in DeBrie's book and Houlihan's talks to preven
 5. Forgetting backups → Data loss risk; keep PITR enabled.
 
 **✅ Pro Tips:**
+
 1. Prototype schemas in NoSQL Workbench before coding.
 2. Use PartiQL for SQL-like queries on complex data.
 3. Integrate with AppSync for GraphQL APIs.
