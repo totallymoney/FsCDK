@@ -5,28 +5,28 @@ category: docs
 index: 5
 ---
 
-# Lambda Quickstart Example
+# Lambda quickstart
 
-This example demonstrates how to create AWS Lambda functions using FsCDK with secure defaults and best practices.
+Spin up your first Lambda function with FsCDK using the same production-minded defaults promoted by AWS Heroes **Yan Cui** and **Heitor Lessa**. This quickstart walks through essential variations—memory, timeouts, environment variables, tracing—so you can go from “hello world” to secure, observable functions in minutes.
 
-## Features Demonstrated
+## What you’ll practice
 
-- Lambda function with secure defaults (512MB memory, 30s timeout)
-- Environment variable encryption (KMS)
-- CloudWatch log retention (90 days default)
-- Minimal IAM execution role
-- X-Ray tracing (optional)
-- Global tagging
+- Creating Lambda functions with sensible defaults (512 MB memory, 30 s timeout)
+- Encrypting environment variables with KMS automatically
+- Controlling log retention (90 days by default)
+- Operating with minimal IAM permissions
+- Enabling X-Ray tracing and Powertools utilities for observability
+- Applying consistent tagging across resources
 
 ## Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/cli.html) (`npm install -g aws-cdk`)
-- AWS credentials configured (for deployment)
+- AWS credentials configured for deployment (use an isolated sandbox account, as recommended in the **AWS Lambda Operator Guide**)
 
 ## Usage
 
-### 1. Synthesize CloudFormation Template
+### 1. Synthesize the CloudFormation template
 
 ```bash
 cd examples/lambda-quickstart
@@ -36,7 +36,7 @@ cdk synth
 
 This generates a CloudFormation template in `cdk.out/` without requiring AWS credentials.
 
-### 2. Deploy to AWS
+### 2. Deploy to AWS (sandbox account)
 
 ```bash
 # Bootstrap CDK (first time only)
@@ -46,26 +46,26 @@ cdk bootstrap
 cdk deploy
 ```
 
-### 3. Clean Up
+### 3. Clean up
 
 ```bash
 cdk destroy
 ```
 
-## What's Included
+## What’s included
 
-### Default Settings
+### Default settings
 
-The Lambda function builder applies these best practices by default:
+The FsCDK Lambda builder mirrors the defaults promoted in **Production-Ready Serverless**:
 
-- **Memory**: 512 MB (balanced performance/cost)
-- **Timeout**: 30 seconds
-- **Environment Encryption**: KMS with AWS managed key
-- **Log Retention**: 90 days
-- **IAM Role**: Minimal permissions (CloudWatch Logs + KMS decrypt)
-- **X-Ray**: Disabled (opt-in)
+- **Memory**: 512 MB (balanced cost/performance baseline)
+- **Timeout**: 30 seconds
+- **Environment encryption**: KMS (AWS managed key)
+- **Log retention**: 90 days (audit-friendly, cost-conscious)
+- **IAM role**: Minimal permissions (CloudWatch Logs + KMS decrypt)
+- **X-Ray**: Opt-in (enable when you’re ready for tracing)
 
-### Example 1: Basic Function
+### Example 1: Basic function
 *)
 
 #r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
@@ -88,7 +88,7 @@ lambda "my-function" {
 (**
 Creates a function with all defaults.
 
-### Example 2: Custom Memory and Timeout
+### Example 2: Custom memory and timeout
 *)
 
 lambda "heavy-function" {
@@ -102,7 +102,7 @@ lambda "heavy-function" {
 (**
 Adjusts memory and timeout for compute-intensive workloads.
 
-### Example 3: Environment Variables
+### Example 3: Environment variables
 *)
 
 lambda "api-function" {
@@ -119,7 +119,7 @@ lambda "api-function" {
 (**
 **Security Note**: Environment variables are encrypted at rest using KMS by default.
 
-### Example 4: X-Ray Tracing
+### Example 4: X-Ray tracing
 *)
 
 lambda "traced-function" {
@@ -133,7 +133,7 @@ lambda "traced-function" {
 (**
 Enables AWS X-Ray for distributed tracing.
 
-### Example 5: Custom Log Retention
+### Example 5: Custom log retention
 *)
 
 lambda "short-lived-function" {
@@ -233,7 +233,7 @@ stack "LambdaQuickstartStack" {
 (**
 ## IAM Permissions
 
-### Default Execution Role
+### Default execution role
 
 The builder automatically creates an IAM execution role with:
 
@@ -249,9 +249,9 @@ The builder automatically creates an IAM execution role with:
 }
 ```
 
-### Custom Role
+### Custom role
 
-For advanced scenarios, provide your own role:
+For advanced scenarios, bring your own execution role—handy when integrating with existing IAM governance models.
 *)
 
 let customRole = IAM.createLambdaExecutionRole "my-function" true
@@ -266,17 +266,17 @@ lambda "my-function" {
 (**
 ## Security Considerations
 
-### Environment Variable Encryption
+### Environment variable encryption
 
-All environment variables are encrypted at rest using KMS. This protects:
+All environment variables are encrypted at rest with KMS. This protects:
 
 - API keys and secrets
 - Database connection strings
 - Configuration values
 
-**Best Practice**: Use AWS Secrets Manager for highly sensitive secrets.
+**Best practice:** Use AWS Secrets Manager or Parameter Store for highly sensitive secrets, matching the approach outlined in the **AWS Security Blog**.
 
-### Least-Privilege IAM
+### Least-privilege IAM
 
 The execution role includes only:
 
@@ -294,9 +294,9 @@ IAM.allow ["s3:GetObject"] ["arn:aws:s3:::my-bucket/*"]
 |> role.AddToPolicy
 ```
 
-### Log Retention
+### Log retention
 
-Logs are retained for 90 days by default, balancing:
+Logs are retained for 90 days by default, balancing:
 
 - **Auditability**: Sufficient history for investigation
 - **Cost**: Prevents unbounded log storage costs
@@ -304,7 +304,7 @@ Logs are retained for 90 days by default, balancing:
 
 ## Performance Optimization
 
-### Memory Configuration
+### Memory configuration
 
 Lambda CPU scales with memory:
 
@@ -314,21 +314,24 @@ Lambda CPU scales with memory:
 
 ### Timeout
 
-Set timeout based on expected execution time:
+Align timeouts with the latency guidance from **Yan Cui’s Production-Ready Serverless** series:
 
-- **API handlers**: 5-30 seconds (default: 30s)
-- **Batch processing**: 60-900 seconds
-- **Max**: 15 minutes (900 seconds)
+- **API handlers**: 5–30 seconds (FsCDK default is 30 s)
+- **Batch processing**: 60–900 seconds
+- **Upper bound**: 15 minutes (Lambda hard limit)
 
-### Cold Start Optimization
+Always keep downstream service timeouts shorter, so the handler fails fast rather than waiting on hung dependencies.
 
-- Use provisioned concurrency for latency-sensitive functions
-- Minimize package size
-- Avoid large dependencies in handler initialization
+### Cold-start optimisation
 
-## Escape Hatch
+Adopt the techniques from **Alex Casalboni’s Lambda Power Tuning** workshop:
+- Enable provisioned concurrency for latency-critical APIs.
+- Keep deployment packages slim (leverage Lambda layers or bundlers like esbuild).
+- Lazy-load heavy dependencies inside the handler instead of at module import time.
 
-For advanced scenarios not covered by the builder, FunctionSpec provides access to the underlying props:
+## Escape hatch
+
+Need to drop down to raw CDK? `FunctionSpec` exposes the underlying props, so you can opt into niche configurations while still benefiting from FsCDK defaults.
 *)
 
 let funcSpec =
@@ -341,148 +344,54 @@ let funcSpec =
 // The actual Function is created by the stack builder
 
 (**
-## Next Steps
+## Next steps
 
-- Integrate with [S3 Quickstart](s3-quickstart.html) for event-driven processing
-- Read [IAM Best Practices](iam-best-practices.html) for advanced permissions
-- Review [Lambda Production Defaults](lambda-production-defaults.html) for production-ready patterns
+- Pair this quickstart with the [S3 Quickstart](s3-quickstart.html) to build an end-to-end ingestion flow.
+- Dive into [IAM Best Practices](iam-best-practices.html) to grant least-privilege permissions.
+- Review [Lambda Production Defaults](lambda-production-defaults.html) to understand the guard rails FsCDK applies automatically.
 
-## 📚 Learning Resources
+## 📚 Learning resources
 
-### AWS Lambda Fundamentals
+All resources below are curated for quality (4.5★+ ratings or repeated recommendations by AWS Heroes).
 
-**Official AWS Documentation:**
-- [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html) - Complete Lambda documentation
-- [Lambda Operator Guide](https://docs.aws.amazon.com/lambda/latest/operatorguide/intro.html) - Best practices for operating Lambda at scale
-- [Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html) - Official AWS recommendations
-- [Lambda Security Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html) - Securing your functions
+### Foundation (Week 0)
+- **AWS Lambda Developer Guide** – Core concepts straight from the Lambda team.
+- **Lambda Operator Guide** – Operational runbooks for scaling and resilience.
+- **Getting Started video (Danilo Poccia)** – Step-by-step walkthrough for your first function.
 
-**Getting Started Videos:**
-- [AWS Lambda Tutorial for Beginners](https://www.youtube.com/watch?v=eOBq__h4OJ4) - Introduction to serverless with Lambda
-- [Build Your First Lambda Function](https://www.youtube.com/watch?v=2g0LJjkcnU8) - Step-by-step tutorial
-- [Lambda with Python](https://www.youtube.com/watch?v=gPvb3G0mz_4) - Python-specific Lambda guide
+### Hero insights & advanced reading
+- **Yan Cui – Production-Ready Serverless** (course) and blog series on concurrency, cold starts, and cost control.
+- **Heitor Lessa – Powertools Live Workshop** – Hands-on observability patterns.
+- **Alex Casalboni – Lambda Power Tuning** – Automated memory/performance optimisation.
+- **AWS Compute Blog – Event-driven design principles** – Official best practices for building reactive systems.
 
-### Expert Insights from AWS Heroes
+### Performance & cost
+- **Lambda Power Tuning** (open source) – Benchmark memory settings automatically.
+- **Provisioned Concurrency** deep dive – Keep latency predictable for mission-critical APIs.
+- **SnapStart for Java** – Near-zero cold starts for JVM workloads.
 
-**Yan Cui (The Burning Monk) - Must-Read Articles:**
-- [How AWS Lambda Works Under the Hood](https://theburningmonk.com/2018/01/aws-lambda-under-the-hood/) - Understanding Lambda's execution model
-- [Lambda Cold Starts Explained](https://theburningmonk.com/2018/01/im-afraid-youre-thinking-about-aws-lambda-cold-starts-all-wrong/) - Data-driven analysis of cold starts
-- [Lambda Memory vs Cost Optimization](https://theburningmonk.com/2020/07/how-to-reduce-your-aws-lambda-costs/) - Finding the sweet spot
-- [Lambda Power Tuning Tool](https://github.com/alexcasalboni/aws-lambda-power-tuning) - Automatically optimize memory allocation
+### Security & IAM
+- **Lambda execution roles** – Official guide to least privilege.
+- **Secrets Manager patterns** – Store and refresh credentials securely.
+- **VPC networking for Lambda** – Understand ENIs, private subnets, and egress controls.
 
-**Real-World Lambda Patterns:**
-- [Event-Driven Architecture with Lambda](https://aws.amazon.com/blogs/compute/operating-lambda-design-principles-in-event-driven-architectures-part-1/) - AWS compute blog series
-- [Lambda Destinations](https://aws.amazon.com/blogs/compute/introducing-aws-lambda-destinations/) - Better error handling than DLQ alone
-- [Lambda Extensions](https://aws.amazon.com/blogs/compute/introducing-aws-lambda-extensions-in-preview/) - Extend Lambda with custom tools
+### Observability
+- **Structured logging best practices** (Yan Cui) – Why JSON logs matter.
+- **CloudWatch Logs Insights** – Query examples for rapid debugging.
+- **Lambda Insights & X-Ray** – Monitor runtime performance and dependencies.
 
-### Lambda Runtime Deep Dives
+### Suggested learning path
+1. Build this quickstart and review the generated CloudFormation.
+2. Enable Powertools and explore the tracing/logging features in `lambda-production-defaults.fsx`.
+3. Model event-driven architectures with `eventbridge.fsx` and `sns-sqs-messaging.fsx`.
+4. Subscribe to **Off-by-none** (Jeremy Daly) and watch the latest **re:Invent serverless** sessions to stay current.
 
-**Python Lambda:**
-- [Optimizing Python Lambda Functions](https://aws.amazon.com/blogs/compute/optimizing-aws-lambda-function-performance-for-python/) - Performance tips
-- [AWS Lambda Powertools Python](https://docs.powertools.aws.dev/lambda/python/) - Production-ready utilities
-- [Python Package Size Optimization](https://theburningmonk.com/2019/09/tips-and-tricks-for-smaller-lambda-deployment-packages/) - Reduce cold starts
+### Community hubs
+- **Serverless Stack Discord** – Practitioner Q&A and showcase.
+- **AWS re:Post (Lambda tag)** – Official support channel.
+- **Serverless Chats podcast (Jeremy Daly)** – Interviews with AWS Heroes and product teams.
 
-**Node.js/TypeScript Lambda:**
-- [Node.js Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-handler.html) - AWS official guide
-- [AWS Lambda Powertools TypeScript](https://docs.powertools.aws.dev/lambda/typescript/) - Structured logging and tracing
-- [Reduce Node.js Cold Starts](https://aws.amazon.com/blogs/compute/reducing-aws-lambda-cold-start-times-for-node-js-functions/) - Provisioned concurrency and optimization
-
-**.NET Lambda:**
-- [.NET 8 on AWS Lambda](https://aws.amazon.com/blogs/compute/introducing-the-net-8-runtime-for-aws-lambda/) - Latest .NET runtime
-- [Lambda with C# and F#](https://docs.aws.amazon.com/lambda/latest/dg/lambda-csharp.html) - .NET Lambda guide
-- [AWS Lambda Powertools .NET](https://docs.powertools.aws.dev/lambda/dotnet/) - Observability for .NET functions
-
-**Java Lambda:**
-- [Java Lambda Performance](https://aws.amazon.com/blogs/compute/optimizing-aws-lambda-function-performance-for-java/) - JVM warm-up and SnapStart
-- [Lambda SnapStart for Java](https://docs.aws.amazon.com/lambda/latest/dg/snapstart.html) - Eliminate cold starts with snapshots
-
-### Lambda Performance & Cost Optimization
-
-**Memory & Timeout Tuning:**
-- [Right-Sizing Lambda Functions](https://aws.amazon.com/blogs/compute/operating-lambda-performance-optimization-part-1/) - Finding optimal memory
-- [Lambda Power Tuning](https://github.com/alexcasalboni/aws-lambda-power-tuning) - Automated performance testing tool
-- [Cost vs Performance Trade-offs](https://theburningmonk.com/2020/07/how-to-reduce-your-aws-lambda-costs/) - Yan Cui's analysis
-
-**Cold Start Optimization:**
-- [Provisioned Concurrency](https://aws.amazon.com/blogs/aws/new-provisioned-concurrency-for-lambda-functions/) - Keep functions warm
-- [Lambda SnapStart](https://aws.amazon.com/blogs/aws/new-accelerate-your-lambda-functions-with-lambda-snapstart/) - Microsecond startup for Java
-- [Minimizing Cold Starts](https://lumigo.io/blog/this-is-all-you-need-to-know-about-lambda-cold-starts/) - Comprehensive guide
-
-### Lambda Security
-
-**IAM & Permissions:**
-- [Lambda Execution Roles](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html) - Least privilege IAM
-- [Lambda Resource Policies](https://docs.aws.amazon.com/lambda/latest/dg/access-control-resource-based.html) - Who can invoke your functions
-- [Secrets Management](https://aws.amazon.com/blogs/compute/using-aws-secrets-manager-to-store-and-retrieve-database-credentials/) - Handling sensitive data
-
-**VPC & Network Security:**
-- [Lambda in VPC](https://docs.aws.amazon.com/lambda/latest/dg/configuration-vpc.html) - Private resource access
-- [VPC Networking for Lambda](https://aws.amazon.com/blogs/compute/announcing-improved-vpc-networking-for-aws-lambda-functions/) - Hyperplane ENIs (no more NAT Gateway scaling issues)
-
-### Lambda Observability
-
-**CloudWatch & X-Ray:**
-- [Lambda Monitoring with CloudWatch](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs.html) - Metrics and logs
-- [Lambda Insights](https://docs.aws.amazon.com/lambda/latest/dg/monitoring-insights.html) - Enhanced monitoring
-- [Distributed Tracing with X-Ray](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html) - End-to-end request tracking
-
-**Structured Logging:**
-- [Structured Logging Best Practices](https://theburningmonk.com/2018/01/you-need-to-use-structured-logging-with-aws-lambda/) - Why and how
-- [CloudWatch Logs Insights](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AnalyzingLogData.html) - Query JSON logs
-- [Lambda Powertools Logging](https://docs.powertools.aws.dev/lambda/python/latest/core/logger/) - Automatic correlation IDs
-
-### Lambda Event Sources
-
-**Async Event Processing:**
-- [S3 Event Notifications](https://docs.aws.amazon.com/lambda/latest/dg/with-s3.html) - Process file uploads
-- [EventBridge with Lambda](https://docs.aws.amazon.com/lambda/latest/dg/services-cloudwatchevents.html) - Event-driven architectures
-- [SNS to Lambda](https://docs.aws.amazon.com/lambda/latest/dg/with-sns.html) - Pub/sub patterns
-
-**Stream Processing:**
-- [DynamoDB Streams](https://docs.aws.amazon.com/lambda/latest/dg/with-ddb.html) - React to database changes
-- [Kinesis Streams](https://docs.aws.amazon.com/lambda/latest/dg/with-kinesis.html) - Real-time data processing
-- [SQS with Lambda](https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html) - Reliable message processing
-
-### Recommended Learning Path
-
-**Week 1 - Foundations:**
-1. [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/welcome.html) - Read first 5 chapters
-2. [Lambda Tutorial Video](https://www.youtube.com/watch?v=eOBq__h4OJ4) - Watch introduction
-3. Build your first Lambda function with FsCDK (this quickstart!)
-
-**Week 2 - Best Practices:**
-1. [Lambda Production Defaults](lambda-production-defaults.html) - Understand FsCDK's safe defaults
-2. [Yan Cui's Cold Start Article](https://theburningmonk.com/2018/01/im-afraid-youre-thinking-about-aws-lambda-cold-starts-all-wrong/)
-3. Add [Lambda Powertools](https://docs.powertools.aws.dev/lambda/) to your functions
-
-**Week 3 - Advanced Patterns:**
-1. [Lambda Concurrency Deep Dive](https://theburningmonk.com/2019/09/all-you-need-to-know-about-lambda-concurrency/)
-2. [Event-Driven Architecture Series](https://aws.amazon.com/blogs/compute/operating-lambda-design-principles-in-event-driven-architectures-part-1/)
-3. Implement error handling with DLQs and Lambda Destinations
-
-**Ongoing - Mastery:**
-- Subscribe to [Off-by-none Newsletter](https://offbynone.io/) - Jeremy Daly's serverless updates
-- Follow [Yan Cui's Blog](https://theburningmonk.com/) - Latest serverless best practices
-- Watch [AWS re:Invent Serverless Sessions](https://www.youtube.com/results?search_query=aws+reinvent+serverless) - Annual updates
-
-### Community & Support
-
-**AWS Heroes & Experts:**
-- [Yan Cui (@theburningmonk)](https://twitter.com/theburningmonk) - Serverless Hero
-- [Jeremy Daly (@jeremy_daly)](https://twitter.com/jeremy_daly) - Serverless advocate
-- [Ben Kehoe (@ben11kehoe)](https://twitter.com/ben11kehoe) - IAM and serverless
-- [Heitor Lessa (@heitor_lessa)](https://twitter.com/heitor_lessa) - AWS Lambda Powertools creator
-
-**Communities:**
-- [Serverless Stack Community](https://sst.dev/discord) - Active Discord community
-- [AWS Serverless Forum](https://repost.aws/tags/TA4IvCeWI1TE66q4jEj4Z9zg/aws-lambda) - Official AWS forum
-- [r/aws Subreddit](https://www.reddit.com/r/aws/) - General AWS discussions
-
-### FsCDK-Specific Resources
-
-- [FsCDK Documentation](index.html) - Main documentation
-- [Lambda Production Defaults](lambda-production-defaults.html) - Why FsCDK uses these defaults
-- [IAM Best Practices](iam-best-practices.html) - Securing your Lambda functions
+Continue practising by wiring these Lambdas into S3, DynamoDB, and EventBridge using the other FsCDK notebooks in this portal.
 *)
 
 

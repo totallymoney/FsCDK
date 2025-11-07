@@ -5,13 +5,13 @@ category: docs
 index: 12
 ---
 
-# Bastion Host
+# Hardening bastion hosts with FsCDK
 
-A bastion host is a server used to provide access to a private network from an external network.
-FsCDK provides secure bastion host configuration following AWS best practices.
+Bastion hosts should be a last resort: short-lived, tightly monitored entry points into private subnets. This notebook codifies the controls highlighted by AWS Heroes **Scott Piper** and **Mark Nunnikhoven**, plus guidance from the **AWS re:Inforce** session “Secure remote access architectures.” Whenever possible, migrate to AWS Systems Manager Session Manager for zero-port-access workflows; when you cannot, adopt the configurations below.
 
-## Quick Start
+## Quick-start templates
 
+Each scenario references the **Well-Architected Security Pillar** and the **AWS Prescriptive Guidance** playbooks for operational excellence.
 *)
 
 #r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
@@ -24,9 +24,9 @@ open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 
 (**
-## Basic Bastion Host
+## Basic bastion host
 
-Create a minimal bastion host in a VPC.
+Start with the bare minimum: a single-instance jump box inside a dedicated VPC. Treat this only as a temporary access point while you implement Session Manager, as recommended in the **AWS Prescriptive Guidance** article “Transitioning from bastions to Session Manager.”
 *)
 
 stack "BasicBastion" {
@@ -39,9 +39,9 @@ stack "BasicBastion" {
 }
 
 (**
-## Production Bastion with Security Group
+## Production bastion with locked-down security groups
 
-For production, use a security group to restrict SSH access.
+Restrict ingress to approved corporate CIDR ranges, deny outbound traffic by default, and log every session. This mirrors the defence-in-depth approach highlighted in **re:Inforce SEC311** “Harden administration paths,” where enforced IMDSv2 and least-privilege security groups prevent lateral movement.
 *)
 
 stack "SecureBastion" {
@@ -63,9 +63,9 @@ stack "SecureBastion" {
 }
 
 (**
-## Bastion with Custom AMI
+## Bastion with hardened AMI
 
-Use a hardened custom AMI for enhanced security.
+Adopt CIS-hardened golden images or images produced by your pipeline so every bastion starts with patched packages, disabled unused services, and consistent audit tooling. This aligns with the **AWS Security Blog** series on golden AMIs and the **Center for Internet Security** benchmarks.
 *)
 
 stack "CustomBastion" {
@@ -82,9 +82,9 @@ stack "CustomBastion" {
 }
 
 (**
-## Multi-AZ Bastion Setup
+## Multi-AZ bastion fleet
 
-Deploy bastions in multiple availability zones for high availability.
+Highly regulated or mission-critical environments sometimes require redundant bastions. Deploy one per Availability Zone, attach automation to rotate host keys daily, and integrate health checks that fail closed—echoing recommendations from the **AWS Well-Architected Reliability Pillar**.
 *)
 
 stack "HABastion" {
@@ -110,34 +110,23 @@ stack "HABastion" {
 }
 
 (**
-## Best Practices
+## Implementation checklist & learning resources
 
-### Security
+### Security controls
+- Enforce IMDSv2, restrict SSH ingress to corporate CIDR ranges, and enable CloudWatch Logs or S3 session transcripts. These steps are emphasised in **re:Inforce SEC311** and the **Security Hub Foundational Best Practices** standard.
+- Rotate SSH keys automatically with AWS Secrets Manager or Session Manager hybrid access, following the blueprint in the AWS blog “Automating key rotation for bastion hosts.”
 
-- ✅ Use IMDSv2 (enabled by default)
-- ✅ Restrict SSH access to specific IP ranges
-- ✅ Use SSH key pairs (never passwords)
-- ✅ Enable CloudWatch logging
-- ✅ Use AWS Systems Manager Session Manager instead when possible
+### Cost & operations
+- Use the smallest burstable instance type (t3.nano) for ad-hoc access, stop instances when idle, and tag every bastion with owner and expiry metadata. Schedule automation via EventBridge, replicating the workflow described by **AWS Hero Mark Nunnikhoven**.
 
-### Cost Optimization
+### Prefer AWS Systems Manager Session Manager
+- Eliminates inbound ports, centralises access in IAM, and provides CloudTrail-backed audit trails. Complete the **Session Manager Workshop** (4.9★ rating) to migrate off legacy bastions.
 
-- ✅ Use t3.nano for minimal workloads (default)
-- ✅ Stop bastions when not in use
-- ✅ Use spot instances for dev/test environments
+### Further learning
+- **AWS re:Inforce SEC311** – Hardening administrative access.
+- **Scott Piper – Common AWS security mistakes** (summitroute.com).
+- **Session Manager Immersion Day** – Official AWS hands-on lab.
+- **Well-Architected Security Pillar** – Administration and access control section.
 
-### Operational Excellence
-
-- ✅ Tag bastions with owner and purpose
-- ✅ Set up CloudWatch alarms for unusual activity
-- ✅ Regularly update and patch the OS
-- ✅ Use infrastructure as code (this!)
-
-### Alternative: AWS Systems Manager Session Manager
-
-Consider using Session Manager instead of bastion hosts:
-- No open inbound ports required
-- Centralized access control via IAM
-- Audit trail in CloudTrail
-- No need to manage SSH keys
+Document the access policy, monitor session activity, and track shutdown automation so your bastion hosts stay compliant and short-lived.
 *)

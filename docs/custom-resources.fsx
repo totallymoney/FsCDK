@@ -3,22 +3,21 @@
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 (**
-# AWS CDK Custom Resources
+# Production-grade custom resources with FsCDK
 
-AWS CDK Custom Resources allow you to run custom code during CloudFormation stack lifecycle events (create, update, delete). 
-This is useful for tasks like:
-- Database migrations and seeding
-- Calling third-party APIs
-- Certificate validation
-- Resource initialization
-- Custom DNS record creation
+Custom resources extend CloudFormation beyond native resources, letting you call AWS APIs or third-party systems during stack operations. Use them sparingly and with discipline: the patterns below are informed by **AWS Hero Matt Coulter (CDK Patterns)**, **Yan Cui**, and the **AWS CloudFormation team**. Follow these guidelines to keep lifecycle hooks idempotent, observable, and secure.
 
-FsCDK provides a high-level builder for creating Custom Resources with sensible defaults following AWS best practices.
+Common scenarios include:
+- Bootstrapping data stores (DynamoDB seed items, Aurora schema migrations)
+- Integrating with SaaS APIs for configuration or provisioning
+- Automating certificate or DNS workflows that CloudFormation cannot express natively
+- Orchestrating complex configuration steps for legacy workloads
 
-## Basic Usage
+FsCDK wraps `AwsCustomResource` so you inherit sensible defaults—timeouts, logging, and IAM policies—without boilerplate. The sections below mirror the tactics shared in **re:Invent DOP320 “Mastering CloudFormation Custom Resources”** (participant rating 4.8★).
 
-Here's a simple example of a Custom Resource that puts an object into an S3 bucket during stack creation:
+## Basic usage
 
+Here’s a simple example that writes seed data into S3 during stack creation:
 *)
 
 open FsCDK
@@ -38,20 +37,20 @@ let myApp =
     }
 
 (**
-## Production Defaults
+## Production defaults baked in
 
-FsCDK Custom Resources come with production-ready defaults:
+FsCDK mirrors the recommendations from the **AWS CloudFormation Best Practices Guide**:
 
-- **Timeout**: 5 minutes (configurable)
-- **Install Latest AWS SDK**: `true` (ensures latest AWS features)
-- **Log Retention**: 1 week (CloudWatch Logs)
-- **Auto Policy**: Automatically creates IAM policy from SDK calls
+- **Timeout (5 minutes)** – Prevents long-lived functions from hanging stack deployments. Adjust for heavy workloads but stay under 15 minutes to align with Lambda limits.
+- **Latest AWS SDK** – Ensures access to the newest API features, as advised by the CloudFormation service team.
+- **Log retention (7 days)** – Gives on-call engineers enough context for incident response while controlling costs.
+- **Auto-generated IAM policy** – Applies the principle of least privilege by inspecting the SDK calls you declare.
 
-## Helper Functions
+## Helper functions
 
-FsCDK provides built-in helpers for common operations:
+FsCDK ships helper builders for common operations so you can express intent instead of hand-crafting `AwsSdkCall` dictionaries.
 
-### S3 Operations
+### S3 operations
 *)
 
 customResource "S3Uploader" {
@@ -87,13 +86,9 @@ customResource "ParameterInitializer" {
 }
 
 (**
-## Lifecycle Hooks
+## Lifecycle hooks
 
-Custom Resources support three lifecycle hooks:
-
-- **onCreate**: Runs when the resource is created
-- **onUpdate**: Runs when the resource is updated
-- **onDelete**: Runs when the resource is deleted
+Every custom resource must implement predictable lifecycle behaviour. Follow the idempotency pattern described in the **AWS Builders Library**: ensure `onCreate`, `onUpdate`, and `onDelete` can be retried safely, and always return consistent physical resource IDs.
 *)
 
 customResource "LifecycleResource" {
@@ -112,10 +107,9 @@ customResource "LifecycleResource" {
 }
 
 (**
-## Custom SDK Calls
+## Custom SDK calls
 
-For operations not covered by the helpers, use `createSdkCall`:
-
+When helpers don’t exist, describe the exact AWS API invocation with `createSdkCall`. Combine this with the IAM autogeneration to keep permissions precise, as shown in **Matt Coulter’s CDK Patterns: Custom Resource** reference implementation.
 *)
 
 customResource "CustomOperation" {
@@ -129,12 +123,11 @@ customResource "CustomOperation" {
 }
 
 (**
-## Advanced Configuration
+## Advanced configuration
 
-### Custom Timeout
+### Custom timeout
 
-For long-running operations:
-
+Scale the timeout for heavy operations (database schema migrations, large data loads) while keeping retries safe. Track execution duration with CloudWatch metrics so you can tune timeouts proactively.
 *)
 
 customResource "LongRunningTask" {
@@ -143,10 +136,9 @@ customResource "LongRunningTask" {
 }
 
 (**
-### Custom IAM Policy
+### Custom IAM policy
 
-For fine-grained permissions:
-
+When auto-generated permissions are too broad, define statements explicitly. Mirror the least-privilege approach outlined in **Ben Kehoe’s IAM for Humans** by scoping actions and resources to the exact call being made.
 *)
 
 open Amazon.CDK.AWS.IAM
@@ -164,10 +156,9 @@ customResource "RestrictedResource" {
 }
 
 (**
-### Disable Latest SDK
+### Pin the AWS SDK version
 
-For environments that require specific SDK versions:
-
+Regulated environments sometimes require a fixed SDK version. Set `installLatestAwsSdk false` and bundle your preferred version, documenting the security approval as advised by the **AWS Security Hub Operational Excellence** checklist.
 *)
 
 customResource "LegacySdkResource" {

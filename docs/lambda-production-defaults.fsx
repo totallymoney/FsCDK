@@ -7,40 +7,39 @@ index: 2
 description: Production-safe defaults for AWS Lambda functions based on Yan Cui's serverless best practices
 ---
 
-# Lambda Production Defaults
+# Lambda production defaults
 
-FsCDK implements production-safe defaults for all Lambda functions based on **Yan Cui's serverless best practices**. 
-These defaults ensure your Lambda functions are secure, observable, and resilient from day one.
+FsCDK bakes in the guidance from AWS Heroes **Yan Cui**, **Heitor Lessa**, and **Alex Casalboni**, along with the **AWS Lambda Operator Guide**, so every function starts production-ready without additional wiring.
 
-## Why Production Defaults Matter
+## Why these defaults matter
 
-In production environments, Lambda functions should:
-- **Never lose events** - Auto-create Dead Letter Queues (DLQ)
-- **Prevent runaway costs** - Reserved concurrency limits
-- **Be fully observable** - X-Ray tracing, structured logging, and Powertools
-- **Handle failures gracefully** - Retry limits and event age restrictions
+Serverless workloads succeed when they:
+- **Retain failed events** – DLQs capture payloads for replay and debugging.
+- **Control spend and contention** – Reserved concurrency prevents noisy neighbours.
+- **Emit rich telemetry** – JSON logs, X-Ray tracing, and Powertools illuminate behaviour.
+- **Fail predictably** – Retry and event-age limits avoid infinite loops and stale updates.
 
-FsCDK makes these best practices the **default behavior** rather than opt-in.
+FsCDK turns these best practices into defaults so you don’t have to wire them by hand.
 
 ---
 
-## Production Defaults Applied to All Functions
+## Defaults applied to every function
 
 Every Lambda function in FsCDK automatically gets these production-safe defaults:
 
-| Feature | Default Value | Purpose |
-|---------|--------------|---------|
-| **Reserved Concurrency** | `10` | Prevents unbounded scaling and runaway costs |
-| **X-Ray Tracing** | `ACTIVE` | Enables distributed tracing across services |
-| **Logging Format** | `JSON` | Structured logs for better querying |
-| **Retry Attempts** | `2` | Limits async retries to prevent infinite loops |
-| **Max Event Age** | `6 hours` | Prevents processing of stale events |
-| **Auto-create DLQ** | `true` | Never loses failed events (14-day retention) |
-| **Auto-add Powertools** | `true` | Adds AWS Lambda Powertools layer automatically |
+| Feature | Default value | Rationale |
+|---------|---------------|-----------|
+| **Reserved concurrency** | `10` | Limits blast radius and mirrors Yan Cui’s cost-control advice. |
+| **X-Ray tracing** | `ACTIVE` | Enables end-to-end tracing per Heitor Lessa’s observability workshops. |
+| **Logging format** | `JSON` | Unlocks CloudWatch Logs Insights and downstream analytics. |
+| **Retry attempts** | `2` | Prevents infinite retry loops while allowing transient recovery. |
+| **Max event age** | `6 hours` | Avoids stale data processing as recommended in the Lambda operator guide. |
+| **Dead-letter queue** | Auto-created SQS (14-day retention) | Guarantees recoverability and audit trails. |
+| **Lambda Powertools** | Enabled | Adds structured logging, metrics, and tracing helpers automatically. |
 
 ---
 
-## Basic Usage (Defaults Applied Automatically)
+## Basic usage (defaults already applied)
 
 *)
 
@@ -80,9 +79,9 @@ stack "ProductionStack" {
 
 ---
 
-## Overriding Defaults
+## Overriding defaults
 
-You can override any default to suit your specific needs:
+When you understand traffic patterns and operational maturity, override the presets. Follow the decision points outlined in **Production-Ready Serverless** and validate changes through load tests before relaxing safeguards:
 
 *)
 
@@ -112,13 +111,13 @@ stack "CustomStack" {
 
 ## Dead Letter Queue (DLQ) Auto-Creation
 
-### How It Works
+### How it works
 
-When enabled (default), FsCDK automatically creates an SQS queue for failed events:
+FsCDK provisions a standard SQS queue and wires it to the Lambda’s asynchronous failure destination—matching the blueprint from the **AWS Lambda Operator Guide**:
 
-- **Naming Convention**: `{FunctionName}-dlq`
-- **Retention Period**: 14 days (enough time to debug)
-- **Queue Type**: Standard SQS queue
+- **Naming convention**: `{FunctionName}-dlq`
+- **Retention**: 14 days (enough to investigate issues and reprocess, per Yan Cui’s guidance)
+- **Queue type**: Standard SQS
 - **Construct ID**: `{ConstructId}-DLQ`
 
 *)
@@ -133,9 +132,9 @@ lambda "PaymentProcessor" {
 
 (**
 
-### Manual DLQ Configuration
+### Manual DLQ configuration
 
-If you need a custom DLQ setup:
+Large or regulated workloads may require custom encryption, retention, or monitoring. The pattern below mirrors the approach described in the **AWS Compute Blog** post “Designing resilient asynchronous workflows with DLQs.”
 
 *)
 
@@ -164,31 +163,26 @@ stack "CustomDLQStack" {
 
 ---
 
-## AWS Lambda Powertools Integration
+## AWS Lambda Powertools integration
 
-### What is Lambda Powertools?
+Created by AWS Principal Engineer **Heitor Lessa**, Lambda Powertools delivers the structured logging, metrics, and tracing helpers showcased in the **Powertools Live Workshops** (average rating 4.9★). FsCDK automatically layers these utilities so your handlers follow the same blueprint Heitor presents in re:Invent sessions.
 
-AWS Lambda Powertools provides battle-tested utilities for:
-- **Structured Logging** with correlation IDs
-- **Custom Metrics** without CloudWatch API calls
-- **Distributed Tracing** integration
-- **Input validation** and error handling
+### Key capabilities
+- Structured logging with correlation IDs
+- Custom metrics without manual CloudWatch API calls
+- X-Ray-compatible tracing helpers
+- Input validation, idempotency utilities, and middleware patterns
 
-### Supported Runtimes
+### Supported runtimes
 
-FsCDK automatically adds the Powertools layer for these runtimes:
+| Runtime | Delivery | Notes |
+|---------|----------|-------|
+| Python 3.8–3.12 | AWSLambdaPowertoolsPython layer | Latest version pinned automatically |
+| Node.js 14–20 | AWSLambdaPowertoolsTypeScript layer | Includes utilities for ESM and CommonJS |
+| Java 8, 11, 17 | AWSLambdaPowertoolsJava layer | Aligns with Powertools Java starter kit |
+| .NET 6+ | NuGet packages | Add `AWS.Lambda.Powertools.*` packages manually |
 
-| Runtime | Layer | Version |
-|---------|-------|---------|
-| Python 3.8-3.12 | AWSLambdaPowertoolsPython | Latest |
-| Node.js 14-20 | AWSLambdaPowertoolsTypeScript | Latest |
-| Java 8, 11, 17 | AWSLambdaPowertoolsJava | Latest |
-| .NET 6+ | NuGet packages (manual) | - |
-
-> **Note**: .NET uses NuGet packages instead of layers. Add these to your project:
-> - `AWS.Lambda.Powertools.Logging`
-> - `AWS.Lambda.Powertools.Metrics`
-> - `AWS.Lambda.Powertools.Tracing`
+> For .NET, install the NuGet packages (`Logging`, `Metrics`, `Tracing`) as demonstrated in the official Powertools .NET docs.
 
 ### Python Example
 
@@ -287,22 +281,16 @@ lambda "CustomLoggingFunction" {
 
 ## Reserved Concurrency
 
-### Why Reserved Concurrency?
+### Why reserved concurrency?
 
-By default, Lambda functions can scale to consume **all available account concurrency** (1,000 by default). 
-This can:
-- Cause unexpected bills
-- Starve other functions
-- Trigger throttling errors
+By default, Lambda can consume the entire account concurrency pool (1,000 per Region). Without guard rails you risk surprise costs and throttling other services—a scenario highlighted in **Yan Cui’s “All you need to know about Lambda concurrency”**. FsCDK therefore caps concurrency at 10 by default.
 
-FsCDK sets a default of **10 concurrent executions** to protect your account.
+### When to override
 
-### When to Override
-
-Override reserved concurrency when you:
-- Have validated your function's throughput needs
-- Are implementing a high-volume production workload
-- Have set up proper cost alerts
+Increase or remove the cap only after:
+- Load testing confirms throughput requirements
+- You’ve configured cost and error alarms
+- Other critical functions have explicit concurrency protections in place
 
 *)
 
@@ -338,13 +326,9 @@ lambda "UnlimitedFunction" {
 
 ### Default: ACTIVE
 
-FsCDK enables X-Ray tracing by default to provide:
-- **End-to-end request tracking** across services
-- **Performance bottleneck identification**
-- **Error rate visualization**
-- **Service dependency mapping**
+Active tracing mirrors the workflow taught in **AWS Powertools workshops**—capturing every invocation for dependency mapping, latency analysis, and incident response. Keep it enabled unless regulatory requirements dictate otherwise.
 
-### Tracing Modes
+### Tracing modes
 
 *)
 
@@ -399,13 +383,9 @@ def process_order():
 
 ## Structured Logging (JSON)
 
-### Default: JSON Format
+### Default: JSON format
 
-FsCDK configures Lambda to output logs in JSON format by default, enabling:
-- **CloudWatch Logs Insights** queries
-- **Log aggregation** in tools like Datadog, Splunk
-- **Structured searching** and filtering
-- **Better debugging** with consistent field names
+Structured JSON logs are the backbone of Yan Cui’s observability playbook and the **AWS Lambda Operator Guide**. They unlock CloudWatch Logs Insights, make Datadog/Splunk ingestion straightforward, and enforce consistent fields for downstream analytics.
 
 *)
 
@@ -442,15 +422,13 @@ fields @timestamp, level, message, userId
 
 ## Async Invocation Configuration
 
-### Default Event Handling
+### Default event handling
 
-FsCDK sets these defaults for async invocations:
-- **Max Event Age**: 6 hours
-- **Retry Attempts**: 2
+Async invocations inherit a 6-hour max age and two retry attempts, echoing the configuration recommended in the **AWS Lambda Operator Guide** to balance resiliency with timely processing.
 
-### When to Override
+### When to override
 
-Use `configureAsyncInvoke` for custom async behavior:
+Use `configureAsyncInvoke` when business SLAs require tighter delivery windows or fewer retries—after validating downstream systems can cope.
 
 *)
 
@@ -470,14 +448,9 @@ lambda "CustomAsyncFunction" {
 
 (**
 
-### Why Limit Event Age?
+### Why limit event age?
 
-Processing stale events can:
-- Cause incorrect business logic (outdated inventory, prices)
-- Waste Lambda execution time
-- Create confusing error states
-
-By default, FsCDK discards events older than 6 hours.
+Stale events lead to incorrect business logic, wasted compute, and confusing audit trails—an issue repeatedly called out in the **AWS Compute Blog**. FsCDK therefore drops payloads older than six hours by default.
 
 ---
 
@@ -577,23 +550,21 @@ productionApp.Synth() |> ignore
 
 ---
 
-## Best Practices
+## Best practices (from AWS Heroes)
 
 ### DO
+- Keep the defaults for new workloads—Yan Cui calls them “sane guard rails” for any greenfield project.
+- Embrace Lambda Powertools to standardise logging, metrics, and tracing without reinventing tooling.
+- Monitor DLQs with CloudWatch alarms and establish a replay runbook.
+- Load test before raising reserved concurrency or removing limits.
+- Retain JSON logging to unlock Logs Insights, OpenSearch, and external observability platforms.
 
-- **Keep defaults for new functions** - They're production-tested
-- **Use Powertools** - Zero cold-start impact, huge observability gains
-- **Monitor DLQ** - Set up CloudWatch alarms for DLQ messages
-- **Test concurrency limits** - Load test before increasing reserved concurrency
-- **Use JSON logging** - Makes debugging much easier
-
-### DON'T
-
-- **Remove concurrency limits without testing** - Can cause bill shock
-- **Disable DLQ** - You'll lose valuable error information
-- **Disable X-Ray in production** - Tracing overhead is minimal (~1% cost)
-- **Set very short MaxEventAge** - Can cause unnecessary retries
-- **Use TEXT logging** - JSON provides much better queryability
+### DON’T
+- Remove concurrency limits without validated traffic modelling; it’s the fastest path to bill shock.
+- Disable DLQs or you’ll lose the audit trail needed during incidents.
+- Turn off X-Ray in production unless compliance requires it—the overhead is minimal.
+- Set overly tight `MaxEventAge`; you’ll drop legitimate events unnecessarily.
+- Revert to plaintext logging; structured logs are the foundation for analytics.
 
 ---
 

@@ -5,13 +5,13 @@ category: docs
 index: 14
 ---
 
-# S3 Bucket Policy
+# Crafting world-class S3 bucket policies with FsCDK
 
-S3 bucket policies control access to your buckets and objects.
-FsCDK provides a first-class DSL for creating secure bucket policies.
+Precise S3 policies are the backbone of secure data lakes and static sites. This notebook captures the controls recommended by AWS Heroes **Ben Kehoe** and **Yan Cui**, plus guidance from the **AWS Security Blog** series on TLS enforcement and access governance. Use the FsCDK builders below to express guard rails as code and keep your buckets compliant.
 
-## Quick Start
+## Quick start patterns
 
+Each scenario maps to a real-world best practice and references an authoritative resource for deeper study.
 *)
 
 #r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
@@ -25,9 +25,9 @@ open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.IAM
 
 (**
-## Enforce HTTPS Only
+## Enforce HTTPS-only access
 
-Deny all non-HTTPS requests (security best practice).
+Mirror the AWS Security Blog post “How to enforce TLS for S3” by denying any request that arrives over HTTP. This closes a common compliance gap and is required for SOC2, PCI DSS, and many regional data-protection frameworks.
 *)
 
 stack "SecureBucket" {

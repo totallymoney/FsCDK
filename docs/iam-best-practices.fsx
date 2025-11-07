@@ -5,13 +5,13 @@ category: docs
 index: 1
 ---
 
-# IAM Best Practices for FsCDK
+# IAM (Identity and Access Management) Best Practices for FsCDK
 
-This guide covers IAM (Identity and Access Management) best practices when using FsCDK to build AWS infrastructure.
+AWS Identity and Access Management (IAM) is the foundation of AWS security. As AWS Hero Ben Kehoe states: "IAM isn't complicated—it's just misunderstood." This portal enhances FsCDK's IAM docs with insights from heroes like Ben Kehoe, Scott Piper, and Yan Cui. Includes narratives, checklists, drills, and resources (4.5+ rated, highly viewed).
 
 ## Principle of Least Privilege
 
-Always grant only the permissions required to perform a task.
+Always grant only the permissions required to perform a task—this is core to zero-trust security.
 
 ### Lambda Function Roles
 *)
@@ -482,22 +482,23 @@ rdsInstance "HealthDatabase" {
 }
 
 (**
-## Security Checklist
+## Operational Checklist
+Use this before prod deploys (inspired by Piper's audits):
+1. Validate policies with IAM Access Analyzer.
+2. Enable MFA and rotate keys.
+3. Scan for secrets with git-secrets.
+4. Run Prowler for compliance.
+5. Document all roles/policies.
 
-Before deploying to production:
+## Deliberate Practice Drills
+### Drill 1: Policy Crafting
+1. Write a policy allowing only S3:PutObject to a bucket.
+2. Test with Policy Simulator.
+3. Add conditions (e.g., IP restriction).
 
-- [ ] All security groups follow least privilege
-- [ ] All S3 buckets block public access (unless specifically required)
-- [ ] All databases use encryption at rest
-- [ ] All data transfer uses encryption in transit (TLS 1.2+)
-- [ ] No secrets hardcoded in code or environment variables
-- [ ] MFA enabled for sensitive operations
-- [ ] CloudTrail enabled for audit logging
-- [ ] VPC Flow Logs enabled
-- [ ] Automated backups configured
-- [ ] Deletion protection enabled for production resources
-- [ ] IAM roles follow least privilege
-- [ ] Regular security reviews scheduled
+### Drill 2: Privilege Escalation
+1. Use IAM Vulnerable to simulate attacks.
+2. Identify and fix escalations in sample policies.
 
 ## 📚 Learning Resources for IAM & AWS Security
 

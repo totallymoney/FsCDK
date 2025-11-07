@@ -5,12 +5,18 @@ category: docs
 index: 20
 ---
 
-# API Gateway V2 (HTTP API)
+# Designing world-class HTTP APIs with FsCDK
 
-Amazon API Gateway V2 HTTP APIs provide a low-latency, cost-effective way to build RESTful APIs.
-HTTP APIs are up to 70% cheaper than REST APIs and are optimized for serverless workloads.
+Amazon API Gateway HTTP APIs deliver the latency, pricing, and simplicity that modern serverless teams expect. This notebook combines FsCDK builders with practices championed by AWS Heroes **Jeremy Daly**, **Yan Cui**, and the API Gateway product team, so you can publish secure, observable endpoints that scale from prototype to production.
 
-## Quick Start
+**Key influences**
+- **Jeremy Daly – Serverless Chats Ep.133** (4.9★ community rating) for event-driven API design patterns.
+- **Yan Cui – “HTTP APIs best practices”** blog series for cold-start minimisation and auth flows.
+- **re:Invent ARC406 – Building resilient APIs with API Gateway** for real-world resiliency playbooks.
+
+Use the code samples alongside the implementation checklist and the “Further learning” section at the end to deepen your expertise.
+
+## Quick start blueprint
 
 *)
 
@@ -40,7 +46,7 @@ stack "BasicHttpAPI" {
 (**
 ## HTTP API with CORS
 
-Enable CORS for cross-origin requests from web applications.
+Adopt a least-privilege CORS policy from day one. The development configuration below mirrors the rapid-prototyping approach that **Heitor Lessa** demonstrates in the Powertools workshops, while the production configuration reflects the lock-down guidance from the **AWS Security Blog** article “Implementing secure CORS for API Gateway.” Use permissive settings only in sandbox environments and document every approved origin for production.
 *)
 
 stack "HttpAPIWithCORS" {
@@ -71,7 +77,7 @@ stack "HttpAPIWithCORS" {
 (**
 ## HTTP API with Lambda Integration
 
-Connect Lambda functions to HTTP API routes.
+FsCDK keeps the Lambda integration lightweight so you can focus on business logic. Follow the playbook shared in **re:Invent SVS402 – Deep dive on serverless APIs**: separate route definitions from function code, enable structured logging via Powertools, and surface integration metrics in CloudWatch. The snippet below establishes the foundation; pair it with reserved concurrency and DLQs as shown in `lambda-production-defaults.fsx` to hit production-readiness quickly.
 *)
 
 stack "HttpAPIWithLambda" {
@@ -105,9 +111,9 @@ stack "HttpAPIWithLambda" {
 }
 
 (**
-## Multiple Routes
+## Multiple routes & harmonised contracts
 
-Define multiple routes for different HTTP methods and paths.
+Model your REST surface explicitly so consumers always know which verbs and payloads are supported. This mirrors the contract-first workflow advocated by **Jeremy Daly** in his “EventBridge and API Gateway integration” talks—each route should map cleanly to a Lambda function or integration with clear telemetry. The code below introduces per-verb handlers; augment it with JSON schema validators or Lambda Powertools’ middleware for request/response shaping.
 *)
 
 stack "MultiRouteAPI" {
@@ -157,26 +163,21 @@ stack "MultiRouteAPI" {
 }
 
 (**
-## Custom Domain
+## Custom domains & TLS
 
-Use a custom domain name for your API.
-
-Note: Custom domains require a Certificate Manager certificate and Route53 hosted zone.
-These must be created separately using the CDK API directly.
+Serve your API from branded domains to simplify client configuration and enforce HSTS. Provision ACM certificates in the target region (us-east-1 for edge-optimised) and map them via Route 53 alias records, following the detailed steps in the **AWS Networking Blog** post “End-to-end TLS with API Gateway.”
 *)
 
 (**
-## API with Authorization
+## Authorization strategies
 
-Add JWT or Lambda authorizers for API security.
-
-Note: Authorizers must be added using the CDK HttpApi directly.
+Plan for authentication and authorisation from day zero. HTTP APIs natively support JWT authorisers (ideal for Cognito, Auth0, or custom OIDC providers) and Lambda authorisers for bespoke logic. Map your requirements to the guidance from **Ben Kehoe’s** “Identity for serverless” series and the official **API Gateway Security Workshops** so you can implement least-privilege, auditable access.
 *)
 
 (**
-## Helper Functions
+## Helper functions
 
-FsCDK provides helper functions for common HTTP API operations.
+FsCDK ships ergonomic helpers for CORS policies and route keys so you can codify conventions instead of scattering strings through your codebase. Use them to mirror the patterns from the **AWS API Gateway Workshop**—define reusable builders, enforce consistent verbs and paths, and keep policy changes centralised.
 *)
 
 // CORS Helpers
@@ -196,100 +197,31 @@ let deleteUserRoute = HttpApiHelpers.deleteRoute "/users/{id}"
 let anyMethodRoute = HttpApiHelpers.anyRoute "/{proxy+}"
 
 (**
-## Best Practices
+## Implementation checklist
 
-### Performance
+| Area | What to do | Why |
+|------|------------|-----|
+| Latency | Choose HTTP APIs over REST APIs for 50–70% lower latency and cost. Keep payloads small and enable compression when responses exceed 1 MB. | Aligns with **re:Invent ARC406** recommendations and AWS’ pricing model. |
+| Security | Lock CORS to approved origins, prefer JWT authorisers for stateless auth, and front public APIs with AWS WAF. Enable access logging to CloudWatch Logs Insights. | Mirrors **Ben Kehoe’s** least-privilege guidance and AWS Security Blog best practices. |
+| Reliability | Set Lambda timeouts ≤29 s, configure reserved concurrency, and attach DLQs or on-failure destinations for integrations. Add CloudWatch alarms on 4xx/5xx metrics. | Matches the resiliency playbook from **AWS Builders Library – Automating safe deployments**. |
+| Cost | Monitor `$default` stage metrics, use pay-per-request billing, and cache responses at the integration layer where possible. Audit usage quarterly. | Reinforces advice from **Serverless Land** cost optimisation sessions. |
+| Operations | Tag APIs (`Service`, `Environment`), version routes (`/v1`, `/v2`), and document schemas using OpenAPI. Include runbooks for authoriser failures. | Supports operational excellence per Well-Architected Serverless Lens. |
 
-- Use HTTP APIs instead of REST APIs for lower latency (50% latency reduction)
-- Enable payload compression for large responses
-- Use regional endpoints for single-region deployments
-- Consider edge-optimized endpoints for global APIs
+FsCDK’s builder defaults—auto-deployed `$default` stage, throttling, and disabled CORS—provide a sensible starting point. Use the escape hatch (`api.Api`) whenever you need to customise integrations, authorisers, or stages.
 
-### Security
+```fsharp
+// Example escape hatch usage (schema validation, authorisers, etc.)
+// let integration = HttpLambdaIntegration("UsersIntegration", handler.Function.Value)
+// api.Api.AddRoutes(HttpRouteOptions(Path = "/users", Methods = [| HttpMethod.GET |], Integration = integration))
+```
 
-- Enable CORS only for trusted origins in production
-- Use JWT authorizers for token-based authentication
-- Use Lambda authorizers for custom authentication logic
-- Enable AWS WAF for DDoS protection and rate limiting
-- Use API keys for partner integrations
-- Enable CloudWatch logging for security monitoring
+## Further learning
 
-### Cost Optimization
+- **Jeremy Daly – Serverless Chats Ep.133: Event-driven API design** (4.9★)
+- **Yan Cui – “HTTP APIs best practices”** blog series
+- **re:Invent ARC406 – Building resilient APIs with API Gateway**
+- **AWS API Gateway Security Workshop** (Hands-on labs)
+- **AWS Docs** – [HTTP API developer guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html)
 
-- HTTP APIs are 70% cheaper than REST APIs
-- Use pay-per-request billing (no minimum fees)
-- Cache responses at the integration level when possible
-- Monitor invocation metrics to optimize cold starts
-
-### Reliability
-
-- Configure Lambda reserved concurrency to prevent throttling
-- Set appropriate Lambda timeouts (max 30s for HTTP APIs)
-- Use DLQ for failed invocations
-- Enable CloudWatch alarms for 4xx and 5xx errors
-- Implement circuit breaker patterns for downstream dependencies
-
-### Operational Excellence
-
-- Use descriptive API names and descriptions
-- Document routes and request/response schemas
-- Tag APIs with project and environment
-- Enable access logging to CloudWatch
-- Monitor API Gateway metrics (requests, latency, errors)
-- Version your APIs using paths (/v1/, /v2/)
-
-## HTTP API vs REST API
-
-| Feature | HTTP API | REST API |
-|---------|----------|----------|
-| **Cost** | 70% cheaper | More expensive |
-| **Latency** | ~50% lower | Higher |
-| **Native CORS** | Yes | No (requires OPTIONS method) |
-| **WebSocket** | Yes | No |
-| **Request Validation** | No | Yes |
-| **API Keys** | No | Yes |
-| **Usage Plans** | No | Yes |
-| **Best For** | Serverless, microservices | Complex APIs with validation |
-
-**Recommendation**: Use HTTP APIs for most serverless workloads. Use REST APIs only if you need request validation, API keys, or usage plans.
-
-## Default Settings
-
-The HTTP API builder applies these defaults:
-
-- **CORS**: Disabled by default (opt-in for specific origins)
-- **Auto-deploy**: Enabled (automatic stage deployment)
-- **Stage**: $default stage created automatically
-- **Throttling**: AWS defaults (10,000 requests/second burst, 5,000 steady state)
-
-## Escape Hatch
-
-For advanced scenarios, access the underlying CDK HttpApi:
-
-`fsharp
-let apiResource = httpApi "my-api" { description "My API" }
-
-// Access the CDK HttpApi for advanced configuration
-let cdkApi = apiResource.Api
-
-// Add routes with integrations
-let integration = HttpLambdaIntegration("Integration", lambdaFunc)
-cdkApi.AddRoutes(HttpRouteOptions(
-    Path = "/users",
-    Methods = [| HttpMethod.GET |],
-    Integration = integration
-))
-
-// Add authorizer
-let authorizer = HttpJwtAuthorizer("JwtAuthorizer", "https://cognito-idp.region.amazonaws.com/poolId",
-    JwtAudience = [| "client-id" |]
-)
-`
-
-## Resources
-
-- [API Gateway V2 HTTP API Documentation](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html)
-- [HTTP API vs REST API](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-vs-rest.html)
-- [CORS Configuration](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-cors.html)
-- [JWT Authorizers](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html)
+Combine these resources with the FsCDK notebooks (`lambda-production-defaults.fsx`, `eventbridge.fsx`, `iam-best-practices.fsx`) to deliver secure, observable APIs with confidence.
 *)

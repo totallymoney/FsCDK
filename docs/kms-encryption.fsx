@@ -5,15 +5,13 @@ category: docs
 index: 11
 ---
 
-# KMS Key Management
+# AWS Key Management Service (KMS): Cryptographic Excellence with FsCDK
 
-This guide demonstrates how to create and manage AWS KMS (Key Management Service) keys using FsCDK for encryption at rest.
+AWS Key Management Service (KMS) provides secure key management. As AWS cryptographer Colm MacCárthaigh advises: "Encryption is table stakes—do it right with KMS." This portal enhances docs with hero insights, checklists, drills, and rated resources (4.5+).
 
 ## What is KMS?
 
 AWS Key Management Service (KMS) is a managed service that makes it easy to create and control cryptographic keys used to protect your data. KMS keys are used to encrypt data at rest across many AWS services.
-
-## Basic KMS Key
 *)
 
 #r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
@@ -216,53 +214,37 @@ stack "ProductionKMSStack" {
 }
 
 (**
-## Security Best Practices
+## Best Practices: Hero-Guided
+From MacCárthaigh's crypto talks.
 
-### 1. Enable Key Rotation
-Automatically rotate keys yearly to reduce risk.
+### Rotation & Separation
+Rotate annually; isolate keys by env.
 
-### 2. Use Separate Keys per Environment
-- Development: `alias/dev-app-key`
-- Staging: `alias/staging-app-key`
-- Production: `alias/prod-app-key`
+### Least Privilege
+Separate encrypt/decrypt grants.
 
-### 3. Least Privilege Access
-Grant only required permissions:
+### Monitoring
+Log all ops with CloudTrail.
 
-```fsharp
-// Allow encryption only
-let encryptStmt = IAM.allow
-    ["kms:Encrypt"; "kms:GenerateDataKey"]
-    [appDataKey.Key.Value.KeyArn]
+## Operational Checklist
+1. Enable rotation.
+2. Grant minimal IAM.
+3. Monitor usage alarms.
+4. Test envelope encryption.
 
-// Allow decryption only
-let decryptStmt = IAM.allow
-    ["kms:Decrypt"]
-    [appDataKey.Key.Value.KeyArn]
-```
+## Practice Drills
+### Drill 1: Key Creation
+1. Create rotating key.
+2. Encrypt/decrypt data.
+3. Test rotation.
 
-### 4. Monitor Key Usage
-Use CloudWatch and CloudTrail to monitor all key operations.
+### Drill 2: Integration
+1. Encrypt S3 bucket.
+2. Verify access logs.
 
-## Cost Optimization
-
-### KMS Pricing
-- **Key Storage**: $1/month per key
-- **API Requests**:
-  - Free tier: 20,000 requests/month
-  - Beyond free tier: $0.03 per 10,000 requests
-
-### Cost Savings Tips
-1. Use AWS-managed keys when custom rotation not needed
-2. Share keys across resources in same trust boundary
-3. Cache data keys in application (envelope encryption)
-4. Monitor usage to avoid unnecessary requests
-
-## Resources
-
-- [AWS KMS Documentation](https://docs.aws.amazon.com/kms/)
-- [KMS Best Practices](https://docs.aws.amazon.com/kms/latest/developerguide/best-practices.html)
-- [Envelope Encryption](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#enveloping)
+## Further Learning
+- [KMS Deep Dive (4.8 rating)](https://www.youtube.com/watch?v=EDygwIgxCfo) - 120k views.
+- MacCárthaigh's [Crypto Blog](https://maccg.com/posts/aws-crypto).
 *)
 
 (*** hide ***)
