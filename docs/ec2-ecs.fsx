@@ -5,9 +5,9 @@ category: docs
 index: 8
 ---
 
-# EC2 and ECS Example
+# Amazon EC2 and ECS (Elastic Container Service) Example
 
-This example demonstrates how to create EC2 instances and ECS services using FsCDK.
+This example demonstrates how to create Amazon EC2 (Elastic Compute Cloud) instances and ECS (Elastic Container Service) services using FsCDK.
 
 ## EC2 Instance (Virtual Machine)
 *)

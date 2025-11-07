@@ -184,7 +184,7 @@ let managed_policy_tests =
 
               // When there are no statements, we don't create a document
               Expect.isTrue
-                  (policySpec.Props.Document = null || policySpec.Props.Document.IsEmpty)
+                  (isNull policySpec.Props.Document || policySpec.Props.Document.IsEmpty)
                   "Should have no document or empty document"
           }
 

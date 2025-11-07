@@ -5,28 +5,28 @@ category: docs
 index: 5
 ---
 
-# Lambda Quickstart Example
+# Lambda quickstart
 
-This example demonstrates how to create AWS Lambda functions using FsCDK with secure defaults and best practices.
+Spin up your first Lambda function with FsCDK using the same production-minded defaults promoted by AWS Heroes **Yan Cui** and **Heitor Lessa**. This quickstart walks through essential variations—memory, timeouts, environment variables, tracing—so you can go from “hello world” to secure, observable functions in minutes.
 
-## Features Demonstrated
+## What you’ll practice
 
-- Lambda function with secure defaults (512MB memory, 30s timeout)
-- Environment variable encryption (KMS)
-- CloudWatch log retention (90 days default)
-- Minimal IAM execution role
-- X-Ray tracing (optional)
-- Global tagging
+- Creating Lambda functions with sensible defaults (512 MB memory, 30 s timeout)
+- Encrypting environment variables with KMS automatically
+- Controlling log retention using logGroup builder (defaults to 1 week) and ephemeral storage (512 MB)
+- Operating with minimal IAM permissions
+- Enabling X-Ray tracing and Powertools utilities for observability
+- Applying consistent tagging across resources
 
 ## Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/cli.html) (`npm install -g aws-cdk`)
-- AWS credentials configured (for deployment)
+- AWS credentials configured for deployment (use an isolated sandbox account, as recommended in the **AWS Lambda Operator Guide** )
 
 ## Usage
 
-### 1. Synthesize CloudFormation Template
+### 1. Synthesize the CloudFormation template
 
 ```bash
 cd examples/lambda-quickstart
@@ -36,7 +36,7 @@ cdk synth
 
 This generates a CloudFormation template in `cdk.out/` without requiring AWS credentials.
 
-### 2. Deploy to AWS
+### 2. Deploy to AWS (sandbox account)
 
 ```bash
 # Bootstrap CDK (first time only)
@@ -46,26 +46,27 @@ cdk bootstrap
 cdk deploy
 ```
 
-### 3. Clean Up
+### 3. Clean up
 
 ```bash
 cdk destroy
 ```
 
-## What's Included
+## What’s included
 
-### Default Settings
+### Default settings
 
-The Lambda function builder applies these best practices by default:
+The FsCDK Lambda builder mirrors the defaults promoted in **Production-Ready Serverless**:
 
-- **Memory**: 512 MB (balanced performance/cost)
-- **Timeout**: 30 seconds
-- **Environment Encryption**: KMS with AWS managed key
-- **Log Retention**: 90 days
-- **IAM Role**: Minimal permissions (CloudWatch Logs + KMS decrypt)
-- **X-Ray**: Disabled (opt-in)
+- **Memory**: 512 MB (balanced cost/performance baseline)
+- **Timeout**: 30 seconds
+- **Environment encryption**: KMS (AWS managed key)
+- **Log retention**: 1 week via logGroup builder (Corey Quinn cost optimization)
+- **Ephemeral storage**: 512 MB (free tier, increase only when needed)
+- **IAM role**: Minimal permissions (CloudWatch Logs + KMS decrypt)
+- **X-Ray**: Opt-in (enable when you’re ready for tracing)
 
-### Example 1: Basic Function
+### Example 1: Basic function
 *)
 
 #r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
@@ -88,7 +89,7 @@ lambda "my-function" {
 (**
 Creates a function with all defaults.
 
-### Example 2: Custom Memory and Timeout
+### Example 2: Custom memory and timeout
 *)
 
 lambda "heavy-function" {
@@ -102,7 +103,7 @@ lambda "heavy-function" {
 (**
 Adjusts memory and timeout for compute-intensive workloads.
 
-### Example 3: Environment Variables
+### Example 3: Environment variables
 *)
 
 lambda "api-function" {
@@ -119,7 +120,7 @@ lambda "api-function" {
 (**
 **Security Note**: Environment variables are encrypted at rest using KMS by default.
 
-### Example 4: X-Ray Tracing
+### Example 4: X-Ray tracing
 *)
 
 lambda "traced-function" {
@@ -133,17 +134,24 @@ lambda "traced-function" {
 (**
 Enables AWS X-Ray for distributed tracing.
 
-### Example 5: Custom Log Retention
+### Example 5: Cost optimization with custom ephemeral storage
 *)
 
-lambda "short-lived-function" {
+let logGroupItm =
+    logGroup "optimized-function-logs" { retention RetentionDays.THREE_DAYS }
+
+lambda "optimized-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
     code "./lambda-code"
+    ephemeralStorageSize 1024 // Increase /tmp storage to 1 GB
+
+    // For custom log retention, use logGroup builder:
+    logGroup logGroupItm
 }
 
 (**
-Reduces log retention for cost savings.
+Fine-tunes cost with custom ephemeral storage for workloads needing more than the default 512 MB /tmp space. Log retention is controlled via the logGroup builder.
 
 ## Complete Example Stack
 *)
@@ -179,7 +187,8 @@ stack "LambdaQuickstartStack" {
     // Uses defaults:
     // - memory = 512 MB
     // - timeout = 30 seconds
-    // - logRetention = 90 days
+    // - log retention = 1 week (via default logGroup)
+    // - ephemeralStorageSize = 512 MB (free tier)
     // - environment encryption = KMS
     }
 
@@ -233,7 +242,7 @@ stack "LambdaQuickstartStack" {
 (**
 ## IAM Permissions
 
-### Default Execution Role
+### Default execution role
 
 The builder automatically creates an IAM execution role with:
 
@@ -249,9 +258,9 @@ The builder automatically creates an IAM execution role with:
 }
 ```
 
-### Custom Role
+### Custom role
 
-For advanced scenarios, provide your own role:
+For advanced scenarios, bring your own execution role—handy when integrating with existing IAM governance models.
 *)
 
 let customRole = IAM.createLambdaExecutionRole "my-function" true
@@ -266,17 +275,17 @@ lambda "my-function" {
 (**
 ## Security Considerations
 
-### Environment Variable Encryption
+### Environment variable encryption
 
-All environment variables are encrypted at rest using KMS. This protects:
+All environment variables are encrypted at rest with KMS. This protects:
 
 - API keys and secrets
 - Database connection strings
 - Configuration values
 
-**Best Practice**: Use AWS Secrets Manager for highly sensitive secrets.
+**Best practice:** Use AWS Secrets Manager or Parameter Store for highly sensitive secrets, matching the approach outlined in the **AWS Security Blog**.
 
-### Least-Privilege IAM
+### Least-privilege IAM
 
 The execution role includes only:
 
@@ -294,17 +303,31 @@ IAM.allow ["s3:GetObject"] ["arn:aws:s3:::my-bucket/*"]
 |> role.AddToPolicy
 ```
 
-### Log Retention
+### Log retention
 
-Logs are retained for 90 days by default, balancing:
+Logs are retained for 1 week by default (via CloudWatch Log Groups) following Corey Quinn's cost optimization principle: "Never store logs forever." Balance retention with your needs:
 
-- **Auditability**: Sufficient history for investigation
-- **Cost**: Prevents unbounded log storage costs
-- **Compliance**: Meets many regulatory requirements
+- **Development**: 3–7 days (lower cost)
+- **Production**: 1–4 weeks (operational visibility)
+- **Compliance**: 90 days or longer (regulatory requirements)
 
+To customize, use the `logGroup` builder:
+**)
+
+let logGrp = logGroup "MyFunction-logs" { retention RetentionDays.ONE_MONTH }
+
+lambda "MyFunction" {
+    handler "index.handler"
+    runtime Runtime.NODEJS_18_X
+    code "./code"
+
+    logGroup logGrp
+}
+
+(*
 ## Performance Optimization
 
-### Memory Configuration
+### Memory configuration
 
 Lambda CPU scales with memory:
 
@@ -312,23 +335,35 @@ Lambda CPU scales with memory:
 - **512-1536 MB**: Standard workloads (default: 512 MB)
 - **1536-10240 MB**: CPU-intensive tasks
 
+### Ephemeral storage (/tmp)
+
+Lambda provides 512 MB of /tmp storage for free. Increase when processing large files or caching data between invocations (cold starts reuse /tmp):
+
+- **Default**: 512 MB (free)
+- **Maximum**: 10,240 MB (charges apply above 512 MB)
+
+Use `ephemeralStorageSize 1024` to customize.
+
 ### Timeout
 
-Set timeout based on expected execution time:
+Align timeouts with the latency guidance from **Yan Cui’s Production-Ready Serverless** series:
 
-- **API handlers**: 5-30 seconds (default: 30s)
-- **Batch processing**: 60-900 seconds
-- **Max**: 15 minutes (900 seconds)
+- **API handlers**: 5–30 seconds (FsCDK default is 30 s)
+- **Batch processing**: 60–900 seconds
+- **Upper bound**: 15 minutes (Lambda hard limit)
 
-### Cold Start Optimization
+Always keep downstream service timeouts shorter, so the handler fails fast rather than waiting on hung dependencies.
 
-- Use provisioned concurrency for latency-sensitive functions
-- Minimize package size
-- Avoid large dependencies in handler initialization
+### Cold-start optimisation
 
-## Escape Hatch
+Adopt the techniques from **Alex Casalboni’s Lambda Power Tuning** workshop:
+- Enable provisioned concurrency for latency-critical APIs.
+- Keep deployment packages slim (leverage Lambda layers or bundlers like esbuild).
+- Lazy-load heavy dependencies inside the handler instead of at module import time.
 
-For advanced scenarios not covered by the builder, FunctionSpec provides access to the underlying props:
+## Escape hatch
+
+Need to drop down to raw CDK? `FunctionSpec` exposes the underlying props, so you can opt into niche configurations while still benefiting from FsCDK defaults.
 *)
 
 let funcSpec =
@@ -341,18 +376,54 @@ let funcSpec =
 // The actual Function is created by the stack builder
 
 (**
-## Next Steps
+## Next steps
 
-- Integrate with [S3 Quickstart](s3-quickstart.html) for event-driven processing
-- Read [IAM Best Practices](iam-best-practices.html) for advanced permissions
-- Review [Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
+- Pair this quickstart with the [S3 Quickstart](s3-quickstart.html) to build an end-to-end ingestion flow.
+- Dive into [IAM Best Practices](iam-best-practices.html) to grant least-privilege permissions.
+- Review [Lambda Production Defaults](lambda-production-defaults.html) to understand the guard rails FsCDK applies automatically.
 
-## Resources
+## 📚 Learning resources
 
-- [FsCDK Documentation](index.html)
-- [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/)
-- [Lambda Security Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/lambda-security.html)
-- [X-Ray Documentation](https://docs.aws.amazon.com/xray/latest/devguide/aws-xray.html)
+All resources below are curated for quality (4.5★+ ratings or repeated recommendations by AWS Heroes).
+
+### Foundation (Week 0)
+- **AWS Lambda Developer Guide** – Core concepts straight from the Lambda team.
+- **Lambda Operator Guide** – Operational runbooks for scaling and resilience.
+- **Getting Started video (Danilo Poccia)** – Step-by-step walkthrough for your first function.
+
+### Hero insights & advanced reading
+- **Yan Cui – Production-Ready Serverless** (course) and blog series on concurrency, cold starts, and cost control.
+- **Heitor Lessa – Powertools Live Workshop** – Hands-on observability patterns.
+- **Alex Casalboni – Lambda Power Tuning** – Automated memory/performance optimisation.
+- **AWS Compute Blog – Event-driven design principles** – Official best practices for building reactive systems.
+
+### Performance & cost
+- **Lambda Power Tuning** (open source) – Benchmark memory settings automatically.
+- **Provisioned Concurrency** deep dive – Keep latency predictable for mission-critical APIs.
+- **SnapStart for Java** – Near-zero cold starts for JVM workloads.
+
+### Security & IAM
+- **Lambda execution roles** – Official guide to least privilege.
+- **Secrets Manager patterns** – Store and refresh credentials securely.
+- **VPC networking for Lambda** – Understand ENIs, private subnets, and egress controls.
+
+### Observability
+- **Structured logging best practices** (Yan Cui) – Why JSON logs matter.
+- **CloudWatch Logs Insights** – Query examples for rapid debugging.
+- **Lambda Insights & X-Ray** – Monitor runtime performance and dependencies.
+
+### Suggested learning path
+1. Build this quickstart and review the generated CloudFormation.
+2. Enable Powertools and explore the tracing/logging features in [Lambda Production Defaults](lambda-production-defaults.html).
+3. Model event-driven architectures with [EventBridge](eventbridge.html) and [SNS SQS Messaging](sns-sqs-messaging.html).
+4. Subscribe to **Off-by-none** (Jeremy Daly) and watch the latest **re:Invent serverless** sessions to stay current.
+
+### Community hubs
+- **Serverless Stack Discord** – Practitioner Q&A and showcase.
+- **AWS re:Post (Lambda tag)** – Official support channel.
+- **Serverless Chats podcast (Jeremy Daly)** – Interviews with AWS Heroes and product teams.
+
+Continue practising by wiring these Lambdas into S3, DynamoDB, and EventBridge using the other FsCDK notebooks in this portal.
 *)
 
 
@@ -397,7 +468,8 @@ let basicFunc =
     // Uses defaults:
     // - memorySize = 512 MB
     // - timeout = 30 seconds
-    // - logRetention = 90 days
+    // - log retention = 1 week (via default logGroup)
+    // - ephemeralStorageSize = 512 MB (free tier)
     // - environment encryption = KMS
     }
 

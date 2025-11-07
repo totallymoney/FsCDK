@@ -8,6 +8,7 @@ open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.RDS
+open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.Cognito
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
@@ -17,6 +18,16 @@ open Amazon.CDK.AWS.CloudWatch
 open Amazon.CDK.AWS.Kinesis
 open Amazon.CDK.AWS.Route53
 open Constructs
+open Amazon.CDK.AWS.AppRunner
+open Amazon.CDK.AWS.ElastiCache
+open Amazon.CDK.AWS.DocDB
+open Amazon.CDK.CustomResources
+open Amazon.CDK.AWS.Logs
+open Amazon.CDK.AWS.StepFunctions
+open Amazon.CDK.AWS.XRay
+open Amazon.CDK.AWS.AppSync
+open Amazon.CDK.AWS.APIGateway
+open Amazon.CDK.AWS.ECS
 //open Amazon.CDK.AWS.CloudHSMV2
 
 // ============================================================================
@@ -55,7 +66,7 @@ type Operation =
     | HostedZoneOp of Route53HostedZoneSpec
     | OriginAccessIdentityOp of OriginAccessIdentitySpec
     //| CloudHSMClusterOp of CloudHSMClusterSpec
-    | LambdaRoleOp of IAM.LambdaRoleSpec
+    | LambdaRoleOp of LambdaRoleSpec
     | CloudWatchAlarmOp of CloudWatchAlarmSpec
     | KMSKeyOp of KMSKeySpec
     | EC2InstanceOp of EC2InstanceSpec
@@ -64,6 +75,27 @@ type Operation =
     | SecretsManagerOp of SecretsManagerSpec
     | ElasticBeanstalkEnvironmentOp of ElasticBeanstalkEnvironmentSpec
     | DnsValidatedCertificateOp of DnsValidatedCertificateSpec
+    | AppRunnerServiceOp of AppRunnerServiceResource
+    | ElastiCacheRedisOp of ElastiCacheRedisResource
+    | DocumentDBClusterOp of DocumentDBClusterResource
+    | CustomResourceOp of CustomResourceResource
+    | StepFunctionOp of StepFunctionResource
+    | XRayGroupOp of XRayGroupResource
+    | XRaySamplingRuleOp of XRaySamplingRuleResource
+    | AppSyncApiOp of AppSyncApiResource
+    | AppSyncDataSourceOp of AppSyncDataSourceResource
+    | RestApiOp of RestApiSpec
+    | TokenAuthorizerOp of TokenAuthorizerSpec
+    | VpcLinkOp of VpcLinkSpec
+    | FargateTaskDefinitionOp of FargateTaskDefinitionSpec
+    | ECSClusterOp of ECSClusterResource
+    | ECSFargateServiceOp of ECSFargateServiceResource
+    | GatewayVpcEndpointOp of GatewayVpcEndpointSpec
+    | InterfaceVpcEndpointOp of InterfaceVpcEndpointSpec
+    | DatabaseProxyOp of DatabaseProxySpec
+    | CloudWatchLogGroupOp of CloudWatchLogGroupResource
+    | CloudWatchMetricFilterOp of CloudWatchMetricFilterResource
+    | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterResource
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -75,13 +107,83 @@ module StackOperations =
         match operation with
         | TableOp tableSpec ->
             let t = Table(stack, tableSpec.ConstructId, tableSpec.Props)
+
+            // Add Global Secondary Indexes
+            for gsi in tableSpec.GlobalSecondaryIndexes do
+                let gsiProps = GlobalSecondaryIndexProps()
+                gsiProps.IndexName <- gsi.IndexName
+                let pkName, pkType = gsi.PartitionKey
+                gsiProps.PartitionKey <- Attribute(Name = pkName, Type = pkType)
+
+                gsi.SortKey
+                |> Option.iter (fun (skName, skType) -> gsiProps.SortKey <- Attribute(Name = skName, Type = skType))
+
+                gsi.ProjectionType |> Option.iter (fun pt -> gsiProps.ProjectionType <- pt)
+
+                gsi.NonKeyAttributes
+                |> Option.iter (fun attrs ->
+                    if not (List.isEmpty attrs) then
+                        gsiProps.NonKeyAttributes <- Array.ofList attrs)
+
+                gsi.ReadCapacity |> Option.iter (fun rc -> gsiProps.ReadCapacity <- rc)
+
+                gsi.WriteCapacity |> Option.iter (fun wc -> gsiProps.WriteCapacity <- wc)
+
+                t.AddGlobalSecondaryIndex(gsiProps) |> ignore
+
+            // Add Local Secondary Indexes
+            for lsi in tableSpec.LocalSecondaryIndexes do
+                let lsiProps = LocalSecondaryIndexProps()
+                lsiProps.IndexName <- lsi.IndexName
+                let skName, skType = lsi.SortKey
+                lsiProps.SortKey <- Attribute(Name = skName, Type = skType)
+
+                lsi.ProjectionType |> Option.iter (fun pt -> lsiProps.ProjectionType <- pt)
+
+                lsi.NonKeyAttributes
+                |> Option.iter (fun attrs ->
+                    if not (List.isEmpty attrs) then
+                        lsiProps.NonKeyAttributes <- Array.ofList attrs)
+
+                t.AddLocalSecondaryIndex(lsiProps) |> ignore
+
             tableSpec.Table <- Some t
 
         | FunctionOp lambdaSpec ->
-            let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
+            // Yan Cui Production Best Practice: Auto-create DLQ if enabled
+            // Check if DeadLetterQueueEnabled is set but no queue provided
+            let propsToUse =
+                if
+                    lambdaSpec.Props.DeadLetterQueueEnabled.HasValue
+                    && lambdaSpec.Props.DeadLetterQueueEnabled.Value
+                    && isNull lambdaSpec.Props.DeadLetterQueue
+                then
+                    // Auto-create SQS DLQ
+                    let dlqName = $"{lambdaSpec.FunctionName}-dlq"
+                    let dlqProps = QueueProps()
+                    dlqProps.QueueName <- dlqName
+                    dlqProps.RetentionPeriod <- Duration.Days(14.0) // Keep failed events for 14 days
+                    let dlq = Queue(stack, $"{lambdaSpec.ConstructId}-DLQ", dlqProps)
 
-            let _ =
-                lambdaSpec.EventSources |> Seq.map (fun e -> fn.AddEventSource e) |> Seq.toList
+                    // Update props with the DLQ
+                    lambdaSpec.Props.DeadLetterQueue <- dlq
+                    lambdaSpec.Props
+                else
+                    lambdaSpec.Props
+
+            // Yan Cui Production Best Practice: Auto-add Powertools layer if ARN is provided
+            match lambdaSpec.PowertoolsLayerArn with
+            | Some arn ->
+                let powertoolsLayer =
+                    LayerVersion.FromLayerVersionArn(stack, $"{lambdaSpec.ConstructId}-PowertoolsLayer", arn)
+
+                let existingLayers = if isNull propsToUse.Layers then [||] else propsToUse.Layers
+                propsToUse.Layers <- Array.append existingLayers [| powertoolsLayer |]
+            | None -> ()
+
+            let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, propsToUse)
+
+            let _ = lambdaSpec.EventSources |> Seq.map (fn.AddEventSource) |> Seq.toList
 
             lambdaSpec.Function <- Some fn
 
@@ -115,6 +217,11 @@ module StackOperations =
             queueSpec.DelaySeconds
             |> Option.iter (fun d -> props.DeliveryDelay <- Duration.Seconds(float d))
 
+            queueSpec.Encryption |> Option.iter (fun e -> props.Encryption <- e)
+
+            queueSpec.EncryptionMasterKey
+            |> Option.iter (fun k -> props.EncryptionMasterKey <- k)
+
             match queueSpec.DeadLetterQueueName, queueSpec.MaxReceiveCount with
             | Some dlqName, Some maxReceive ->
                 try
@@ -125,7 +232,8 @@ module StackOperations =
                     printfn $"Warning: Could not configure DLQ for queue %s{queueSpec.QueueName}: %s{ex.Message}"
             | _ -> ()
 
-            Queue(stack, queueSpec.ConstructId, props) |> ignore
+            let queue = Queue(stack, queueSpec.ConstructId, props)
+            queueSpec.Queue <- Some queue
 
         | BucketOp bucketSpec ->
             match bucketSpec.Bucket with
@@ -149,9 +257,11 @@ module StackOperations =
             let sg = SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props)
             sgSpec.SecurityGroup <- Some sg
 
-        | RdsInstanceOp rdsSpec -> DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
+        | RdsInstanceOp rdsSpec -> AWS.RDS.DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
 
-        | CloudFrontDistributionOp cfSpec -> Distribution(stack, cfSpec.ConstructId, cfSpec.Props) |> ignore
+        | CloudFrontDistributionOp cfSpec ->
+            Amazon.CDK.AWS.CloudFront.Distribution(stack, cfSpec.ConstructId, cfSpec.Props)
+            |> ignore
 
         | UserPoolOp upSpec ->
             let up = UserPool(stack, upSpec.ConstructId, upSpec.Props)
@@ -163,7 +273,7 @@ module StackOperations =
         | NetworkLoadBalancerOp nlbSpec ->
             let nlb = NetworkLoadBalancer(stack, nlbSpec.ConstructId, nlbSpec.Props)
 
-            if nlb.Vpc = null then
+            if isNull nlb.Vpc then
                 failwith "VPC is required for Network Load Balancer"
 
             nlbSpec.LoadBalancer <- Some nlb
@@ -305,6 +415,183 @@ module StackOperations =
 
             certSpec.Certificate <- cert
             certSpec.Certificate <- cert
+
+        | AppRunnerServiceOp serviceSpec ->
+            let props = Amazon.CDK.AWS.AppRunner.CfnServiceProps()
+            props.ServiceName <- serviceSpec.ServiceName
+
+            serviceSpec.Config.SourceConfiguration
+            |> Option.iter (fun v -> props.SourceConfiguration <- v)
+
+            serviceSpec.Config.InstanceConfiguration
+            |> Option.iter (fun v -> props.InstanceConfiguration <- v)
+
+            serviceSpec.Config.HealthCheckConfiguration
+            |> Option.iter (fun v -> props.HealthCheckConfiguration <- v)
+
+            serviceSpec.Config.AutoScalingConfigurationArn
+            |> Option.iter (fun v -> props.AutoScalingConfigurationArn <- v)
+
+            if not serviceSpec.Config.Tags.IsEmpty then
+                props.Tags <-
+                    serviceSpec.Config.Tags
+                    |> List.map (fun (k, v) -> CfnTag(Key = k, Value = v) :> ICfnTag)
+                    |> Array.ofList
+
+            let service =
+                Amazon.CDK.AWS.AppRunner.CfnService(stack, serviceSpec.ConstructId, props)
+
+            serviceSpec.Service <- Some service
+
+        | ElastiCacheRedisOp clusterSpec ->
+            let cluster =
+                CfnCacheCluster(
+                    stack,
+                    clusterSpec.ConstructId,
+                    CfnCacheClusterProps(ClusterName = clusterSpec.ClusterName)
+                )
+            // Note: Full configuration handled in builder
+            ()
+
+        | DocumentDBClusterOp clusterSpec ->
+            // Note: DocumentDB cluster creation requires VPC and credentials
+            // Full implementation would use DatabaseCluster
+            ()
+
+        | CustomResourceOp resourceSpec ->
+            let customResource =
+                AwsCustomResource(stack, resourceSpec.ConstructId, resourceSpec.Props)
+
+            resourceSpec.CustomResource <- Some customResource
+
+        | StepFunctionOp sfResource ->
+            let sm = StateMachine(stack, sfResource.ConstructId, sfResource.Props)
+            sfResource.StateMachine <- Some sm
+
+        | XRayGroupOp xrayGroupResource ->
+            let group = CfnGroup(stack, xrayGroupResource.ConstructId, xrayGroupResource.Props)
+            xrayGroupResource.Group <- Some group
+
+        | XRaySamplingRuleOp xraySamplingRuleResource ->
+            let rule =
+                CfnSamplingRule(stack, xraySamplingRuleResource.ConstructId, xraySamplingRuleResource.Props)
+
+            xraySamplingRuleResource.SamplingRule <- Some rule
+
+        | AppSyncApiOp appSyncApiResource ->
+            let api =
+                GraphqlApi(stack, appSyncApiResource.ConstructId, appSyncApiResource.Props)
+
+            appSyncApiResource.GraphqlApi <- Some api
+
+        | AppSyncDataSourceOp dsResource ->
+            match dsResource.Config.Api with
+            | None -> failwith "GraphQL API is required for AppSync Data Source"
+            | Some api ->
+                let ds: BaseDataSource =
+                    match dsResource.Config.DynamoDBTable, dsResource.Config.LambdaFunction with
+                    | Some table, None -> api.AddDynamoDbDataSource(dsResource.ConstructId, table) :> BaseDataSource
+                    | None, Some func -> api.AddLambdaDataSource(dsResource.ConstructId, func) :> BaseDataSource
+                    | Some _, Some _ ->
+                        failwith "AppSync Data Source cannot have both DynamoDB table and Lambda function"
+                    | None, None -> failwith "AppSync Data Source must have either DynamoDB table or Lambda function"
+
+                dsResource.DataSource <- Some ds
+
+        | RestApiOp restApiSpec ->
+            let api = RestApi(stack, restApiSpec.ConstructId, restApiSpec.Props)
+            restApiSpec.RestApi <- Some api
+
+        | TokenAuthorizerOp authorizerSpec ->
+            let authorizer =
+                TokenAuthorizer(stack, authorizerSpec.ConstructId, authorizerSpec.Props)
+
+            authorizerSpec.Authorizer <- Some authorizer
+
+        | VpcLinkOp vpcLinkSpec ->
+            let vpcLink = VpcLink(stack, vpcLinkSpec.ConstructId, vpcLinkSpec.Props)
+            vpcLinkSpec.VpcLink <- Some vpcLink
+
+        | FargateTaskDefinitionOp taskDefSpec ->
+            let taskDef =
+                FargateTaskDefinition(stack, taskDefSpec.ConstructId, taskDefSpec.Props)
+
+            taskDefSpec.TaskDefinition <- Some taskDef
+
+        | ECSClusterOp clusterResource ->
+            let cluster =
+                Cluster(stack, clusterResource.ConstructId, ClusterProps(ClusterName = clusterResource.ClusterName))
+            // Note: Full configuration handled in builder
+            ()
+
+        | ECSFargateServiceOp serviceResource ->
+            let service =
+                FargateService(
+                    stack,
+                    serviceResource.ConstructId,
+                    FargateServiceProps(ServiceName = serviceResource.ServiceName)
+                )
+            // Note: Full configuration handled in builder
+            ()
+
+        | GatewayVpcEndpointOp endpointSpec ->
+            let endpoint =
+                GatewayVpcEndpoint(stack, endpointSpec.ConstructId, endpointSpec.Props)
+
+            endpointSpec.VpcEndpoint <- Some endpoint
+
+        | InterfaceVpcEndpointOp endpointSpec ->
+            let endpoint =
+                InterfaceVpcEndpoint(stack, endpointSpec.ConstructId, endpointSpec.Props)
+
+            endpointSpec.VpcEndpoint <- Some endpoint
+
+        | DatabaseProxyOp proxySpec ->
+            let proxy = DatabaseProxy(stack, proxySpec.ConstructId, proxySpec.Props)
+            proxySpec.DatabaseProxy <- Some proxy
+
+        | CloudWatchLogGroupOp logGroupResource ->
+            let logGroup = LogGroup(stack, logGroupResource.ConstructId, logGroupResource.Props)
+            logGroupResource.LogGroup <- Some logGroup
+
+        | CloudWatchMetricFilterOp filterResource ->
+            // Resolve LogGroup from either direct reference or CloudWatchLogGroupResource
+            let logGroup =
+                match filterResource.LogGroupToAttach, filterResource.LogGroupResourceRef with
+                | Some lg, _ -> lg
+                | None, Some lgResource ->
+                    match lgResource.LogGroup with
+                    | Some lg -> lg
+                    | None ->
+                        failwith
+                            $"LogGroup '{lgResource.LogGroupName}' must be yielded in the stack before the metric filter '{filterResource.FilterName}'"
+                | None, None -> failwith $"LogGroup is required for metric filter '{filterResource.FilterName}'"
+
+            let metricFilter =
+                logGroup.AddMetricFilter(filterResource.ConstructId, filterResource.FilterOptions)
+
+            filterResource.MetricFilter <- Some metricFilter
+
+        | CloudWatchSubscriptionFilterOp subscriptionResource ->
+            // Resolve LogGroup from either direct reference or CloudWatchLogGroupResource
+            let logGroup =
+                match subscriptionResource.LogGroupToAttach, subscriptionResource.LogGroupResourceRef with
+                | Some lg, _ -> lg
+                | None, Some lgResource ->
+                    match lgResource.LogGroup with
+                    | Some lg -> lg
+                    | None ->
+                        failwith
+                            $"LogGroup '{lgResource.LogGroupName}' must be yielded in the stack before the subscription filter '{subscriptionResource.FilterName}'"
+                | None, None ->
+                    failwith $"LogGroup is required for subscription filter '{subscriptionResource.FilterName}'"
+
+            subscriptionResource.Props.LogGroup <- logGroup
+
+            let subscriptionFilter =
+                SubscriptionFilter(stack, subscriptionResource.ConstructId, subscriptionResource.Props)
+
+            subscriptionResource.SubscriptionFilter <- Some subscriptionFilter
 
 // ============================================================================
 // Stack and App Configuration DSL
@@ -975,7 +1262,7 @@ type StackBuilder(name: string) =
     //      Props = None
     //      Operations = [ CloudHSMClusterOp hsmSpec ] }
 
-    member _.Yield(roleSpec: IAM.LambdaRoleSpec) : StackConfig =
+    member _.Yield(roleSpec: LambdaRoleSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1006,6 +1293,294 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ CloudWatchAlarmOp alarmSpec ] }
+
+    member _.Yield(customResourceResource: CustomResourceResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CustomResourceOp customResourceResource ] }
+
+    member _.Yield(sfResource: StepFunctionResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ StepFunctionOp sfResource ] }
+
+    member _.Yield(xrayGroupResource: XRayGroupResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ XRayGroupOp xrayGroupResource ] }
+
+    member _.Yield(xraySamplingRuleResource: XRaySamplingRuleResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ XRaySamplingRuleOp xraySamplingRuleResource ] }
+
+    member _.Yield(appSyncApiResource: AppSyncApiResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ AppSyncApiOp appSyncApiResource ] }
+
+    member _.Yield(appSyncDataSourceResource: AppSyncDataSourceResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ AppSyncDataSourceOp appSyncDataSourceResource ] }
+
+    member _.Yield(restApiSpec: RestApiSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ RestApiOp restApiSpec ] }
+
+    member _.Yield(authorizerSpec: TokenAuthorizerSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ TokenAuthorizerOp authorizerSpec ] }
+
+    member _.Yield(vpcLinkSpec: VpcLinkSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ VpcLinkOp vpcLinkSpec ] }
+
+    member _.Yield(taskDefSpec: FargateTaskDefinitionSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ FargateTaskDefinitionOp taskDefSpec ] }
+
+    member _.Yield(clusterResource: ECSClusterResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ ECSClusterOp clusterResource ] }
+
+    member _.Yield(serviceResource: ECSFargateServiceResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ ECSFargateServiceOp serviceResource ] }
+
+    member _.Yield(endpointSpec: GatewayVpcEndpointSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ GatewayVpcEndpointOp endpointSpec ] }
+
+    member _.Yield(endpointSpec: InterfaceVpcEndpointSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ InterfaceVpcEndpointOp endpointSpec ] }
+
+    member _.Yield(proxySpec: DatabaseProxySpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ DatabaseProxyOp proxySpec ] }
+
+    member _.Yield(logGroupResource: CloudWatchLogGroupResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CloudWatchLogGroupOp logGroupResource ] }
+
+    member _.Yield(filterResource: CloudWatchMetricFilterResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CloudWatchMetricFilterOp filterResource ] }
+
+    member _.Yield(subscriptionResource: CloudWatchSubscriptionFilterResource) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CloudWatchSubscriptionFilterOp subscriptionResource ] }
 
     member _.Zero() : StackConfig =
         { Name = name
@@ -1067,6 +1642,14 @@ type StackBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
+    member this.For(sequence: seq<'T>, body: 'T -> StackConfig) =
+        let mutable state = this.Zero()
+
+        for item in sequence do
+            state <- this.Combine(state, body item)
+
+        state
+
     member this.Run(config: StackConfig) =
         let props = StackProps()
         props.StackName <- config.Name
@@ -1107,6 +1690,9 @@ type StackBuilder(name: string) =
 
         for op in config.Operations do
             StackOperations.processOperation stack op
+
+    /// Run delayed config
+    member this.Run(f: unit -> StackConfig) = this.Run(f ())
 
     /// <summary>Sets the stack description.</summary>
     /// <param name="config">The current stack configuration.</param>

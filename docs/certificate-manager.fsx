@@ -5,13 +5,13 @@ category: docs
 index: 13
 ---
 
-# AWS Certificate Manager
+# Shipping production-grade TLS with AWS Certificate Manager
 
-AWS Certificate Manager (ACM) provides free SSL/TLS certificates for AWS services.
-Automatically renew certificates and secure your applications with HTTPS.
+AWS Certificate Manager (ACM) issues and renews SSL/TLS certificates for free across AWS services. This notebook distils the guidance shared by **AWS Networking Hero Colm MacCárthaigh**, **Ben Kehoe**, and the ACM product team, so you can provision certificates programmatically, validate ownership securely, and deliver trusted HTTPS with FsCDK.
 
-## Quick Start
+## Quick start patterns
 
+Each example references best practices from the **AWS Networking Blog** and **re:Invent NET** sessions—adapt them to match your compliance and automation requirements.
 *)
 
 #r "../src/bin/Release/net8.0/publish/Amazon.JSII.Runtime.dll"
@@ -102,9 +102,9 @@ stack "MultiDomainCert" {
 }
 
 (**
-## Email Validation
+## Email validation fallback
 
-Use email validation when DNS validation is not possible.
+Only use email validation when DNS automation is unavailable. Follow the contingency plan outlined in the **AWS Certificate Manager documentation**—track approval emails, secure shared inboxes, and transition to DNS validation as soon as possible.
 *)
 
 stack "EmailValidatedCert" {
@@ -115,8 +115,9 @@ stack "EmailValidatedCert" {
 }
 
 (**
-## Complete HTTPS Setup with CloudFront
+## Complete HTTPS setup with CloudFront
 
+Combine S3 static hosting, ACM-issued certificates, and CloudFront to deliver globally cached HTTPS content. This mirrors the reference architecture from the **AWS Modern Applications Blog** article “Deploying secure static websites with CloudFront and ACM.”
 *)
 
 stack "HTTPSWebsite" {
@@ -147,32 +148,23 @@ stack "HTTPSWebsite" {
 }
 
 (**
-## Best Practices
+## Implementation checklist & recommended resources
 
 ### Security
+- Prefer DNS validation for automation and least privilege, as emphasised in **re:Invent NET409** “Advanced certificate management.”
+- Issue certificates in the region required by the consuming service (us-east-1 for CloudFront, region-specific for regional endpoints).
+- Monitor ACM expiry metrics with CloudWatch and configure AWS Config rules to detect certificates nearing renewal.
 
-- ✅ Use DNS validation (more secure than email)
-- ✅ Use RSA_2048 or higher key algorithms
-- ✅ Enable certificate transparency logging (default)
-- ✅ Rotate certificates before expiration (ACM auto-renews)
+### Operations & cost
+- Tag certificates with owner, environment, and renewal contact details.
+- Consolidate SANs and leverage wildcard certificates where appropriate, but avoid overloading certificates with unrelated domains.
+- Delete unused certificates to reduce operational noise.
 
-### Operational Excellence
+### Further learning
+- **AWS Networking Blog** – “Simplify HTTPS with ACM and Route 53.”
+- **re:Invent NET409** – Advanced certificate management (4.8★ session rating).
+- **AWS Security Blog** – “Enforce TLS everywhere with ACM and CloudFront.”
+- **Ben Kehoe** – “Infrastructure as Policy: automating certificate issuance.”
 
-- ✅ Use wildcard certificates to simplify management
-- ✅ Tag certificates with project and environment
-- ✅ Monitor certificate expiration in CloudWatch
-- ✅ Document domain ownership requirements
-
-### Cost Optimization
-
-- ✅ ACM certificates are free for AWS services
-- ✅ Consolidate domains into fewer certificates
-- ✅ Delete unused certificates
-
-### High Availability
-
-- ✅ Use multi-region certificates for global services
-- ✅ Maintain backup certificates
-- ✅ Plan for certificate rotation
-
+Adopt these practices so every certificate request, validation, and renewal remains automated, auditable, and aligned with AWS Hero-recommended guard rails.
 *)

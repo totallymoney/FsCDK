@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -27,9 +27,11 @@
       <Compile Include="FunctionUrl.fs" />
       <Compile Include="DynamoDB.fs" />
       <Compile Include="DockerImageFunction.fs" />
-      <Compile Include="Function.fs" />
       <Compile Include="SNS.fs" />
       <Compile Include="SQS.fs" />
+      <Compile Include="CloudWatchLogs.fs" />
+      <Compile Include="LambdaPowertools.fs" />
+      <Compile Include="Function.fs" />
       <Compile Include="Grants.fs" />
       <!-- High-level builders with best practices -->
       <Compile Include="Tags.fs" />
@@ -39,9 +41,23 @@
       <Compile Include="EC2.fs" />
       <Compile Include="ECS.fs" />
       <Compile Include="ALB.fs" />
+      <Compile Include="ECR.fs" />
+      <Compile Include="ApiGateway.fs" />
+      <Compile Include="ApiGatewayV2.fs" />
       <Compile Include="SecretsManager.fs" />
       <Compile Include="ElasticBeanstalk.fs" />
       <Compile Include="Route53.fs" />
+      <Compile Include="ElasticIP.fs" />
+      <Compile Include="Route53RecordSet.fs" />
+      <Compile Include="CloudWatchSynthetics.fs" />
+      <Compile Include="SSM.fs" />
+      <Compile Include="AppRunner.fs" />
+      <Compile Include="ElastiCache.fs" />
+      <Compile Include="DocumentDB.fs" />
+      <Compile Include="CustomResource.fs" />
+      <Compile Include="StepFunctions.fs" />
+      <Compile Include="XRay.fs" />
+      <Compile Include="AppSync.fs" />
 
       <Compile Include="BastionHost.fs" />
       <Compile Include="BucketPolicy.fs" />

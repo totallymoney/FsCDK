@@ -32,7 +32,7 @@ type FunctionConfig =
       RolePolicyStatements: PolicyStatement list
       AsyncInvokeOptions: IEventInvokeConfigOptions option
       ReservedConcurrentExecutions: int option
-      LogGroup: ILogGroup option
+      LogGroup: LogGroupRef option
       Role: IRole option
       InsightsVersion: LambdaInsightsVersion option
       CurrentVersionOptions: VersionOptions option
@@ -42,12 +42,16 @@ type FunctionConfig =
       VpcSubnets: SubnetSelection option
       SecurityGroups: SecurityGroupRef list
       FileSystem: FileSystem option
-      DeadLetterQueue: IQueue option
+      DeadLetterQueue: QueueRef option
       DeadLetterQueueEnabled: bool option
+      AutoCreateDLQ: bool option // Auto-create SQS DLQ if not provided (Yan Cui recommendation)
       LoggingFormat: LoggingFormat option
       MaxEventAge: Duration option
       RetryAttempts: int option
-      EnvironmentEncryption: KMSKeyRef option }
+      EnvironmentEncryption: KMSKeyRef option
+      AutoAddPowertools: bool option // Auto-add Lambda Powertools layer (Yan Cui recommendation)
+      PowertoolsLayerArn: string option // Stores the Powertools layer ARN to create later in Stack.fs
+      EphemeralStorageSize: int option } // Ephemeral storage in MB (default 512MB, max 10240MB) - Cost optimization
 
 type FunctionSpec =
     { FunctionName: string
@@ -55,10 +59,12 @@ type FunctionSpec =
       Props: FunctionProps
       Actions: (Function -> unit) list
       EventSources: ResizeArray<IEventSource>
+      PowertoolsLayerArn: string option // ARN for auto-added Powertools layer
       mutable Function: IFunction option }
 
 type FunctionBuilder(name: string) =
-    member _.Yield(spec: EventInvokeConfigSpec) : FunctionConfig =
+    // Yan Cui's production-safe defaults
+    let defaultConfig () : FunctionConfig =
         { FunctionName = name
           ConstructId = None
           Handler = None
@@ -73,262 +79,57 @@ type FunctionBuilder(name: string) =
           FunctionUrlOptions = None
           Permissions = []
           RolePolicyStatements = []
-          AsyncInvokeOptions = Some spec.Options
-          ReservedConcurrentExecutions = None
+          AsyncInvokeOptions = None
+          ReservedConcurrentExecutions = Some 10 // Yan Cui: Prevent unbounded scaling
           LogGroup = None
           Role = None
           InsightsVersion = None
           CurrentVersionOptions = None
           Layers = []
           Architecture = None
-          Tracing = None
+          Tracing = Some Tracing.ACTIVE // Yan Cui: Always enable X-Ray
           VpcSubnets = None
           SecurityGroups = []
           FileSystem = None
           DeadLetterQueue = None
           DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+          AutoCreateDLQ = Some true // Yan Cui: Never lose failed events
+          LoggingFormat = Some LoggingFormat.JSON // Yan Cui: Structured logging
+          MaxEventAge = None // Will be set to 6 hours in Run() if not overridden
+          RetryAttempts = Some 2 // Yan Cui: Limit retries
+          EnvironmentEncryption = None
+          AutoAddPowertools = Some true // Yan Cui: Production observability
+          PowertoolsLayerArn = None // Will be determined in Run() based on runtime
+          EphemeralStorageSize = None // Default 512MB is free, charges apply above that
+        }
+
+    member _.Yield(spec: EventInvokeConfigSpec) : FunctionConfig =
+        { defaultConfig () with
+            AsyncInvokeOptions = Some spec.Options }
 
     member _.Yield(spec: FunctionUrlSpec) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = Some spec.Options
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            FunctionUrlOptions = Some spec.Options }
 
     member _.Yield(stmt: PolicyStatement) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = [ stmt ]
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            RolePolicyStatements = [ stmt ] }
 
     member _.Yield(event: IEventSource) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = [ event ]
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            EventSources = [ event ] }
 
     member _.Yield(spec: PermissionSpec) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = [ (spec.Id, spec.Permission) ]
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            Permissions = [ (spec.Id, spec.Permission) ] }
 
     member _.Yield(spec: EventSourceMappingSpec) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = [ (spec.Id, spec.Options) ]
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            EventSourceMappings = [ (spec.Id, spec.Options) ] }
 
-    member _.Yield _ : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+    member _.Yield _ : FunctionConfig = defaultConfig ()
 
-    member _.Zero() : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+    member _.Zero() : FunctionConfig = defaultConfig ()
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> FunctionConfig) : FunctionConfig = f ()
 
@@ -460,7 +261,27 @@ type FunctionBuilder(name: string) =
             if state1.EnvironmentEncryption.IsSome then
                 state1.EnvironmentEncryption
             else
-                state2.EnvironmentEncryption }
+                state2.EnvironmentEncryption
+          AutoCreateDLQ =
+            if state1.AutoCreateDLQ.IsSome then
+                state1.AutoCreateDLQ
+            else
+                state2.AutoCreateDLQ
+          AutoAddPowertools =
+            if state1.AutoAddPowertools.IsSome then
+                state1.AutoAddPowertools
+            else
+                state2.AutoAddPowertools
+          PowertoolsLayerArn =
+            if state1.PowertoolsLayerArn.IsSome then
+                state1.PowertoolsLayerArn
+            else
+                state2.PowertoolsLayerArn
+          EphemeralStorageSize =
+            if state1.EphemeralStorageSize.IsSome then
+                state1.EphemeralStorageSize
+            else
+                state2.EphemeralStorageSize }
 
     member _.Run(config: FunctionConfig) : FunctionSpec =
         let props = FunctionProps()
@@ -500,15 +321,25 @@ type FunctionBuilder(name: string) =
         config.ReservedConcurrentExecutions
         |> Option.iter (fun r -> props.ReservedConcurrentExecutions <- r)
 
-        config.LogGroup |> Option.iter (fun lg -> props.LogGroup <- lg)
+        config.LogGroup
+        |> Option.iter (fun lgRef ->
+            props.LogGroup <-
+                match lgRef with
+                | LogGroupRef.LogGroupInterface i -> i
+                | LogGroupRef.LogGroupSpecRef lgSpec ->
+                    match lgSpec.LogGroup with
+                    | Some lg -> lg :> ILogGroup
+                    | None ->
+                        failwith
+                            $"LogGroup '{lgSpec.LogGroupName}' has not been created yet. Ensure it's yielded in the stack before the Lambda function.")
+
         config.Role |> Option.iter (fun r -> props.Role <- r)
         config.InsightsVersion |> Option.iter (fun v -> props.InsightsVersion <- v)
 
         config.CurrentVersionOptions
         |> Option.iter (fun v -> props.CurrentVersionOptions <- v)
 
-        if not (List.isEmpty config.Layers) then
-            props.Layers <- config.Layers |> List.toArray
+        // Note: Layers are handled later after Powertools auto-addition
 
         config.Architecture |> Option.iter (fun a -> props.Architecture <- a)
         config.Tracing |> Option.iter (fun t -> props.Tracing <- t)
@@ -521,14 +352,30 @@ type FunctionBuilder(name: string) =
                 |> Array.ofList
 
         config.FileSystem |> Option.iter (fun fs -> props.Filesystem <- fs)
-        config.DeadLetterQueue |> Option.iter (fun dlq -> props.DeadLetterQueue <- dlq)
+
+        config.DeadLetterQueue
+        |> Option.iter (fun dlq -> props.DeadLetterQueue <- QueueHelpers.resolveQueueRef dlq)
 
         config.DeadLetterQueueEnabled
         |> Option.iter (fun e -> props.DeadLetterQueueEnabled <- e)
 
         config.LoggingFormat |> Option.iter (fun f -> props.LoggingFormat <- f)
-        config.MaxEventAge |> Option.iter (fun age -> props.MaxEventAge <- age)
-        config.RetryAttempts |> Option.iter (fun r -> props.RetryAttempts <- r)
+
+        // Yan Cui: Apply default MaxEventAge and RetryAttempts
+        // IMPORTANT: Only set these if AsyncInvokeOptions is NOT configured
+        // Setting both creates a conflict in CDK (two EventInvokeConfigs)
+        match config.AsyncInvokeOptions with
+        | None ->
+            // No AsyncInvokeOptions, safe to set defaults on props
+            match config.MaxEventAge with
+            | Some age -> props.MaxEventAge <- age
+            | None -> props.MaxEventAge <- Duration.Hours(6.0)
+
+            config.RetryAttempts |> Option.iter (fun r -> props.RetryAttempts <- r)
+        | Some _ ->
+            // AsyncInvokeOptions is configured, don't set on props
+            // The values will be in the EventInvokeConfig instead
+            ()
 
         config.EnvironmentEncryption
         |> Option.iter (fun v ->
@@ -539,6 +386,42 @@ type FunctionBuilder(name: string) =
                     match pr.Key with
                     | Some k -> k
                     | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+
+        // Yan Cui Production Best Practice #1: Auto-create DLQ if enabled and not provided
+        // This ensures failed events are never lost - critical for production debugging
+        let shouldAutoCreateDLQ = config.AutoCreateDLQ |> Option.defaultValue true
+
+        match config.DeadLetterQueue, shouldAutoCreateDLQ with
+        | None, true ->
+            // DLQ will be created in Stack.fs after we have a scope
+            // Mark that we need one by setting DeadLetterQueueEnabled
+            props.DeadLetterQueueEnabled <- true
+        | Some dlq, _ -> props.DeadLetterQueue <- QueueHelpers.resolveQueueRef dlq
+        | None, false -> ()
+
+        // Yan Cui Production Best Practice #4: Determine Powertools layer ARN
+        // Provides structured logging, metrics, and tracing with zero cold-start impact
+        // The layer will be created in Stack.fs where we have a scope
+        let shouldAddPowertools = config.AutoAddPowertools |> Option.defaultValue true
+        let runtime = props.Runtime
+
+        let powertoolsLayerArn =
+            if shouldAddPowertools && (not (isNull runtime)) then
+                LambdaPowertoolsHelpers.getPowertoolsLayerArn runtime
+            else
+                None
+
+        // Apply existing layers (Powertools layer will be added in Stack.fs)
+        if not (List.isEmpty config.Layers) then
+            props.Layers <- config.Layers |> List.toArray
+
+        // Ephemeral storage size configuration (Cost optimization)
+        config.EphemeralStorageSize
+        |> Option.iter (fun size ->
+            if size < 512 || size > 10240 then
+                failwith "Ephemeral storage size must be between 512 MB and 10240 MB"
+
+            props.EphemeralStorageSize <- Size.Mebibytes(float size))
 
         // Actions to perform on the Function after creation
         let actions =
@@ -574,6 +457,7 @@ type FunctionBuilder(name: string) =
           Props = props
           Actions = actions
           EventSources = ResizeArray()
+          PowertoolsLayerArn = powertoolsLayerArn
           Function = None }
 
     // Custom operations for primitive values
@@ -770,14 +654,24 @@ type FunctionBuilder(name: string) =
             SecurityGroups = sgsrefs @ config.SecurityGroups }
 
     [<CustomOperation("deadLetterQueue")>]
-    member _.DeadLetterQueue(config: FunctionConfig, queue: IQueue) =
+    member _.DeadLetterQueue(config: FunctionConfig, queue: QueueSpec) =
         { config with
-            DeadLetterQueue = Some queue }
+            DeadLetterQueue = Some(QueueRef.QueueSpecRef queue) }
 
     [<CustomOperation("loggingFormat")>]
     member _.LoggingFormat(config: FunctionConfig, format: LoggingFormat) =
         { config with
             LoggingFormat = Some format }
+
+    [<CustomOperation("logGroup")>]
+    member _.LogGroup(config: FunctionConfig, logGroup: ILogGroup) =
+        { config with
+            LogGroup = Some(LogGroupRef.LogGroupInterface logGroup) }
+
+    [<CustomOperation("logGroup")>]
+    member _.LogGroup(config: FunctionConfig, logGroupResource: CloudWatchLogGroupResource) =
+        { config with
+            LogGroup = Some(LogGroupRef.LogGroupSpecRef logGroupResource) }
 
     [<CustomOperation("maxEventAge")>]
     member _.MaxEventAge(config: FunctionConfig, age: Duration) = { config with MaxEventAge = Some age }
@@ -792,6 +686,24 @@ type FunctionBuilder(name: string) =
         { config with
             DeadLetterQueueEnabled = Some value }
 
+    /// <summary>
+    /// Controls automatic DLQ creation. Default: true (Yan Cui recommendation).
+    /// Set to false to disable auto-DLQ creation.
+    /// </summary>
+    [<CustomOperation("autoCreateDLQ")>]
+    member _.AutoCreateDLQ(config: FunctionConfig, value: bool) =
+        { config with
+            AutoCreateDLQ = Some value }
+
+    /// <summary>
+    /// Controls automatic Lambda Powertools layer addition. Default: true (Yan Cui recommendation).
+    /// Set to false to disable Powertools auto-addition.
+    /// </summary>
+    [<CustomOperation("autoAddPowertools")>]
+    member _.AutoAddPowertools(config: FunctionConfig, value: bool) =
+        { config with
+            AutoAddPowertools = Some value }
+
     [<CustomOperation("environmentEncryption")>]
     member _.EnvironmentEncryption(config: FunctionConfig, key: IKey) =
         { config with
@@ -801,6 +713,22 @@ type FunctionBuilder(name: string) =
     member _.EnvironmentEncryption(config: FunctionConfig, key: KMSKeySpec) =
         { config with
             EnvironmentEncryption = Some(KMSKeyRef.KMSKeySpecRef key) }
+
+    /// <summary>
+    /// Sets the ephemeral storage size for the Lambda function in MB.
+    /// Default: 512 MB (free tier). Valid range: 512-10240 MB.
+    /// Cost optimization: Only increase if needed for /tmp storage.
+    /// </summary>
+    /// <param name="sizeInMB">Storage size in megabytes (512-10240).</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     ephemeralStorageSize 1024
+    /// }
+    /// </code>
+    [<CustomOperation("ephemeralStorageSize")>]
+    member _.EphemeralStorageSize(config: FunctionConfig, sizeInMB: int) =
+        { config with
+            EphemeralStorageSize = Some sizeInMB }
 
     [<CustomOperation("xrayEnabled")>]
     member _.XRayEnabled(config: FunctionConfig) =
@@ -812,174 +740,28 @@ type FunctionBuilder(name: string) =
 
     // Implicit yields for complex types
     member _.Yield(logGroup: ILogGroup) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = Some logGroup
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            LogGroup = Some(LogGroupRef.LogGroupInterface logGroup) }
+
+    member _.Yield(logGroupResource: CloudWatchLogGroupResource) : FunctionConfig =
+        { defaultConfig () with
+            LogGroup = Some(LogGroupRef.LogGroupSpecRef logGroupResource) }
 
     member _.Yield(role: IRole) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = Some role
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            Role = Some role }
 
     member _.Yield(versionOptions: VersionOptions) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = Some versionOptions
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            CurrentVersionOptions = Some versionOptions }
 
     member _.Yield(vpcSubnets: SubnetSelection) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = Some vpcSubnets
-          SecurityGroups = []
-          FileSystem = None
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            VpcSubnets = Some vpcSubnets }
 
     member _.Yield(fileSystem: FileSystem) : FunctionConfig =
-        { FunctionName = name
-          ConstructId = None
-          Handler = None
-          Runtime = None
-          CodePath = None
-          Environment = []
-          Timeout = None
-          Memory = None
-          Description = None
-          EventSources = []
-          EventSourceMappings = []
-          FunctionUrlOptions = None
-          Permissions = []
-          RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = None
-          LogGroup = None
-          Role = None
-          InsightsVersion = None
-          CurrentVersionOptions = None
-          Layers = []
-          Architecture = None
-          Tracing = None
-          VpcSubnets = None
-          SecurityGroups = []
-          FileSystem = Some fileSystem
-          DeadLetterQueue = None
-          DeadLetterQueueEnabled = None
-          LoggingFormat = None
-          MaxEventAge = None
-          RetryAttempts = None
-          EnvironmentEncryption = None }
+        { defaultConfig () with
+            FileSystem = Some fileSystem }
 
 // ============================================================================
 // Builders

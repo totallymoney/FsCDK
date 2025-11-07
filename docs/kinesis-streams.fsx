@@ -557,7 +557,7 @@ stack "ProductionKinesisStack" {
 **Provisioned Mode:**
 - Best for: Consistent workloads
 - Cost: $0.015 per shard-hour + $0.014 per million PUT payload units
-- Example: 2 shards × 24 hours × 30 days = $21.60/month
+- Example: 2 shards x 24 hours x 30 days = $21.60/month
 
 **On-Demand Mode:**
 - Best for: Variable workloads

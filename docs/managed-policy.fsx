@@ -117,9 +117,8 @@ stack "PreBuiltStatements" {
 ## Attaching to Roles
 
 Attach policies to IAM roles for EC2, Lambda, or other services.
-*)
 
-
+```fsharp
 stack "PolicyWithRole" {
     // Create a role for Lambda
     let lambdaRole1 =
@@ -136,11 +135,11 @@ stack "PolicyWithRole" {
     managedPolicy "LambdaS3Policy" {
         description "Lambda S3 access"
         statement (ManagedPolicyStatements.s3FullAccess "arn:aws:s3:::lambda-bucket")
-        attachToRole lambdaRole1.Role
+        attachToRole lambdaRole1
     }
 }
+```
 
-(**
 ## Cross-Account Access Policy
 
 Grant permissions for cross-account access.
@@ -297,42 +296,42 @@ stack "DenyOverridePolicy" {
 
 ### Security
 
-- ✅ Follow principle of least privilege
-- ✅ Use specific resources instead of wildcards when possible
-- ✅ Add explicit deny statements for sensitive actions
-- ✅ Use conditions to limit scope (IP, time, MFA)
-- ✅ Regularly audit and review policies
+- Follow principle of least privilege
+- Use specific resources instead of wildcards when possible
+- Add explicit deny statements for sensitive actions
+- Use conditions to limit scope (IP, time, MFA)
+- Regularly audit and review policies
 
 ### Operational Excellence
 
-- ✅ Use descriptive Sid values for each statement
-- ✅ Add meaningful descriptions to policies
-- ✅ Group related permissions together
-- ✅ Version policies using Git
-- ✅ Test policies in non-production first
+- Use descriptive Sid values for each statement
+- Add meaningful descriptions to policies
+- Group related permissions together
+- Version policies using Git
+- Test policies in non-production first
 
 ### Organization
 
-- ✅ Create reusable policies for common patterns
-- ✅ Use consistent naming conventions
-- ✅ Organize policies by service or team
-- ✅ Use paths to organize policies hierarchically
-- ✅ Attach policies to roles, not users directly
+- Create reusable policies for common patterns
+- Use consistent naming conventions
+- Organize policies by service or team
+- Use paths to organize policies hierarchically
+- Attach policies to roles, not users directly
 
 ### Compliance
 
-- ✅ Document why each permission is needed
-- ✅ Set up AWS Config rules to monitor policies
-- ✅ Enable CloudTrail to audit policy usage
-- ✅ Review policies during security audits
-- ✅ Implement policy change approval workflows
+- Document why each permission is needed
+- Set up AWS Config rules to monitor policies
+- Enable CloudTrail to audit policy usage
+- Review policies during security audits
+- Implement policy change approval workflows
 
 ### Maintenance
 
-- ✅ Remove unused policies regularly
-- ✅ Consolidate duplicate policies
-- ✅ Update policies when AWS introduces new services
-- ✅ Monitor for policy changes in CloudTrail
-- ✅ Use IAM Access Analyzer to validate policies
+- Remove unused policies regularly
+- Consolidate duplicate policies
+- Update policies when AWS introduces new services
+- Monitor for policy changes in CloudTrail
+- Use IAM Access Analyzer to validate policies
 
 *)

@@ -4,6 +4,9 @@ namespace FsCDK
 // SQS Queue Configuration DSL
 // ============================================================================
 
+open Amazon.CDK.AWS.SQS
+open Amazon.CDK.AWS.KMS
+
 // SQS Queue configuration DSL
 type QueueConfig =
     { QueueName: string
@@ -14,7 +17,9 @@ type QueueConfig =
       ContentBasedDeduplication: bool option
       MaxReceiveCount: int option // for DLQ
       DeadLetterQueueName: string option // Reference to DLQ
-      DelaySeconds: int option }
+      DelaySeconds: int option
+      Encryption: QueueEncryption option
+      EncryptionMasterKey: IKey option }
 
 type QueueSpec =
     { QueueName: string
@@ -25,7 +30,26 @@ type QueueSpec =
       ContentBasedDeduplication: bool option
       DelaySeconds: int option
       DeadLetterQueueName: string option
-      MaxReceiveCount: int option }
+      MaxReceiveCount: int option
+      Encryption: QueueEncryption option
+      EncryptionMasterKey: IKey option
+      mutable Queue: IQueue option }
+
+type QueueRef =
+    | QueueInterface of IQueue
+    | QueueSpecRef of QueueSpec
+
+module QueueHelpers =
+    /// Resolves a QueueRef to an IQueue
+    let resolveQueueRef (ref: QueueRef) =
+        match ref with
+        | QueueInterface qi -> qi
+        | QueueSpecRef spec ->
+            match spec.Queue with
+            | Some q -> q
+            | None ->
+                failwith
+                    $"Queue '{spec.QueueName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type QueueBuilder(name: string) =
     member _.Yield _ : QueueConfig =
@@ -37,7 +61,9 @@ type QueueBuilder(name: string) =
           ContentBasedDeduplication = None
           MaxReceiveCount = None
           DeadLetterQueueName = None
-          DelaySeconds = None }
+          DelaySeconds = None
+          Encryption = None
+          EncryptionMasterKey = None }
 
     member _.Zero() : QueueConfig =
         { QueueName = name
@@ -48,7 +74,9 @@ type QueueBuilder(name: string) =
           ContentBasedDeduplication = None
           MaxReceiveCount = None
           DeadLetterQueueName = None
-          DelaySeconds = None }
+          DelaySeconds = None
+          Encryption = None
+          EncryptionMasterKey = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> QueueConfig) : QueueConfig = f ()
 
@@ -63,7 +91,9 @@ type QueueBuilder(name: string) =
             |> Option.orElse state1.ContentBasedDeduplication
           MaxReceiveCount = state2.MaxReceiveCount |> Option.orElse state1.MaxReceiveCount
           DeadLetterQueueName = state2.DeadLetterQueueName |> Option.orElse state1.DeadLetterQueueName
-          DelaySeconds = state2.DelaySeconds |> Option.orElse state1.DelaySeconds }
+          DelaySeconds = state2.DelaySeconds |> Option.orElse state1.DelaySeconds
+          Encryption = state2.Encryption |> Option.orElse state1.Encryption
+          EncryptionMasterKey = state2.EncryptionMasterKey |> Option.orElse state1.EncryptionMasterKey }
 
     member inline x.For(config: QueueConfig, [<InlineIfLambda>] f: unit -> QueueConfig) : QueueConfig =
         let newConfig = f ()
@@ -85,7 +115,10 @@ type QueueBuilder(name: string) =
           ContentBasedDeduplication = config.ContentBasedDeduplication
           DelaySeconds = config.DelaySeconds
           DeadLetterQueueName = config.DeadLetterQueueName
-          MaxReceiveCount = config.MaxReceiveCount }
+          MaxReceiveCount = config.MaxReceiveCount
+          Encryption = config.Encryption
+          EncryptionMasterKey = config.EncryptionMasterKey
+          Queue = None }
 
     /// <summary>Sets the construct ID for the queue.</summary>
     /// <param name="id">The construct ID.</param>
@@ -169,6 +202,31 @@ type QueueBuilder(name: string) =
     member _.DelaySeconds(config: QueueConfig, seconds: int) =
         { config with
             DelaySeconds = Some seconds }
+
+    /// <summary>Sets the encryption type for the queue.</summary>
+    /// <param name="encryption">The encryption type (KMS, KMS_MANAGED, SQS_MANAGED, or UNENCRYPTED).</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue" {
+    ///     encryption QueueEncryption.KMS_MANAGED
+    /// }
+    /// </code>
+    [<CustomOperation("encryption")>]
+    member _.Encryption(config: QueueConfig, encryption: QueueEncryption) =
+        { config with
+            Encryption = Some encryption }
+
+    /// <summary>Sets the KMS master key for encryption.</summary>
+    /// <param name="key">The KMS key.</param>
+    /// <code lang="fsharp">
+    /// queue "MyQueue" {
+    ///     encryption QueueEncryption.KMS
+    ///     encryptionMasterKey myKmsKey
+    /// }
+    /// </code>
+    [<CustomOperation("encryptionMasterKey")>]
+    member _.EncryptionMasterKey(config: QueueConfig, key: IKey) =
+        { config with
+            EncryptionMasterKey = Some key }
 
 // ============================================================================
 // Builders

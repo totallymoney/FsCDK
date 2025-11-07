@@ -28,7 +28,7 @@ Mapping of services
 
 | Azure Service   | Farmer   | AWS Service   | FsCDK   |
 |-----------------|----------|---------------|---------|
-| Blob Storage | `storageAccount` | S3 | `s3Bucket` |
+| Blob Storage | `storageAccount` | S3 | `bucket` or `s3Bucket` |
 | Storage Queue | `storageQueue` | SQS | `queue` |
 | Table Storage | `table` | DynamoDB | `table` |
 
@@ -36,10 +36,11 @@ Mapping of services
 
 | Azure Service   | Farmer   | AWS Service   | FsCDK   |
 |-----------------|----------|---------------|---------|
-| App Service | `webApp` | Elastic Beanstalk | `eb` |
-| Azure Functions | `functions` | Lambda | `lambdaFunction` |
-| Container Instances | `containerGroup` | ECS/Fargate | `ecs` |
-| Virtual Machine | `vm` | EC2 | `ec2` |
+| App Service | `webApp` | Elastic Beanstalk | `ebApplication` |
+| App Service | `webApp` | App Runner | `appRunnerService` |
+| Azure Functions | `functions` | Lambda | `lambda` |
+| Container Instances | `containerGroup` | ECS/Fargate | `fargateTaskDefinition`, `ecsFargateService` |
+| Virtual Machine | `vm` | EC2 | `ec2Instance` |
 | AKS | `aks` | EKS | `eksCluster` |
 
 #### Databases
@@ -47,31 +48,78 @@ Mapping of services
 | Azure Service   | Farmer   | AWS Service   | FsCDK   |
 |-----------------|----------|---------------|---------|
 | Cosmos DB | `cosmosDb` | DynamoDB | `table` |
-| Azure SQL | `sqlServer` | RDS | `rds` |
-| PostgreSQL | `postgreSql` | RDS PostgreSQL | `rds` |
+| Azure SQL | `sqlServer` | RDS | `rdsInstance` |
+| PostgreSQL | `postgreSql` | RDS PostgreSQL | `rdsInstance` with `postgresEngine` |
+| Cosmos DB (MongoDB) | `cosmosDb` | DocumentDB | `documentDBCluster` |
+| Redis Cache | `redisCache` | ElastiCache | `redisCluster` |
 
 #### Networking
 
 | Azure Service   | Farmer   | AWS Service   | FsCDK   |
 |-----------------|----------|---------------|---------|
 | Virtual Network | `vnet` | VPC | `vpc` |
-| Load Balancer | `loadBalancer` | ALB/NLB | `networkLoadBalancer` |
+| Load Balancer | `loadBalancer` | NLB | `networkLoadBalancer` |
 | Application Gateway | `appGateway` | ALB | `applicationLoadBalancer` |
-| DNS | `dns` | Route53 | `hostedZone` |
+| DNS | `dns` | Route53 | `hostedZone`, `privateHostedZone`, `aRecord` |
+| Bastion | `bastion` | Bastion Host | `bastionHost` |
 
-#### Security
+#### Security & Identity
 
 | Azure Service   | Farmer   | AWS Service   | FsCDK   |
 |-----------------|----------|---------------|---------|
 | Key Vault | `keyVault` | Secrets Manager | `secret` |
-| Managed Identity | `identity` | IAM Role | IAM helpers |
+| Key Vault | `keyVault` | KMS | `kmsKey` |
+| Managed Identity | `identity` | IAM Role | `lambdaRole` |
+| Key Vault | `keyVault` | SSM Parameter Store | `ssmParameter` |
+| Active Directory | `activeDirectory` | OIDC Provider | `oidcProvider` |
 
-#### Messaging
+#### Messaging & Events
 
 | Azure Service   | Farmer   | AWS Service   | FsCDK   |
 |-----------------|----------|---------------|---------|
 | Event Hub | `eventHub` | Kinesis | `kinesisStream` |
-| Service Bus | `serviceBus` | SNS/SQS | `topic`/`queue` |
+| Service Bus | `serviceBus` | SNS/SQS | `topic`, `queue`, `subscription` |
+| Event Grid | `eventGrid` | EventBridge | `eventBridgeRule`, `eventBus` |
+
+#### Monitoring & Observability
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
+| Application Insights | `appInsights` | CloudWatch | `cloudwatchAlarm`, `dashboard` |
+| Application Insights | `appInsights` | CloudWatch Logs | `logGroup`, `metricFilter`, `subscriptionFilter` |
+| Application Insights | `appInsights` | X-Ray | `xrayGroup`, `xraySamplingRule` |
+| Application Insights | `appInsights` | CloudWatch Synthetics | `canary` |
+
+#### Content Delivery
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
+| CDN | `cdn` | CloudFront | `cloudFrontDistribution` |
+| Application Gateway | `appGateway` | API Gateway | `restApi`, `httpApi` |
+
+#### Container Registry
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
+| Container Registry | `containerRegistry` | ECR | `ecrRepository` |
+
+#### Orchestration & Workflow
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
+| Logic Apps | `logicApp` | Step Functions | `stepFunction` |
+
+#### Developer Tools & Integration
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
+| API Management | `apiManagement` | AppSync GraphQL | `appSyncApi` |
+
+#### Certificates
+
+| Azure Service   | Farmer   | AWS Service   | FsCDK   |
+|-----------------|----------|---------------|---------|
+| App Service Certificate | N/A | Certificate Manager | `certificate` |
 
 ## Code Examples
 
