@@ -94,14 +94,11 @@ stack "SecretsEncryptionStack" {
         }
 
     // Create secret with KMS encryption
-    let apiSecret =
-        secret "api-credentials" {
-            description "API credentials for external service"
-            encryptionKey secretsKey
-            generateSecretString (SecretsManagerHelpers.generatePassword 32 None)
-        }
-
-    ()
+    secret "api-credentials" {
+        description "API credentials for external service"
+        encryptionKey secretsKey
+        generateSecretString (SecretStringGenerator.password 32 None)
+    }
 }
 
 (**
@@ -124,9 +121,7 @@ stack "LambdaEncryptionStack" {
         handler "index.handler"
         runtime Amazon.CDK.AWS.Lambda.Runtime.NODEJS_18_X
         code "./lambda-code"
-
         environment [ "API_KEY", "super-secret-key"; "DATABASE_URL", "postgres://..." ]
-
         environmentEncryption lambdaKey
     }
 }
@@ -242,9 +237,9 @@ Use CloudWatch and CloudTrail to monitor all key operations.
   - Beyond free tier: $0.03 per 10,000 requests
 
 ### Cost Savings Tips
-1. Use AWS-managed keys when custom rotation not needed
-2. Share keys across resources in same trust boundary
-3. Cache data keys in application (envelope encryption)
+1. Use AWS-managed keys when custom rotation is not needed
+2. Share keys across resources in the same trust boundary
+3. Cache data keys in the application (envelope encryption)
 4. Monitor usage to avoid unnecessary requests
 
 ## Resources

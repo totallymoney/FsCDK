@@ -80,14 +80,11 @@ stack "ECSStack" {
         }
 
     // Create ECS cluster
-    let myCluster =
-        ecsCluster "MyCluster" {
-            vpc myVpc
-            containerInsights ContainerInsights.ENABLED
-            enableFargateCapacityProviders true
-        }
-
-    ()
+    ecsCluster "MyCluster" {
+        vpc myVpc
+        containerInsights ContainerInsights.ENABLED
+        enableFargateCapacityProviders true
+    }
 }
 
 (**

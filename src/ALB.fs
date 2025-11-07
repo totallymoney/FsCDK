@@ -41,7 +41,7 @@ type ALBSpec =
       Props: ApplicationLoadBalancerProps }
 
 type ALBBuilder(name: string) =
-    member _.Yield _ : ALBConfig =
+    member _.Yield(_: unit) : ALBConfig =
         { LoadBalancerName = name
           ConstructId = None
           Vpc = None

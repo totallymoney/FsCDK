@@ -81,16 +81,16 @@ stack "BasicEKSStack" {
               ClusterLoggingTypes.CONTROLLER_MANAGER
               ClusterLoggingTypes.SCHEDULER ]
 
-        addNodegroupCapacity (
-            "StandardNodeGroup",
-            NodegroupOptions(
-                InstanceTypes = [| InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MEDIUM) |],
-                MinSize = 1.,
-                MaxSize = 3.,
-                DesiredSize = 2.,
-                DiskSize = 20.
-            )
-        )
+    // addNodegroupCapacity (
+    //     "StandardNodeGroup",
+    //     NodegroupOptions(
+    //         InstanceTypes = [| InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MEDIUM) |],
+    //         MinSize = 1.,
+    //         MaxSize = 3.,
+    //         DesiredSize = 2.,
+    //         DiskSize = 20.
+    //     )
+    // )
     }
 
 
@@ -124,15 +124,15 @@ stack "FargateEKSStack" {
         version KubernetesVersion.V1_28
         defaultCapacity 0
 
-        addFargateProfile (
-            "FargateProfile",
-            FargateProfileOptions(
-                Selectors =
-                    [| Selector(Namespace = "default")
-                       Selector(Namespace = "kube-system")
-                       Selector(Namespace = "production", Labels = dict [ "compute-type", "serverless" ]) |]
-            )
-        )
+    // addFargateProfile (
+    //     "FargateProfile",
+    //     FargateProfileOptions(
+    //         Selectors =
+    //             [| Selector(Namespace = "default")
+    //                Selector(Namespace = "kube-system")
+    //                Selector(Namespace = "production", Labels = dict [ "compute-type", "serverless" ]) |]
+    //     )
+    // )
 
     }
 }
@@ -157,35 +157,38 @@ stack "MultiArchEKSStack" {
             cidr "10.0.0.0/16"
         }
 
-    eksCluster "MultiArchCluster" {
-        vpc multiArchVpc
-        version KubernetesVersion.V1_28
-        defaultCapacity 0
+    let! cluster =
+        eksCluster "MultiArchCluster" {
+            vpc multiArchVpc
+            version KubernetesVersion.V1_28
+            defaultCapacity 0
+        }
 
-        addNodegroupCapacity (
-            "ARMNodeGroup", // ARM-based nodes (Graviton)
-            NodegroupOptions(
-                InstanceTypes = [| InstanceType("t4g.medium") |],
-                MinSize = 1.,
-                MaxSize = 5.,
-                DesiredSize = 2.,
-                AmiType = NodegroupAmiType.AL2_ARM_64,
-                Labels = dict [ "arch", "arm64" ]
-            )
+    cluster.AddNodegroupCapacity(
+        "ARMNodeGroup",
+        NodegroupOptions(
+            InstanceTypes = [| InstanceType("t4g.medium") |],
+            MinSize = 1.,
+            MaxSize = 5.,
+            DesiredSize = 2.,
+            AmiType = NodegroupAmiType.AL2_ARM_64,
+            Labels = dict [ "arch", "arm64" ]
         )
+    )
+    |> ignore
 
-        addNodegroupCapacity (
-            "X86NodeGroup", // x86 nodes
-            NodegroupOptions(
-                InstanceTypes = [| InstanceType("t3.medium") |],
-                MinSize = 1.,
-                MaxSize = 5.,
-                DesiredSize = 2.,
-                AmiType = NodegroupAmiType.AL2_X86_64,
-                Labels = dict [ "arch", "amd64" ]
-            )
+    cluster.AddNodegroupCapacity(
+        "X86NodeGroup",
+        NodegroupOptions(
+            InstanceTypes = [| InstanceType("t3.medium") |],
+            MinSize = 1.,
+            MaxSize = 5.,
+            DesiredSize = 2.,
+            AmiType = NodegroupAmiType.AL2_X86_64,
+            Labels = dict [ "arch", "amd64" ]
         )
-    }
+    )
+    |> ignore
 }
 
 (**
@@ -209,43 +212,40 @@ stack "SpotEKSStack" {
             cidr "10.0.0.0/16"
         }
 
-    let spotCluster =
+    let! spotCluster =
         eksCluster "SpotCluster" {
             vpc spotVpc
             version KubernetesVersion.V1_28
             defaultCapacity 0
-
-            // On-demand nodes for critical workloads
-            addNodegroupCapacity (
-                "OnDemandNodes",
-                NodegroupOptions(
-                    InstanceTypes = [| InstanceType("t3.medium") |],
-                    MinSize = 1.,
-                    MaxSize = 3.,
-                    DesiredSize = 2.,
-                    Labels = dict [ "capacity-type", "on-demand" ]
-                )
-            )
-
-            // Spot instance node group
-            addNodegroupCapacity (
-                "SpotNodes",
-                NodegroupOptions(
-                    InstanceTypes =
-                        [| InstanceType("t3.medium")
-                           InstanceType("t3a.medium")
-                           InstanceType("t2.medium") |],
-                    CapacityType = CapacityType.SPOT,
-                    MinSize = 0.,
-                    MaxSize = 10.,
-                    DesiredSize = 2.,
-                    Labels = dict [ "capacity-type", "spot" ]
-
-                )
-            )
         }
 
-    ()
+    spotCluster.AddNodegroupCapacity(
+        "SpotNodes",
+        NodegroupOptions(
+            InstanceTypes =
+                [| InstanceType("t3.medium")
+                   InstanceType("t3a.medium")
+                   InstanceType("t2.medium") |],
+            CapacityType = CapacityType.SPOT,
+            MinSize = 0.,
+            MaxSize = 10.,
+            DesiredSize = 2.,
+            Labels = dict [ "capacity-type", "spot" ]
+        )
+    )
+    |> ignore
+
+    spotCluster.AddNodegroupCapacity(
+        "OnDemandNodes",
+        NodegroupOptions(
+            InstanceTypes = [| InstanceType("t3.medium") |],
+            MinSize = 1.,
+            MaxSize = 3.,
+            DesiredSize = 2.,
+            Labels = dict [ "capacity-type", "on-demand" ]
+        )
+    )
+    |> ignore
 }
 
 (**
@@ -271,26 +271,29 @@ stack "IRSAEKSStack" {
             cidr "10.0.0.0/16"
         }
 
-    let appServiceAccount =
+    let! appServiceAccount =
         eksCluster "SpotCluster" {
             vpc irsaVpc
             version KubernetesVersion.V1_28
             defaultCapacity 0
 
-            addServiceAccount ("AppServiceAccount", ServiceAccountOptions(Name = "my-app-sa", Namespace = "default"))
         }
 
-    // Create S3 bucket
-    let appBucket =
+    appServiceAccount.AddServiceAccount(
+        "AppServiceAccount",
+        ServiceAccountOptions(Name = "my-app-sa", Namespace = "default")
+    )
+    |> ignore
+
+    // Create an S3 bucket
+    let! appBucket =
         s3Bucket "app-bucket" {
             versioned true
             encryption Amazon.CDK.AWS.S3.BucketEncryption.S3_MANAGED
         }
 
     // Grant S3 access to the service account
-    //appBucket.Bucket.Value.GrantReadWrite(appServiceAccount) |> ignore
-
-    ()
+    appBucket.GrantReadWrite(appServiceAccount.AdminRole) |> ignore
 }
 
 (**
@@ -320,20 +323,17 @@ stack "SecureEKSStack" {
             enableKeyRotation true
         }
 
-    let secureCluster =
-        eksCluster "SecureCluster" {
-            vpc secureVpc
-            version KubernetesVersion.V1_28
-            encryptionKey secretsKey
-            endpointAccess EndpointAccess.PRIVATE
+    eksCluster "SecureCluster" {
+        vpc secureVpc
+        version KubernetesVersion.V1_28
+        encryptionKey secretsKey
+        endpointAccess EndpointAccess.PRIVATE
 
-            setClusterLogging
-                [ ClusterLoggingTypes.API
-                  ClusterLoggingTypes.AUDIT
-                  ClusterLoggingTypes.AUTHENTICATOR ]
-        }
-
-    ()
+        setClusterLogging
+            [ ClusterLoggingTypes.API
+              ClusterLoggingTypes.AUDIT
+              ClusterLoggingTypes.AUTHENTICATOR ]
+    }
 }
 
 (**
@@ -444,46 +444,46 @@ stack "HelmChartsStack" {
             vpc helmVpc
             version KubernetesVersion.V1_28
 
-            addHelmChart (
-                // Install AWS Load Balancer Controller
-                "AWSLoadBalancerController",
-                HelmChartOptions(
-                    Chart = "aws-load-balancer-controller",
-                    Repository = "https://aws.github.io/eks-charts",
-                    Namespace = "kube-system",
-                    Values =
-                        dict
-                            [ "clusterName", box "HelmCluster"
-                              "serviceAccount.create", box false
-                              "serviceAccount.name", box "aws-load-balancer-controller" ]
-                )
-            )
-
-            addHelmChart (
-                // Install metrics-server for HPA
-                "MetricsServer",
-                HelmChartOptions(
-                    Chart = "metrics-server",
-                    Repository = "https://kubernetes-sigs.github.io/metrics-server/",
-                    Namespace = "kube-system",
-                    Values = dict [ "replicas", box 2 ]
-                )
-            )
-
-            addHelmChart (
-                // Install Prometheus for monitoring
-                "Prometheus",
-                HelmChartOptions(
-                    Chart = "kube-prometheus-stack",
-                    Repository = "https://prometheus-community.github.io/helm-charts",
-                    Namespace = "monitoring",
-                    CreateNamespace = true,
-                    Values =
-                        dict
-                            [ "prometheus.prometheusSpec.retention", box "30d"
-                              "grafana.enabled", box true ]
-                )
-            )
+        // addHelmChart (
+        //     // Install AWS Load Balancer Controller
+        //     "AWSLoadBalancerController",
+        //     HelmChartOptions(
+        //         Chart = "aws-load-balancer-controller",
+        //         Repository = "https://aws.github.io/eks-charts",
+        //         Namespace = "kube-system",
+        //         Values =
+        //             dict
+        //                 [ "clusterName", box "HelmCluster"
+        //                   "serviceAccount.create", box false
+        //                   "serviceAccount.name", box "aws-load-balancer-controller" ]
+        //     )
+        // )
+        //
+        // addHelmChart (
+        //     // Install metrics-server for HPA
+        //     "MetricsServer",
+        //     HelmChartOptions(
+        //         Chart = "metrics-server",
+        //         Repository = "https://kubernetes-sigs.github.io/metrics-server/",
+        //         Namespace = "kube-system",
+        //         Values = dict [ "replicas", box 2 ]
+        //     )
+        // )
+        //
+        // addHelmChart (
+        //     // Install Prometheus for monitoring
+        //     "Prometheus",
+        //     HelmChartOptions(
+        //         Chart = "kube-prometheus-stack",
+        //         Repository = "https://prometheus-community.github.io/helm-charts",
+        //         Namespace = "monitoring",
+        //         CreateNamespace = true,
+        //         Values =
+        //             dict
+        //                 [ "prometheus.prometheusSpec.retention", box "30d"
+        //                   "grafana.enabled", box true ]
+        //     )
+        // )
         }
 
     ()
@@ -511,33 +511,33 @@ stack "AutoScalingEKSStack" {
             vpc autoScaleVpc
             version KubernetesVersion.V1_28
 
-            // Auto-scaling node group
-            addNodegroupCapacity (
-                "AutoScalingNodes",
-                NodegroupOptions(
-                    InstanceTypes = [| InstanceType("t3.medium") |],
-                    MinSize = 2.,
-                    MaxSize = 10.,
-                    DesiredSize = 3.,
-                    Labels = dict [ "node-group", "autoscaling" ]
-                )
-            )
+        // Auto-scaling node group
+        // addNodegroupCapacity (
+        //     "AutoScalingNodes",
+        //     NodegroupOptions(
+        //         InstanceTypes = [| InstanceType("t3.medium") |],
+        //         MinSize = 2.,
+        //         MaxSize = 10.,
+        //         DesiredSize = 3.,
+        //         Labels = dict [ "node-group", "autoscaling" ]
+        //     )
+        // )
 
-            // Install Cluster Autoscaler via Helm
-            addHelmChart (
-                "ClusterAutoscaler",
-                HelmChartOptions(
-                    Chart = "cluster-autoscaler",
-                    Repository = "https://kubernetes.github.io/autoscaler",
-                    Namespace = "kube-system",
-                    Values =
-                        dict
-                            [ "autoDiscovery.clusterName", box "AutoScalingCluster"
-                              "awsRegion", box config.Region
-                              "rbac.create", box true
-                              "rbac.serviceAccount.name", box "cluster-autoscaler" ]
-                )
-            )
+        // Install Cluster Autoscaler via Helm
+        // addHelmChart (
+        //     "ClusterAutoscaler",
+        //     HelmChartOptions(
+        //         Chart = "cluster-autoscaler",
+        //         Repository = "https://kubernetes.github.io/autoscaler",
+        //         Namespace = "kube-system",
+        //         Values =
+        //             dict
+        //                 [ "autoDiscovery.clusterName", box "AutoScalingCluster"
+        //                   "awsRegion", box config.Region
+        //                   "rbac.create", box true
+        //                   "rbac.serviceAccount.name", box "cluster-autoscaler" ]
+        //     )
+        // )
 
         }
 
@@ -575,7 +575,7 @@ stack "ProductionEKSStack" {
         }
 
     // Production EKS cluster
-    let prodCluster =
+    let! prodCluster =
         eksCluster "ProductionCluster" {
             vpc prodVpc
             version KubernetesVersion.V1_28
@@ -589,88 +589,70 @@ stack "ProductionEKSStack" {
                   ClusterLoggingTypes.AUTHENTICATOR
                   ClusterLoggingTypes.CONTROLLER_MANAGER
                   ClusterLoggingTypes.SCHEDULER ]
-
-            // On-demand node group for critical workloads
-            addNodegroupCapacity (
-                "CriticalNodes",
-                NodegroupOptions(
-                    InstanceTypes = [| InstanceType("t3.large") |],
-                    MinSize = 3.,
-                    MaxSize = 10.,
-                    DesiredSize = 5.,
-                    Labels = dict [ "workload-type", "critical"; "capacity-type", "on-demand" ],
-                    Tags = dict [ "Name", "eks-critical-node"; "Environment", "production" ]
-                )
-            )
-
-            // Spot instance node group for batch workloads
-            addNodegroupCapacity (
-                "BatchNodes",
-                NodegroupOptions(
-                    InstanceTypes =
-                        [| InstanceType("t3.large")
-                           InstanceType("t3a.large")
-                           InstanceType("t3.xlarge") |],
-                    CapacityType = CapacityType.SPOT,
-                    MinSize = 0.,
-                    MaxSize = 20.,
-                    DesiredSize = 3.,
-                    Labels = dict [ "workload-type", "batch"; "capacity-type", "spot" ]
-                )
-            )
-
-            // Install essential add-ons
-            addHelmChart (
-                "MetricsServer",
-                HelmChartOptions(
-                    Chart = "metrics-server",
-                    Repository = "https://kubernetes-sigs.github.io/metrics-server/",
-                    Namespace = "kube-system",
-                    Values =
-                        dict
-                            [ "replicas", box 3
-                              "resources.requests.cpu", box "100m"
-                              "resources.requests.memory", box "200Mi" ]
-                )
-            )
-
-            addHelmChart (
-                "ClusterAutoscaler",
-                HelmChartOptions(
-                    Chart = "cluster-autoscaler",
-                    Repository = "https://kubernetes.github.io/autoscaler",
-                    Namespace = "kube-system",
-                    Values =
-                        dict
-                            [ "autoDiscovery.clusterName", box "ProductionCluster"
-                              "awsRegion", box config.Region
-                              "extraArgs.scale-down-delay-after-add", box "10m"
-                              "extraArgs.skip-nodes-with-local-storage", box false ]
-                )
-            )
-
-            // Monitoring stack
-            addHelmChart (
-                "PrometheusStack",
-                HelmChartOptions(
-                    Chart = "kube-prometheus-stack",
-                    Repository = "https://prometheus-community.github.io/helm-charts",
-                    Namespace = "monitoring",
-                    CreateNamespace = true,
-                    Values =
-                        dict
-                            [ "prometheus.prometheusSpec.retention", box "30d"
-                              "prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage",
-                              box "50Gi"
-                              "grafana.enabled", box true
-                              "grafana.adminPassword", box "ChangeMeInProduction!"
-                              "alertmanager.enabled", box true ]
-                )
-            )
-
         }
 
-    ()
+    // On-demand node group for critical workloads
+    prodCluster.AddNodegroupCapacity(
+        "CriticalNodes",
+        NodegroupOptions(
+            InstanceTypes = [| InstanceType("t3.large") |],
+            MinSize = 3.,
+            MaxSize = 10.,
+            DesiredSize = 5.,
+            Labels = dict [ "workload-type", "critical"; "capacity-type", "on-demand" ],
+            Tags = dict [ "Name", "eks-critical-node"; "Environment", "production" ]
+        )
+    )
+    |> ignore
+
+    // Spot instance node group for batch workloads
+    prodCluster.AddNodegroupCapacity(
+        "BatchNodes",
+        NodegroupOptions(
+            InstanceTypes =
+                [| InstanceType("t3.large")
+                   InstanceType("t3a.large")
+                   InstanceType("t3.xlarge") |],
+            CapacityType = CapacityType.SPOT,
+            MinSize = 0.,
+            MaxSize = 20.,
+            DesiredSize = 3.,
+            Labels = dict [ "workload-type", "batch"; "capacity-type", "spot" ]
+        )
+    )
+    |> ignore
+
+    // Install essential add-ons
+    prodCluster.AddHelmChart(
+        "MetricsServer",
+        HelmChartOptions(
+            Chart = "metrics-server",
+            Repository = "https://kubernetes-sigs.github.io/metrics-server/",
+            Namespace = "kube-system",
+            Values =
+                dict
+                    [ "replicas", box 3
+                      "resources.requests.cpu", box "100m"
+                      "resources.requests.memory", box "200Mi" ]
+        )
+    )
+    |> ignore
+
+    prodCluster.AddHelmChart(
+        "ClusterAutoscaler",
+        HelmChartOptions(
+            Chart = "cluster-autoscaler",
+            Repository = "https://kubernetes.github.io/autoscaler",
+            Namespace = "kube-system",
+            Values =
+                dict
+                    [ "autoDiscovery.clusterName", box "ProductionCluster"
+                      "awsRegion", box config.Region
+                      "extraArgs.scale-down-delay-after-add", box "10m"
+                      "extraArgs.skip-nodes-with-local-storage", box false ]
+        )
+    )
+    |> ignore
 }
 
 (**

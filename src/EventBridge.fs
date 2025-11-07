@@ -1,8 +1,6 @@
 namespace FsCDK
 
-open Amazon.CDK
 open Amazon.CDK.AWS.Events
-open Amazon.CDK.AWS.Events.Targets
 
 // ============================================================================
 // EventBridge Rule Configuration DSL
@@ -34,7 +32,7 @@ type EventBridgeRuleConfig =
       Enabled: bool option
       EventPattern: IEventPattern option
       Schedule: Schedule option
-      Targets: IRuleTarget list
+      Targets: IRuleTarget seq
       EventBus: IEventBus option }
 
 type EventBridgeRuleSpec =
@@ -42,18 +40,6 @@ type EventBridgeRuleSpec =
       ConstructId: string
       Props: RuleProps
       mutable Rule: IRule option }
-
-    /// Gets the underlying IRule resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Rule with
-        | Some rule -> rule
-        | None ->
-            failwith
-                $"EventBridge Rule '{this.RuleName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-type EventBridgeRuleRef =
-    | EventBridgeRuleInterface of IRule
-    | EventBridgeRuleSpecRef of EventBridgeRuleSpec
 
 type EventBridgeRuleBuilder(name: string) =
     member _.Yield _ : EventBridgeRuleConfig =
@@ -114,7 +100,7 @@ type EventBridgeRuleBuilder(name: string) =
             match a.Schedule with
             | Some _ -> a.Schedule
             | None -> b.Schedule
-          Targets = a.Targets @ b.Targets
+          Targets = Seq.toList a.Targets @ Seq.toList b.Targets
           EventBus =
             match a.EventBus with
             | Some _ -> a.EventBus
@@ -135,8 +121,8 @@ type EventBridgeRuleBuilder(name: string) =
         config.Description |> Option.iter (fun d -> props.Description <- d)
         config.EventBus |> Option.iter (fun bus -> props.EventBus <- bus)
 
-        if not (List.isEmpty config.Targets) then
-            props.Targets <- config.Targets |> List.toArray
+        if not (Seq.isEmpty config.Targets) then
+            props.Targets <- config.Targets |> Seq.toArray
 
         { RuleName = config.RuleName
           ConstructId = constructId
@@ -173,10 +159,14 @@ type EventBridgeRuleBuilder(name: string) =
         { config with Schedule = Some schedule }
 
     /// <summary>Adds a target to the rule.</summary>
+    [<CustomOperation("targets")>]
+    member _.Targets(config: EventBridgeRuleConfig, targets: IRuleTarget seq) = { config with Targets = targets }
+
+    /// <summary>Adds a single target to the rule.</summary>
     [<CustomOperation("target")>]
     member _.Target(config: EventBridgeRuleConfig, target: IRuleTarget) =
         { config with
-            Targets = target :: config.Targets }
+            Targets = Seq.append config.Targets [ target ] }
 
     /// <summary>Sets the event bus for the rule.</summary>
     [<CustomOperation("eventBus")>]
@@ -195,15 +185,7 @@ type EventBusConfig =
 type EventBusSpec =
     { EventBusName: string
       ConstructId: string
-      mutable EventBus: IEventBus option }
-
-    /// Gets the underlying IEventBus resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.EventBus with
-        | Some bus -> bus
-        | None ->
-            failwith
-                $"EventBus '{this.EventBusName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+      mutable EventBus: IEventBus }
 
 type EventBusBuilder(name: string) =
     member _.Yield _ : EventBusConfig =
@@ -240,7 +222,7 @@ type EventBusBuilder(name: string) =
         // EventSource is only for partner event buses
         { EventBusName = config.EventBusName
           ConstructId = constructId
-          EventBus = None }
+          EventBus = null }
 
     /// <summary>Sets the construct ID.</summary>
     [<CustomOperation("constructId")>]
@@ -271,7 +253,7 @@ module EventBridgeBuilders =
     ///     target (LambdaFunction(myFunction))
     /// }
     /// </code>
-    let eventBridgeRule (name: string) = EventBridgeRuleBuilder name
+    let eventBridgeRule (name: string) = EventBridgeRuleBuilder(name)
 
     /// <summary>Creates an EventBridge event bus.</summary>
     /// <param name="name">The event bus name.</param>
@@ -280,4 +262,4 @@ module EventBridgeBuilders =
     ///     constructId "CustomEventBus"
     /// }
     /// </code>
-    let eventBus (name: string) = EventBusBuilder name
+    let eventBus (name: string) = EventBusBuilder(name)

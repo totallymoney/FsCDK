@@ -2,9 +2,6 @@ namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.Route53
-open Amazon.CDK.AWS.Route53.Targets
-open Amazon.CDK.AWS.ElasticLoadBalancingV2
-open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.EC2
 
 /// <summary>
@@ -14,7 +11,7 @@ open Amazon.CDK.AWS.EC2
 /// - Query logging = disabled (opt-in via logging operation)
 /// - DNSSEC = disabled (opt-in, requires KMS key)
 ///
-/// **Rationale:**
+/// **Rationale: **
 /// Hosted zones manage DNS records for your domain.
 /// DNSSEC and logging are opt-in features with additional costs.
 ///
@@ -274,6 +271,21 @@ type Route53ARecordBuilder(name: string) =
 
     [<CustomOperation("target")>]
     member _.Target(config: Route53ARecordConfig, target: RecordTarget) = { config with Target = Some target }
+
+    [<CustomOperation("targetFromAlias")>]
+    member _.TargetFromAlias(config: Route53ARecordConfig, target: IAliasRecordTarget) =
+        { config with
+            Target = Some(RecordTarget.FromAlias(target)) }
+
+    [<CustomOperation("targetFromIpAddresses")>]
+    member _.TargetFromIpAddresses(config: Route53ARecordConfig, ipAddresses: string seq) =
+        { config with
+            Target = Some(RecordTarget.FromIpAddresses(Array.ofSeq ipAddresses)) }
+
+    [<CustomOperation("targetFromValues")>]
+    member _.TargetFromValues(config: Route53ARecordConfig, values: string seq) =
+        { config with
+            Target = Some(RecordTarget.FromValues(Array.ofSeq values)) }
 
     [<CustomOperation("ttl")>]
     member _.Ttl(config: Route53ARecordConfig, ttl: Duration) = { config with Ttl = Some ttl }

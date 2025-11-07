@@ -87,13 +87,10 @@ stack "EventPatterns" {
 
     // React to EC2 instance state changes
     let ec2StateChangePattern =
-        let details = System.Collections.Generic.Dictionary<string, obj>()
-        details.Add("state", [| "terminated" |] :> obj)
-
         EventPattern(
             Source = [| "aws.ec2" |],
             DetailType = [| "EC2 Instance State-change Notification" |],
-            Detail = details
+            Detail = dict [ "state", [| "terminated" |] ]
         )
 
     eventBridgeRule "EC2Termination" {
@@ -135,8 +132,7 @@ stack "MultiTarget" {
     eventBridgeRule "CriticalEvents" {
         description "Handle critical system events"
         schedule (Schedule.Rate(Duration.Hours(1.0)))
-        target (LambdaFunction(logFunction))
-        target (LambdaFunction(notifyFunction))
+        targets [ LambdaFunction(logFunction); LambdaFunction(notifyFunction) ]
     }
 }
 

@@ -3,6 +3,7 @@ namespace FsCDK
 open System.Collections.Generic
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
+open Amazon.CDK.AWS.ECS
 open Amazon.CDK.AWS.SNS
 open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.S3
@@ -55,7 +56,7 @@ type Operation =
     | ECSFargateServiceOp of ECSFargateServiceSpec
     | Route53RecordOp of Route53ARecordSpec
     | ALBOp of ALBSpec
-    | SecretsManagerOp of SecretsManagerSpec
+    | SecretsManagerOp of SecretSpec
     | ElasticBeanstalkEnvironmentOp of ElasticBeanstalkEnvironmentSpec
     | DnsValidatedCertificateOp of DnsValidatedCertificateSpec
     | ECSClusterOp of ECSClusterSpec
@@ -186,7 +187,6 @@ module StackOperations =
 
             nlbSpec.LoadBalancer <- Some nlb
 
-
         | EventBridgeRuleOp ruleSpec ->
             let rule = Rule(stack, ruleSpec.ConstructId, ruleSpec.Props)
             ruleSpec.Rule <- Some rule
@@ -195,7 +195,7 @@ module StackOperations =
             let bus =
                 EventBus(stack, busSpec.ConstructId, EventBusProps(EventBusName = busSpec.EventBusName))
 
-            busSpec.EventBus <- Some bus
+            busSpec.EventBus <- bus
 
         | BastionHostOp bastionSpec ->
             let bastion = BastionHostLinux(stack, bastionSpec.ConstructId, bastionSpec.Props)
@@ -248,24 +248,7 @@ module StackOperations =
 
         | EKSClusterOp spec ->
             let cluster = AWS.EKS.Cluster(stack, spec.ConstructId, spec.Props)
-
-            let _ =
-                spec.AddNodegroupCapacity
-                |> List.map (fun (name, opts) -> cluster.AddNodegroupCapacity(name, opts))
-
-            let _ =
-                spec.AddHelmChart
-                |> List.map (fun (name, opts) -> cluster.AddHelmChart(name, opts))
-
-            let _ =
-                spec.AddServiceAccount
-                |> List.map (fun (name, opts) -> cluster.AddServiceAccount(name, opts))
-
-            let _ =
-                spec.AddFargateProfile
-                |> List.map (fun (name, opts) -> cluster.AddFargateProfile(name, opts))
-
-            spec.Cluster <- Some cluster
+            spec.Cluster <- cluster
 
         | ECSFargateServiceOp spec ->
             let service = AWS.ECS.FargateService(stack, spec.ConstructId, spec.Props)
@@ -428,6 +411,23 @@ type StackBuilder(name: string) =
           Operations = [ EC2InstanceOp tableSpec ]
           Deferred = [] }
 
+    member _.Yield(tableSpec: ECSClusterSpec) : StackConfig =
+        { Name = name
+          Scope = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ ECSClusterOp tableSpec ]
+          Deferred = [] }
+
     member _.Yield(tableSpec: Route53ARecordSpec) : StackConfig =
         { Name = name
           Scope = None
@@ -462,7 +462,7 @@ type StackBuilder(name: string) =
           Operations = [ ALBOp albSpec ]
           Deferred = [] }
 
-    member _.Yield(secretsSpec: SecretsManagerSpec) : StackConfig =
+    member _.Yield(secretsSpec: SecretSpec) : StackConfig =
         { Name = name
           Scope = None
           Env = None
@@ -1179,6 +1179,20 @@ type StackBuilder(name: string) =
 
     member inline this.Bind
         (
+            spec: ECSClusterSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.ECS.Cluster -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let deferred (_: Stack) =
+            let fn = spec.Cluster
+            cont fn
+
+        { baseCfg with
+            Deferred = baseCfg.Deferred @ [ deferred ] }
+
+    member inline this.Bind
+        (
             spec: KMSKeySpec,
             [<InlineIfLambda>] cont: Amazon.CDK.AWS.KMS.IKey -> StackConfig
         ) : StackConfig =
@@ -1205,6 +1219,19 @@ type StackBuilder(name: string) =
         { baseCfg with
             Deferred = baseCfg.Deferred @ [ deferred ] }
 
+    member inline this.Bind
+        (
+            spec: EKSClusterSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.EKS.Cluster -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let deferred (_: Stack) =
+            let fn = spec.Cluster
+            cont fn
+
+        { baseCfg with
+            Deferred = baseCfg.Deferred @ [ deferred ] }
 
     member this.Bind(spec: RoleSpec, cont: IRole -> StackConfig) : StackConfig =
         let baseCfg = this.Yield(spec)

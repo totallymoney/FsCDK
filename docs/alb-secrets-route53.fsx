@@ -19,7 +19,6 @@ This example demonstrates how to use Application Load Balancer, Secrets Manager,
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open Amazon.CDK
-open Amazon.CDK.AWS.ElasticLoadBalancingV2
 open Amazon.CDK.AWS.Route53
 open Amazon.CDK.AWS.Route53.Targets
 open FsCDK
@@ -73,16 +72,16 @@ stack "SecretsStack" {
 
     description "Secrets Manager example"
 
-    // Create a secret with auto-generated password
+    // Create a secret with an auto-generated password
     secret "MyDatabasePassword" {
         description "Database admin password"
-        generateSecretString (SecretsManagerHelpers.generatePassword 32 None)
+        generateSecretString (SecretStringGenerator.password 32 None)
     }
 
     // Create a secret for API credentials (JSON format)
     secret "MyApiCredentials" {
         description "External API credentials"
-        generateSecretString (SecretsManagerHelpers.generateJsonSecret """{"username": "admin"}""" "password")
+        generateSecretString (SecretStringGenerator.jsonSecret """{"username": "admin"}""" "password")
     }
 }
 
@@ -120,7 +119,7 @@ stack "DNSStack" {
     // Create A record pointing to ALB
     aRecord "www" {
         zone myZone.HostedZone
-        target (RecordTarget.FromAlias(LoadBalancerTarget myAlb.LoadBalancer))
+        targetFromAlias (LoadBalancerTarget myAlb.LoadBalancer)
         ttl (Duration.Minutes(5.0))
     }
 }
