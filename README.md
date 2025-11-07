@@ -114,7 +114,7 @@ FsCDK provides F# builders for 30+ AWS services across all major categories:
 | **IAM** (Identity & Access Management) | Controls access to AWS resources with users, roles, and policies |
 | **Kinesis** | Real-time data streaming for analytics and processing |
 | **KMS** (Key Management Service) | Creates and manages encryption keys |
-| **Lambda** | Runs code without managing servers (serverless functions) |
+| **Lambda** | Runs code without managing servers (serverless functions) with cost optimization controls |
 | **Network Load Balancer** | High-performance TCP/UDP load balancer |
 | **OIDC Provider** | Federated identity using OpenID Connect |
 | **RDS** (Relational Database Service) | Managed relational databases (PostgreSQL, MySQL, etc.) |

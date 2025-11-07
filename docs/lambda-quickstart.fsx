@@ -11,9 +11,9 @@ Spin up your first Lambda function with FsCDK using the same production-minded d
 
 ## What you’ll practice
 
-- Creating Lambda functions with sensible defaults (512 MB memory, 30 s timeout)
+- Creating Lambda functions with sensible defaults (512 MB memory, 30 s timeout)
 - Encrypting environment variables with KMS automatically
-- Controlling log retention (90 days by default)
+- Controlling log retention using logGroup builder (defaults to 1 week) and ephemeral storage (512 MB)
 - Operating with minimal IAM permissions
 - Enabling X-Ray tracing and Powertools utilities for observability
 - Applying consistent tagging across resources
@@ -61,7 +61,8 @@ The FsCDK Lambda builder mirrors the defaults promoted in **Production-Ready Ser
 - **Memory**: 512 MB (balanced cost/performance baseline)
 - **Timeout**: 30 seconds
 - **Environment encryption**: KMS (AWS managed key)
-- **Log retention**: 90 days (audit-friendly, cost-conscious)
+- **Log retention**: 1 week via logGroup builder (Corey Quinn cost optimization)
+- **Ephemeral storage**: 512 MB (free tier, increase only when needed)
 - **IAM role**: Minimal permissions (CloudWatch Logs + KMS decrypt)
 - **X-Ray**: Opt-in (enable when you’re ready for tracing)
 
@@ -133,17 +134,21 @@ lambda "traced-function" {
 (**
 Enables AWS X-Ray for distributed tracing.
 
-### Example 5: Custom log retention
+### Example 5: Cost optimization with custom ephemeral storage
 *)
 
-lambda "short-lived-function" {
+lambda "optimized-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
     code "./lambda-code"
+    ephemeralStorageSize 1024 // Increase /tmp storage to 1 GB
+
+    // For custom log retention, use logGroup builder:
+    logGroup (logGroup "optimized-function-logs" { retention RetentionDays.THREE_DAYS })
 }
 
 (**
-Reduces log retention for cost savings.
+Fine-tunes cost with custom ephemeral storage for workloads needing more than the default 512 MB /tmp space. Log retention is controlled via the logGroup builder.
 
 ## Complete Example Stack
 *)
@@ -179,7 +184,8 @@ stack "LambdaQuickstartStack" {
     // Uses defaults:
     // - memory = 512 MB
     // - timeout = 30 seconds
-    // - logRetention = 90 days
+    // - log retention = 1 week (via default logGroup)
+    // - ephemeralStorageSize = 512 MB (free tier)
     // - environment encryption = KMS
     }
 
@@ -296,11 +302,25 @@ IAM.allow ["s3:GetObject"] ["arn:aws:s3:::my-bucket/*"]
 
 ### Log retention
 
-Logs are retained for 90 days by default, balancing:
+Logs are retained for 1 week by default (via CloudWatch Log Groups) following Corey Quinn's cost optimization principle: "Never store logs forever." Balance retention with your needs:
 
-- **Auditability**: Sufficient history for investigation
-- **Cost**: Prevents unbounded log storage costs
-- **Compliance**: Meets many regulatory requirements
+- **Development**: 3–7 days (lower cost)
+- **Production**: 1–4 weeks (operational visibility)
+- **Compliance**: 90 days or longer (regulatory requirements)
+
+To customize, use the `logGroup` builder:
+
+```fsharp
+lambda "MyFunction" {
+    handler "index.handler"
+    runtime Runtime.NODEJS_18_X
+    code "./code"
+    
+    logGroup (logGroup "MyFunction-logs" {
+        retention RetentionDays.ONE_MONTH
+    })
+}
+```
 
 ## Performance Optimization
 
@@ -311,6 +331,15 @@ Lambda CPU scales with memory:
 - **128-512 MB**: Low-power functions
 - **512-1536 MB**: Standard workloads (default: 512 MB)
 - **1536-10240 MB**: CPU-intensive tasks
+
+### Ephemeral storage (/tmp)
+
+Lambda provides 512 MB of /tmp storage for free. Increase when processing large files or caching data between invocations (cold starts reuse /tmp):
+
+- **Default**: 512 MB (free)
+- **Maximum**: 10,240 MB (charges apply above 512 MB)
+
+Use `ephemeralStorageSize 1024` to customize.
 
 ### Timeout
 
@@ -436,7 +465,8 @@ let basicFunc =
     // Uses defaults:
     // - memorySize = 512 MB
     // - timeout = 30 seconds
-    // - logRetention = 90 days
+    // - log retention = 1 week (via default logGroup)
+    // - ephemeralStorageSize = 512 MB (free tier)
     // - environment encryption = KMS
     }
 

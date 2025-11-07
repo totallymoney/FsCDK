@@ -29,9 +29,11 @@ Every Lambda function in FsCDK automatically gets these production-safe defaults
 
 | Feature | Default value | Rationale |
 |---------|---------------|-----------|
-| **Reserved concurrency** | `10` | Limits blast radius and mirrors Yan Cui’s cost-control advice. |
-| **X-Ray tracing** | `ACTIVE` | Enables end-to-end tracing per Heitor Lessa’s observability workshops. |
+| **Reserved concurrency** | `10` | Limits blast radius and mirrors Yan Cui's cost-control advice. |
+| **X-Ray tracing** | `ACTIVE` | Enables end-to-end tracing per Heitor Lessa's observability workshops. |
 | **Logging format** | `JSON` | Unlocks CloudWatch Logs Insights and downstream analytics. |
+| **Log retention** | `1 week` (via logGroup) | Corey Quinn cost optimization: "Never store logs forever." Use logGroup builder for custom retention. |
+| **Ephemeral storage** | `512 MB` | AWS free tier default. Increase only when processing large files. |
 | **Retry attempts** | `2` | Prevents infinite retry loops while allowing transient recovery. |
 | **Max event age** | `6 hours` | Avoids stale data processing as recommended in the Lambda operator guide. |
 | **Dead-letter queue** | Auto-created SQS (14-day retention) | Guarantees recoverability and audit trails. |

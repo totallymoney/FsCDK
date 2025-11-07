@@ -5,6 +5,7 @@ open Amazon.CDK.AWS.EFS
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.EC2
+open Amazon.CDK.AWS.Logs
 open Expecto
 open FsCDK
 open FsCdk.Tests.TestHelpers
@@ -643,5 +644,48 @@ let lambda_function_dsl_tests =
                   Expect.equal n.Value true "DeadLetterQueueEnabled should be set correctly"
               | :? bool as b -> Expect.equal b true "DeadLetterQueueEnabled should be set correctly"
               | _ -> failtestf $"Unexpected DeadLetterQueueEnabled type/value: %A{dleObj}"
+          }
+
+          test "ephemeralStorageSize sets storage correctly" {
+              let spec =
+                  lambda "StorageFn" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      ephemeralStorageSize 1024
+                  }
+
+              Expect.isNotNull spec.Props.EphemeralStorageSize "EphemeralStorageSize should be set"
+
+              Expect.equal
+                  (spec.Props.EphemeralStorageSize.ToString())
+                  (Size.Mebibytes(1024.0).ToString())
+                  "EphemeralStorageSize should be 1024 MB"
+          }
+
+          test "ephemeralStorageSize validates minimum size" {
+              let thrower () =
+                  lambda "StorageFn" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      ephemeralStorageSize 256
+                  }
+                  |> ignore
+
+              Expect.throws thrower "Should throw when ephemeral storage is below 512 MB"
+          }
+
+          test "ephemeralStorageSize validates maximum size" {
+              let thrower () =
+                  lambda "StorageFn" {
+                      handler "Program::Handler"
+                      runtime Runtime.DOTNET_8
+                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                      ephemeralStorageSize 20480
+                  }
+                  |> ignore
+
+              Expect.throws thrower "Should throw when ephemeral storage is above 10240 MB"
           } ]
     |> testSequenced

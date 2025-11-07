@@ -50,7 +50,8 @@ type FunctionConfig =
       RetryAttempts: int option
       EnvironmentEncryption: KMSKeyRef option
       AutoAddPowertools: bool option // Auto-add Lambda Powertools layer (Yan Cui recommendation)
-      PowertoolsLayerArn: string option } // Stores the Powertools layer ARN to create later in Stack.fs
+      PowertoolsLayerArn: string option // Stores the Powertools layer ARN to create later in Stack.fs
+      EphemeralStorageSize: int option } // Ephemeral storage in MB (default 512MB, max 10240MB) - Cost optimization
 
 type FunctionSpec =
     { FunctionName: string
@@ -99,6 +100,7 @@ type FunctionBuilder(name: string) =
           EnvironmentEncryption = None
           AutoAddPowertools = Some true // Yan Cui: Production observability
           PowertoolsLayerArn = None // Will be determined in Run() based on runtime
+          EphemeralStorageSize = None // Default 512MB is free, charges apply above that
         }
 
     member _.Yield(spec: EventInvokeConfigSpec) : FunctionConfig =
@@ -274,7 +276,12 @@ type FunctionBuilder(name: string) =
             if state1.PowertoolsLayerArn.IsSome then
                 state1.PowertoolsLayerArn
             else
-                state2.PowertoolsLayerArn }
+                state2.PowertoolsLayerArn
+          EphemeralStorageSize =
+            if state1.EphemeralStorageSize.IsSome then
+                state1.EphemeralStorageSize
+            else
+                state2.EphemeralStorageSize }
 
     member _.Run(config: FunctionConfig) : FunctionSpec =
         let props = FunctionProps()
@@ -407,6 +414,14 @@ type FunctionBuilder(name: string) =
         // Apply existing layers (Powertools layer will be added in Stack.fs)
         if not (List.isEmpty config.Layers) then
             props.Layers <- config.Layers |> List.toArray
+
+        // Ephemeral storage size configuration (Cost optimization)
+        config.EphemeralStorageSize
+        |> Option.iter (fun size ->
+            if size < 512 || size > 10240 then
+                failwith "Ephemeral storage size must be between 512 MB and 10240 MB"
+
+            props.EphemeralStorageSize <- Size.Mebibytes(float size))
 
         // Actions to perform on the Function after creation
         let actions =
@@ -698,6 +713,22 @@ type FunctionBuilder(name: string) =
     member _.EnvironmentEncryption(config: FunctionConfig, key: KMSKeySpec) =
         { config with
             EnvironmentEncryption = Some(KMSKeyRef.KMSKeySpecRef key) }
+
+    /// <summary>
+    /// Sets the ephemeral storage size for the Lambda function in MB.
+    /// Default: 512 MB (free tier). Valid range: 512-10240 MB.
+    /// Cost optimization: Only increase if needed for /tmp storage.
+    /// </summary>
+    /// <param name="sizeInMB">Storage size in megabytes (512-10240).</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     ephemeralStorageSize 1024
+    /// }
+    /// </code>
+    [<CustomOperation("ephemeralStorageSize")>]
+    member _.EphemeralStorageSize(config: FunctionConfig, sizeInMB: int) =
+        { config with
+            EphemeralStorageSize = Some sizeInMB }
 
     [<CustomOperation("xrayEnabled")>]
     member _.XRayEnabled(config: FunctionConfig) =
