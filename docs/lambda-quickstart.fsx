@@ -22,7 +22,7 @@ Spin up your first Lambda function with FsCDK using the same production-minded d
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/cli.html) (`npm install -g aws-cdk`)
-- AWS credentials configured for deployment (use an isolated sandbox account, as recommended in the **AWS Lambda Operator Guide**)
+- AWS credentials configured for deployment (use an isolated sandbox account, as recommended in the **AWS Lambda Operator Guide** )
 
 ## Usage
 
