@@ -5,7 +5,7 @@ category: docs
 index: 20
 ---
 
-# Designing world-class HTTP APIs with FsCDK
+# ![API Gateway](img/icons/Arch_Amazon-API-Gateway_48.png) Designing world-class HTTP APIs with FsCDK
 
 Amazon API Gateway HTTP APIs deliver the latency, pricing, and simplicity that modern serverless teams expect. This notebook combines FsCDK builders with practices championed by AWS Heroes **Jeremy Daly**, **Yan Cui**, and the API Gateway product team, so you can publish secure, observable endpoints that scale from prototype to production.
 

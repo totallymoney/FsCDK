@@ -7,7 +7,7 @@ index: 3
 description: AWS Lambda Powertools integration for production-grade observability
 ---
 
-# Lambda Powertools Integration
+# ![Lambda](img/icons/Arch_AWS-Lambda_48.png) Lambda Powertools Integration
 
 FsCDK provides first-class integration with **AWS Lambda Powertools**, a suite of utilities for:
 - Structured logging with correlation IDs

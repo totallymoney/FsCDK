@@ -5,7 +5,7 @@ category: docs
 index: 5
 ---
 
-# Lambda quickstart
+# ![AWS Lambda](img/icons/Arch_AWS-Lambda_48.png) Lambda quickstart
 
 Spin up your first Lambda function with FsCDK using the same production-minded defaults promoted by AWS Heroes **Yan Cui** and **Heitor Lessa**. This quickstart walks through essential variations—memory, timeouts, environment variables, tracing—so you can go from “hello world” to secure, observable functions in minutes.
 

@@ -5,7 +5,7 @@ category: docs
 index: 25
 ---
 
-# Amazon RDS
+# ![Amazon RDS](img/icons/Arch_Amazon-RDS_48.png) Amazon RDS
 
 Amazon RDS (Relational Database Service) makes it easy to set up, operate, and scale a relational database
 in the cloud. It provides cost-efficient and resizable capacity while automating time-consuming
@@ -145,13 +145,14 @@ stack "IAMAuthRDS" {
 
 ### Security
 
-- Always enable storage encryption
-- Use IAM authentication when possible
-- Never make databases publicly accessible
+- ✅ **Storage encryption enabled by default** (no action needed)
+- ✅ **IAM authentication enabled by default** (enhanced security)
+- ✅ **Deletion protection enabled by default** (prevents accidents)
+- ✅ **Private by default** (not publicly accessible)
 - Use security groups to restrict access
 - Store credentials in Secrets Manager
-- Enable deletion protection for production
 - Use SSL/TLS for connections
+- **NEW:** Export logs to CloudWatch using `cloudwatchLogsExports`
 - Audit access with CloudTrail and database logs
 
 ### Cost Optimization
@@ -240,17 +241,67 @@ FsCDK supports all RDS database engines:
 - Can copy across regions
 - Can share with other accounts
 
-## Default Settings
+## CloudWatch Logs Export (NEW)
 
-The RDS instance builder applies these best practices:
+Export database logs to CloudWatch for monitoring, compliance, and security analysis.
+
+*)
+
+stack "DatabaseWithLogging" {
+    let appVpc = vpc "AppVPC" { maxAzs 2 }
+
+    rdsInstance "MonitoredDatabase" {
+        vpc appVpc
+        postgresEngine PostgresEngineVersion.VER_15
+        instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
+        databaseName "monitored"
+
+        // Enable CloudWatch Logs export for audit trails
+        cloudwatchLogsExports [ "postgresql"; "upgrade" ]
+
+        // Retention and encryption enabled by default
+        backupRetentionDays 7.0
+    }
+}
+
+(**
+### PostgreSQL Log Types
+
+- **"postgresql"** - General database logs (connections, queries, errors)
+- **"upgrade"** - Database upgrade logs
+
+### MySQL/MariaDB Log Types
+
+- **"error"** - Error logs
+- **"general"** - General query logs
+- **"slowquery"** - Slow query logs
+- **"audit"** - Audit logs (if enabled)
+
+### SQL Server Log Types
+
+- **"agent"** - SQL Server Agent logs
+- **"error"** - SQL Server error logs
+
+### Oracle Log Types
+
+- **"trace"** - Oracle trace files
+- **"audit"** - Oracle audit files
+- **"alert"** - Oracle alert logs
+- **"listener"** - Oracle listener logs
+
+## Default Settings (UPDATED)
+
+The RDS instance builder applies these **secure-by-default** best practices:
 
 - **Instance Type**: t3.micro (optimize for cost in dev)
 - **Backup Retention**: 7 days
 - **Delete Automated Backups**: true
 - **Multi-AZ**: false (enable explicitly for production)
-- **Publicly Accessible**: false (secure by default)
-- **Storage Encrypted**: true
-- **Deletion Protection**: false (enable for production)
+- **Publicly Accessible**: ✅ **false (explicitly private)**
+- **Storage Encrypted**: ✅ **true (encrypted by default)**
+- **Deletion Protection**: ✅ **true (prevent accidental deletion)**
+- **IAM Authentication**: ✅ **true (enhanced security)**
+- **CloudWatch Logs**: ✅ **Ready to configure (use cloudwatchLogsExports)**
 - **Auto Minor Version Upgrade**: true
 
 ## Resources

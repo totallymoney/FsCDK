@@ -5,7 +5,7 @@ category: docs
 index: 12
 ---
 
-# Hardening bastion hosts with FsCDK
+# ![Bastion Host](img/icons/Res_Amazon-EC2_Instance_48.png) Hardening bastion hosts with FsCDK
 
 Bastion hosts should be a last resort: short-lived, tightly monitored entry points into private subnets. This notebook codifies the controls highlighted by AWS Heroes **Scott Piper** and **Mark Nunnikhoven**, plus guidance from the **AWS re:Inforce** session “Secure remote access architectures.” Whenever possible, migrate to AWS Systems Manager Session Manager for zero-port-access workflows; when you cannot, adopt the configurations below.
 

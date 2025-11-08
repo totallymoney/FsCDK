@@ -5,7 +5,7 @@ category: docs
 index: 16
 ---
 
-# AWS IAM Managed Policy
+# ![IAM](img/icons/Arch_AWS-Identity-and-Access-Management_48.png) AWS IAM Managed Policy
 
 AWS Managed Policies are standalone identity-based policies that you can attach to multiple users, groups, and roles.
 They provide reusable permission sets following the principle of least privilege.

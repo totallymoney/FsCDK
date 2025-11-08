@@ -24,7 +24,7 @@ Documentation: [Getting Started](getting-started-extended.html)
 
 ## Compute Services
 
-### AWS Lambda
+### ![AWS Lambda](img/icons/Arch_AWS-Lambda_48.png) AWS Lambda
 - Lambda Functions with production-safe defaults
 - Docker Image Functions
 - Lambda Powertools integration
@@ -123,7 +123,7 @@ Documentation: [API Gateway V2](api-gateway-v2.html)
 
 ## Storage Services
 
-### Object Storage
+### ![Amazon S3](img/icons/Arch_Amazon-Simple-Storage-Service_48.png) Object Storage
 - **S3 Buckets** - Secure object storage
   - Versioning
   - Encryption (KMS)
@@ -140,7 +140,7 @@ Documentation:
 
 ## Database Services
 
-### NoSQL
+### ![Amazon DynamoDB](img/icons/Arch_Amazon-DynamoDB_48.png) NoSQL
 - **DynamoDB** - Serverless NoSQL database
   - **Production defaults**: PAY_PER_REQUEST billing, PITR enabled
   - **Global Secondary Indexes (GSIs)** - Single-table design support
@@ -154,7 +154,7 @@ Documentation:
 
 Documentation: [DynamoDB](dynamodb.html)
 
-### Relational
+### ![Amazon RDS](img/icons/Arch_Amazon-RDS_48.png) Relational
 - **RDS** - Managed relational databases
   - PostgreSQL, MySQL, MariaDB
   - Oracle, SQL Server
@@ -176,19 +176,19 @@ Documentation: [RDS Database](rds-database.html)
 
 ## Messaging and Events
 
-### Messaging
+### ![SNS](img/icons/Arch_Amazon-Simple-Notification-Service_48.png) Messaging
 - **SNS** - Pub/sub messaging
   - Standard and FIFO topics
   - Multiple subscription types
   - Message filtering
-- **SQS** - Message queuing
+- ![SQS](img/icons/Arch_Amazon-Simple-Queue-Service_48.png) **SQS** - Message queuing
   - Standard and FIFO queues
   - Dead-letter queues
   - Visibility timeout
 
 Documentation: [SNS and SQS Messaging](sns-sqs-messaging.html)
 
-### Event Processing
+### ![EventBridge](img/icons/Arch_Amazon-EventBridge_48.png) Event Processing
 - **EventBridge** - Event-driven architecture
   - Scheduled events (cron)
   - Event patterns
@@ -205,7 +205,7 @@ Documentation:
 
 ## Orchestration
 
-### Workflows
+### ![Step Functions](img/icons/Arch_AWS-Step-Functions_48.png) Workflows
 - **Step Functions** - State machine orchestration
   - Standard and Express workflows
   - X-Ray tracing
@@ -228,12 +228,22 @@ Documentation: [Step Functions](step-functions.html)
 
 ### Encryption and Secrets
 - **KMS** - Key management
-- **Secrets Manager** - Secure credential storage
+- **Secrets Manager** - Secure credential storage with multi-region replication
 - **Certificate Manager** - SSL/TLS certificates
 
 Documentation:
 - [KMS Encryption](kms-encryption.html)
 - [Certificate Manager](certificate-manager.html)
+
+### Audit and Compliance
+- **CloudTrail** - API audit logging (NEW)
+  - Multi-region trails by default
+  - Global service events (IAM, STS, CloudFront)
+  - Log file validation (integrity checking)
+  - CloudWatch Logs integration
+  - Organization trail support
+
+Documentation: [CloudTrail Audit Logging](cloudtrail-audit-logging.html)
 
 ### IAM
 - **IAM Roles** - Identity and access management
@@ -288,16 +298,31 @@ FsCDK emphasizes **security and reliability by default**:
 - Multi-AZ by default
 - DNS enabled
 - Cost-optimized NAT gateways
+- **VPC Flow Logs enabled by default** (NEW)
+- ONE_WEEK CloudWatch retention
 
 ### Security Groups
 - No outbound traffic by default
 - Least privilege principle
 
+### IAM
+- **Wildcard validation** - Fails on `"*"` actions + `"*"` resources (NEW)
+- Warnings on individual wildcards
+- Least privilege enforcement
+
 ### RDS
+- **Storage encryption enabled by default** (NEW)
+- **Deletion protection enabled** (NEW)
+- **IAM authentication enabled** (NEW)
+- **Explicitly private** (not publicly accessible) (NEW)
+- **CloudWatch Logs export ready** (NEW)
 - Automated backups (7 days)
-- Encryption at rest
-- Not publicly accessible
 - Auto minor version upgrades
+
+### DynamoDB
+- **AWS_MANAGED encryption by default** (NEW)
+- **Point-in-Time Recovery enabled** (NEW)
+- PAY_PER_REQUEST billing
 
 ### S3
 - Block public access

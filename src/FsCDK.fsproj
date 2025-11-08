@@ -72,6 +72,7 @@
       <Compile Include="EKS.fs" />
       <Compile Include="Kinesis.fs" />
       <Compile Include="CloudHSM.fs" />
+      <Compile Include="CloudTrail.fs" />
 
       <Compile Include="Stack.fs" />
 

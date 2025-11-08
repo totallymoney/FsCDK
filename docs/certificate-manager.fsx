@@ -5,7 +5,7 @@ category: docs
 index: 13
 ---
 
-# Shipping production-grade TLS with AWS Certificate Manager
+# ![Certificate Manager](img/icons/Arch_AWS-Certificate-Manager_48.png) Shipping production-grade TLS with AWS Certificate Manager
 
 AWS Certificate Manager (ACM) issues and renews SSL/TLS certificates for free across AWS services. This notebook distils the guidance shared by **AWS Networking Hero Colm MacCárthaigh**, **Ben Kehoe**, and the ACM product team, so you can provision certificates programmatically, validate ownership securely, and deliver trusted HTTPS with FsCDK.
 

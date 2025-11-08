@@ -5,7 +5,7 @@ category: docs
 index: 7
 ---
 
-# Secure Ingress with Application Load Balancer, Secrets Manager, and Route 53
+# ![ALB](img/icons/Arch_Elastic-Load-Balancing_48.png) ![Secrets Manager](img/icons/Arch_AWS-Secrets-Manager_48.png) ![Route53](img/icons/Arch_Amazon-Route-53_48.png) Secure Ingress with Application Load Balancer, Secrets Manager, and Route 53
 
 Design an internet-facing entry point that mirrors the guidance shared by AWS Heroes and principal engineers. The pattern below combines an Application Load Balancer (ALB), AWS Secrets Manager, and Amazon Route 53 so you can publish resilient HTTPS endpoints with strong secret hygiene and DNS best practices—all expressed through FsCDK.
 

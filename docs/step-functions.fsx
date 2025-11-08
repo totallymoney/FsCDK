@@ -5,7 +5,7 @@ category: docs
 index: 22
 ---
 
-# AWS Step Functions
+# ![AWS Step Functions](img/icons/Arch_AWS-Step-Functions_48.png) AWS Step Functions
 
 AWS Step Functions is a serverless orchestration service that lets you combine AWS Lambda functions
 and other AWS services to build business-critical applications. Step Functions provides a graphical
@@ -396,13 +396,12 @@ let arn = cdkSM.StateMachineArn
 **Best Practices:**
 - [Step Functions Best Practices](https://docs.aws.amazon.com/step-functions/latest/dg/best-practices.html) - Official recommendations
 - [Design Patterns](https://docs.aws.amazon.com/step-functions/latest/dg/design-patterns.html) - Common workflow patterns
-- [Cost Optimization](https://aws.amazon.com/blogs/compute/optimizing-costs-in-aws-step-functions/) - Strategies to reduce costs
+- [Cost Optimization](https://aws.amazon.com/step-functions/pricing/) - Pricing guide and cost strategies
 
 ### Serverless Orchestration Patterns
 
 **Yan Cui (The Burning Monk) - Orchestration Expert:**
-- [Step Functions vs Lambda Orchestration](https://theburningmonk.com/2019/06/why-you-should-use-step-functions-more/) - When to use Step Functions
-- [Step Functions Error Handling](https://theburningmonk.com/2019/07/thoughts-on-error-handling-with-step-functions/) - Retry strategies and best practices
+- [The Burning Monk Blog](https://theburningmonk.com/) - Yan Cui's Step Functions and orchestration insights, including comprehensive serverless best practices and error handling
 - [Saga Pattern with Step Functions](https://theburningmonk.com/2017/07/applying-the-saga-pattern-with-aws-lambda-and-step-functions/) - Distributed transactions
 - [Step Functions vs EventBridge](https://theburningmonk.com/2020/08/choreography-vs-orchestration-in-the-land-of-serverless/) - Choreography vs Orchestration
 
@@ -454,7 +453,7 @@ let arn = cdkSM.StateMachineArn
 **Retry Strategies:**
 - [Retry Configuration](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html#error-handling-retrying-after-an-error) - ErrorEquals, IntervalSeconds, MaxAttempts, BackoffRate
 - [Exponential Backoff](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/) - Prevent thundering herd
-- [Best Practices for Retries](https://theburningmonk.com/2019/07/thoughts-on-error-handling-with-step-functions/) - Yan Cui's guidance
+- [Error Handling Best Practices](https://docs.aws.amazon.com/step-functions/latest/dg/best-practices.html#bp-error-handling) - Official AWS guidance on retries and error handling
 
 **Catch & Fallback:**
 - [Catch Errors](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html#error-handling-catching-errors) - Handle specific errors
@@ -590,7 +589,7 @@ Express: (100M * $1.00) / 1M + compute = ~$100/month
 
 **Week 2 - Patterns & Best Practices:**
 1. Study [Step Functions Design Patterns](https://docs.aws.amazon.com/step-functions/latest/dg/design-patterns.html)
-2. Read [Yan Cui's orchestration articles](https://theburningmonk.com/2019/06/why-you-should-use-step-functions-more/)
+2. Read [Step Functions Best Practices](https://docs.aws.amazon.com/step-functions/latest/dg/best-practices.html)
 3. Implement error handling with Retry and Catch
 4. Learn [Service Integrations](https://docs.aws.amazon.com/step-functions/latest/dg/concepts-service-integrations.html)
 
@@ -608,11 +607,20 @@ Express: (100M * $1.00) / 1M + compute = ~$100/month
 
 ### AWS Experts to Follow
 
+![AWS Heroes](img/awsheros.png)
+*AWS Heroes and community experts who share serverless workflow patterns*
+
 **AWS Heroes & Advocates:**
-- **[Yan Cui (@theburningmonk)](https://twitter.com/theburningmonk)** - Serverless orchestration expert
-- **[Ben Kehoe (@ben11kehoe)](https://twitter.com/ben11kehoe)** - Serverless workflow patterns
-- **[Jeremy Daly (@jeremy_daly)](https://twitter.com/jeremy_daly)** - Serverless advocate
-- **[Danilo Poccia (@danilop)](https://twitter.com/danilop)** - AWS Principal Developer Advocate
+- **Yan Cui** - Serverless orchestration expert
+  - [Twitter/X: @theburningmonk](https://twitter.com/theburningmonk)
+- **Ben Kehoe** - Serverless workflow patterns
+  - [Twitter/X: @ben11kehoe](https://twitter.com/ben11kehoe)
+  - [Mastodon: @ben11kehoe@mastodon.social](https://mastodon.social/@ben11kehoe)
+- **Jeremy Daly** - Serverless advocate
+  - [Twitter/X: @jeremy_daly](https://twitter.com/jeremy_daly)
+- **Danilo Poccia** - AWS Principal Developer Advocate
+  - [Twitter/X: @danilop](https://twitter.com/danilop)
+  - [Mastodon: @danilop@mastodon.social](https://mastodon.social/@danilop)
 
 **AWS Step Functions Team:**
 - Follow [AWS Compute Blog](https://aws.amazon.com/blogs/compute/category/compute/aws-step-functions/) for official updates

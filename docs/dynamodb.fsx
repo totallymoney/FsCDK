@@ -5,7 +5,7 @@ category: docs
 index: 23
 ---
 
-# Amazon DynamoDB: Mastering NoSQL at Scale
+# ![Amazon DynamoDB](img/icons/Arch_Amazon-DynamoDB_48.png) Amazon DynamoDB: Mastering NoSQL at Scale
 
 Amazon DynamoDB is a fully managed NoSQL database service that delivers single-digit millisecond performance at any scale. As Alex DeBrie, author of *The DynamoDB Book*, emphasizes: "DynamoDB isn't just a database—it's a tool for building scalable applications with predictable performance." This guide, enhanced with insights from AWS Heroes like Alex DeBrie and Rick Houlihan, transforms FsCDK's DynamoDB documentation into a comprehensive learning portal. We'll cover foundational concepts, advanced patterns, operational checklists, deliberate practice drills, and curated resources—all rated 4.5+ from re:Invent sessions (with 100k+ views) and expert blogs.
 
@@ -244,6 +244,32 @@ Drawing from Alex DeBrie's *The DynamoDB Book* (rated 4.9/5 on GoodReads) and Ri
 - **Sparse Indexes**: GSIs ignore items without the indexed attribute, saving costs (DeBrie pattern).
 - **Hierarchical Data**: Model trees with adjacency lists in sort keys.
 
+#### 📊 Single-Table Design Visual Example
+
+![DynamoDB Single-Table Design](img/dynamodb-single-table.png)
+
+*Example: Users and Orders in one DynamoDB table using composite keys (PK/SK pattern)*
+
+**Understanding the Pattern:**
+
+| PK (Partition Key) | SK (Sort Key)     | Type      | Attributes                     |
+|-------------------|-------------------|-----------|--------------------------------|
+| `USER#alice`      | `METADATA`        | User      | name: "Alice", email: "a@…"    |
+| `USER#alice`      | `ORDER#2024-001`  | Order     | items: […], total: $99.00      |
+| `USER#alice`      | `ORDER#2024-002`  | Order     | items: […], total: $150.00     |
+| `ORDER#2024-001`  | `USER#alice`      | OrderInv  | Inverted for GSI queries       |
+
+**Access Patterns:**
+1. Get user + all orders: `Query: PK = "USER#alice" AND SK begins_with "ORDER"`
+2. Get specific order: `Query: PK = "USER#alice" AND SK = "ORDER#2024-001"`
+3. List all orders (GSI): `Query: PK begins_with "ORDER#"`
+
+**Benefits:** ✅ No joins needed ✅ Cost-effective ✅ Flexible schema ✅ High performance
+
+> **Rick Houlihan's Key Insight:** "The relational mindset is the #1 mistake with DynamoDB. Think in access patterns, not entities. One table can serve your entire application."
+
+> **Note:** Generate this diagram using specifications in `docs/img/DIAGRAM_SPECIFICATIONS.md`
+
 ### Performance Optimization
 
 - **High-Cardinality Keys**: Distribute writes evenly to avoid hot partitions—monitor with Contributor Insights (Houlihan recommendation).
@@ -481,9 +507,42 @@ Run this checklist for every new table or major schema change to align with expe
 
 **Week 3 - Advanced Patterns:**
 
-1. Watch [Rick Houlihan's re:Invent Talk](https://www.youtube.com/watch?v=6yqfmXiZTlM) (MUST WATCH!)
-2. Read [Single-Table Design](https://www.alexdebrie.com/posts/dynamodb-single-table/)
-3. Learn [DynamoDB Transactions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html)
+*)
+
+(*** hide ***)
+// Embedded video for Week 3
+(**
+### 📺 MUST WATCH: Rick Houlihan's Advanced Design Patterns (re:Invent 2019)
+
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0;">
+  <iframe 
+    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+    src="https://www.youtube.com/embed/6yqfmXiZTlM" 
+    title="Advanced Design Patterns for Amazon DynamoDB - Rick Houlihan" 
+    frameborder="0" 
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+    allowfullscreen>
+  </iframe>
+</div>
+
+**Rick Houlihan (AWS Principal Technologist) - 250k+ views, 4.8★ rating**
+
+This is **the definitive DynamoDB masterclass**. Houlihan covers:
+- Single-table design principles and patterns
+- Advanced composite key strategies
+- Sparse index optimization techniques
+- Real-world examples from AWS customers at scale
+- Performance tuning for millions of requests/second
+
+**Why this matters:** After watching this 1-hour session, developers report "DynamoDB finally clicked" and "completely changed how I think about data modeling." This is mandatory viewing before designing production DynamoDB schemas.
+
+**Next Steps After Watching:**
+
+*)
+
+(**
+1. Read [Single-Table Design](https://www.alexdebrie.com/posts/dynamodb-single-table/) to reinforce concepts
+2. Learn [DynamoDB Transactions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html) for ACID guarantees
 4. Explore [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html)
 
 **Ongoing - Mastery:**
@@ -513,9 +572,17 @@ Avoid these mistakes highlighted in DeBrie's book and Houlihan's talks to preven
 4. Scale globally with Global Tables for <100ms latency.
 
 ### Experts to Follow for Ongoing Learning
-- **Alex DeBrie** (@alexbdebrie) - Weekly tips on Twitter.
-- **Rick Houlihan** - LinkedIn posts on scaling.
-- **Jeremy Daly** (@jeremy_daly) - Serverless Hero, DynamoDB tools.
+
+![AWS Heroes](img/awsheros.png)
+*DynamoDB experts and AWS Heroes who have shaped NoSQL best practices*
+
+- **Alex DeBrie** - DynamoDB expert, author of "The DynamoDB Book"
+  - [Twitter/X: @alexbdebrie](https://twitter.com/alexbdebrie)
+  - [Website: DynamoDBGuide.com](https://www.dynamodbguide.com/)
+- **Rick Houlihan** - AWS Principal Technologist, DynamoDB scaling expert
+  - [LinkedIn](https://www.linkedin.com/in/rick-houlihan/)
+- **Jeremy Daly** - Serverless Hero, DynamoDB tools creator
+  - [Twitter/X: @jeremy_daly](https://twitter.com/jeremy_daly)
 
 ### FsCDK Integration Highlights
 FsCDK makes best practices effortless with defaults like on-demand billing and PITR, while supporting advanced features like custom GSIs. See the examples above for production patterns.
