@@ -17,6 +17,7 @@ type DatabaseInstanceConfig =
       VpcSubnets: SubnetSelection option
       SecurityGroups: SecurityGroupRef list
       AllocatedStorage: int option
+      MaxAllocatedStorage: int option
       StorageType: StorageType option
       BackupRetention: Duration option
       DeleteAutomatedBackups: bool option
@@ -54,6 +55,7 @@ type DatabaseInstanceBuilder(name: string) =
           VpcSubnets = None
           SecurityGroups = []
           AllocatedStorage = None
+          MaxAllocatedStorage = None
           StorageType = None
           BackupRetention = None
           DeleteAutomatedBackups = None
@@ -84,6 +86,7 @@ type DatabaseInstanceBuilder(name: string) =
           VpcSubnets = None
           SecurityGroups = []
           AllocatedStorage = None
+          MaxAllocatedStorage = None
           StorageType = None
           BackupRetention = None
           DeleteAutomatedBackups = None
@@ -142,6 +145,10 @@ type DatabaseInstanceBuilder(name: string) =
             match a.AllocatedStorage with
             | Some _ -> a.AllocatedStorage
             | None -> b.AllocatedStorage
+          MaxAllocatedStorage =
+            match a.MaxAllocatedStorage with
+            | Some _ -> a.MaxAllocatedStorage
+            | None -> b.MaxAllocatedStorage
           StorageType =
             match a.StorageType with
             | Some _ -> a.StorageType
@@ -278,6 +285,9 @@ type DatabaseInstanceBuilder(name: string) =
         config.AllocatedStorage
         |> Option.iter (fun s -> props.AllocatedStorage <- float s)
 
+        config.MaxAllocatedStorage
+        |> Option.iter (fun s -> props.MaxAllocatedStorage <- float s)
+
         config.StorageType |> Option.iter (fun t -> props.StorageType <- t)
         config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
         config.ParameterGroup |> Option.iter (fun p -> props.ParameterGroup <- p)
@@ -369,6 +379,12 @@ type DatabaseInstanceBuilder(name: string) =
     member _.AllocatedStorage(config: DatabaseInstanceConfig, gb: int) =
         { config with
             AllocatedStorage = Some gb }
+
+    /// <summary>Sets the maximum allocated storage in GB for autoscaling.</summary>
+    [<CustomOperation("maxAllocatedStorage")>]
+    member _.MaxAllocatedStorage(config: DatabaseInstanceConfig, gb: int) =
+        { config with
+            MaxAllocatedStorage = Some gb }
 
     /// <summary>Sets the storage type.</summary>
     [<CustomOperation("storageType")>]

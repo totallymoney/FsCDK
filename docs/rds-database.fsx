@@ -1,4 +1,4 @@
-﻿(**
+(**
 ---
 title: RDS Relational Databases
 category: docs
@@ -308,6 +308,30 @@ The RDS instance builder applies these **secure-by-default** best practices:
 - **IAM Authentication**: ✅ **true (enhanced security)**
 - **CloudWatch Logs**: ✅ **Ready to configure (use cloudwatchLogsExports)**
 - **Auto Minor Version Upgrade**: true
+
+## RDS Proxy Considerations
+
+**Important limitation:** RDS Proxies receive only private IP addresses, regardless of subnet placement. External connections (from local machines, CI/CD, etc.) require:
+
+- **Bastion host** - Temporary EC2 instance for administrative access
+- **VPN/Direct Connect** - Private network connectivity
+- **AWS Systems Manager Session Manager** - Secure tunneling without SSH
+
+For development workflows requiring external access, consider direct RDS connections in non-production environments.
+
+## Environment-Specific Cost Optimization
+
+Balance security and cost based on environment:
+
+| Configuration | Dev | Production |
+|---------------|-----|------------|
+| **Multi-AZ** | `false` ($25/mo) | `true` ($50/mo) |
+| **Backup Retention** | 1 day | 7-30 days |
+| **Instance Class** | t3.micro | r5.large |
+| **Deletion Protection** | `false` | `true` |
+| **Performance Insights** | optional | recommended |
+
+Dev environments can use single-AZ, minimal backups, and smaller instances to reduce costs by 50-70%.
 
 ## Resources
 

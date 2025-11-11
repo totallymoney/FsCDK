@@ -50,6 +50,7 @@ type Operation =
     | CloudFrontDistributionOp of DistributionSpec
     | UserPoolOp of UserPoolSpec
     | UserPoolClientOp of UserPoolClientSpec
+    | UserPoolResourceServerOp of UserPoolResourceServerSpec
     | NetworkLoadBalancerOp of NetworkLoadBalancerSpec
     | EventBridgeRuleOp of EventBridgeRuleSpec
     | EventBusOp of EventBusSpec
@@ -294,7 +295,10 @@ module StackOperations =
 
         | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
 
-        // New operations
+        | UserPoolResourceServerOp uprsSpec ->
+            let rs = CfnUserPoolResourceServer(stack, uprsSpec.ConstructId, uprsSpec.Props)
+            uprsSpec.ResourceServer <- Some rs
+
         | NetworkLoadBalancerOp nlbSpec ->
             let nlb = NetworkLoadBalancer(stack, nlbSpec.ConstructId, nlbSpec.Props)
 
@@ -1027,6 +1031,22 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ UserPoolClientOp upcSpec ] }
+
+    member _.Yield(uprsSpec: UserPoolResourceServerSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ UserPoolResourceServerOp uprsSpec ] }
 
     member _.Yield(nlbSpec: NetworkLoadBalancerSpec) : StackConfig =
         { Name = name

@@ -212,12 +212,12 @@ stack "Prod" {
 
 | | Service | What it does |
 |-|---------|--------------|
-| [![ALB](img/icons/Arch_Elastic-Load-Balancing_48.png)](alb-secrets-route53.html) | [**ALB** (Application Load Balancer)](alb-secrets-route53.html) | Distributes incoming HTTP/HTTPS traffic across multiple targets |
-| [![API Gateway](img/icons/Arch_Amazon-API-Gateway_48.png)](api-gateway-v2.html) | [**API Gateway** (REST & HTTP API)](api-gateway-v2.html) | Creates REST and HTTP APIs to expose your backend services |
+| [![ALB](img/icons/Arch_Elastic-Load-Balancing_48.png)](alb-secrets-route53.html) | [**ALB** (Application Load Balancer)](alb-secrets-route53.html) | Distributes incoming HTTP/HTTPS traffic across multiple targets 📚 *with curated learning resources* |
+| [![API Gateway](img/icons/Arch_Amazon-API-Gateway_48.png)](api-gateway-v2.html) | [**API Gateway** (REST & HTTP API)](api-gateway-v2.html) | Creates REST and HTTP APIs to expose your backend services 📚 *with curated learning resources* |
 | ![App Runner](img/icons/Arch_AWS-App-Runner_48.png) | **App Runner** | Fully managed container service for web apps and APIs |
 | ![AppSync](img/icons/Arch_AWS-AppSync_48.png) | **AppSync** | Builds managed GraphQL APIs with real-time data synchronization |
-| [![Bastion Host](img/icons/Res_Amazon-EC2_Instance_48.png)](bastion-host.html) | [**Bastion Host**](bastion-host.html) | Secure SSH access to instances in private subnets |
-| [![Certificate Manager](img/icons/Arch_AWS-Certificate-Manager_48.png)](certificate-manager.html) | [**Certificate Manager**](certificate-manager.html) | Manages SSL/TLS certificates for secure connections |
+| [![Bastion Host](img/icons/Res_Amazon-EC2_Instance_48.png)](bastion-host.html) | [**Bastion Host**](bastion-host.html) | Secure SSH access to instances in private subnets 📚 *with curated learning resources* |
+| [![Certificate Manager](img/icons/Arch_AWS-Certificate-Manager_48.png)](certificate-manager.html) | [**Certificate Manager**](certificate-manager.html) | Manages SSL/TLS certificates for secure connections 📚 *with curated learning resources* |
 | ![CloudFront](img/icons/Arch_Amazon-CloudFront_48.png) | **CloudFront** | Content delivery network (CDN) for fast global content distribution |
 | ![CloudHSM](img/icons/Arch_AWS-CloudHSM_48.png) | **CloudHSM** | Hardware security modules for cryptographic key storage |
 | [![CloudWatch](img/icons/Arch_Amazon-CloudWatch_48.png)](cloudwatch-dashboard.html) | [**CloudWatch**](cloudwatch-dashboard.html) | Monitors resources with alarms, log groups, metric filters, subscription filters, dashboards, and synthetic canaries |

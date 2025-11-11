@@ -46,6 +46,20 @@ let rds_instance_dsl_tests =
 
               // This would fail without VPC, which is expected
               Expect.throws configTest "RDS Instance builder should throw without VPC"
+          }
+
+          ptest "supports maxAllocatedStorage for auto-scaling" {
+              let configTest () =
+                  rdsInstance "AutoScaleDB" {
+                      postgresEngine
+                      allocatedStorage 20
+                      maxAllocatedStorage 100 // Auto-scale to 100GB
+                      storageType StorageType.GP3
+                  }
+                  |> ignore
+
+              // This would fail without VPC, which is expected
+              Expect.throws configTest "RDS Instance builder should throw without VPC"
           } ]
     |> testSequenced
 
