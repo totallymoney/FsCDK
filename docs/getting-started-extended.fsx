@@ -1,4 +1,4 @@
-(**
+﻿(**
 ---
 title: Getting Started with FsCDK - Extended Features
 category: docs
@@ -232,6 +232,7 @@ stack "ProductionApp" {
 FsCDK automatically applies AWS best practices:
 
 ### Security
+
 - Encryption enabled by default (S3, RDS)
 - Security groups deny all by default
 - Strong password policies
@@ -239,18 +240,21 @@ FsCDK automatically applies AWS best practices:
 - No public database access
 
 ### High Availability
+
 - Multi-AZ VPC configuration
 - Multi-AZ database replication
 - Automated backups (7-day retention)
 - Global CDN distribution
 
 ### Cost Optimization
+
 - Right-sized instance defaults (t3.micro)
 - Single NAT gateway for dev/test
 - Regional CDN pricing (PriceClass100)
 - Pay-per-request database options
 
 ### Performance
+
 - HTTP/2 enabled for CDN
 - IPv6 support
 - Proper subnet segmentation

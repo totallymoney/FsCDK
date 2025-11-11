@@ -1,4 +1,4 @@
-(**
+﻿(**
 ---
 title: Lambda Quickstart Example
 category: docs
@@ -387,27 +387,32 @@ let funcSpec =
 All resources below are curated for quality (4.5★+ ratings or repeated recommendations by AWS Heroes).
 
 ### Foundation (Week 0)
+
 - **AWS Lambda Developer Guide** – Core concepts straight from the Lambda team.
 - **Lambda Operator Guide** – Operational runbooks for scaling and resilience.
 - **Getting Started video (Danilo Poccia)** – Step-by-step walkthrough for your first function.
 
 ### Hero insights & advanced reading
+
 - **Yan Cui – Production-Ready Serverless** (course) and blog series on concurrency, cold starts, and cost control.
 - **Heitor Lessa – Powertools Live Workshop** – Hands-on observability patterns.
 - **Alex Casalboni – Lambda Power Tuning** – Automated memory/performance optimisation.
 - **AWS Compute Blog – Event-driven design principles** – Official best practices for building reactive systems.
 
 ### Performance & cost
+
 - **Lambda Power Tuning** (open source) – Benchmark memory settings automatically.
 - **Provisioned Concurrency** deep dive – Keep latency predictable for mission-critical APIs.
 - **SnapStart for Java** – Near-zero cold starts for JVM workloads.
 
 ### Security & IAM
+
 - **Lambda execution roles** – Official guide to least privilege.
 - **Secrets Manager patterns** – Store and refresh credentials securely.
 - **VPC networking for Lambda** – Understand ENIs, private subnets, and egress controls.
 
 ### Observability
+
 - **Structured logging best practices** (Yan Cui) – Why JSON logs matter.
 - **CloudWatch Logs Insights** – Query examples for rapid debugging.
 - **Lambda Insights & X-Ray** – Monitor runtime performance and dependencies.
@@ -419,6 +424,7 @@ All resources below are curated for quality (4.5★+ ratings or repeated recomme
 4. Subscribe to **Off-by-none** (Jeremy Daly) and watch the latest **re:Invent serverless** sessions to stay current.
 
 ### Community hubs
+
 - **Serverless Stack Discord** – Practitioner Q&A and showcase.
 - **AWS re:Post (Lambda tag)** – Official support channel.
 - **Serverless Chats podcast (Jeremy Daly)** – Interviews with AWS Heroes and product teams.

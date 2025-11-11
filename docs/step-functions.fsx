@@ -344,6 +344,7 @@ let arn = cdkSM.StateMachineArn
 ## Use Cases
 
 ### Order Processing
+
 - Validate order
 - Check inventory
 - Process payment
@@ -352,6 +353,7 @@ let arn = cdkSM.StateMachineArn
 - Handle failures with compensating transactions
 
 ### ETL Pipelines
+
 - Extract data from sources
 - Transform data in parallel
 - Load to data warehouse
@@ -359,6 +361,7 @@ let arn = cdkSM.StateMachineArn
 - Generate reports
 
 ### Machine Learning Workflows
+
 - Prepare training data
 - Train model
 - Evaluate model
@@ -366,12 +369,14 @@ let arn = cdkSM.StateMachineArn
 - Monitor model performance
 
 ### Human Approval Workflows
+
 - Submit request
 - Wait for approval (callback pattern)
 - Process approved requests
 - Notify outcome
 
 ### Microservice Orchestration
+
 - Coordinate multiple microservices
 - Handle partial failures
 - Implement saga pattern

@@ -1,4 +1,4 @@
-(**
+﻿(**
 ---
 title: Lambda Production Defaults
 category: AWS Lambda
@@ -170,6 +170,7 @@ stack "CustomDLQStack" {
 Created by AWS Principal Engineer **Heitor Lessa**, Lambda Powertools delivers the structured logging, metrics, and tracing helpers showcased in the **Powertools Live Workshops** (average rating 4.9★). FsCDK automatically layers these utilities so your handlers follow the same blueprint Heitor presents in re:Invent sessions.
 
 ### Key capabilities
+
 - Structured logging with correlation IDs
 - Custom metrics without manual CloudWatch API calls
 - X-Ray-compatible tracing helpers
@@ -563,6 +564,7 @@ productionApp.Synth() |> ignore
 - Retain JSON logging to unlock Logs Insights, OpenSearch, and external observability platforms.
 
 ### DON’T
+
 - Remove concurrency limits without validated traffic modelling; it’s the fastest path to bill shock.
 - Disable DLQs or you’ll lose the audit trail needed during incidents.
 - Turn off X-Ray in production unless compliance requires it—the overhead is minimal.

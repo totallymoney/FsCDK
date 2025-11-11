@@ -1,4 +1,4 @@
-(**
+﻿(**
 ---
 title: Complete Feature Reference
 category: docs
@@ -12,6 +12,7 @@ Comprehensive reference of all AWS services and features available in FsCDK.
 ## Core Framework
 
 ### Stack and Application
+
 - **Stack Builder** - Define CloudFormation stacks with type-safe DSL
 - **App** - CDK application configuration
 - **Environment** - AWS account/region configuration
@@ -25,6 +26,7 @@ Documentation: [Getting Started](getting-started-extended.html)
 ## Compute Services
 
 ### ![AWS Lambda](img/icons/Arch_AWS-Lambda_48.png) AWS Lambda
+
 - Lambda Functions with production-safe defaults
 - Docker Image Functions
 - Lambda Powertools integration
@@ -41,6 +43,7 @@ Documentation:
 - [Lambda Powertools](lambda-powertools.html)
 
 ### Containers
+
 - **ECS** - Container orchestration with Fargate support
 - **EKS** - Kubernetes cluster management
 - **App Runner** - Fully managed container service
@@ -52,6 +55,7 @@ Documentation:
 - [ECR Repository](ecr-repository.html)
 
 ### Virtual Machines
+
 - **EC2** - Virtual machine configuration
 - **Bastion Host** - Secure SSH access
 - **Elastic Beanstalk** - PaaS for applications
@@ -63,6 +67,7 @@ Documentation: [Bastion Host](bastion-host.html)
 ## Networking
 
 ### VPC and Networking
+
 - **VPC** - Virtual Private Cloud with Multi-AZ support
 - **Subnets** - Subnet selection and configuration
 - **Security Groups** - Least-privilege security
@@ -77,6 +82,7 @@ Features:
 - Security groups with no outbound by default
 
 ### Load Balancing
+
 - **Application Load Balancer (ALB)** - HTTP/HTTPS load balancer
   - HTTP/2 support
   - Drop invalid headers
@@ -89,6 +95,7 @@ Documentation:
 - [Network Load Balancer](network-load-balancer.html)
 
 ### DNS
+
 - **Route53** - DNS service
 - **Route53 Record Set** - DNS record management
 
@@ -97,6 +104,7 @@ Documentation:
 ## API Services
 
 ### API Gateway
+
 - **API Gateway V2 (HTTP API)** - Low-latency HTTP API
   - CORS support
   - JWT/Lambda authorizers
@@ -106,6 +114,7 @@ Documentation:
 Documentation: [API Gateway V2](api-gateway-v2.html)
 
 ### GraphQL
+
 - **AppSync** - Managed GraphQL API
   - GraphQL subscriptions
   - X-Ray tracing
@@ -113,6 +122,7 @@ Documentation: [API Gateway V2](api-gateway-v2.html)
   - Real-time updates
 
 ### Content Delivery
+
 - **CloudFront** - Global CDN
   - HTTP/2 support
   - TLS 1.2 minimum
@@ -124,6 +134,7 @@ Documentation: [API Gateway V2](api-gateway-v2.html)
 ## Storage Services
 
 ### ![Amazon S3](img/icons/Arch_Amazon-Simple-Storage-Service_48.png) Object Storage
+
 - **S3 Buckets** - Secure object storage
   - Versioning
   - Encryption (KMS)
@@ -141,6 +152,7 @@ Documentation:
 ## Database Services
 
 ### ![Amazon DynamoDB](img/icons/Arch_Amazon-DynamoDB_48.png) NoSQL
+
 - **DynamoDB** - Serverless NoSQL database
   - **Production defaults**: PAY_PER_REQUEST billing, PITR enabled
   - **Global Secondary Indexes (GSIs)** - Single-table design support
@@ -155,6 +167,7 @@ Documentation:
 Documentation: [DynamoDB](dynamodb.html)
 
 ### ![Amazon RDS](img/icons/Arch_Amazon-RDS_48.png) Relational
+
 - **RDS** - Managed relational databases
   - PostgreSQL, MySQL, MariaDB
   - Oracle, SQL Server
@@ -167,9 +180,11 @@ Documentation: [DynamoDB](dynamodb.html)
 Documentation: [RDS Database](rds-database.html)
 
 ### Document Database
+
 - **DocumentDB** - MongoDB-compatible database
 
 ### Caching
+
 - **ElastiCache** - Redis/Memcached caching
 
 ---
@@ -177,6 +192,7 @@ Documentation: [RDS Database](rds-database.html)
 ## Messaging and Events
 
 ### ![SNS](img/icons/Arch_Amazon-Simple-Notification-Service_48.png) Messaging
+
 - **SNS** - Pub/sub messaging
   - Standard and FIFO topics
   - Multiple subscription types
@@ -189,6 +205,7 @@ Documentation: [RDS Database](rds-database.html)
 Documentation: [SNS and SQS Messaging](sns-sqs-messaging.html)
 
 ### ![EventBridge](img/icons/Arch_Amazon-EventBridge_48.png) Event Processing
+
 - **EventBridge** - Event-driven architecture
   - Scheduled events (cron)
   - Event patterns
@@ -206,6 +223,7 @@ Documentation:
 ## Orchestration
 
 ### ![Step Functions](img/icons/Arch_AWS-Step-Functions_48.png) Workflows
+
 - **Step Functions** - State machine orchestration
   - Standard and Express workflows
   - X-Ray tracing
@@ -220,6 +238,7 @@ Documentation: [Step Functions](step-functions.html)
 ## Security and Identity
 
 ### Authentication and Authorization
+
 - **Cognito** - User authentication
   - User Pools
   - Strong password policies
@@ -227,6 +246,7 @@ Documentation: [Step Functions](step-functions.html)
   - Social identity providers
 
 ### Encryption and Secrets
+
 - **KMS** - Key management
 - **Secrets Manager** - Secure credential storage with multi-region replication
 - **Certificate Manager** - SSL/TLS certificates
@@ -236,6 +256,7 @@ Documentation:
 - [Certificate Manager](certificate-manager.html)
 
 ### Audit and Compliance
+
 - **CloudTrail** - API audit logging (NEW)
   - Multi-region trails by default
   - Global service events (IAM, STS, CloudFront)
@@ -246,6 +267,7 @@ Documentation:
 Documentation: [CloudTrail Audit Logging](cloudtrail-audit-logging.html)
 
 ### IAM
+
 - **IAM Roles** - Identity and access management
 - **Policy Statements** - Fine-grained permissions
 - **Managed Policies** - Reusable policies
@@ -261,23 +283,27 @@ Documentation:
 ## Monitoring and Observability
 
 ### Logging
+
 - **CloudWatch Logs** - Log management
   - Retention policies
   - Log groups
   - Structured logging
 
 ### Metrics and Dashboards
+
 - **CloudWatch Dashboard** - Metrics visualization
 
 Documentation: [CloudWatch Dashboard](cloudwatch-dashboard.html)
 
 ### Tracing
+
 - **X-Ray** - Distributed tracing
   - Enabled by default on Lambda
   - Step Functions integration
   - AppSync integration
 
 ### Monitoring
+
 - **CloudWatch Synthetics** - Canary monitoring
 
 ---
@@ -287,6 +313,7 @@ Documentation: [CloudWatch Dashboard](cloudwatch-dashboard.html)
 FsCDK emphasizes **security and reliability by default**:
 
 ### Lambda
+
 - X-Ray tracing enabled
 - Structured JSON logging
 - Auto-DLQ creation
@@ -295,6 +322,7 @@ FsCDK emphasizes **security and reliability by default**:
 - 90-day log retention
 
 ### VPC
+
 - Multi-AZ by default
 - DNS enabled
 - Cost-optimized NAT gateways
@@ -302,15 +330,18 @@ FsCDK emphasizes **security and reliability by default**:
 - ONE_WEEK CloudWatch retention
 
 ### Security Groups
+
 - No outbound traffic by default
 - Least privilege principle
 
 ### IAM
+
 - **Wildcard validation** - Fails on `"*"` actions + `"*"` resources (NEW)
 - Warnings on individual wildcards
 - Least privilege enforcement
 
 ### RDS
+
 - **Storage encryption enabled by default** (NEW)
 - **Deletion protection enabled** (NEW)
 - **IAM authentication enabled** (NEW)
@@ -320,35 +351,42 @@ FsCDK emphasizes **security and reliability by default**:
 - Auto minor version upgrades
 
 ### DynamoDB
+
 - **AWS_MANAGED encryption by default** (NEW)
 - **Point-in-Time Recovery enabled** (NEW)
 - PAY_PER_REQUEST billing
 
 ### S3
+
 - Block public access
 - KMS encryption
 - Versioning opt-in
 
 ### ALB
+
 - Internal by default
 - HTTP/2 enabled
 - Drop invalid headers
 
 ### ECS/EKS
+
 - Container Insights enabled
 - Comprehensive logging
 - Latest versions
 
 ### Step Functions
+
 - X-Ray tracing enabled
 - Full logging (ALL level)
 - Timeout protection
 
 ### Kinesis
+
 - Encryption enabled
 - 24-hour retention
 
 ### ECR
+
 - Image scan on push
 - Lifecycle policies
 - Encryption
@@ -381,6 +419,7 @@ resourceType "name" {
 ## Comparison to Alternatives
 
 ### vs Farmer
+
 - FsCDK uses AWS CDK (industry standard)
 - Access to all AWS services
 - Better CloudFormation compatibility
@@ -389,6 +428,7 @@ resourceType "name" {
 Documentation: [Comparison to Farmer](comparison-to-farmer.html)
 
 ### vs CDK (TypeScript/Python)
+
 - Type-safe F# syntax
 - Functional programming patterns
 - Better defaults (security-first)
@@ -400,16 +440,19 @@ Documentation: [Comparison to Farmer](comparison-to-farmer.html)
 ## Examples and Guides
 
 ### Quickstart Guides
+
 - [Getting Started Extended](getting-started-extended.html)
 - [Lambda Quickstart](lambda-quickstart.html)
 - [S3 Quickstart](s3-quickstart.html)
 
 ### Patterns and Best Practices
+
 - [Multi-Tier Example](multi-tier-example.html)
 - [IAM Best Practices](iam-best-practices.html)
 - [Lambda Production Defaults](lambda-production-defaults.html)
 
 ### Service-Specific Guides
+
 - [ALB, Secrets, Route53](alb-secrets-route53.html)
 - [ECS/EC2](ec2-ecs.html)
 - [EKS/Kubernetes](eks-kubernetes.html)
@@ -424,6 +467,7 @@ Documentation: [Comparison to Farmer](comparison-to-farmer.html)
 - [Network Load Balancer](network-load-balancer.html)
 
 ### New Features (Recently Added)
+
 - [API Gateway V2 (HTTP API)](api-gateway-v2.html)
 - [ECR Repository](ecr-repository.html)
 - [Step Functions](step-functions.html)

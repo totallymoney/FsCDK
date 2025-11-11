@@ -1,4 +1,4 @@
-(**
+﻿(**
 ---
 title: RDS Relational Databases
 category: docs
@@ -199,18 +199,21 @@ FsCDK supports all RDS database engines:
 ## Instance Classes
 
 ### Burstable (T3)
+
 - **Use**: Dev/test, small workloads
 - **Cost**: Low
 - **Performance**: Burstable CPU
 - **Examples**: t3.micro, t3.small, t3.medium
 
 ### General Purpose (M5)
+
 - **Use**: Production, balanced workloads
 - **Cost**: Medium
 - **Performance**: Consistent CPU
 - **Examples**: m5.large, m5.xlarge, m5.2xlarge
 
 ### Memory Optimized (R5)
+
 - **Use**: Large datasets, high concurrency
 - **Cost**: High
 - **Performance**: High memory, consistent CPU
@@ -229,6 +232,7 @@ FsCDK supports all RDS database engines:
 ## Backup and Recovery
 
 ### Automated Backups
+
 - Daily full snapshot
 - Transaction logs every 5 minutes
 - Retention: 1-35 days
@@ -236,6 +240,7 @@ FsCDK supports all RDS database engines:
 - No performance impact
 
 ### Manual Snapshots
+
 - User-initiated
 - Retained until manually deleted
 - Can copy across regions

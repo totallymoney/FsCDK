@@ -243,6 +243,7 @@ Log all ops with CloudTrail.
 2. Verify access logs.
 
 ## Further Learning
+
 - [KMS Deep Dive (4.8 rating)](https://www.youtube.com/watch?v=EDygwIgxCfo) - 120k views.
 - MacCárthaigh's [Crypto Blog](https://maccg.com/posts/aws-crypto).
 *)

@@ -1,4 +1,4 @@
-(**
+﻿(**
 ---
 title: DynamoDB Tables
 category: docs
@@ -315,6 +315,7 @@ Run this checklist for every new table or major schema change to align with expe
 ## Billing Modes
 
 ### PAY_PER_REQUEST (On-Demand)
+
 - No capacity planning required
 - Pay per request
 - Great for unpredictable workloads
@@ -322,6 +323,7 @@ Run this checklist for every new table or major schema change to align with expe
 - Automatically scales
 
 ### PROVISIONED
+
 - Pre-provision read/write capacity
 - Lower cost for consistent workloads
 - Requires capacity planning

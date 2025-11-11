@@ -12,11 +12,13 @@ Amazon S3 is the cornerstone of cloud storage, offering 99.999999999% durability
 Perfect for beginners and experts, this portal emphasizes security-first defaults in FsCDK while teaching real-world best practices.
 
 ## Features Demonstrated in FsCDK
+
 - Automatic KMS encryption and public access blocking.
 - Versioning, lifecycle rules, and tagging for management.
 - Integration with CDK for infrastructure as code.
 
 ## Prerequisites
+
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/cli.html) (`npm install -g aws-cdk`)
 - AWS credentials for deployment.
@@ -65,14 +67,17 @@ See [examples/s3-quickstart](https://github.com/Thorium/FsCDK/tree/main/examples
 From Ben Kehoe's blogs and Yan Cui's serverless patterns.
 
 ### Security
+
 - Use bucket policies over ACLs (Kehoe advice).
 - Enable Macie for sensitive data detection.
 
 ### Cost Optimization
+
 - Intelligent-Tiering for auto-savings.
 - Lifecycle to Glacier for archives.
 
 ### Performance
+
 - Multipart uploads for large files.
 - Transfer Acceleration for global speed.
 
@@ -95,6 +100,7 @@ From Ben Kehoe's blogs and Yan Cui's serverless patterns.
 3. Optimize for a 1TB dataset.
 
 ## Next Steps
+
 - Integrate with [Lambda](lambda-quickstart.html).
 - Study [IAM](iam-best-practices.html).
 - Apply [Well-Architected](https://aws.amazon.com/architecture/well-architected/).

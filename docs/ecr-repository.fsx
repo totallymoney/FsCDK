@@ -1,4 +1,4 @@
-(**
+﻿(**
 ---
 title: ECR Repository (Container Registry)
 category: docs
@@ -281,11 +281,13 @@ The ECR repository builder applies these secure defaults:
 ## Tag Mutability
 
 ### MUTABLE (Default)
+
 - Allows pushing images with existing tags
 - Useful for development (e.g., `latest`, `dev`)
 - Flexible but less traceable
 
 ### IMMUTABLE
+
 - Prevents overwriting existing tags
 - Required for production compliance
 - Better audit trail and traceability

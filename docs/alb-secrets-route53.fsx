@@ -197,11 +197,11 @@ cdk destroy # Tear down when finished
 ```
 
 ### Further learning (highly-rated resources)
-- **re:Invent NET406** – Best practices for Application Load Balancers (4.8★ session rating).
-- **AWS Security Blog** – “Simplify and automate SSL/TLS for Application Load Balancers.”
-- **AWS Architecture Blog** – “Designing secure remote access with bastion hosts and ALB.”
-- **Becky Weiss – Optimizing DNS with Route 53** – re:Invent video with 100k+ views and 4.8★ feedback.
-- **AWS Builders Library** – “Automating safe, hands-off deployments.”
+- **[re:Invent NET406 – Best practices for Application Load Balancers](https://www.youtube.com/results?search_query=aws+reinvent+NET406+application+load+balancer)** (4.8★ session rating).
+- **[AWS Security Blog](https://aws.amazon.com/blogs/security/)** – “Simplify and automate SSL/TLS for Application Load Balancers.”
+- **[AWS Architecture Blog](https://aws.amazon.com/blogs/architecture/)** – “Designing secure remote access with bastion hosts and ALB.”
+- **[Becky Weiss – Optimizing DNS with Route 53](https://www.youtube.com/results?search_query=aws+reinvent+route53+becky+weiss)** – re:Invent video with 100k+ views and 4.8★ feedback.
+- **[AWS Builders Library](https://aws.amazon.com/builders-library/automating-safe-hands-off-deployments/)** – “Automating safe, hands-off deployments.”
 
 Adopt these guard rails, document exceptions, and capture metrics so your ingress layer remains resilient, observable, and easy to evolve.
 *)

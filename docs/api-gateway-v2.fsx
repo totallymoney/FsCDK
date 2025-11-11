@@ -217,10 +217,10 @@ FsCDK’s builder defaults—auto-deployed `$default` stage, throttling, and dis
 
 ## Further learning
 
-- **Jeremy Daly – Serverless Chats Ep.133: Event-driven API design** (4.9★)
-- **Yan Cui – “HTTP APIs best practices”** blog series
-- **re:Invent ARC406 – Building resilient APIs with API Gateway**
-- **AWS API Gateway Security Workshop** (Hands-on labs)
+- **[Jeremy Daly – Serverless Chats Ep.133: Event-driven API design](https://www.serverlesschats.com/133)** (4.9★)
+- **[Yan Cui – "HTTP APIs best practices" blog series](https://theburningmonk.com/)**
+- **[re:Invent ARC406 – Building resilient APIs with API Gateway](https://www.youtube.com/results?search_query=aws+reinvent+ARC406+api+gateway)**
+- **[AWS API Gateway Security Workshop](https://catalog.workshops.aws/apigateway-security/en-US)** (Hands-on labs)
 - **AWS Docs** – [HTTP API developer guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html)
 
 Combine these resources with the FsCDK notebooks ([Lambda Production Defaults](lambda-production-defaults.html), [EventBridge](eventbridge.html), [IAM Best Practices](iam-best-practices.html)) to deliver secure, observable APIs with confidence.
