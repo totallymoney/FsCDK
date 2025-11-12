@@ -18,6 +18,8 @@ FsCDK is an F# library for the AWS Cloud Development Kit (CDK), enabling you to 
 - **Immutable Infrastructure**: Define your infrastructure using immutable constructs, promoting reliable and predictable deployments
 - **IDE Support**: Excellent tooling support with type hints and IntelliSense in your favorite F# IDE
 
+![Why FsCDK?](/docs/img/Why-FsCDK.png)
+
 ## Quick Start
 
 1) Install the package:
