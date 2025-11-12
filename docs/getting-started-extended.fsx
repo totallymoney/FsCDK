@@ -1,4 +1,4 @@
-﻿(**
+(**
 ---
 title: Getting Started with FsCDK - Extended Features
 category: docs
@@ -147,6 +147,10 @@ cloudFrontDistribution "MyCDN" {
 - Cost-optimized for common use cases
 
 ## Complete Application Stack
+
+![FsCDK Stack Architecture](img/FsCDK-Stack.png)
+
+*FsCDK App structure showing multiple stacks with constructs organized hierarchically. Each stack contains AWS resources (S3, Lambda, EC2) managed by your infrastructure-as-code heroes!*
 
 Here's how to combine everything into a production-ready stack:
 *)

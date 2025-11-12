@@ -7,6 +7,8 @@ index: 1
 
 # ![IAM](img/icons/Arch_AWS-Identity-and-Access-Management_48.png) IAM (Identity and Access Management) Best Practices for FsCDK
 
+![IAM Authorization](img/IAM-authorize.png)
+
 AWS Identity and Access Management (IAM) is the foundation of AWS security. As AWS Hero Ben Kehoe states: "IAM isn't complicated—it's just misunderstood." This portal enhances FsCDK's IAM docs with insights from heroes like Ben Kehoe, Scott Piper, and Yan Cui. Includes narratives, checklists, drills, and resources (4.5+ rated, highly viewed).
 
 ## Principle of Least Privilege

@@ -7,6 +7,8 @@ index: 32
 
 # AWS Cost Optimization Strategies
 
+![AWS Cost Optimization](img/AWS-cost-optimization.png)
+
 Price estimates based on November 2025.
 Practical approaches to reduce infrastructure costs while maintaining security and functionality.
 

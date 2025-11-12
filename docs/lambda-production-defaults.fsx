@@ -1,4 +1,4 @@
-﻿(**
+(**
 ---
 title: Lambda Production Defaults
 category: AWS Lambda
@@ -8,6 +8,8 @@ description: Production-safe defaults for AWS Lambda functions based on Yan Cui'
 ---
 
 # ![Lambda](img/icons/Arch_AWS-Lambda_48.png) Lambda production defaults
+
+![Lambda Production Defaults](img/FsCDK-lambda-production-defaults.png)
 
 FsCDK bakes in the guidance from AWS Heroes **Yan Cui**, **Heitor Lessa**, and **Alex Casalboni**, along with the **AWS Lambda Operator Guide**, so every function starts production-ready without additional wiring.
 

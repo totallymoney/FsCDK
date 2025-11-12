@@ -116,6 +116,8 @@ stack "Prod" {
 
 ## Why FsCDK?
 
+![Why FsCDK](img/Why-FsCDK.png)
+
 **Production-Safe Defaults**
 
 - Implements [Yan Cui's serverless best practices](https://theburningmonk.com/) by default
