@@ -516,6 +516,34 @@ rdsInstance "HealthDatabase" {
 }
 
 (**
+## OWASP Top 10 Applied to AWS Infrastructure
+
+The OWASP Top 10 (https://owasp.org/www-project-top-ten/) defines critical web application security risks. Here's how they map to AWS infrastructure and FsCDK protections:
+
+| OWASP Risk | AWS Context | FsCDK Protection |
+|------------|-------------|------------------|
+| **A01: Broken Access Control** | IAM too permissive, public S3 | Blocks wildcard actions+resources, private S3 default |
+| **A02: Cryptographic Failures** | Unencrypted data, no TLS | RDS/DynamoDB encryption enabled, HTTPS enforced |
+| **A03: Injection** | SQL/command injection | IAM DB auth, parameterized queries, AWS WAF |
+| **A05: Security Misconfiguration** | Public S3, open security groups | Secure defaults, deny-by-default security groups |
+| **A07: Broken Authentication** | Weak passwords, no MFA | Cognito password policies, MFA enforcement |
+| **A08: Integrity Failures** | Compromised packages | ECR image scanning, Lambda code signing |
+| **A09: Logging Failures** | No CloudTrail/GuardDuty | X-Ray tracing, CloudWatch logs, audit trails |
+
+**OWASP Serverless Top 10 for Lambda:**
+1. Injection flaws → validate inputs
+2. Broken authentication → use Cognito authorizers
+3. Sensitive data exposure → encrypt with KMS
+4. Broken access control → IAM resource policies
+5. Security misconfiguration → FsCDK secure defaults
+6. Over-privileged permissions → FsCDK blocks wildcards
+7. Inadequate logging → enable X-Ray tracing
+8. Business logic manipulation → validate state transitions
+9. Improper exception handling → don't leak secrets in errors
+10. DoS attacks → use reserved concurrency limits
+
+Reference: OWASP Serverless Top 10 (https://owasp.org/www-project-serverless-top-10/)
+
 ## Operational Checklist
 Use this before prod deploys (inspired by Piper's audits):
 1. Validate policies with IAM Access Analyzer.
@@ -833,5 +861,6 @@ For implementation details, see [src/IAM.fs](../src/IAM.fs) and [src/Grants.fs](
 - [AWS Security Best Practices](https://aws.amazon.com/architecture/security-identity-compliance/)
 - [Yan Cui's Serverless Security Best Practices](https://theburningmonk.com/)
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [Have I Been Pwned](https://haveibeenpwned.com/) - Troy Hunt's breach notification service.
 - [CIS AWS Foundations Benchmark](https://www.cisecurity.org/benchmark/amazon_web_services)
 *)

@@ -51,34 +51,40 @@ open Amazon.CDK.AWS.Config
 (**
 
 **Management Account** (root)
+
 - Minimal resources
 - Only organizational management
 - Never run production workloads
 - Enable CloudTrail, Config, GuardDuty
 
 **Security Account**
+
 - Centralized security tooling
 - Security Hub aggregation
 - GuardDuty master
 - CloudTrail log aggregation
 
 **Log Archive Account**
+
 - Immutable audit logs
 - S3 buckets with Vault Lock
 - Read-only access for auditors
 
 **Shared Services Account**
+
 - Active Directory
 - DNS (Route53 Resolver)
 - Shared container registries
 - Transit Gateway hub
 
 **Production Account(s)**
+
 - Production workloads only
 - Separate account per application/team
 - Strict change control
 
 **Development/Staging Accounts**
+
 - Separate from production
 - Relaxed policies for experimentation
 - Automated cleanup scripts
@@ -228,6 +234,7 @@ Implement these rules for baseline security posture:
 **Required Config Rules by Framework:**
 
 **PCI DSS:**
+
 - encrypted-volumes (Requirement 3.4)
 - rds-storage-encrypted (Requirement 3.4)
 - s3-bucket-public-read-prohibited (Requirement 1.2.1)
@@ -236,12 +243,14 @@ Implement these rules for baseline security posture:
 - cloudtrail-enabled (Requirement 10.2)
 
 **HIPAA:**
+
 - encrypted-volumes (164.312(a)(2)(iv))
 - rds-storage-encrypted (164.312(a)(2)(iv))
 - s3-bucket-ssl-requests-only (164.312(e)(1))
 - access-keys-rotated (164.308(a)(5)(ii)(D))
 
 **SOC 2:**
+
 - cloudtrail-enabled (CC7.2)
 - iam-user-unused-credentials-check (CC6.2)
 - multi-region-cloudtrail-enabled (CC7.2)
@@ -254,6 +263,7 @@ Reference: AWS Config Conformance Packs (https://docs.aws.amazon.com/config/late
 AWS Config supports automatic remediation using Systems Manager Automation documents. This reduces manual toil and compliance drift.
 
 Example remediations:
+
 - Enable S3 encryption automatically
 - Attach required tags to resources
 - Revoke overly permissive security group rules
@@ -270,6 +280,7 @@ Resource tagging enables cost allocation, access control, and compliance trackin
 Based on AWS Tagging Best Practices and implementations at AWS customers:
 
 **Required Tags:**
+
 - `Environment`: dev, staging, production
 - `Owner`: Team or individual responsible
 - `CostCenter`: Billing allocation code
@@ -277,6 +288,7 @@ Based on AWS Tagging Best Practices and implementations at AWS customers:
 - `Compliance`: Compliance requirements (pci, hipaa, sox)
 
 **Optional but Recommended:**
+
 - `Project`: Project code for tracking
 - `DataClassification`: public, internal, confidential, restricted
 - `BackupPolicy`: Backup retention requirements
@@ -360,12 +372,14 @@ Reference: AWS Control Tower documentation (https://docs.aws.amazon.com/controlt
 ### When to Use Control Tower
 
 **Use Control Tower if:**
+
 - Starting fresh AWS organization
 - Need standardized account vending
 - Want AWS-managed governance baseline
 - Have limited AWS expertise
 
 **Don't use Control Tower if:**
+
 - Existing complex organizational structure
 - Custom governance requirements
 - Need more flexibility than guardrails provide
@@ -401,11 +415,13 @@ From "Cloud FinOps" by J.R. Storment and Mike Fuller (O'Reilly, 2019):
 AWS provides PCI DSS Level 1 infrastructure. You inherit infrastructure controls but must implement application-level controls.
 
 **Inherited Controls:**
+
 - Physical security (9.1)
 - Network security (1.2)
 - Monitoring and testing (11.4)
 
 **Your Responsibility:**
+
 - Access control (7.1, 7.2)
 - Data encryption (3.4)
 - Logging (10.2, 10.3)
@@ -418,12 +434,14 @@ Reference: AWS PCI DSS Compliance documentation (https://aws.amazon.com/complian
 AWS is HIPAA eligible. You must sign a Business Associate Agreement (BAA) and implement technical safeguards.
 
 **Required Technical Safeguards:**
+
 - Access controls (164.312(a)(1))
 - Audit controls (164.312(b))
 - Integrity controls (164.312(c)(1))
 - Transmission security (164.312(e)(1))
 
 **Recommended AWS Services for HIPAA:**
+
 - Amazon RDS (encrypted)
 - Amazon S3 (encrypted, access logging)
 - Amazon DynamoDB (encrypted)
@@ -437,12 +455,14 @@ Reference: AWS HIPAA Compliance whitepaper (https://docs.aws.amazon.com/whitepap
 Sarbanes-Oxley requires controls over financial data. AWS Config and CloudTrail provide audit evidence.
 
 **Key SOX Controls:**
+
 - Change management (Section 404)
 - Access controls (Section 404)
 - Data retention (Section 802)
 - Audit trail integrity (Section 802)
 
 **Implementation:**
+
 - Enable CloudTrail in all accounts
 - Enable MFA for all IAM users
 - Implement AWS Config rules
@@ -454,6 +474,7 @@ Sarbanes-Oxley requires controls over financial data. AWS Config and CloudTrail 
 General Data Protection Regulation requires data protection controls and data residency.
 
 **GDPR Requirements:**
+
 - Right to be forgotten (Article 17)
 - Data portability (Article 20)
 - Breach notification (Article 33)
@@ -461,6 +482,7 @@ General Data Protection Regulation requires data protection controls and data re
 - Data processing agreements (Article 28)
 
 **AWS Services for GDPR:**
+
 - Use region restriction SCPs
 - Enable CloudTrail for audit trail (Article 30)
 - Implement S3 lifecycle policies for deletion
@@ -514,6 +536,7 @@ Security Hub aggregates findings from GuardDuty, Inspector, Config, and third-pa
 **Solution**: Multi-account strategy with Control Tower and SCPs
 
 **Implementation:**
+
 1. Migrated to AWS Organizations with OU structure
 2. Applied SCPs preventing security service disablement
 3. Enabled AWS Config in all accounts with conformance packs
@@ -522,6 +545,7 @@ Security Hub aggregates findings from GuardDuty, Inspector, Config, and third-pa
 6. Enabled mandatory tagging for cost allocation
 
 **Results:**
+
 - Passed PCI DSS audit on first attempt
 - Reduced compliance team workload by 60%
 - Achieved 99.8% resource compliance rate
@@ -572,6 +596,7 @@ Governance services cost breakdown:
 **Total governance cost**: $500-2000/month for 10-50 accounts
 
 **Savings from governance**:
+
 - Avoid compliance fines: $10K-$1M+ per violation
 - Reduce manual audit work: 100-400 hours/year saved
 - Prevent security breaches: Average breach cost $4.45M (IBM Security Report)
@@ -580,24 +605,29 @@ Governance services cost breakdown:
 ## Additional Resources
 
 **AWS Official Documentation:**
+
 - AWS Organizations User Guide: https://docs.aws.amazon.com/organizations/
 - AWS Config Developer Guide: https://docs.aws.amazon.com/config/
 - AWS Control Tower User Guide: https://docs.aws.amazon.com/controltower/
 
 **AWS Whitepapers:**
+
 - Organizing Your AWS Environment: https://docs.aws.amazon.com/whitepapers/latest/organizing-your-aws-environment/
 - AWS Security Best Practices: https://docs.aws.amazon.com/whitepapers/latest/aws-security-best-practices/
 
 **Community Resources:**
+
 - AWS re:Inforce 2024 - Governance at Scale (GRC301)
 - AWS Security Blog: https://aws.amazon.com/blogs/security/
 - CIS AWS Foundations Benchmark: https://www.cisecurity.org/benchmark/amazon_web_services
 
 **Books:**
+
 - "Cloud FinOps" by J.R. Storment and Mike Fuller (O'Reilly)
 - "AWS Security" by Dylan Shield (Manning)
 
 **Expert Blogs:**
+
 - Scott Piper (AWS Security): https://summitroute.com/blog/
 - Chris Farris (AWS Governance): https://www.chrisfarris.com/
 - AWS Security Maturity Model: https://maturitymodel.security.aws.dev/

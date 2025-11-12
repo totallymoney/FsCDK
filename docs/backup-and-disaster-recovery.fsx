@@ -568,21 +568,25 @@ Reference: AWS Cost Optimization Pillar (https://docs.aws.amazon.com/wellarchite
 Common compliance frameworks and their DR requirements:
 
 **PCI DSS**
+
 - Requirement 3.1: Retain backups with cardholder data
 - Requirement 9.5: Physically secure backup media
 - Requirement 10.5: Protect audit trail backups
 
 **HIPAA**
+
 - 164.308(a)(7)(i): Contingency plan required
 - 164.308(a)(7)(ii)(A): Data backup plan
 - 164.308(a)(7)(ii)(B): Disaster recovery plan
 - 164.308(a)(7)(ii)(C): Emergency mode operation plan
 
 **SOX**
+
 - Section 404: Financial data retention (7 years)
 - Immutable backups for audit trail integrity
 
 **ISO 27001**
+
 - A.12.3.1: Information backup procedures
 - A.17.1.2: Business continuity procedures
 - A.17.1.3: Verify, review, evaluate continuity
@@ -590,6 +594,7 @@ Common compliance frameworks and their DR requirements:
 ## Real-World Case Study: AWS US-EAST-1 Outage
 
 **US-EAST-1 Outage (December 2021)**
+
 - Caused by network device failure
 - Affected major services for 7+ hours
 - Companies with multi-region setups remained operational
@@ -602,20 +607,24 @@ Reference: AWS Post-Event Summaries (https://aws.amazon.com/message/12721/)
 ## Additional Resources
 
 **AWS Official Documentation:**
+
 - AWS Backup Developer Guide: https://docs.aws.amazon.com/aws-backup/
 - RDS Backup and Restore: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_CommonTasks.BackupRestore.html
 - DynamoDB Backup and Restore: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/BackupRestore.html
 
 **AWS Whitepapers:**
+
 - Disaster Recovery on AWS: https://docs.aws.amazon.com/whitepapers/latest/disaster-recovery-workloads-on-aws/
 - AWS Well-Architected Framework - Reliability Pillar: https://docs.aws.amazon.com/wellarchitected/latest/reliability-pillar/
 
 **Community Resources:**
+
 - AWS re:Invent 2023 - Disaster Recovery Best Practices (DOP326)
 - Corey Quinn, "The AWS Morning Brief" podcast episodes on DR
 - Adrian Hornsby (AWS Principal Evangelist) "Chaos Engineering" blog series
 
 **Books:**
+
 - "AWS System Administration" by Michael Wittig and Andreas Wittig (O'Reilly)
 - "Implementing AWS Disaster Recovery" (Packt Publishing)
 
