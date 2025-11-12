@@ -342,8 +342,8 @@ AWS defines four disaster recovery strategies, each with different costs and com
 
 Lowest cost option. Take periodic backups and restore when needed.
 
-**Cost**: Low (backup storage only, ~$0.05/GB/month)  
-**Complexity**: Low  
+**Cost**: Low (backup storage only, ~$0.05/GB/month)
+**Complexity**: Low
 **Best for**: Development, non-critical workloads
 
 Implementation: Use RDS automated backups and DynamoDB on-demand backups.
@@ -354,8 +354,8 @@ Reference: Werner Vogels (AWS CTO) - "Building Resilient Applications" (https://
 
 Maintain minimal version of environment running in DR region. Core infrastructure always on, but scaled down.
 
-**Cost**: Medium (minimal compute running continuously)  
-**Complexity**: Medium  
+**Cost**: Medium (minimal compute running continuously)
+**Complexity**: Medium
 **Best for**: Standard production workloads
 
 *)
@@ -387,8 +387,8 @@ During disaster, scale up the instance class to production size.
 
 Scaled-down but fully functional version runs in DR region.
 
-**Cost**: Medium-High (continuous smaller environment)  
-**Complexity**: Medium-High  
+**Cost**: Medium-High (continuous smaller environment)
+**Complexity**: Medium-High
 **Best for**: Business-critical workloads
 
 *)
@@ -427,8 +427,8 @@ stack "WarmStandby" {
 
 Full environment runs in multiple regions simultaneously.
 
-**Cost**: High (full duplicate infrastructure)  
-**Complexity**: High  
+**Cost**: High (full duplicate infrastructure)
+**Complexity**: High
 **Best for**: Mission-critical, 99.99%+ SLA requirements
 
 Used by Netflix, Airbnb, and other companies requiring five-nines availability.
@@ -565,7 +565,7 @@ Reference: AWS Cost Optimization Pillar (https://docs.aws.amazon.com/wellarchite
 
 ## Compliance Mapping
 
-Common compliance frameworks and their DR requirements:
+Common compliance frameworks and their DR requirements. For comprehensive governance controls and compliance automation, see the [Governance and Compliance with AWS Organizations](governance-compliance-aws-organizations.html) guide.
 
 **PCI DSS**
 

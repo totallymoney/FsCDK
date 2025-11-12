@@ -450,6 +450,8 @@ AWS is HIPAA eligible. You must sign a Business Associate Agreement (BAA) and im
 
 Reference: AWS HIPAA Compliance whitepaper (https://docs.aws.amazon.com/whitepapers/latest/architecting-hipaa-security-and-compliance-on-aws/)
 
+For disaster recovery and backup strategies required by HIPAA 164.308(a)(7), see the [Backup and Disaster Recovery](backup-and-disaster-recovery.html) guide.
+
 ### SOX Compliance
 
 Sarbanes-Oxley requires controls over financial data. AWS Config and CloudTrail provide audit evidence.
