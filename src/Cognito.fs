@@ -505,6 +505,144 @@ type UserPoolClientBuilder(name: string) =
             IdTokenValidity = Some idToken }
 
 // ============================================================================
+// Cognito Resource Server Configuration DSL
+// ============================================================================
+
+type ResourceServerScope =
+    { ScopeName: string
+      ScopeDescription: string }
+
+type UserPoolResourceServerConfig =
+    { ResourceServerName: string
+      ConstructId: string option
+      UserPool: UserPoolRef option
+      Identifier: string option
+      Name: string option
+      Scopes: ResourceServerScope list }
+
+type UserPoolResourceServerSpec =
+    { ResourceServerName: string
+      ConstructId: string
+      Props: CfnUserPoolResourceServerProps
+      mutable ResourceServer: CfnUserPoolResourceServer option }
+
+    member this.Resource =
+        match this.ResourceServer with
+        | Some rs -> rs
+        | None ->
+            failwith
+                $"ResourceServer '{this.ResourceServerName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+
+type UserPoolResourceServerBuilder(name: string) =
+
+    member _.Yield _ : UserPoolResourceServerConfig =
+        { ResourceServerName = name
+          ConstructId = None
+          UserPool = None
+          Identifier = None
+          Name = None
+          Scopes = [] }
+
+    member _.Zero() : UserPoolResourceServerConfig =
+        { ResourceServerName = name
+          ConstructId = None
+          UserPool = None
+          Identifier = None
+          Name = None
+          Scopes = [] }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> UserPoolResourceServerConfig) : UserPoolResourceServerConfig =
+        f ()
+
+    member inline x.For
+        (
+            config: UserPoolResourceServerConfig,
+            [<InlineIfLambda>] f: unit -> UserPoolResourceServerConfig
+        ) : UserPoolResourceServerConfig =
+        x.Combine(config, f ())
+
+    member _.Combine(a: UserPoolResourceServerConfig, b: UserPoolResourceServerConfig) : UserPoolResourceServerConfig =
+        { ResourceServerName = a.ResourceServerName
+          ConstructId =
+            match a.ConstructId with
+            | Some _ -> a.ConstructId
+            | None -> b.ConstructId
+          UserPool =
+            match a.UserPool with
+            | Some _ -> a.UserPool
+            | None -> b.UserPool
+          Identifier =
+            match a.Identifier with
+            | Some _ -> a.Identifier
+            | None -> b.Identifier
+          Name =
+            match a.Name with
+            | Some _ -> a.Name
+            | None -> b.Name
+          Scopes = a.Scopes @ b.Scopes }
+
+    member _.Run(config: UserPoolResourceServerConfig) : UserPoolResourceServerSpec =
+        let constructId =
+            config.ConstructId |> Option.defaultValue config.ResourceServerName
+
+        let userPoolId =
+            match config.UserPool with
+            | Some pool -> (UserPoolHelpers.resolveUserPoolRef pool).UserPoolId
+            | None -> invalidArg "userPool" "User Pool is required for Resource Server"
+
+        let identifier = config.Identifier |> Option.defaultValue "api"
+        let name = config.Name |> Option.defaultValue config.ResourceServerName
+
+        let scopes =
+            config.Scopes
+            |> List.map (fun s ->
+                CfnUserPoolResourceServer.ResourceServerScopeTypeProperty(
+                    ScopeName = s.ScopeName,
+                    ScopeDescription = s.ScopeDescription
+                ))
+            |> List.toArray
+
+        let props =
+            CfnUserPoolResourceServerProps(
+                UserPoolId = userPoolId,
+                Identifier = identifier,
+                Name = name,
+                Scopes = scopes
+            )
+
+        { ResourceServerName = config.ResourceServerName
+          ConstructId = constructId
+          Props = props
+          ResourceServer = None }
+
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: UserPoolResourceServerConfig, id: string) = { config with ConstructId = Some id }
+
+    [<CustomOperation("userPool")>]
+    member _.UserPool(config: UserPoolResourceServerConfig, pool: IUserPool) =
+        { config with
+            UserPool = Some(UserPoolRef.UserPoolInterface pool) }
+
+    [<CustomOperation("userPool")>]
+    member _.UserPool(config: UserPoolResourceServerConfig, pool: UserPoolSpec) =
+        { config with
+            UserPool = Some(UserPoolRef.UserPoolSpecRef pool) }
+
+    [<CustomOperation("identifier")>]
+    member _.Identifier(config: UserPoolResourceServerConfig, id: string) = { config with Identifier = Some id }
+
+    [<CustomOperation("name")>]
+    member _.Name(config: UserPoolResourceServerConfig, name: string) = { config with Name = Some name }
+
+    [<CustomOperation("scope")>]
+    member _.Scope(config: UserPoolResourceServerConfig, scopeName: string, description: string) =
+        { config with
+            Scopes =
+                { ScopeName = scopeName
+                  ScopeDescription = description }
+                :: config.Scopes }
+
+// ============================================================================
 // Builders
 // ============================================================================
 
@@ -530,3 +668,15 @@ module CognitoBuilders =
     /// }
     /// </code>
     let userPoolClient (name: string) = UserPoolClientBuilder name
+
+    /// <summary>Creates a Cognito User Pool Resource Server for OAuth 2.0 scopes.</summary>
+    /// <param name="name">The resource server name.</param>
+    /// <code lang="fsharp">
+    /// resourceServer "ApiResourceServer" {
+    ///     userPool myUserPool
+    ///     identifier "api"
+    ///     scope "read" "Read access to resources"
+    ///     scope "write" "Write access to resources"
+    /// }
+    /// </code>
+    let resourceServer (name: string) = UserPoolResourceServerBuilder name

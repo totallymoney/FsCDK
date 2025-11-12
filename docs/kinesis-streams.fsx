@@ -5,7 +5,7 @@ category: docs
 index: 9
 ---
 
-# Kinesis Streams Example
+# ![Kinesis](img/icons/Arch_Amazon-Kinesis_48.png) Kinesis Streams Example
 
 This example demonstrates how to create Amazon Kinesis Data Streams using FsCDK for real-time data streaming.
 

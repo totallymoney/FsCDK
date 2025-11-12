@@ -5,7 +5,7 @@ category: docs
 index: 11
 ---
 
-# Amazon EventBridge
+# ![Amazon EventBridge](img/icons/Arch_Amazon-EventBridge_48.png) Amazon EventBridge
 
 EventBridge is a serverless event bus service that makes it easy to connect applications using events.
 Build event-driven architectures with decoupled microservices.

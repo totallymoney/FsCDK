@@ -5,7 +5,7 @@ category: docs
 index: 10
 ---
 
-# Network Load Balancer (NLB)
+# ![NLB](img/icons/Arch_Elastic-Load-Balancing_48.png) Network Load Balancer (NLB)
 
 Network Load Balancers provide ultra-high performance, low latency, and TLS offloading at scale. 
 They operate at Layer 4 (TCP/UDP) and are ideal for handling millions of requests per second.

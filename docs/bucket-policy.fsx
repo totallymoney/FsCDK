@@ -5,7 +5,7 @@ category: docs
 index: 14
 ---
 
-# Crafting world-class S3 bucket policies with FsCDK
+# ![S3](img/icons/Arch_Amazon-Simple-Storage-Service_48.png) Crafting world-class S3 bucket policies with FsCDK
 
 Precise S3 policies are the backbone of secure data lakes and static sites. This notebook captures the controls recommended by AWS Heroes **Ben Kehoe** and **Yan Cui**, plus guidance from the **AWS Security Blog** series on TLS enforcement and access governance. Use the FsCDK builders below to express guard rails as code and keep your buckets compliant.
 

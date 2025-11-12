@@ -119,6 +119,43 @@ type PolicyStatementBuilder() =
           Sid = if state1.Sid.IsSome then state1.Sid else state2.Sid }
 
     member _.Run(config: PolicyStatementConfig) : PolicyStatement =
+        // Security validation: Check for dangerous wildcard patterns
+        let hasWildcardActions = config.Actions |> List.exists (fun a -> a = "*")
+        let hasWildcardResources = config.Resources |> List.exists (fun r -> r = "*")
+
+        // CRITICAL: Both wildcards together is a security violation
+        if hasWildcardActions && hasWildcardResources then
+            failwith
+                """
+SECURITY ERROR: PolicyStatement has wildcard actions ('*') AND resources ('*').
+
+This grants unrestricted access to ALL AWS services and violates the 
+principle of least privilege recommended in AWS Well-Architected Framework.
+
+Please specify:
+1. Specific actions (e.g., ["s3:GetObject"; "s3:PutObject"])
+2. Specific resources (e.g., ["arn:aws:s3:::my-bucket/*"])
+
+If you truly need admin access, use a managed policy instead:
+  managedPolicy (ManagedPolicy.FromAwsManagedPolicyName("AdministratorAccess"))
+
+See docs/iam-best-practices.fsx for examples.
+            """
+
+        // WARNING: Individual wildcards should be reviewed
+        if hasWildcardActions then
+            eprintfn "⚠️  WARNING: Using wildcard actions ('*') in PolicyStatement."
+            eprintfn "    This may grant more permissions than intended. Consider using specific actions."
+            eprintfn "    Example: [\"s3:GetObject\"; \"s3:PutObject\"] instead of [\"s3:*\"]"
+            eprintfn ""
+
+        if hasWildcardResources then
+            eprintfn "⚠️  WARNING: Using wildcard resources ('*') in PolicyStatement."
+            eprintfn "    This applies permissions to ALL resources of the specified type."
+            eprintfn "    Consider scoping to specific ARNs."
+            eprintfn "    Example: [\"arn:aws:s3:::my-bucket/*\"] instead of [\"*\"]"
+            eprintfn ""
+
         match config.Props with
         | Some props ->
             let stmt = PolicyStatement(props)
