@@ -82,7 +82,7 @@ stack "MultiTierApp" {
 
     // Step 1: Create VPC with public and private subnets
     // AWS Best Practice: Multi-AZ for high availability
-    let myVpc =
+    let! myVpc =
         vpc "AppVpc" {
             maxAzs 2
             natGateways 1 // Cost optimized - 1 NAT gateway
