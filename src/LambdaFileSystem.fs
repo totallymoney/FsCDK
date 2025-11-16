@@ -57,7 +57,7 @@ type LambdaFileSystemBuilder() =
 type EfsFileSystemConfig =
     { Stack: Stack option
       Id: string
-      Vpc: FsCDK.VpcRef option
+      Vpc: IVpc option
       RemovalPolicy: RemovalPolicy option
       Encrypted: bool option
       KmsKey: KMSKeyRef option
@@ -95,7 +95,7 @@ type EfsFileSystemBuilder(id: string) =
         match config.Stack, config.Vpc with
         | Some stack, Some vpc ->
             let props = FileSystemProps()
-            props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef vpc
+            props.Vpc <- vpc
             config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
             config.Encrypted |> Option.iter (fun e -> props.Encrypted <- e)
 
@@ -195,19 +195,7 @@ type EfsFileSystemBuilder(id: string) =
     member _.Yield(vpc: IVpc) : EfsFileSystemConfig =
         { Stack = None
           Id = id
-          Vpc = Some(FsCDK.VpcInterface vpc)
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = None
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = None }
-
-    member _.Yield(vpcSpec: FsCDK.VpcSpec) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = Some(FsCDK.VpcSpecRef vpcSpec)
+          Vpc = Some vpc
           RemovalPolicy = None
           Encrypted = None
           KmsKey = None

@@ -44,7 +44,7 @@ type DocumentDBClusterConfig =
       InstanceType: string option
       Instances: int option
       Port: int option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       VpcSubnets: SubnetSelection option
       SecurityGroup: SecurityGroupRef option
       BackupRetentionDays: int option
@@ -157,7 +157,7 @@ type DocumentDBClusterBuilder(name: string) =
         let props = DatabaseClusterProps()
 
         match config.Vpc with
-        | Some vpc -> props.Vpc <- VpcHelpers.resolveVpcRef vpc
+        | Some vpc -> props.Vpc <- vpc
         | None -> failwith "VPC is required for DocumentDB cluster"
 
         match config.MasterPassword with
@@ -169,7 +169,7 @@ type DocumentDBClusterBuilder(name: string) =
         | None -> failwith "MasterPassword (ISecret) is required for DocumentDB cluster"
 
         config.InstanceType
-        |> Option.iter (fun v -> props.InstanceType <- InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MEDIUM))
+        |> Option.iter (fun _ -> props.InstanceType <- InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MEDIUM))
 
         config.Instances |> Option.iter (fun v -> props.Instances <- v)
 
@@ -220,14 +220,7 @@ type DocumentDBClusterBuilder(name: string) =
     member _.Port(config: DocumentDBClusterConfig, port: int) = { config with Port = Some port }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: DocumentDBClusterConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: DocumentDBClusterConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
+    member _.Vpc(config: DocumentDBClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: DocumentDBClusterConfig, subnets: SubnetSelection) =

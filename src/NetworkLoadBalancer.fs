@@ -1,6 +1,7 @@
 namespace FsCDK
 
 open Amazon.CDK
+open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
 
 // ============================================================================
@@ -29,9 +30,9 @@ open Amazon.CDK.AWS.ElasticLoadBalancingV2
 type NetworkLoadBalancerConfig =
     { LoadBalancerName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       InternetFacing: bool option
-      VpcSubnets: Amazon.CDK.AWS.EC2.SubnetSelection option
+      VpcSubnets: SubnetSelection option
       CrossZoneEnabled: bool option
       DeletionProtection: bool option
       IpAddressType: IpAddressType option
@@ -140,7 +141,7 @@ type NetworkLoadBalancerBuilder(name: string) =
 
         // VPC is required
         match config.Vpc with
-        | Some vpcRef -> props.Vpc <- VpcHelpers.resolveVpcRef vpcRef
+        | Some vpcRef -> props.Vpc <- vpcRef
         | None -> printfn "Warning: VPC is required for Network Load Balancer"
 
         // AWS Best Practice: Internal by default for security
@@ -173,15 +174,7 @@ type NetworkLoadBalancerBuilder(name: string) =
 
     /// <summary>Sets the VPC for the Network Load Balancer.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: NetworkLoadBalancerConfig, vpc: Amazon.CDK.AWS.EC2.IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the Network Load Balancer from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: NetworkLoadBalancerConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: NetworkLoadBalancerConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets whether the load balancer is internet-facing.</summary>
     /// <param name="internetFacing">True for internet-facing, false for internal (default: false).</param>
@@ -192,7 +185,7 @@ type NetworkLoadBalancerBuilder(name: string) =
 
     /// <summary>Sets the VPC subnets for the load balancer.</summary>
     [<CustomOperation("vpcSubnets")>]
-    member _.VpcSubnets(config: NetworkLoadBalancerConfig, subnets: Amazon.CDK.AWS.EC2.SubnetSelection) =
+    member _.VpcSubnets(config: NetworkLoadBalancerConfig, subnets: SubnetSelection) =
         { config with
             VpcSubnets = Some subnets }
 

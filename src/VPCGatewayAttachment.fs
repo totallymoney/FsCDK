@@ -24,7 +24,7 @@ open Amazon.CDK.AWS.EC2
 type VPCGatewayAttachmentConfig =
     { AttachmentName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       InternetGateway: CfnInternetGateway option
       VpnGateway: CfnVPNGateway option }
 
@@ -87,7 +87,7 @@ type VPCGatewayAttachmentBuilder(name: string) =
         let vpcId =
             match config.Vpc with
             | Some vpcRef ->
-                let vpc = VpcHelpers.resolveVpcRef vpcRef
+                let vpc = vpcRef
                 vpc.VpcId
             | None -> invalidArg "vpc" "VPC is required for VPC Gateway Attachment"
 
@@ -108,15 +108,7 @@ type VPCGatewayAttachmentBuilder(name: string) =
 
     /// <summary>Sets the VPC to attach the gateway to.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: VPCGatewayAttachmentConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: VPCGatewayAttachmentConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: VPCGatewayAttachmentConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the Internet Gateway to attach.</summary>
     [<CustomOperation("internetGateway")>]

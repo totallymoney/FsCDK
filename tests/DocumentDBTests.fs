@@ -15,12 +15,14 @@ let documentdb_cluster_tests =
           }
 
           test "fails when master password is missing" {
-              let vpcSpec = vpc "TestVpc" { () }
+              stack "TestStack" {
+                  let! vpcSpec = vpc "TestVpc" { () }
 
-              let thrower () =
-                  documentDBCluster "MyDocDB" { vpc vpcSpec } |> ignore
+                  let thrower () =
+                      documentDBCluster "MyDocDB" { vpc vpcSpec } |> ignore
 
-              Expect.throws thrower "DocumentDB builder should throw when master password is missing"
+                  Expect.throws thrower "DocumentDB builder should throw when master password is missing"
+              }
           }
 
           test "defaults constructId to cluster name" {

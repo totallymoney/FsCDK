@@ -33,7 +33,7 @@ type EKSClusterConfig =
     { ClusterName: string
       ConstructId: string option
       Version: KubernetesVersion option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       VpcSubnets: ISubnetSelection list
       DefaultCapacity: int option
       DefaultCapacityInstance: InstanceType option
@@ -183,7 +183,7 @@ type EKSClusterBuilder(name: string) =
         // VPC is required
         props.Vpc <-
             match config.Vpc with
-            | Some vpcRef -> VpcHelpers.resolveVpcRef vpcRef
+            | Some vpcRef -> vpcRef
             | None -> invalidArg "vpc" "VPC is required for EKS Cluster"
 
         // AWS Best Practice: Use latest stable Kubernetes version
@@ -217,7 +217,7 @@ type EKSClusterBuilder(name: string) =
                     | None -> failwith $"Key {pr.KeyName} has to be resolved first")
 
         config.AlbController
-        |> Option.iter (fun alb -> props.AlbController <- AlbControllerOptions(Version = AlbControllerVersion.V2_6_2))
+        |> Option.iter (fun _ -> props.AlbController <- AlbControllerOptions(Version = AlbControllerVersion.V2_6_2))
 
         config.CoreDnsComputeType
         |> Option.iter (fun c -> props.CoreDnsComputeType <- c)
@@ -241,15 +241,7 @@ type EKSClusterBuilder(name: string) =
 
     /// <summary>Sets the VPC for the cluster.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: EKSClusterConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: EKSClusterConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: EKSClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Adds VPC subnets for the cluster.</summary>
     [<CustomOperation("vpcSubnet")>]
@@ -314,24 +306,24 @@ type EKSClusterBuilder(name: string) =
             SecretsEncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
 
     [<CustomOperation("addNodegroupCapacity")>]
-    member _.AddNodegroupCapacity(config: EKSClusterConfig, nodes: (string * NodegroupOptions)) =
+    member _.AddNodegroupCapacity(config: EKSClusterConfig, nodes: string * NodegroupOptions) =
         { config with
-            AddNodegroupCapacity = (nodes) :: config.AddNodegroupCapacity }
+            AddNodegroupCapacity = nodes :: config.AddNodegroupCapacity }
 
     [<CustomOperation("addServiceAccount")>]
-    member _.AddServiceAccount(config: EKSClusterConfig, nodes: (string * ServiceAccountOptions)) =
+    member _.AddServiceAccount(config: EKSClusterConfig, nodes: string * ServiceAccountOptions) =
         { config with
-            AddServiceAccount = (nodes) :: config.AddServiceAccount }
+            AddServiceAccount = nodes :: config.AddServiceAccount }
 
     [<CustomOperation("addHelmChart")>]
-    member _.AddHelmChart(config: EKSClusterConfig, nodes: (string * HelmChartOptions)) =
+    member _.AddHelmChart(config: EKSClusterConfig, nodes: string * HelmChartOptions) =
         { config with
-            AddHelmChart = (nodes) :: config.AddHelmChart }
+            AddHelmChart = nodes :: config.AddHelmChart }
 
     [<CustomOperation("addFargateProfile")>]
-    member _.AddFargateProfile(config: EKSClusterConfig, nodes: (string * FargateProfileOptions)) =
+    member _.AddFargateProfile(config: EKSClusterConfig, nodes: string * FargateProfileOptions) =
         { config with
-            AddFargateProfile = (nodes) :: config.AddFargateProfile }
+            AddFargateProfile = nodes :: config.AddFargateProfile }
 
 // ============================================================================
 // Builders

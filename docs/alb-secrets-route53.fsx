@@ -49,7 +49,7 @@ stack "ALBStack" {
     description "Application Load Balancer example"
 
     // Create VPC
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 2
             natGateways 1
@@ -115,7 +115,7 @@ stack "DNSStack" {
     description "Route 53 DNS example"
 
     // Create VPC and ALB first
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 2
             natGateways 1

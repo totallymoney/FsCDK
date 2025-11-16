@@ -58,9 +58,9 @@ let vpc_dsl_tests =
           }
 
           test "uses custom constructId when provided" {
-              let spec = vpc "MyVpc" { constructId "CustomVpcId" }
+              let spec = vpc "MyVpc" { constructId "MyCustomVpc" }
 
-              Expect.equal spec.ConstructId "CustomVpcId" "Custom constructId should be used"
+              Expect.equal spec.ConstructId "MyCustomVpc" "Custom constructId should be used"
           }
 
           test "allows disabling DNS settings" {
@@ -114,7 +114,8 @@ let security_group_dsl_tests =
 
 [<Tests>]
 let gatewayVpcEndpoint_tests =
-    testList
+    testSequenced
+    <| testList
         "Gateway VPC Endpoint DSL"
         [ test "fails when VPC is missing" {
               let thrower () =
@@ -124,21 +125,21 @@ let gatewayVpcEndpoint_tests =
           }
 
           test "fails when service is missing" {
-              let vpcSpec = vpc "TestVpc" { () }
+              stack "TestStack" {
+                  let! vpcSpec = vpc "TestVpc" { () }
 
-              let thrower () =
-                  gatewayVpcEndpoint "MyEndpoint" { vpc vpcSpec } |> ignore
+                  let thrower () =
+                      gatewayVpcEndpoint "MyEndpoint" { vpc vpcSpec } |> ignore
 
-              Expect.throws thrower "Gateway VPC Endpoint should throw when service is missing"
-          }
 
-          // NOTE: Full integration tests would need actual VPC resources
-          // These tests verify the builder validates required parameters
-          ]
+                  Expect.throws thrower "Gateway VPC Endpoint should throw when service is missing"
+              }
+          } ]
 
 [<Tests>]
 let interfaceVpcEndpoint_tests =
-    testList
+    testSequenced
+    <| testList
         "Interface VPC Endpoint DSL"
         [ test "fails when VPC is missing" {
               let thrower () =
@@ -148,14 +149,12 @@ let interfaceVpcEndpoint_tests =
           }
 
           test "fails when service is missing" {
-              let vpcSpec = vpc "TestVpc" { () }
+              stack "TestStack" {
+                  let! vpcSpec = vpc "TestVpc" { () }
 
-              let thrower () =
-                  interfaceVpcEndpoint "MyEndpoint" { vpc vpcSpec } |> ignore
+                  let thrower () =
+                      interfaceVpcEndpoint "MyEndpoint" { vpc vpcSpec } |> ignore
 
-              Expect.throws thrower "Interface VPC Endpoint should throw when service is missing"
-          }
-
-          // NOTE: Full integration tests would need actual VPC resources
-          // These tests verify the builder validates required parameters
-          ]
+                  Expect.throws thrower "Interface VPC Endpoint should throw when service is missing"
+              }
+          } ]

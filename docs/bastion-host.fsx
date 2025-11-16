@@ -30,7 +30,7 @@ Start with the bare minimum: a single-instance jump box inside a dedicated VPC. 
 *)
 
 stack "BasicBastion" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     bastionHost "MyBastion" {
         vpc myVpc
@@ -45,9 +45,9 @@ Restrict ingress to approved corporate CIDR ranges, deny outbound traffic by def
 *)
 
 stack "SecureBastion" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
-    let bastionSG =
+    let! bastionSG =
         securityGroup "BastionSG" {
             vpc myVpc
             description "Security group for bastion host"
@@ -69,7 +69,7 @@ Adopt CIS-hardened golden images or images produced by your pipeline so every ba
 *)
 
 stack "CustomBastion" {
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     let hardenedAMI = MachineImage.GenericLinux(dict [ "us-east-1", "ami-12345678" ])
 
@@ -88,7 +88,7 @@ Highly regulated or mission-critical environments sometimes require redundant ba
 *)
 
 stack "HABastion" {
-    let myVpc =
+    let! myVpc =
         vpc "MyVpc" {
             maxAzs 2
             natGateways 2

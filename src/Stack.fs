@@ -18,9 +18,7 @@ open Amazon.CDK.AWS.CloudWatch
 open Amazon.CDK.AWS.Kinesis
 open Amazon.CDK.AWS.Route53
 open Constructs
-open Amazon.CDK.AWS.AppRunner
 open Amazon.CDK.AWS.ElastiCache
-open Amazon.CDK.AWS.DocDB
 open Amazon.CDK.CustomResources
 open Amazon.CDK.AWS.Logs
 open Amazon.CDK.AWS.StepFunctions
@@ -129,7 +127,7 @@ module StackOperations =
 
                 gsi.WriteCapacity |> Option.iter (fun wc -> gsiProps.WriteCapacity <- wc)
 
-                t.AddGlobalSecondaryIndex(gsiProps) |> ignore
+                t.AddGlobalSecondaryIndex(gsiProps)
 
             // Add Local Secondary Indexes
             for lsi in tableSpec.LocalSecondaryIndexes do
@@ -145,7 +143,7 @@ module StackOperations =
                     if not (List.isEmpty attrs) then
                         lsiProps.NonKeyAttributes <- Array.ofList attrs)
 
-                t.AddLocalSecondaryIndex(lsiProps) |> ignore
+                t.AddLocalSecondaryIndex(lsiProps)
 
             tableSpec.Table <- Some t
 
@@ -183,7 +181,7 @@ module StackOperations =
 
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, propsToUse)
 
-            let _ = lambdaSpec.EventSources |> Seq.map (fn.AddEventSource) |> Seq.toList
+            let _ = lambdaSpec.EventSources |> Seq.map fn.AddEventSource |> Seq.toList
 
             lambdaSpec.Function <- Some fn
 
@@ -191,7 +189,7 @@ module StackOperations =
                 action fn
 
         | DockerImageFunctionOp imageLambdaSpec ->
-            AWS.Lambda.DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
+            DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
             |> ignore
 
         | GrantOp grantSpec -> Grants.processGrant stack grantSpec
@@ -257,7 +255,7 @@ module StackOperations =
             let sg = SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props)
             sgSpec.SecurityGroup <- Some sg
 
-        | RdsInstanceOp rdsSpec -> AWS.RDS.DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
+        | RdsInstanceOp rdsSpec -> DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
 
         | CloudFrontDistributionOp cfSpec ->
             Amazon.CDK.AWS.CloudFront.Distribution(stack, cfSpec.ConstructId, cfSpec.Props)
@@ -380,7 +378,7 @@ module StackOperations =
         //| CloudHSMClusterOp hsmSpec ->
         //    CfnCluster(stack, hsmSpec.ConstructId, hsmSpec.Props) |> ignore
 
-        | LambdaRoleOp roleSpec ->
+        | LambdaRoleOp _ ->
             // Role is already created in the builder, just store reference if needed
             // The role is available in roleSpec.Role
             ()
@@ -444,7 +442,7 @@ module StackOperations =
             serviceSpec.Service <- Some service
 
         | ElastiCacheRedisOp clusterSpec ->
-            let cluster =
+            let _ =
                 CfnCacheCluster(
                     stack,
                     clusterSpec.ConstructId,
@@ -453,7 +451,7 @@ module StackOperations =
             // Note: Full configuration handled in builder
             ()
 
-        | DocumentDBClusterOp clusterSpec ->
+        | DocumentDBClusterOp _ ->
             // Note: DocumentDB cluster creation requires VPC and credentials
             // Full implementation would use DatabaseCluster
             ()
@@ -519,13 +517,13 @@ module StackOperations =
             taskDefSpec.TaskDefinition <- Some taskDef
 
         | ECSClusterOp clusterResource ->
-            let cluster =
+            let _ =
                 Cluster(stack, clusterResource.ConstructId, ClusterProps(ClusterName = clusterResource.ClusterName))
             // Note: Full configuration handled in builder
             ()
 
         | ECSFargateServiceOp serviceResource ->
-            let service =
+            let _ =
                 FargateService(
                     stack,
                     serviceResource.ConstructId,
@@ -611,9 +609,13 @@ type StackConfig =
       PermissionsBoundary: Amazon.CDK.PermissionsBoundary option
       PropertyInjectors: IPropertyInjector list option
       Synthesizer: IStackSynthesizer option
-      Operations: Operation list }
+      Operations: (Stack -> unit) list }
 
 type StackBuilder(name: string) =
+
+    // Helper to convert Operation to function
+    let opToFunc op =
+        fun stack -> StackOperations.processOperation stack op
 
     member _.Yield(_: unit) : StackConfig =
         { Name = name
@@ -661,7 +663,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ TableOp tableSpec ] }
+          Operations = [ fun stack -> StackOperations.processOperation stack (TableOp tableSpec) ] }
 
     member _.Yield(tableSpec: EC2InstanceSpec) : StackConfig =
         { Name = name
@@ -677,7 +679,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ EC2InstanceOp tableSpec ] }
+          Operations = [ opToFunc (EC2InstanceOp tableSpec) ] }
 
     member _.Yield(tableSpec: Route53ARecordSpec) : StackConfig =
         { Name = name
@@ -693,7 +695,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ Route53RecordOp tableSpec ] }
+          Operations = [ opToFunc (Route53RecordOp tableSpec) ] }
 
 
     member _.Yield(albSpec: ALBSpec) : StackConfig =
@@ -710,7 +712,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ALBOp albSpec ] }
+          Operations = [ opToFunc (ALBOp albSpec) ] }
 
     member _.Yield(secretsSpec: SecretsManagerSpec) : StackConfig =
         { Name = name
@@ -726,7 +728,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ SecretsManagerOp secretsSpec ] }
+          Operations = [ opToFunc (SecretsManagerOp secretsSpec) ] }
 
     member _.Yield(secretsSpec: ElasticBeanstalkEnvironmentSpec) : StackConfig =
         { Name = name
@@ -742,7 +744,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ElasticBeanstalkEnvironmentOp secretsSpec ] }
+          Operations = [ opToFunc (ElasticBeanstalkEnvironmentOp secretsSpec) ] }
 
     member _.Yield(secretsSpec: DnsValidatedCertificateSpec) : StackConfig =
         { Name = name
@@ -758,7 +760,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ DnsValidatedCertificateOp secretsSpec ] }
+          Operations = [ opToFunc (DnsValidatedCertificateOp secretsSpec) ] }
 
     member _.Yield(app: Construct) : StackConfig =
         { Name = name
@@ -790,7 +792,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ FunctionOp funcSpec ] }
+          Operations = [ opToFunc (FunctionOp funcSpec) ] }
 
     member _.Yield(dockerSpec: DockerImageFunctionSpec) : StackConfig =
         { Name = name
@@ -806,7 +808,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ DockerImageFunctionOp dockerSpec ] }
+          Operations = [ opToFunc (DockerImageFunctionOp dockerSpec) ] }
 
     member _.Yield(grantSpec: GrantSpec) : StackConfig =
         { Name = name
@@ -822,7 +824,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ GrantOp grantSpec ] }
+          Operations = [ opToFunc (GrantOp grantSpec) ] }
 
     member _.Yield(topicSpec: TopicSpec) : StackConfig =
         { Name = name
@@ -838,7 +840,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ TopicOp topicSpec ] }
+          Operations = [ opToFunc (TopicOp topicSpec) ] }
 
     member _.Yield(queueSpec: QueueSpec) : StackConfig =
         { Name = name
@@ -854,7 +856,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ QueueOp queueSpec ] }
+          Operations = [ opToFunc (QueueOp queueSpec) ] }
 
     member _.Yield(bucketSpec: BucketSpec) : StackConfig =
         { Name = name
@@ -870,7 +872,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ BucketOp bucketSpec ] }
+          Operations = [ opToFunc (BucketOp bucketSpec) ] }
 
     member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
         { Name = name
@@ -886,7 +888,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ SubscriptionOp subSpec ] }
+          Operations = [ opToFunc (SubscriptionOp subSpec) ] }
 
     member _.Yield(vpcSpec: VpcSpec) : StackConfig =
         { Name = name
@@ -902,7 +904,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ VpcOp vpcSpec ] }
+          Operations = [ opToFunc (VpcOp vpcSpec) ] }
 
     member _.Yield(sgSpec: SecurityGroupSpec) : StackConfig =
         { Name = name
@@ -918,7 +920,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ SecurityGroupOp sgSpec ] }
+          Operations = [ opToFunc (SecurityGroupOp sgSpec) ] }
 
     member _.Yield(rdsSpec: DatabaseInstanceSpec) : StackConfig =
         { Name = name
@@ -934,7 +936,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ RdsInstanceOp rdsSpec ] }
+          Operations = [ opToFunc (RdsInstanceOp rdsSpec) ] }
 
     member _.Yield(cfSpec: DistributionSpec) : StackConfig =
         { Name = name
@@ -950,7 +952,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudFrontDistributionOp cfSpec ] }
+          Operations = [ opToFunc (CloudFrontDistributionOp cfSpec) ] }
 
     member _.Yield(upSpec: UserPoolSpec) : StackConfig =
         { Name = name
@@ -966,7 +968,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ UserPoolOp upSpec ] }
+          Operations = [ opToFunc (UserPoolOp upSpec) ] }
 
     member _.Yield(upcSpec: UserPoolClientSpec) : StackConfig =
         { Name = name
@@ -982,7 +984,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ UserPoolClientOp upcSpec ] }
+          Operations = [ opToFunc (UserPoolClientOp upcSpec) ] }
 
     member _.Yield(nlbSpec: NetworkLoadBalancerSpec) : StackConfig =
         { Name = name
@@ -998,7 +1000,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ NetworkLoadBalancerOp nlbSpec ] }
+          Operations = [ opToFunc (NetworkLoadBalancerOp nlbSpec) ] }
 
     member _.Yield(ruleSpec: EventBridgeRuleSpec) : StackConfig =
         { Name = name
@@ -1014,7 +1016,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ EventBridgeRuleOp ruleSpec ] }
+          Operations = [ opToFunc (EventBridgeRuleOp ruleSpec) ] }
 
     member _.Yield(busSpec: EventBusSpec) : StackConfig =
         { Name = name
@@ -1030,7 +1032,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ EventBusOp busSpec ] }
+          Operations = [ opToFunc (EventBusOp busSpec) ] }
 
     member _.Yield(bastionSpec: BastionHostSpec) : StackConfig =
         { Name = name
@@ -1046,7 +1048,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ BastionHostOp bastionSpec ] }
+          Operations = [ opToFunc (BastionHostOp bastionSpec) ] }
 
     member _.Yield(attachSpec: VPCGatewayAttachmentSpec) : StackConfig =
         { Name = name
@@ -1062,7 +1064,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ VPCGatewayAttachmentOp attachSpec ] }
+          Operations = [ opToFunc (VPCGatewayAttachmentOp attachSpec) ] }
 
     member _.Yield(rtSpec: RouteTableSpec) : StackConfig =
         { Name = name
@@ -1078,7 +1080,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ RouteTableOp rtSpec ] }
+          Operations = [ opToFunc (RouteTableOp rtSpec) ] }
 
     member _.Yield(routeSpec: RouteSpec) : StackConfig =
         { Name = name
@@ -1094,7 +1096,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ RouteOp routeSpec ] }
+          Operations = [ opToFunc (RouteOp routeSpec) ] }
 
     member _.Yield(oidcSpec: OIDCProviderSpec) : StackConfig =
         { Name = name
@@ -1110,7 +1112,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ OIDCProviderOp oidcSpec ] }
+          Operations = [ opToFunc (OIDCProviderOp oidcSpec) ] }
 
     member _.Yield(policySpec: ManagedPolicySpec) : StackConfig =
         { Name = name
@@ -1126,7 +1128,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ManagedPolicyOp policySpec ] }
+          Operations = [ opToFunc (ManagedPolicyOp policySpec) ] }
 
     member _.Yield(certSpec: CertificateSpec) : StackConfig =
         { Name = name
@@ -1142,7 +1144,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CertificateOp certSpec ] }
+          Operations = [ opToFunc (CertificateOp certSpec) ] }
 
     member _.Yield(policySpec: BucketPolicySpec) : StackConfig =
         { Name = name
@@ -1158,7 +1160,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ BucketPolicyOp policySpec ] }
+          Operations = [ opToFunc (BucketPolicyOp policySpec) ] }
 
     member _.Yield(keySpec: KMSKeySpec) : StackConfig =
         { Name = name
@@ -1174,7 +1176,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ KMSKeyOp keySpec ] }
+          Operations = [ opToFunc (KMSKeyOp keySpec) ] }
 
     member _.Yield(dashSpec: DashboardSpec) : StackConfig =
         { Name = name
@@ -1190,7 +1192,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchDashboardOp dashSpec ] }
+          Operations = [ opToFunc (CloudWatchDashboardOp dashSpec) ] }
 
     member _.Yield(spec: EKSClusterSpec) : StackConfig =
         { Name = name
@@ -1206,7 +1208,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ EKSClusterOp spec ] }
+          Operations = [ opToFunc (EKSClusterOp spec) ] }
 
     member _.Yield(spec: KinesisStreamSpec) : StackConfig =
         { Name = name
@@ -1222,7 +1224,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ KinesisStreamOp spec ] }
+          Operations = [ opToFunc (KinesisStreamOp spec) ] }
 
     member _.Yield(spec: Route53HostedZoneSpec) : StackConfig =
         { Name = name
@@ -1238,7 +1240,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ HostedZoneOp spec ] }
+          Operations = [ opToFunc (HostedZoneOp spec) ] }
 
     member _.Yield(spec: OriginAccessIdentitySpec) : StackConfig =
         { Name = name
@@ -1254,13 +1256,13 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ OriginAccessIdentityOp spec ] }
+          Operations = [ opToFunc (OriginAccessIdentityOp spec) ] }
 
     //member _.Yield(hsmSpec: CloudHSMClusterSpec) : StackConfig =
     //    { Name = name
     //      Construct = None
     //      Props = None
-    //      Operations = [ CloudHSMClusterOp hsmSpec ] }
+    //      Operations = [ opToFunc (CloudHSMClusterOp hsmSpec) ] }
 
     member _.Yield(roleSpec: LambdaRoleSpec) : StackConfig =
         { Name = name
@@ -1276,7 +1278,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ LambdaRoleOp roleSpec ] }
+          Operations = [ opToFunc (LambdaRoleOp roleSpec) ] }
 
     member _.Yield(alarmSpec: CloudWatchAlarmSpec) : StackConfig =
         { Name = name
@@ -1292,7 +1294,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchAlarmOp alarmSpec ] }
+          Operations = [ opToFunc (CloudWatchAlarmOp alarmSpec) ] }
 
     member _.Yield(customResourceResource: CustomResourceResource) : StackConfig =
         { Name = name
@@ -1308,7 +1310,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CustomResourceOp customResourceResource ] }
+          Operations = [ opToFunc (CustomResourceOp customResourceResource) ] }
 
     member _.Yield(sfResource: StepFunctionResource) : StackConfig =
         { Name = name
@@ -1324,7 +1326,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ StepFunctionOp sfResource ] }
+          Operations = [ opToFunc (StepFunctionOp sfResource) ] }
 
     member _.Yield(xrayGroupResource: XRayGroupResource) : StackConfig =
         { Name = name
@@ -1340,7 +1342,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ XRayGroupOp xrayGroupResource ] }
+          Operations = [ opToFunc (XRayGroupOp xrayGroupResource) ] }
 
     member _.Yield(xraySamplingRuleResource: XRaySamplingRuleResource) : StackConfig =
         { Name = name
@@ -1356,7 +1358,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ XRaySamplingRuleOp xraySamplingRuleResource ] }
+          Operations = [ opToFunc (XRaySamplingRuleOp xraySamplingRuleResource) ] }
 
     member _.Yield(appSyncApiResource: AppSyncApiResource) : StackConfig =
         { Name = name
@@ -1372,7 +1374,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ AppSyncApiOp appSyncApiResource ] }
+          Operations = [ opToFunc (AppSyncApiOp appSyncApiResource) ] }
 
     member _.Yield(appSyncDataSourceResource: AppSyncDataSourceResource) : StackConfig =
         { Name = name
@@ -1388,7 +1390,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ AppSyncDataSourceOp appSyncDataSourceResource ] }
+          Operations = [ opToFunc (AppSyncDataSourceOp appSyncDataSourceResource) ] }
 
     member _.Yield(restApiSpec: RestApiSpec) : StackConfig =
         { Name = name
@@ -1404,7 +1406,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ RestApiOp restApiSpec ] }
+          Operations = [ opToFunc (RestApiOp restApiSpec) ] }
 
     member _.Yield(authorizerSpec: TokenAuthorizerSpec) : StackConfig =
         { Name = name
@@ -1420,7 +1422,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ TokenAuthorizerOp authorizerSpec ] }
+          Operations = [ opToFunc (TokenAuthorizerOp authorizerSpec) ] }
 
     member _.Yield(vpcLinkSpec: VpcLinkSpec) : StackConfig =
         { Name = name
@@ -1436,7 +1438,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ VpcLinkOp vpcLinkSpec ] }
+          Operations = [ opToFunc (VpcLinkOp vpcLinkSpec) ] }
 
     member _.Yield(taskDefSpec: FargateTaskDefinitionSpec) : StackConfig =
         { Name = name
@@ -1452,7 +1454,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ FargateTaskDefinitionOp taskDefSpec ] }
+          Operations = [ opToFunc (FargateTaskDefinitionOp taskDefSpec) ] }
 
     member _.Yield(clusterResource: ECSClusterResource) : StackConfig =
         { Name = name
@@ -1468,7 +1470,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ECSClusterOp clusterResource ] }
+          Operations = [ opToFunc (ECSClusterOp clusterResource) ] }
 
     member _.Yield(serviceResource: ECSFargateServiceResource) : StackConfig =
         { Name = name
@@ -1484,7 +1486,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ECSFargateServiceOp serviceResource ] }
+          Operations = [ opToFunc (ECSFargateServiceOp serviceResource) ] }
 
     member _.Yield(endpointSpec: GatewayVpcEndpointSpec) : StackConfig =
         { Name = name
@@ -1500,7 +1502,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ GatewayVpcEndpointOp endpointSpec ] }
+          Operations = [ opToFunc (GatewayVpcEndpointOp endpointSpec) ] }
 
     member _.Yield(endpointSpec: InterfaceVpcEndpointSpec) : StackConfig =
         { Name = name
@@ -1516,7 +1518,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ InterfaceVpcEndpointOp endpointSpec ] }
+          Operations = [ opToFunc (InterfaceVpcEndpointOp endpointSpec) ] }
 
     member _.Yield(proxySpec: DatabaseProxySpec) : StackConfig =
         { Name = name
@@ -1532,7 +1534,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ DatabaseProxyOp proxySpec ] }
+          Operations = [ opToFunc (DatabaseProxyOp proxySpec) ] }
 
     member _.Yield(logGroupResource: CloudWatchLogGroupResource) : StackConfig =
         { Name = name
@@ -1548,7 +1550,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchLogGroupOp logGroupResource ] }
+          Operations = [ opToFunc (CloudWatchLogGroupOp logGroupResource) ] }
 
     member _.Yield(filterResource: CloudWatchMetricFilterResource) : StackConfig =
         { Name = name
@@ -1564,7 +1566,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchMetricFilterOp filterResource ] }
+          Operations = [ opToFunc (CloudWatchMetricFilterOp filterResource) ] }
 
     member _.Yield(subscriptionResource: CloudWatchSubscriptionFilterResource) : StackConfig =
         { Name = name
@@ -1580,7 +1582,61 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchSubscriptionFilterOp subscriptionResource ] }
+          Operations = [ opToFunc (CloudWatchSubscriptionFilterOp subscriptionResource) ] }
+
+    member inline this.Bind(spec: VpcSpec, [<InlineIfLambda>] cont: IVpc -> StackConfig) : StackConfig =
+        // Create the VPC first
+        let createVpc =
+            fun (stack: Stack) ->
+                let vpc = Vpc(stack, spec.ConstructId, spec.Props)
+                spec.Vpc <- Some vpc
+
+        // Then execute the continuation with the created VPC
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Vpc with
+                | Some vpc ->
+                    let contConfig = cont vpc
+                    // Execute all operations from the continuation
+                    for op in contConfig.Operations do
+                        op stack
+                | None -> failwith $"VPC '{spec.VpcName}' was not created. Make sure to create the VPC first."
+
+        // Return the configuration with both operations
+        let baseCfg = this.Yield(spec)
+
+        { baseCfg with
+            Operations = [ createVpc; executeContinuation ] }
+
+    member inline this.Bind
+        (
+            spec: SecurityGroupSpec,
+            [<InlineIfLambda>] cont: ISecurityGroup -> StackConfig
+        ) : StackConfig =
+        // Create the SecurityGroup first
+        let createSecurityGroup =
+            fun (stack: Stack) ->
+                let sg = SecurityGroup(stack, spec.ConstructId, spec.Props)
+                spec.SecurityGroup <- Some sg
+
+        // Then execute the continuation with the created SecurityGroup
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.SecurityGroup with
+                | Some sg ->
+                    let contConfig = cont sg
+                    // Execute all operations from the continuation
+                    for op in contConfig.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"SecurityGroup '{spec.SecurityGroupName}' was not created. Make sure to create the SecurityGroup first."
+
+        // Return the configuration with both operations
+        let baseCfg = this.Yield(spec)
+
+        { baseCfg with
+            Operations = [ createSecurityGroup; executeContinuation ] }
 
     member _.Zero() : StackConfig =
         { Name = name
@@ -1685,11 +1741,12 @@ type StackBuilder(name: string) =
 
         config.Synthesizer |> Option.iter (fun v -> props.Synthesizer <- v)
 
-        let app = config.Construct |> Option.defaultWith (fun () -> App())
-        let stack = Stack(app, name, props)
+        let app = config.Construct |> Option.defaultWith (fun () -> App(AppProps()))
+        let stack = Stack(app, config.Name, props)
 
+        // Execute all operations in order
         for op in config.Operations do
-            StackOperations.processOperation stack op
+            op stack
 
     /// Run delayed config
     member this.Run(f: unit -> StackConfig) = this.Run(f ())

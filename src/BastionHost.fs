@@ -34,7 +34,7 @@ open Amazon.CDK.AWS.EC2
 type BastionHostConfig =
     { BastionName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       InstanceType: InstanceType option
       MachineImage: IMachineImage option
       SubnetSelection: SubnetSelection option
@@ -130,10 +130,10 @@ type BastionHostBuilder(name: string) =
 
         // VPC is required
         match config.Vpc with
-        | Some vpcRef -> props.Vpc <- VpcHelpers.resolveVpcRef vpcRef
+        | Some vpcRef -> props.Vpc <- vpcRef
         | None -> printfn "Warning: VPC is required for Network Load Balancer"
 
-        // AWS Best Practice: Use minimal instance type for cost optimization
+        // AWS Best Practice: Use a minimal instance type for cost optimization
         props.InstanceType <-
             config.InstanceType
             |> Option.defaultValue (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.NANO))
@@ -164,15 +164,7 @@ type BastionHostBuilder(name: string) =
 
     /// <summary>Sets the VPC for the Bastion Host.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: BastionHostConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the Bastion Host from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: BastionHostConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: BastionHostConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the instance type.</summary>
     [<CustomOperation("instanceType")>]

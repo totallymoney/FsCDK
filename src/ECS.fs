@@ -4,12 +4,6 @@ open Amazon.CDK
 open Amazon.CDK.AWS.ECS
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.IAM
-open Amazon.CDK.AWS.ElasticLoadBalancingV2
-open Amazon.CDK.AWS.Logs
-open Amazon.CDK.AWS.SecretsManager
-open Amazon.CDK.AWS.SSM
-open Amazon.CDK.AWS.KMS
-open Amazon.CDK.AWS.ECR
 
 /// <summary>
 /// High-level ECS Cluster builder following AWS best practices.
@@ -25,7 +19,7 @@ open Amazon.CDK.AWS.ECR
 type ECSClusterConfig =
     { ClusterName: string
       ConstructId: string option
-      Vpc: FsCDK.VpcRef option
+      Vpc: IVpc option
       ContainerInsights: ContainerInsights option
       EnableFargateCapacityProviders: bool option }
 
@@ -72,8 +66,7 @@ type ECSClusterBuilder(name: string) =
         let props = ClusterProps()
         props.ClusterName <- clusterName
 
-        config.Vpc
-        |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
 
         config.ContainerInsights
         |> Option.iter (fun v -> props.ContainerInsightsV2 <- v)
@@ -89,14 +82,7 @@ type ECSClusterBuilder(name: string) =
     member _.ConstructId(config: ECSClusterConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     [<CustomOperation("containerInsights")>]
     member _.ContainerInsights(config: ECSClusterConfig, insights: ContainerInsights) =
@@ -233,10 +219,10 @@ type ECSFargateServiceBuilder(name: string) =
     /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: ISecurityGroup list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
+        let sgsRefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
 
         { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
+            SecurityGroups = sgsRefs @ config.SecurityGroups }
 
     /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
@@ -463,12 +449,12 @@ type ContainerDefinitionConfig =
       MemoryReservationMiB: int option
       Essential: bool option
       Environment: Map<string, string>
-      Secrets: Map<string, Amazon.CDK.AWS.ECS.Secret>
-      PortMappings: Amazon.CDK.AWS.ECS.PortMapping list
+      Secrets: Map<string, Secret>
+      PortMappings: PortMapping list
       Command: string list
       EntryPoint: string list
       WorkingDirectory: string option
-      HealthCheck: Amazon.CDK.AWS.ECS.HealthCheck option
+      HealthCheck: HealthCheck option
       Logging: LogDriver option
       User: string option
       Privileged: bool option
@@ -506,13 +492,10 @@ type ContainerDefinitionHelper() =
             options.Environment <- System.Collections.Generic.Dictionary<string, string>(config.Environment)
 
         if not (Map.isEmpty config.Secrets) then
-            options.Secrets <- System.Collections.Generic.Dictionary<string, Amazon.CDK.AWS.ECS.Secret>(config.Secrets)
+            options.Secrets <- System.Collections.Generic.Dictionary<string, Secret>(config.Secrets)
 
         if not config.PortMappings.IsEmpty then
-            options.PortMappings <-
-                config.PortMappings
-                |> List.map (fun p -> p :> Amazon.CDK.AWS.ECS.IPortMapping)
-                |> Array.ofList
+            options.PortMappings <- config.PortMappings |> List.map (fun p -> p :> IPortMapping) |> Array.ofList
 
         if not config.Command.IsEmpty then
             options.Command <- Array.ofList config.Command

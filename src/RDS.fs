@@ -13,7 +13,7 @@ type DatabaseInstanceConfig =
       ConstructId: string option
       Engine: IInstanceEngine option
       InstanceType: InstanceType option
-      Vpc: FsCDK.VpcRef option
+      Vpc: IVpc option
       VpcSubnets: SubnetSelection option
       SecurityGroups: SecurityGroupRef list
       AllocatedStorage: int option
@@ -223,7 +223,7 @@ type DatabaseInstanceBuilder(name: string) =
         // VPC is required
         props.Vpc <-
             match config.Vpc with
-            | Some vpc -> FsCDK.VpcHelpers.resolveVpcRef vpc
+            | Some vpc -> vpc
             | None -> invalidArg "vpc" "VPC is required for RDS Database Instance"
 
         props.Engine <-
@@ -306,7 +306,7 @@ type DatabaseInstanceBuilder(name: string) =
     [<CustomOperation("engine")>]
     member _.Engine(config: DatabaseInstanceConfig, engine: IInstanceEngine) = { config with Engine = Some engine }
 
-    /// <summary>Sets PostgreSQL as the database engine with specific version.</summary>
+    /// <summary>Sets PostgreSQL as the database engine with a specific version.</summary >
     [<CustomOperation("postgresEngine")>]
     member _.PostgresEngine(config: DatabaseInstanceConfig, ?version: PostgresEngineVersion) =
         let pgVersion = version |> Option.defaultValue PostgresEngineVersion.VER_15
@@ -322,15 +322,7 @@ type DatabaseInstanceBuilder(name: string) =
 
     /// <summary>Sets the VPC.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: DatabaseInstanceConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
-
-    /// <summary>Sets the VPC.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: DatabaseInstanceConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: DatabaseInstanceConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the VPC subnets.</summary>
     [<CustomOperation("vpcSubnets")>]
@@ -484,7 +476,7 @@ open Amazon.CDK.AWS.SecretsManager
 type DatabaseProxyConfig =
     { ProxyName: string
       ConstructId: string option
-      Vpc: FsCDK.VpcRef option
+      Vpc: IVpc option
       VpcSubnets: SubnetSelection option
       SecurityGroups: SecurityGroupRef list
       Secrets: ISecret list
@@ -596,7 +588,7 @@ type DatabaseProxyBuilder(name: string) =
         let props = DatabaseProxyProps()
 
         match config.Vpc with
-        | Some vpc -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef vpc
+        | Some vpc -> props.Vpc <- vpc
         | None -> invalidArg "vpc" "VPC is required for Database Proxy"
 
         match config.ProxyTarget with
@@ -649,15 +641,7 @@ type DatabaseProxyBuilder(name: string) =
 
     /// <summary>Sets the VPC for the proxy.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: DatabaseProxyConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the proxy from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: DatabaseProxyConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: DatabaseProxyConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the VPC subnets for the proxy.</summary>
     [<CustomOperation("vpcSubnets")>]
