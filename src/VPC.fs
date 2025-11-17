@@ -338,7 +338,7 @@ type SecurityGroupBuilder(name: string) =
             | Some vpc -> vpc
             | None -> invalidArg "vpc" "VPC is required for Security Group"
 
-        // AWS Best Practice: The Least privilege - don't allow all outbound by default
+        // AWS Best Practice: the least privilege - don't allow all outbound by default
         // Users should explicitly allow what they need
         props.AllowAllOutbound <- config.AllowAllOutbound |> Option.defaultValue false
 
