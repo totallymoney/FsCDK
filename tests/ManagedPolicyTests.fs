@@ -6,8 +6,7 @@ open FsCDK
 
 [<Tests>]
 let managed_policy_tests =
-    testSequenced
-    <| testList
+    testList
         "Managed Policy DSL"
         [ test "creates policy with description" {
               let policySpec = managedPolicy "MyPolicy" { description "Test policy" }
@@ -218,3 +217,4 @@ let managed_policy_tests =
 
               Expect.equal policySpec.ConstructId "CustomConstructId" "Should use custom construct ID"
           } ]
+    |> testSequenced

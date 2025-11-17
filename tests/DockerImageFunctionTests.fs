@@ -71,3 +71,4 @@ let docker_image_lambda_dsl_tests =
 
               Expect.equal spec.Props.Description "My docker image function" "Description should match"
           } ]
+    |> testSequenced

@@ -8,9 +8,7 @@ open Amazon.CDK.AWS.Cognito
 
 [<Tests>]
 let tests =
-    // Some of these test doesn't run well in parallel
-    testSequenced
-    <| testList
+    testList
         "Cognito"
         [
 
@@ -104,3 +102,4 @@ let tests =
               // Auth flows default to SRP + password
               Expect.isTrue spec.Props.AuthFlows.UserSrp.Value "SRP auth flow should be enabled"
               Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled" ]
+    |> testSequenced

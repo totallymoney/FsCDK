@@ -6,8 +6,7 @@ open FsCDK
 
 [<Tests>]
 let bucket_policy_tests =
-    testSequenced
-    <| testList
+    testList
         "Bucket Policy DSL"
         [ test "fails when bucket is missing" {
               let thrower () =
@@ -75,3 +74,4 @@ let bucket_policy_tests =
 
               Expect.equal policySpec.ConstructId "MyPolicy" "ConstructId should default to name"
           } ]
+    |> testSequenced

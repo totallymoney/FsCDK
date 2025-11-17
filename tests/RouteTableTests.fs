@@ -6,8 +6,7 @@ open FsCDK
 
 [<Tests>]
 let route_table_tests =
-    testSequenced
-    <| testList
+    testList
         "Route Table DSL"
         [ test "requires VPC configuration" {
               let stack = Amazon.CDK.Stack(Amazon.CDK.App(), "Test")
@@ -78,3 +77,4 @@ let route_table_tests =
               Expect.equal tag.Key "Environment" "Tag key should be correct"
               Expect.equal tag.Value "dev" "Tag value should be correct"
           } ]
+    |> testSequenced

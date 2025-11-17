@@ -6,9 +6,7 @@ open FsCDK
 
 [<Tests>]
 let vpc_dsl_tests =
-    // Some of these test doesn't run well in parallel
-    testSequenced
-    <| testList
+    testList
         "VPC DSL"
         [ test "creates VPC with default settings" {
               let spec = vpc "MyVpc" { () }
@@ -85,6 +83,7 @@ let vpc_dsl_tests =
               Expect.isNotNull spec.Props.SubnetConfiguration "Subnet configuration should be set"
               Expect.equal spec.Props.SubnetConfiguration.Length 2 "Should have 2 subnet configurations"
           } ]
+    |> testSequenced
 
 [<Tests>]
 let security_group_dsl_tests =
@@ -111,11 +110,11 @@ let security_group_dsl_tests =
 
               Expect.throws thrower "Security Group builder should throw when VPC is missing even with constructId"
           } ]
+    |> testSequenced
 
 [<Tests>]
 let gatewayVpcEndpoint_tests =
-    testSequenced
-    <| testList
+    testList
         "Gateway VPC Endpoint DSL"
         [ test "fails when VPC is missing" {
               let thrower () =
@@ -135,11 +134,11 @@ let gatewayVpcEndpoint_tests =
                   Expect.throws thrower "Gateway VPC Endpoint should throw when service is missing"
               }
           } ]
+    |> testSequenced
 
 [<Tests>]
 let interfaceVpcEndpoint_tests =
-    testSequenced
-    <| testList
+    testList
         "Interface VPC Endpoint DSL"
         [ test "fails when VPC is missing" {
               let thrower () =
@@ -158,3 +157,4 @@ let interfaceVpcEndpoint_tests =
                   Expect.throws thrower "Interface VPC Endpoint should throw when service is missing"
               }
           } ]
+    |> testSequenced

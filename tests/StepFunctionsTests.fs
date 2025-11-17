@@ -7,8 +7,7 @@ open Amazon.CDK.AWS.StepFunctions
 
 [<Tests>]
 let step_functions_tests =
-    testSequenced
-    <| testList
+    testList
         "Step Functions DSL"
         [ test "fails when definition is missing" {
               let thrower () =
@@ -107,3 +106,4 @@ let step_functions_tests =
                   StateMachineType.EXPRESS
                   "Express type should match"
           } ]
+    |> testSequenced

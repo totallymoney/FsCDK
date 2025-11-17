@@ -48,6 +48,7 @@ let appsync_api_tests =
           // Note: Stack integration test removed - AppSync requires a schema file
           // which is not available in unit tests. See integration tests for full examples.
           ]
+    |> testSequenced
 
 [<Tests>]
 let appsync_datasource_tests =
@@ -80,3 +81,4 @@ let appsync_datasource_tests =
 
               Expect.throws thrower "Should require API even with description"
           } ]
+    |> testSequenced

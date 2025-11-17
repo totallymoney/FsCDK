@@ -10,9 +10,7 @@ open Amazon.CDK.AWS.S3
 
 [<Tests>]
 let tests =
-    // Some of these test doesn't run well in parallel
-    testSequenced
-    <| testList
+    testList
         "CloudFront"
         [
 
@@ -109,3 +107,4 @@ let tests =
               // policies should be set (avoid brittle reference checks)
               Expect.isNotNull behavior.CachePolicy "CachePolicy should be set"
               Expect.isNotNull behavior.OriginRequestPolicy "OriginRequestPolicy should be set" ]
+    |> testSequenced

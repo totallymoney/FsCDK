@@ -7,8 +7,7 @@ open FsCDK
 
 [<Tests>]
 let event_bridge_tests =
-    testSequenced
-    <| testList
+    testList
         "EventBridge DSL"
         [ test "eventBridge rule defaults to enabled" {
               let ruleSpec =
@@ -91,3 +90,4 @@ let event_bridge_tests =
 
               Expect.equal ruleSpec.Props.RuleName "custom-rule-name" "Should use custom rule name"
           } ]
+    |> testSequenced

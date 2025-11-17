@@ -36,3 +36,4 @@ let documentdb_cluster_tests =
               Expect.equal DocumentDBHelpers.InstanceTypes.t3_medium "db.t3.medium" "t3.medium type should match"
               Expect.equal DocumentDBHelpers.InstanceTypes.r5_large "db.r5.large" "r5.large type should match"
           } ]
+    |> testSequenced
