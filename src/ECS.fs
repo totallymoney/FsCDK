@@ -115,7 +115,7 @@ type ECSFargateServiceConfig =
       TaskDefinition: TaskDefinition option
       DesiredCount: int option
       AssignPublicIp: bool option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       VpcSubnets: SubnetSelection option }
 
 type ECSFargateServiceResource =
@@ -154,11 +154,7 @@ type ECSFargateServiceBuilder(name: string) =
           TaskDefinition = state2.TaskDefinition |> Option.orElse state1.TaskDefinition
           DesiredCount = state2.DesiredCount |> Option.orElse state1.DesiredCount
           AssignPublicIp = state2.AssignPublicIp |> Option.orElse state1.AssignPublicIp
-          SecurityGroups =
-            if state2.SecurityGroups.IsEmpty then
-                state1.SecurityGroups
-            else
-                state2.SecurityGroups
+          SecurityGroups = state1.SecurityGroups @ state2.SecurityGroups
           VpcSubnets = state2.VpcSubnets |> Option.orElse state1.VpcSubnets }
 
     member inline x.For
@@ -184,10 +180,7 @@ type ECSFargateServiceBuilder(name: string) =
         config.AssignPublicIp |> Option.iter (fun v -> props.AssignPublicIp <- v)
 
         if not config.SecurityGroups.IsEmpty then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.toArray
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
@@ -219,18 +212,14 @@ type ECSFargateServiceBuilder(name: string) =
     /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: ISecurityGroup list) =
-        let sgsRefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
-
         { config with
-            SecurityGroups = sgsRefs @ config.SecurityGroups }
+            SecurityGroups = sgs @ config.SecurityGroups }
 
     /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: SecurityGroupSpec list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
-
         { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
+            SecurityGroups = config.SecurityGroups }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: ECSFargateServiceConfig, subnets: SubnetSelection) =
@@ -258,8 +247,8 @@ type FargateTaskDefinitionConfig =
       ConstructId: string option
       Cpu: int option
       MemoryLimitMiB: int option
-      TaskRole: RoleRef option
-      ExecutionRole: RoleRef option
+      TaskRole: IRole option
+      ExecutionRole: IRole option
       Family: string option
       RuntimePlatform: RuntimePlatform option
       EphemeralStorageGiB: int option
@@ -348,11 +337,9 @@ type FargateTaskDefinitionBuilder(name: string) =
         config.MemoryLimitMiB
         |> Option.iter (fun v -> props.MemoryLimitMiB <- System.Nullable<float>(float v))
 
-        config.TaskRole
-        |> Option.iter (fun v -> props.TaskRole <- RoleHelpers.resolveRoleRef v)
+        config.TaskRole |> Option.iter (fun v -> props.TaskRole <- v)
 
-        config.ExecutionRole
-        |> Option.iter (fun v -> props.ExecutionRole <- RoleHelpers.resolveRoleRef v)
+        config.ExecutionRole |> Option.iter (fun v -> props.ExecutionRole <- v)
 
         config.Family |> Option.iter (fun v -> props.Family <- v)
         config.RuntimePlatform |> Option.iter (fun v -> props.RuntimePlatform <- v)
@@ -387,27 +374,13 @@ type FargateTaskDefinitionBuilder(name: string) =
 
     /// <summary>Sets the IAM role for the task (application permissions).</summary>
     [<CustomOperation("taskRole")>]
-    member _.TaskRole(config: FargateTaskDefinitionConfig, role: IRole) =
-        { config with
-            TaskRole = Some(RoleInterface role) }
-
-    /// <summary>Sets the IAM role for the task (application permissions) using a LambdaRoleSpec.</summary>
-    [<CustomOperation("taskRole")>]
-    member _.TaskRoleSpec(config: FargateTaskDefinitionConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            TaskRole = Some(RoleSpecRef roleSpec) }
+    member _.TaskRole(config: FargateTaskDefinitionConfig, role: IRole) = { config with TaskRole = Some role }
 
     /// <summary>Sets the IAM role for the execution (pulls images, writes logs).</summary>
     [<CustomOperation("executionRole")>]
     member _.ExecutionRole(config: FargateTaskDefinitionConfig, role: IRole) =
         { config with
-            ExecutionRole = Some(RoleInterface role) }
-
-    /// <summary>Sets the IAM role for the execution (pulls images, writes logs) using a LambdaRoleSpec.</summary>
-    [<CustomOperation("executionRole")>]
-    member _.ExecutionRoleSpec(config: FargateTaskDefinitionConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            ExecutionRole = Some(RoleSpecRef roleSpec) }
+            ExecutionRole = Some role }
 
     /// <summary>Sets the task definition family name.</summary>
     [<CustomOperation("family")>]

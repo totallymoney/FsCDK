@@ -2,6 +2,7 @@ namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.Kinesis
+open Amazon.CDK.AWS.KMS
 
 // ============================================================================
 // Kinesis Stream Configuration DSL
@@ -35,7 +36,7 @@ type KinesisStreamConfig =
       RetentionPeriod: Duration option
       StreamMode: StreamMode option
       Encryption: StreamEncryption option
-      EncryptionKey: KMSKeyRef option
+      EncryptionKey: IKey option
       GrantReads: Amazon.CDK.AWS.IAM.IGrantable list
       GrantWrites: Amazon.CDK.AWS.IAM.IGrantable list }
 
@@ -118,9 +119,9 @@ type KinesisStreamBuilder(name: string) =
             | Some _ -> a.Encryption
             | None -> b.Encryption
           EncryptionKey =
-            match a.EncryptionKey with
-            | Some _ -> a.EncryptionKey
-            | None -> b.EncryptionKey
+            (match a.EncryptionKey with
+             | Some _ -> a.EncryptionKey
+             | None -> b.EncryptionKey)
           GrantReads = a.GrantReads @ b.GrantReads
           GrantWrites = a.GrantWrites @ b.GrantWrites }
 
@@ -139,15 +140,7 @@ type KinesisStreamBuilder(name: string) =
         // AWS Best Practice: Enable encryption with AWS managed key
         props.Encryption <- config.Encryption |> Option.defaultValue StreamEncryption.MANAGED
 
-        config.EncryptionKey
-        |> Option.iter (fun v ->
-            props.EncryptionKey <-
-                match v with
-                | KMSKeyRef.KMSKeyInterface i -> i
-                | KMSKeyRef.KMSKeySpecRef pr ->
-                    match pr.Key with
-                    | Some k -> k
-                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+        config.EncryptionKey |> Option.iter (fun k -> props.EncryptionKey <- k)
 
         config.StreamMode |> Option.iter (fun m -> props.StreamMode <- m)
 
@@ -198,14 +191,7 @@ type KinesisStreamBuilder(name: string) =
     member _.EncryptionKey(config: KinesisStreamConfig, key: Amazon.CDK.AWS.KMS.IKey) =
         { config with
             Encryption = Some StreamEncryption.KMS
-            EncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
-
-    /// <summary>Uses a custom KMS key for encryption.</summary>
-    [<CustomOperation("encryptionKey")>]
-    member _.EncryptionKey(config: KinesisStreamConfig, key: KMSKeySpec) =
-        { config with
-            Encryption = Some StreamEncryption.KMS
-            EncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
+            EncryptionKey = Some key }
 
     /// <summary>Uses a custom KMS key for encryption.</summary>
     [<CustomOperation("encryption")>]

@@ -46,7 +46,7 @@ type DocumentDBClusterConfig =
       Port: int option
       Vpc: IVpc option
       VpcSubnets: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       BackupRetentionDays: int option
       PreferredBackupWindow: string option
       PreferredMaintenanceWindow: string option
@@ -178,6 +178,9 @@ type DocumentDBClusterBuilder(name: string) =
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
+        // Apply security group if provided
+        config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
+
         config.BackupRetentionDays
         |> Option.iter (fun v -> props.Backup <- BackupProps(Retention = Duration.Days(float v)))
 
@@ -229,13 +232,7 @@ type DocumentDBClusterBuilder(name: string) =
 
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: DocumentDBClusterConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: DocumentDBClusterConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+        { config with SecurityGroup = Some sg }
 
     [<CustomOperation("backupRetentionDays")>]
     member _.BackupRetentionDays(config: DocumentDBClusterConfig, days: int) =

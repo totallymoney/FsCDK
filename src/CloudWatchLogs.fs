@@ -27,22 +27,14 @@ type CloudWatchLogGroupConfig =
       ConstructId: string option
       Retention: RetentionDays voption
       RemovalPolicy: RemovalPolicy voption
-      EncryptionKey: KMSKeyRef option
+      EncryptionKey: IKey option
       LogGroupClass: LogGroupClass voption }
 
-type CloudWatchLogGroupResource =
-    {
-        LogGroupName: string
-        ConstructId: string
-        Props: LogGroupProps
-        /// The underlying CDK LogGroup construct
-        mutable LogGroup: LogGroup option
-    }
-
-/// Reference to a CloudWatch Log Group (either CDK ILogGroup or FsCDK CloudWatchLogGroupResource)
-type LogGroupRef =
-    | LogGroupInterface of ILogGroup
-    | LogGroupSpecRef of CloudWatchLogGroupResource
+type CloudWatchLogGroupSpec =
+    { LogGroupName: string
+      ConstructId: string
+      Props: LogGroupProps
+      mutable LogGroup: LogGroup option }
 
 type CloudWatchLogGroupBuilder(name: string) =
     member _.Yield _ : CloudWatchLogGroupConfig =
@@ -79,7 +71,7 @@ type CloudWatchLogGroupBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: CloudWatchLogGroupConfig) : CloudWatchLogGroupResource =
+    member _.Run(config: CloudWatchLogGroupConfig) : CloudWatchLogGroupSpec =
         let logGroupName = config.LogGroupName
         let constructId = config.ConstructId |> Option.defaultValue logGroupName
 
@@ -90,15 +82,7 @@ type CloudWatchLogGroupBuilder(name: string) =
         config.RemovalPolicy |> ValueOption.iter (fun v -> props.RemovalPolicy <- v)
         config.LogGroupClass |> ValueOption.iter (fun v -> props.LogGroupClass <- v)
 
-        config.EncryptionKey
-        |> Option.iter (fun v ->
-            props.EncryptionKey <-
-                match v with
-                | KMSKeyRef.KMSKeyInterface i -> i
-                | KMSKeyRef.KMSKeySpecRef pr ->
-                    match pr.Key with
-                    | Some k -> k
-                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+        config.EncryptionKey |> Option.iter (fun key -> props.EncryptionKey <- key)
 
         { LogGroupName = logGroupName
           ConstructId = constructId
@@ -120,13 +104,7 @@ type CloudWatchLogGroupBuilder(name: string) =
 
     [<CustomOperation("encryptionKey")>]
     member _.EncryptionKey(config: CloudWatchLogGroupConfig, key: IKey) =
-        { config with
-            EncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
-
-    [<CustomOperation("encryptionKey")>]
-    member _.EncryptionKey(config: CloudWatchLogGroupConfig, key: KMSKeySpec) =
-        { config with
-            EncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
+        { config with EncryptionKey = Some key }
 
     [<CustomOperation("logGroupClass")>]
     member _.LogGroupClass(config: CloudWatchLogGroupConfig, logClass: LogGroupClass) =
@@ -205,7 +183,7 @@ type CloudWatchMetricFilterConfig =
     { FilterName: string
       ConstructId: string option
       LogGroup: LogGroup option
-      LogGroupResource: CloudWatchLogGroupResource option // Store the resource for later resolution
+      LogGroupResource: CloudWatchLogGroupSpec option // Store the resource for later resolution
       FilterPattern: IFilterPattern option
       MetricName: string option
       MetricNamespace: string option
@@ -218,7 +196,7 @@ type CloudWatchMetricFilterResource =
         FilterName: string
         ConstructId: string
         LogGroupToAttach: LogGroup option // Will be resolved in Stack.fs
-        LogGroupResourceRef: CloudWatchLogGroupResource option // Reference to the resource if using CloudWatchLogGroupResource
+        LogGroupResourceRef: CloudWatchLogGroupSpec option // Reference to the resource if using CloudWatchLogGroupResource
         FilterOptions: MetricFilterOptions
         /// The underlying CDK MetricFilter construct
         mutable MetricFilter: MetricFilter option
@@ -325,7 +303,7 @@ type CloudWatchMetricFilterBuilder(name: string) =
         { config with LogGroup = Some logGroup }
 
     [<CustomOperation("logGroup")>]
-    member _.LogGroup(config: CloudWatchMetricFilterConfig, logGroupResource: CloudWatchLogGroupResource) =
+    member _.LogGroup(config: CloudWatchMetricFilterConfig, logGroupResource: CloudWatchLogGroupSpec) =
         // Store the resource reference - actual LogGroup will be resolved in Stack.fs
         { config with
             LogGroupResource = Some logGroupResource }
@@ -386,7 +364,7 @@ type CloudWatchSubscriptionFilterConfig =
     { FilterName: string
       ConstructId: string option
       LogGroup: LogGroup option
-      LogGroupResource: CloudWatchLogGroupResource option
+      LogGroupResource: CloudWatchLogGroupSpec option
       Destination: ILogSubscriptionDestination option
       FilterPattern: IFilterPattern option }
 
@@ -395,7 +373,7 @@ type CloudWatchSubscriptionFilterResource =
         FilterName: string
         ConstructId: string
         LogGroupToAttach: LogGroup option
-        LogGroupResourceRef: CloudWatchLogGroupResource option
+        LogGroupResourceRef: CloudWatchLogGroupSpec option
         Props: SubscriptionFilterProps
         /// The underlying CDK SubscriptionFilter construct
         mutable SubscriptionFilter: SubscriptionFilter option
@@ -480,7 +458,7 @@ type CloudWatchSubscriptionFilterBuilder(name: string) =
         { config with LogGroup = Some logGroup }
 
     [<CustomOperation("logGroup")>]
-    member _.LogGroup(config: CloudWatchSubscriptionFilterConfig, logGroupResource: CloudWatchLogGroupResource) =
+    member _.LogGroup(config: CloudWatchSubscriptionFilterConfig, logGroupResource: CloudWatchLogGroupSpec) =
         // Store the resource reference - actual LogGroup will be resolved in Stack.fs
         { config with
             LogGroupResource = Some logGroupResource }

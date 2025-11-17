@@ -30,7 +30,7 @@ type EC2InstanceConfig =
       MachineImage: IMachineImage option
       Vpc: IVpc option
       VpcSubnets: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       KeyPair: IKeyPair option
       KeyPairName: string option
       Role: IRole option
@@ -119,8 +119,7 @@ type EC2InstanceBuilder(name: string) =
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
-        config.SecurityGroup
-        |> Option.iter (fun v -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef v)
+        config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
         // Use KeyPair if provided, otherwise fall back to KeyPairName (for backward compatibility)
         match config.KeyPair, config.KeyPairName with
         | Some kp, _ -> props.KeyPair <- kp
@@ -164,14 +163,7 @@ type EC2InstanceBuilder(name: string) =
             VpcSubnets = Some subnets }
 
     [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: EC2InstanceConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: EC2InstanceConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+    member _.SecurityGroup(config: EC2InstanceConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     [<CustomOperation("keyPair")>]
     member _.KeyPair(config: EC2InstanceConfig, keyPair: IKeyPair) = { config with KeyPair = Some keyPair }

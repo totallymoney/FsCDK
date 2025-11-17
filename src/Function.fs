@@ -32,7 +32,7 @@ type FunctionConfig =
       RolePolicyStatements: PolicyStatement list
       AsyncInvokeOptions: IEventInvokeConfigOptions option
       ReservedConcurrentExecutions: int option
-      LogGroup: LogGroupRef option
+      LogGroup: ILogGroup option
       Role: IRole option
       InsightsVersion: LambdaInsightsVersion option
       CurrentVersionOptions: VersionOptions option
@@ -40,15 +40,15 @@ type FunctionConfig =
       Architecture: Architecture option
       Tracing: Tracing option
       VpcSubnets: SubnetSelection option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       FileSystem: FileSystem option
-      DeadLetterQueue: QueueRef option
+      DeadLetterQueue: IQueue option
       DeadLetterQueueEnabled: bool option
       AutoCreateDLQ: bool option // Auto-create SQS DLQ if not provided (Yan Cui recommendation)
       LoggingFormat: LoggingFormat option
       MaxEventAge: Duration option
       RetryAttempts: int option
-      EnvironmentEncryption: KMSKeyRef option
+      EnvironmentEncryption: IKey option
       AutoAddPowertools: bool option // Auto-add Lambda Powertools layer (Yan Cui recommendation)
       PowertoolsLayerArn: string option // Stores the Powertools layer ARN to create later in Stack.fs
       EphemeralStorageSize: int option } // Ephemeral storage in MB (default 512MB, max 10240MB) - Cost optimization
@@ -195,10 +195,10 @@ type FunctionBuilder(name: string) =
             else
                 state2.ReservedConcurrentExecutions
           LogGroup =
-            if state1.LogGroup.IsSome then
-                state1.LogGroup
-            else
-                state2.LogGroup
+            (if state1.LogGroup.IsSome then
+                 state1.LogGroup
+             else
+                 state2.LogGroup)
           Role = if state1.Role.IsSome then state1.Role else state2.Role
           InsightsVersion =
             if state1.InsightsVersion.IsSome then
@@ -233,10 +233,10 @@ type FunctionBuilder(name: string) =
             else
                 state2.FileSystem
           DeadLetterQueue =
-            if state1.DeadLetterQueue.IsSome then
-                state1.DeadLetterQueue
-            else
-                state2.DeadLetterQueue
+            (if state1.DeadLetterQueue.IsSome then
+                 state1.DeadLetterQueue
+             else
+                 state2.DeadLetterQueue)
           DeadLetterQueueEnabled =
             if state1.DeadLetterQueueEnabled.IsSome then
                 state1.DeadLetterQueueEnabled
@@ -258,10 +258,10 @@ type FunctionBuilder(name: string) =
             else
                 state2.RetryAttempts
           EnvironmentEncryption =
-            if state1.EnvironmentEncryption.IsSome then
-                state1.EnvironmentEncryption
-            else
-                state2.EnvironmentEncryption
+            (if state1.EnvironmentEncryption.IsSome then
+                 state1.EnvironmentEncryption
+             else
+                 state2.EnvironmentEncryption)
           AutoCreateDLQ =
             if state1.AutoCreateDLQ.IsSome then
                 state1.AutoCreateDLQ
@@ -321,17 +321,8 @@ type FunctionBuilder(name: string) =
         config.ReservedConcurrentExecutions
         |> Option.iter (fun r -> props.ReservedConcurrentExecutions <- r)
 
-        config.LogGroup
-        |> Option.iter (fun lgRef ->
-            props.LogGroup <-
-                match lgRef with
-                | LogGroupRef.LogGroupInterface i -> i
-                | LogGroupRef.LogGroupSpecRef lgSpec ->
-                    match lgSpec.LogGroup with
-                    | Some lg -> lg :> ILogGroup
-                    | None ->
-                        failwith
-                            $"LogGroup '{lgSpec.LogGroupName}' has not been created yet. Ensure it's yielded in the stack before the Lambda function.")
+        // Log group from direct ILogGroup or from a spec (must be created earlier)
+        config.LogGroup |> Option.iter (fun lg -> props.LogGroup <- lg)
 
         config.Role |> Option.iter (fun r -> props.Role <- r)
         config.InsightsVersion |> Option.iter (fun v -> props.InsightsVersion <- v)
@@ -345,16 +336,14 @@ type FunctionBuilder(name: string) =
         config.Tracing |> Option.iter (fun t -> props.Tracing <- t)
         config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
 
+        // Security groups as interfaces only
         if not (List.isEmpty config.SecurityGroups) then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.toArray
 
         config.FileSystem |> Option.iter (fun fs -> props.Filesystem <- fs)
 
-        config.DeadLetterQueue
-        |> Option.iter (fun dlq -> props.DeadLetterQueue <- QueueHelpers.resolveQueueRef dlq)
+        // DLQ from IQueue only
+        config.DeadLetterQueue |> Option.iter (fun q -> props.DeadLetterQueue <- q)
 
         config.DeadLetterQueueEnabled
         |> Option.iter (fun e -> props.DeadLetterQueueEnabled <- e)
@@ -378,25 +367,18 @@ type FunctionBuilder(name: string) =
             ()
 
         config.EnvironmentEncryption
-        |> Option.iter (fun v ->
-            props.EnvironmentEncryption <-
-                match v with
-                | KMSKeyRef.KMSKeyInterface i -> i
-                | KMSKeyRef.KMSKeySpecRef pr ->
-                    match pr.Key with
-                    | Some k -> k
-                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+        |> Option.iter (fun k -> props.EnvironmentEncryption <- k)
 
         // Yan Cui Production Best Practice #1: Auto-create DLQ if enabled and not provided
         // This ensures failed events are never lost - critical for production debugging
         let shouldAutoCreateDLQ = config.AutoCreateDLQ |> Option.defaultValue true
 
-        match config.DeadLetterQueue, shouldAutoCreateDLQ with
+        match (if config.DeadLetterQueue.IsSome then Some() else None), shouldAutoCreateDLQ with
         | None, true ->
             // DLQ will be created in Stack.fs after we have a scope
             // Mark that we need one by setting DeadLetterQueueEnabled
             props.DeadLetterQueueEnabled <- true
-        | Some dlq, _ -> props.DeadLetterQueue <- QueueHelpers.resolveQueueRef dlq
+        | Some _, _ -> ()
         | None, false -> ()
 
         // Yan Cui Production Best Practice #4: Determine Powertools layer ARN
@@ -640,23 +622,13 @@ type FunctionBuilder(name: string) =
     /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: FunctionConfig, sgs: ISecurityGroup list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
-
         { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
-
-    /// Add groups to securityGroups
-    [<CustomOperation("securityGroups")>]
-    member _.SecurityGroups(config: FunctionConfig, sgs: SecurityGroupSpec list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
-
-        { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
+            SecurityGroups = sgs @ config.SecurityGroups }
 
     [<CustomOperation("deadLetterQueue")>]
-    member _.DeadLetterQueue(config: FunctionConfig, queue: QueueSpec) =
+    member _.DeadLetterQueue(config: FunctionConfig, queue: IQueue) =
         { config with
-            DeadLetterQueue = Some(QueueRef.QueueSpecRef queue) }
+            DeadLetterQueue = Some queue }
 
     [<CustomOperation("loggingFormat")>]
     member _.LoggingFormat(config: FunctionConfig, format: LoggingFormat) =
@@ -665,13 +637,7 @@ type FunctionBuilder(name: string) =
 
     [<CustomOperation("logGroup")>]
     member _.LogGroup(config: FunctionConfig, logGroup: ILogGroup) =
-        { config with
-            LogGroup = Some(LogGroupRef.LogGroupInterface logGroup) }
-
-    [<CustomOperation("logGroup")>]
-    member _.LogGroup(config: FunctionConfig, logGroupResource: CloudWatchLogGroupResource) =
-        { config with
-            LogGroup = Some(LogGroupRef.LogGroupSpecRef logGroupResource) }
+        { config with LogGroup = Some logGroup }
 
     [<CustomOperation("maxEventAge")>]
     member _.MaxEventAge(config: FunctionConfig, age: Duration) = { config with MaxEventAge = Some age }
@@ -707,12 +673,7 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("environmentEncryption")>]
     member _.EnvironmentEncryption(config: FunctionConfig, key: IKey) =
         { config with
-            EnvironmentEncryption = Some(KMSKeyRef.KMSKeyInterface key) }
-
-    [<CustomOperation("environmentEncryption")>]
-    member _.EnvironmentEncryption(config: FunctionConfig, key: KMSKeySpec) =
-        { config with
-            EnvironmentEncryption = Some(KMSKeyRef.KMSKeySpecRef key) }
+            EnvironmentEncryption = Some key }
 
     /// <summary>
     /// Sets the ephemeral storage size for the Lambda function in MB.
@@ -741,11 +702,7 @@ type FunctionBuilder(name: string) =
     // Implicit yields for complex types
     member _.Yield(logGroup: ILogGroup) : FunctionConfig =
         { defaultConfig () with
-            LogGroup = Some(LogGroupRef.LogGroupInterface logGroup) }
-
-    member _.Yield(logGroupResource: CloudWatchLogGroupResource) : FunctionConfig =
-        { defaultConfig () with
-            LogGroup = Some(LogGroupRef.LogGroupSpecRef logGroupResource) }
+            LogGroup = Some logGroup }
 
     member _.Yield(role: IRole) : FunctionConfig =
         { defaultConfig () with

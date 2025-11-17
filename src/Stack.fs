@@ -10,12 +10,14 @@ open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.RDS
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.CloudFront
+open Amazon.CDK.AWS.CertificateManager
 open Amazon.CDK.AWS.Cognito
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
 open Amazon.CDK.AWS.Events
 open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.CloudWatch
 open Amazon.CDK.AWS.Kinesis
+open Amazon.CDK.AWS.KMS
 open Amazon.CDK.AWS.Route53
 open Constructs
 open Amazon.CDK.AWS.ElastiCache
@@ -91,7 +93,7 @@ type Operation =
     | GatewayVpcEndpointOp of GatewayVpcEndpointSpec
     | InterfaceVpcEndpointOp of InterfaceVpcEndpointSpec
     | DatabaseProxyOp of DatabaseProxySpec
-    | CloudWatchLogGroupOp of CloudWatchLogGroupResource
+    | CloudWatchLogGroupOp of CloudWatchLogGroupSpec
     | CloudWatchMetricFilterOp of CloudWatchMetricFilterResource
     | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterResource
 
@@ -149,7 +151,7 @@ module StackOperations =
 
         | FunctionOp lambdaSpec ->
             // Yan Cui Production Best Practice: Auto-create DLQ if enabled
-            // Check if DeadLetterQueueEnabled is set but no queue provided
+            // Check is DeadLetterQueueEnabled is set but no queue provided
             let propsToUse =
                 if
                     lambdaSpec.Props.DeadLetterQueueEnabled.HasValue
@@ -292,7 +294,7 @@ module StackOperations =
             bastionSpec.BastionHost <- Some bastion
 
         | KMSKeyOp keySpec ->
-            let key = Amazon.CDK.AWS.KMS.Key(stack, keySpec.ConstructId, keySpec.Props)
+            let key = Key(stack, keySpec.ConstructId, keySpec.Props)
             keySpec.Key <- Some key
 
         | VPCGatewayAttachmentOp attachSpec ->
@@ -322,8 +324,7 @@ module StackOperations =
             policySpec.Policy <- Some policy
 
         | CertificateOp certSpec ->
-            let cert =
-                Amazon.CDK.AWS.CertificateManager.Certificate(stack, certSpec.ConstructId, certSpec.Props)
+            let cert = Certificate(stack, certSpec.ConstructId, certSpec.Props)
 
             certSpec.Certificate <- Some cert
 
@@ -408,8 +409,7 @@ module StackOperations =
             envSpec.Environment <- env
 
         | DnsValidatedCertificateOp certSpec ->
-            let cert =
-                Amazon.CDK.AWS.CertificateManager.Certificate(stack, certSpec.ConstructId, certSpec.Props)
+            let cert = Certificate(stack, certSpec.ConstructId, certSpec.Props)
 
             certSpec.Certificate <- cert
             certSpec.Certificate <- cert
@@ -1536,7 +1536,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (DatabaseProxyOp proxySpec) ] }
 
-    member _.Yield(logGroupResource: CloudWatchLogGroupResource) : StackConfig =
+    member _.Yield(logGroupResource: CloudWatchLogGroupSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1637,6 +1637,446 @@ type StackBuilder(name: string) =
 
         { baseCfg with
             Operations = [ createSecurityGroup; executeContinuation ] }
+
+    /// Bind for S3 Bucket
+    member inline this.Bind(spec: BucketSpec, [<InlineIfLambda>] cont: IBucket -> StackConfig) : StackConfig =
+        // Use existing Yield to enqueue Bucket creation, then run continuation
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Bucket with
+                | Some bucket ->
+                    let contCfg = cont (bucket :> IBucket)
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"Bucket '{spec.BucketName}' was not created. Make sure to create the Bucket first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Kinesis Stream
+    member inline this.Bind(spec: KinesisStreamSpec, [<InlineIfLambda>] cont: IStream -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Stream with
+                | Some stream ->
+                    let contCfg = cont stream
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"Kinesis Stream '{spec.StreamName}' was not created. Make sure to create the Stream first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Secrets Manager Secret
+    member inline this.Bind
+        (
+            spec: SecretsManagerSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.SecretsManager.ISecret -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                if isNull (box spec.Secret) then
+                    failwith $"Secret '{spec.SecretName}' was not created. Make sure to create the Secret first."
+                else
+                    let contCfg = cont (spec.Secret :> Amazon.CDK.AWS.SecretsManager.ISecret)
+
+                    for op in contCfg.Operations do
+                        op stack
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Managed Policy
+    member inline this.Bind
+        (
+            spec: ManagedPolicySpec,
+            [<InlineIfLambda>] cont: IManagedPolicy -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Policy with
+                | Some policy ->
+                    let contCfg = cont policy
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"ManagedPolicy '{spec.PolicyName}' was not created. Make sure to create the Managed Policy first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for ACM Certificate
+    member inline this.Bind(spec: CertificateSpec, [<InlineIfLambda>] cont: ICertificate -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Certificate with
+                | Some cert ->
+                    let contCfg = cont cert
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"Certificate '{spec.CertificateName}' was not created. Make sure to create the Certificate first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for EventBridge Rule
+    member inline this.Bind(spec: EventBridgeRuleSpec, [<InlineIfLambda>] cont: IRule -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Rule with
+                | Some rule ->
+                    let contCfg = cont rule
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"EventBridge Rule '{spec.RuleName}' was not created. Make sure to create the Rule first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for CloudWatch Alarm
+    member inline this.Bind(spec: CloudWatchAlarmSpec, [<InlineIfLambda>] cont: IAlarm -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Alarm with
+                | Some alarm ->
+                    let contCfg = cont alarm
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"CloudWatch Alarm '{spec.AlarmName}' was not created. Make sure to create the Alarm first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for EC2 Instance
+    member inline this.Bind(spec: EC2InstanceSpec, [<InlineIfLambda>] cont: Instance_ -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                if isNull (box spec.Instance) then
+                    failwith
+                        $"EC2 Instance '{spec.InstanceName}' was not created. Make sure to create the Instance first."
+                else
+                    let contCfg = cont spec.Instance
+
+                    for op in contCfg.Operations do
+                        op stack
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Bastion Host
+    member inline this.Bind
+        (
+            spec: BastionHostSpec,
+            [<InlineIfLambda>] cont: BastionHostLinux -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.BastionHost with
+                | Some bastion ->
+                    let contCfg = cont bastion
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"BastionHost '{spec.BastionName}' was not created. Make sure to create the Bastion Host first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for API Gateway Token Authorizer
+    member inline this.Bind
+        (
+            spec: TokenAuthorizerSpec,
+            [<InlineIfLambda>] cont: IAuthorizer -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Authorizer with
+                | Some auth ->
+                    let contCfg = cont auth
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"TokenAuthorizer '{spec.AuthorizerName}' was not created. Make sure to create the Authorizer first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for API Gateway VpcLink
+    member inline this.Bind(spec: VpcLinkSpec, [<InlineIfLambda>] cont: IVpcLink -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.VpcLink with
+                | Some link ->
+                    let contCfg = cont link
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"VpcLink '{spec.VpcLinkName}' was not created. Make sure to create the VpcLink first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for ECS Fargate Task Definition
+    member inline this.Bind
+        (
+            spec: FargateTaskDefinitionSpec,
+            [<InlineIfLambda>] cont: FargateTaskDefinition -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.TaskDefinition with
+                | Some td ->
+                    let contCfg = cont td
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"FargateTaskDefinition '{spec.TaskDefinitionName}' was not created. Make sure to create the Task Definition first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Step Functions State Machine
+    member inline this.Bind
+        (
+            spec: StepFunctionResource,
+            [<InlineIfLambda>] cont: StateMachine -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.StateMachine with
+                | Some sm ->
+                    let contCfg = cont sm
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"StateMachine '{spec.StateMachineName}' was not created. Make sure to create the State Machine first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for SQS Queue
+    member inline this.Bind(spec: QueueSpec, [<InlineIfLambda>] cont: IQueue -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Queue with
+                | Some queue ->
+                    let contCfg = cont queue
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"Queue '{spec.QueueName}' was not created. Make sure to create the Queue first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for KMS Key
+    member inline this.Bind(spec: KMSKeySpec, [<InlineIfLambda>] cont: IKey -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Key with
+                | Some key ->
+                    let contCfg = cont key
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"KMS Key '{spec.KeyName}' was not created. Make sure to create the Key first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for CloudWatch Log Group
+    member inline this.Bind
+        (
+            spec: CloudWatchLogGroupSpec,
+            [<InlineIfLambda>] cont: ILogGroup -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.LogGroup with
+                | Some lg ->
+                    let contCfg = cont (lg :> ILogGroup)
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"LogGroup '{spec.LogGroupName}' was not created. Make sure to create the LogGroup first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for IAM Lambda Role
+    member inline this.Bind(spec: LambdaRoleSpec, [<InlineIfLambda>] cont: IRole -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Role with
+                | Some role ->
+                    let contCfg = cont role
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"Role '{spec.RoleName}' was not created. Make sure to create the Role first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for API Gateway RestApi
+    member inline this.Bind(spec: RestApiSpec, [<InlineIfLambda>] cont: IRestApi -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.RestApi with
+                | Some api ->
+                    let contCfg = cont api
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"RestApi '{spec.ApiName}' was not created. Make sure to create the RestApi first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Route53 Hosted Zone
+    member inline this.Bind
+        (
+            spec: Route53HostedZoneSpec,
+            [<InlineIfLambda>] cont: IHostedZone -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.HostedZone with
+                | Some hz ->
+                    let contCfg = cont hz
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"HostedZone '{spec.ZoneName}' was not created. Make sure to create the Hosted Zone first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Network Load Balancer
+    member inline this.Bind
+        (
+            spec: NetworkLoadBalancerSpec,
+            [<InlineIfLambda>] cont: INetworkLoadBalancer -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.LoadBalancer with
+                | Some nlb ->
+                    let contCfg = cont nlb
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"NetworkLoadBalancer '{spec.LoadBalancerName}' was not created. Make sure to create the Load Balancer first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Cognito User Pool
+    member inline this.Bind(spec: UserPoolSpec, [<InlineIfLambda>] cont: IUserPool -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.UserPool with
+                | Some up ->
+                    let contCfg = cont up
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"UserPool '{spec.UserPoolName}' was not created. Make sure to create the User Pool first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for EKS Cluster
+    member inline this.Bind
+        (
+            spec: EKSClusterSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.EKS.ICluster -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Cluster with
+                | Some cluster ->
+                    let contCfg = cont cluster
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"EKS Cluster '{spec.ClusterName}' was not created. Make sure to create the Cluster first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
 
     member _.Zero() : StackConfig =
         { Name = name

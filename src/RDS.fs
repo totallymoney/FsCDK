@@ -15,7 +15,7 @@ type DatabaseInstanceConfig =
       InstanceType: InstanceType option
       Vpc: IVpc option
       VpcSubnets: SubnetSelection option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       AllocatedStorage: int option
       StorageType: StorageType option
       BackupRetention: Duration option
@@ -263,10 +263,7 @@ type DatabaseInstanceBuilder(name: string) =
         config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
 
         if not (List.isEmpty config.SecurityGroups) then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.toArray
 
         config.AllocatedStorage
         |> Option.iter (fun s -> props.AllocatedStorage <- float s)
@@ -334,13 +331,7 @@ type DatabaseInstanceBuilder(name: string) =
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: DatabaseInstanceConfig, sg: ISecurityGroup) =
         { config with
-            SecurityGroups = (SecurityGroupRef.SecurityGroupInterface sg) :: config.SecurityGroups }
-
-    /// <summary>Adds a security group.</summary>
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: DatabaseInstanceConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroups = (SecurityGroupRef.SecurityGroupSpecRef sg) :: config.SecurityGroups }
+            SecurityGroups = sg :: config.SecurityGroups }
 
     /// <summary>Sets the allocated storage in GB.</summary>
     [<CustomOperation("allocatedStorage")>]
@@ -478,7 +469,7 @@ type DatabaseProxyConfig =
       ConstructId: string option
       Vpc: IVpc option
       VpcSubnets: SubnetSelection option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       Secrets: ISecret list
       DbProxyName: string option
       BorrowTimeout: Duration option
@@ -549,11 +540,7 @@ type DatabaseProxyBuilder(name: string) =
           ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
           Vpc = state2.Vpc |> Option.orElse state1.Vpc
           VpcSubnets = state2.VpcSubnets |> Option.orElse state1.VpcSubnets
-          SecurityGroups =
-            if state2.SecurityGroups.IsEmpty then
-                state1.SecurityGroups
-            else
-                state2.SecurityGroups @ state1.SecurityGroups
+          SecurityGroups = state1.SecurityGroups @ state2.SecurityGroups
           Secrets =
             if state2.Secrets.IsEmpty then
                 state1.Secrets
@@ -610,10 +597,7 @@ type DatabaseProxyBuilder(name: string) =
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
         if not config.SecurityGroups.IsEmpty then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.toArray
 
         config.DbProxyName |> Option.iter (fun v -> props.DbProxyName <- v)
         config.BorrowTimeout |> Option.iter (fun v -> props.BorrowTimeout <- v)
@@ -653,19 +637,13 @@ type DatabaseProxyBuilder(name: string) =
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: DatabaseProxyConfig, sg: ISecurityGroup) =
         { config with
-            SecurityGroups = SecurityGroupInterface sg :: config.SecurityGroups }
-
-    /// <summary>Adds a security group to the proxy from a SecurityGroupSpec.</summary>
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: DatabaseProxyConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroups = SecurityGroupSpecRef sg :: config.SecurityGroups }
+            SecurityGroups = sg :: config.SecurityGroups }
 
     /// <summary>Adds multiple security groups to the proxy.</summary>
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: DatabaseProxyConfig, sgs: ISecurityGroup list) =
         { config with
-            SecurityGroups = (sgs |> List.map SecurityGroupInterface) @ config.SecurityGroups }
+            SecurityGroups = sgs @ config.SecurityGroups }
 
     /// <summary>Adds a secret for database credentials.</summary>
     [<CustomOperation("secret")>]

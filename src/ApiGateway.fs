@@ -298,7 +298,7 @@ type TokenAuthorizerConfig =
       IdentitySource: string option
       ValidationRegex: string option
       AuthorizerResultTtl: Duration option
-      AssumeRole: RoleRef option }
+      AssumeRole: IRole option }
 
 type TokenAuthorizerSpec =
     { AuthorizerName: string
@@ -368,8 +368,7 @@ type TokenAuthorizerBuilder(name: string) =
         config.ValidationRegex |> Option.iter (fun v -> props.ValidationRegex <- v)
         config.AuthorizerResultTtl |> Option.iter (fun v -> props.ResultsCacheTtl <- v)
 
-        config.AssumeRole
-        |> Option.iter (fun v -> props.AssumeRole <- RoleHelpers.resolveRoleRef v)
+        config.AssumeRole |> Option.iter (fun v -> props.AssumeRole <- v)
 
         { AuthorizerName = authorizerName
           ConstructId = constructId
@@ -404,15 +403,7 @@ type TokenAuthorizerBuilder(name: string) =
 
     /// <summary>Sets the IAM role for API Gateway to assume when calling the authorizer.</summary>
     [<CustomOperation("assumeRole")>]
-    member _.AssumeRole(config: TokenAuthorizerConfig, role: IRole) =
-        { config with
-            AssumeRole = Some(RoleInterface role) }
-
-    /// <summary>Sets the IAM role for API Gateway to assume when calling the authorizer using a LambdaRoleSpec.</summary>
-    [<CustomOperation("assumeRole")>]
-    member _.AssumeRoleSpec(config: TokenAuthorizerConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            AssumeRole = Some(RoleSpecRef roleSpec) }
+    member _.AssumeRole(config: TokenAuthorizerConfig, role: IRole) = { config with AssumeRole = Some role }
 
 // ============================================================================
 // VPC Link Configuration DSL

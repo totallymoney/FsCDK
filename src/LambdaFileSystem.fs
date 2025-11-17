@@ -60,11 +60,11 @@ type EfsFileSystemConfig =
       Vpc: IVpc option
       RemovalPolicy: RemovalPolicy option
       Encrypted: bool option
-      KmsKey: KMSKeyRef option
+      KmsKey: IKey option
       PerformanceMode: PerformanceMode option
       ThroughputMode: ThroughputMode option
       ProvisionedThroughputPerSecond: float option
-      SecurityGroup: SecurityGroupRef option }
+      SecurityGroup: ISecurityGroup option }
 
 type EfsFileSystemBuilder(id: string) =
     member _.Yield _ : EfsFileSystemConfig =
@@ -99,15 +99,7 @@ type EfsFileSystemBuilder(id: string) =
             config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
             config.Encrypted |> Option.iter (fun e -> props.Encrypted <- e)
 
-            config.KmsKey
-            |> Option.iter (fun v ->
-                props.KmsKey <-
-                    match v with
-                    | KMSKeyRef.KMSKeyInterface i -> i
-                    | KMSKeyRef.KMSKeySpecRef pr ->
-                        match pr.Key with
-                        | Some k -> k
-                        | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+            config.KmsKey |> Option.iter (fun k -> props.KmsKey <- k)
 
             config.PerformanceMode |> Option.iter (fun p -> props.PerformanceMode <- p)
             config.ThroughputMode |> Option.iter (fun t -> props.ThroughputMode <- t)
@@ -115,8 +107,7 @@ type EfsFileSystemBuilder(id: string) =
             config.ProvisionedThroughputPerSecond
             |> Option.iter (fun t -> props.ProvisionedThroughputPerSecond <- Size.Mebibytes(t))
 
-            config.SecurityGroup
-            |> Option.iter (fun sg -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef sg)
+            config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
 
             FileSystem(stack, config.Id, props)
         | _ -> failwith "Both stack and vpc are required for FileSystem"
@@ -210,19 +201,7 @@ type EfsFileSystemBuilder(id: string) =
           Vpc = None
           RemovalPolicy = None
           Encrypted = None
-          KmsKey = Some(KMSKeyRef.KMSKeyInterface key)
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = None }
-
-    member _.Yield(key: KMSKeySpec) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = None
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = Some(KMSKeyRef.KMSKeySpecRef key)
+          KmsKey = Some key
           PerformanceMode = None
           ThroughputMode = None
           ProvisionedThroughputPerSecond = None
@@ -238,19 +217,7 @@ type EfsFileSystemBuilder(id: string) =
           PerformanceMode = None
           ThroughputMode = None
           ProvisionedThroughputPerSecond = None
-          SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    member _.Yield(sg: SecurityGroupSpec) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = None
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = None
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+          SecurityGroup = Some sg }
 
 // ============================================================================
 // EFS AccessPoint Builder DSL

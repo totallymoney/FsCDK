@@ -38,7 +38,7 @@ type BastionHostConfig =
       InstanceType: InstanceType option
       MachineImage: IMachineImage option
       SubnetSelection: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       InstanceName: string option
       RequireImdsv2: bool option }
 
@@ -112,9 +112,9 @@ type BastionHostBuilder(name: string) =
             | Some _ -> a.SubnetSelection
             | None -> b.SubnetSelection
           SecurityGroup =
-            match a.SecurityGroup with
-            | Some _ -> a.SecurityGroup
-            | None -> b.SecurityGroup
+            (match a.SecurityGroup with
+             | Some _ -> a.SecurityGroup
+             | None -> b.SecurityGroup)
           InstanceName =
             match a.InstanceName with
             | Some _ -> a.InstanceName
@@ -148,8 +148,7 @@ type BastionHostBuilder(name: string) =
 
         config.SubnetSelection |> Option.iter (fun s -> props.SubnetSelection <- s)
 
-        config.SecurityGroup
-        |> Option.iter (fun sg -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef sg)
+        config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
 
         config.InstanceName |> Option.iter (fun n -> props.InstanceName <- n)
 
@@ -186,15 +185,7 @@ type BastionHostBuilder(name: string) =
 
     /// <summary>Sets the security group.</summary>
     [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: BastionHostConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupInterface sg) }
-
-    /// <summary>Sets the security group from a SecurityGroupSpec.</summary>
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: BastionHostConfig, sgSpec: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupSpecRef sgSpec) }
+    member _.SecurityGroup(config: BastionHostConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     /// <summary>Sets the instance name.</summary>
     [<CustomOperation("instanceName")>]

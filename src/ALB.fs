@@ -29,7 +29,7 @@ type ALBConfig =
       Vpc: IVpc option
       InternetFacing: bool option
       VpcSubnets: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       DeletionProtection: bool option
       Http2Enabled: bool option
       DropInvalidHeaderFields: bool option }
@@ -90,8 +90,7 @@ type ALBBuilder(name: string) =
         config.InternetFacing |> Option.iter (fun v -> props.InternetFacing <- v)
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
-        config.SecurityGroup
-        |> Option.iter (fun v -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef v)
+        config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
 
         config.DeletionProtection
         |> Option.iter (fun v -> props.DeletionProtection <- v)
@@ -123,14 +122,7 @@ type ALBBuilder(name: string) =
             VpcSubnets = Some subnets }
 
     [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: ALBConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: ALBConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+    member _.SecurityGroup(config: ALBConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     [<CustomOperation("deletionProtection")>]
     member _.DeletionProtection(config: ALBConfig, enabled: bool) =

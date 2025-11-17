@@ -39,7 +39,7 @@ type ManagedPolicyConfig =
       Path: string option
       Groups: IGroup list
       Users: IUser list
-      Roles: RoleRef list }
+      Roles: IRole list }
 
 type ManagedPolicySpec =
     { PolicyName: string
@@ -171,7 +171,7 @@ type ManagedPolicyBuilder(name: string) =
             props.Users <- config.Users |> List.toArray
 
         if not (List.isEmpty config.Roles) then
-            props.Roles <- config.Roles |> List.map RoleHelpers.resolveRoleRef |> List.toArray
+            props.Roles <- config.Roles |> List.toArray
 
         { PolicyName = config.PolicyName
           ConstructId = constructId
@@ -222,13 +222,7 @@ type ManagedPolicyBuilder(name: string) =
     [<CustomOperation("attachToRole")>]
     member _.AttachToRole(config: ManagedPolicyConfig, role: IRole) =
         { config with
-            Roles = (RoleRef.RoleInterface role) :: config.Roles }
-
-    /// <summary>Attaches the policy to a role using a LambdaRoleSpec.</summary>
-    [<CustomOperation("attachToRole")>]
-    member _.AttachToRoleSpec(config: ManagedPolicyConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            Roles = (RoleRef.RoleSpecRef roleSpec) :: config.Roles }
+            Roles = role :: config.Roles }
 
     /// <summary>Adds a statement allowing specific actions on specific resources.</summary>
     [<CustomOperation("allow")>]

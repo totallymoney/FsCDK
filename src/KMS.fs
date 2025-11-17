@@ -57,9 +57,6 @@ type KMSKeySpec =
         mutable Key: IKey option
     }
 
-type KMSKeyRef =
-    | KMSKeyInterface of IKey
-    | KMSKeySpecRef of KMSKeySpec
 
 type KMSKeyBuilder(name: string) =
     member _.Yield _ : KMSKeyConfig =

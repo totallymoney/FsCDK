@@ -19,22 +19,6 @@ type SecurityGroupSpec =
       Props: SecurityGroupProps
       mutable SecurityGroup: ISecurityGroup option }
 
-type SecurityGroupRef =
-    | SecurityGroupInterface of ISecurityGroup
-    | SecurityGroupSpecRef of SecurityGroupSpec
-
-module VpcHelpers =
-    let resolveSecurityGroupRef (ref: SecurityGroupRef) =
-        match ref with
-        | SecurityGroupInterface sgi -> sgi
-        | SecurityGroupSpecRef spec ->
-            match spec.SecurityGroup with
-            | Some sg -> sg
-            | None ->
-                failwith
-                    $"SecurityGroup '{spec.SecurityGroupName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-
 // ============================================================================
 // VPC Configuration DSL
 // ============================================================================
@@ -563,7 +547,7 @@ type InterfaceVpcEndpointConfig =
       Vpc: IVpc option
       Service: IInterfaceVpcEndpointService option
       PrivateDnsEnabled: bool option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       Subnets: SubnetSelection option }
 
 type InterfaceVpcEndpointSpec =
@@ -610,11 +594,7 @@ type InterfaceVpcEndpointBuilder(name: string) =
           Vpc = state2.Vpc |> Option.orElse state1.Vpc
           Service = state2.Service |> Option.orElse state1.Service
           PrivateDnsEnabled = state2.PrivateDnsEnabled |> Option.orElse state1.PrivateDnsEnabled
-          SecurityGroups =
-            if state2.SecurityGroups.IsEmpty then
-                state1.SecurityGroups
-            else
-                state2.SecurityGroups @ state1.SecurityGroups
+          SecurityGroups = state1.SecurityGroups @ state2.SecurityGroups
           Subnets = state2.Subnets |> Option.orElse state1.Subnets }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> InterfaceVpcEndpointConfig) : InterfaceVpcEndpointConfig = f ()
@@ -644,10 +624,7 @@ type InterfaceVpcEndpointBuilder(name: string) =
         config.PrivateDnsEnabled |> Option.iter (fun v -> props.PrivateDnsEnabled <- v)
 
         if not config.SecurityGroups.IsEmpty then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.toArray
 
         config.Subnets |> Option.iter (fun v -> props.Subnets <- v)
 
@@ -714,30 +691,7 @@ type InterfaceVpcEndpointBuilder(name: string) =
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: InterfaceVpcEndpointConfig, sg: ISecurityGroup) =
         { config with
-            SecurityGroups = SecurityGroupInterface sg :: config.SecurityGroups }
-
-    /// <summary>Adds a security group to the endpoint from a SecurityGroupSpec.</summary>
-    /// <param name="config">The current Interface VPC Endpoint configuration.</param>
-    /// <param name="sg">The security group specification.</param>
-    /// <code lang="fsharp">
-    /// stack "MyStack" {
-    ///     let! vpcSpec = vpc "MyVpc" { () }
-    ///     let! sgSpec =
-    ///         securityGroup "AppSG" {
-    ///             vpc vpcSpec
-    ///         }
-    ///     let! ep =
-    ///         interfaceVpcEndpoint "SecretsManagerEndpoint" {
-    ///             vpc vpcSpec
-    ///             service InterfaceVpcEndpointAwsService.SECRETS_MANAGER
-    ///             securityGroup sgSpec
-    ///         }
-    /// }
-    /// </code>
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: InterfaceVpcEndpointConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroups = SecurityGroupSpecRef sg :: config.SecurityGroups }
+            SecurityGroups = sg :: config.SecurityGroups }
 
     /// <summary>Adds multiple security groups to the endpoint.</summary>
     /// <param name="config">The current Interface VPC Endpoint configuration.</param>
@@ -750,7 +704,7 @@ type InterfaceVpcEndpointBuilder(name: string) =
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: InterfaceVpcEndpointConfig, sgs: ISecurityGroup list) =
         { config with
-            SecurityGroups = (sgs |> List.map SecurityGroupInterface) @ config.SecurityGroups }
+            SecurityGroups = sgs @ config.SecurityGroups }
 
     /// <summary>Sets the subnets for the endpoint.</summary>
     /// <param name="config">The current Interface VPC Endpoint configuration.</param>
