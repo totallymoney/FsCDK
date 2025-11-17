@@ -306,7 +306,7 @@ type DatabaseInstanceBuilder(name: string) =
     [<CustomOperation("engine")>]
     member _.Engine(config: DatabaseInstanceConfig, engine: IInstanceEngine) = { config with Engine = Some engine }
 
-    /// <summary>Sets PostgreSQL as the database engine with a specific version.</summary >
+    /// <summary>Sets PostgreSQL as the database engine with a specific version.</summary>
     [<CustomOperation("postgresEngine")>]
     member _.PostgresEngine(config: DatabaseInstanceConfig, ?version: PostgresEngineVersion) =
         let pgVersion = version |> Option.defaultValue PostgresEngineVersion.VER_15
