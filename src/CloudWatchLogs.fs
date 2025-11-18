@@ -191,16 +191,13 @@ type CloudWatchMetricFilterConfig =
       DefaultValue: float option
       Unit: Amazon.CDK.AWS.CloudWatch.Unit voption }
 
-type CloudWatchMetricFilterResource =
-    {
-        FilterName: string
-        ConstructId: string
-        LogGroupToAttach: LogGroup option // Will be resolved in Stack.fs
-        LogGroupResourceRef: CloudWatchLogGroupSpec option // Reference to the resource if using CloudWatchLogGroupResource
-        FilterOptions: MetricFilterOptions
-        /// The underlying CDK MetricFilter construct
-        mutable MetricFilter: MetricFilter option
-    }
+type CloudWatchMetricFilterSpec =
+    { FilterName: string
+      ConstructId: string
+      LogGroupToAttach: LogGroup option
+      LogGroupResourceRef: CloudWatchLogGroupSpec option
+      FilterOptions: MetricFilterOptions
+      mutable MetricFilter: MetricFilter option }
 
 type CloudWatchMetricFilterBuilder(name: string) =
     member _.Yield _ : CloudWatchMetricFilterConfig =
@@ -254,7 +251,7 @@ type CloudWatchMetricFilterBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: CloudWatchMetricFilterConfig) : CloudWatchMetricFilterResource =
+    member _.Run(config: CloudWatchMetricFilterConfig) : CloudWatchMetricFilterSpec =
         let filterName = config.FilterName
         let constructId = config.ConstructId |> Option.defaultValue filterName
 
@@ -368,16 +365,13 @@ type CloudWatchSubscriptionFilterConfig =
       Destination: ILogSubscriptionDestination option
       FilterPattern: IFilterPattern option }
 
-type CloudWatchSubscriptionFilterResource =
-    {
-        FilterName: string
-        ConstructId: string
-        LogGroupToAttach: LogGroup option
-        LogGroupResourceRef: CloudWatchLogGroupSpec option
-        Props: SubscriptionFilterProps
-        /// The underlying CDK SubscriptionFilter construct
-        mutable SubscriptionFilter: SubscriptionFilter option
-    }
+type CloudWatchSubscriptionFilterSpec =
+    { FilterName: string
+      ConstructId: string
+      LogGroupToAttach: LogGroup option
+      LogGroupResourceRef: CloudWatchLogGroupSpec option
+      Props: SubscriptionFilterProps
+      mutable SubscriptionFilter: SubscriptionFilter option }
 
 type CloudWatchSubscriptionFilterBuilder(name: string) =
     member _.Yield _ : CloudWatchSubscriptionFilterConfig =
@@ -421,7 +415,7 @@ type CloudWatchSubscriptionFilterBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: CloudWatchSubscriptionFilterConfig) : CloudWatchSubscriptionFilterResource =
+    member _.Run(config: CloudWatchSubscriptionFilterConfig) : CloudWatchSubscriptionFilterSpec =
         let filterName = config.FilterName
         let constructId = config.ConstructId |> Option.defaultValue filterName
 

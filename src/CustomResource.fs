@@ -40,14 +40,11 @@ type CustomResourceConfig =
       InstallLatestAwsSdk: bool option
       LogRetention: RetentionDays option }
 
-type CustomResourceResource =
-    {
-        ResourceName: string
-        ConstructId: string
-        Props: AwsCustomResourceProps
-        /// The underlying CDK AwsCustomResource construct
-        mutable CustomResource: AwsCustomResource option
-    }
+type CustomResourceSpec =
+    { ResourceName: string
+      ConstructId: string
+      Props: AwsCustomResourceProps
+      mutable CustomResource: AwsCustomResource option }
 
     /// Gets the response from the custom resource
     member this.GetResponseField(fieldName: string) =
@@ -99,7 +96,7 @@ type CustomResourceBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: CustomResourceConfig) : CustomResourceResource =
+    member _.Run(config: CustomResourceConfig) : CustomResourceSpec =
         let resourceName = config.ResourceName
         let constructId = config.ConstructId |> Option.defaultValue resourceName
 

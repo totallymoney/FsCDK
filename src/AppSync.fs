@@ -44,14 +44,11 @@ type AppSyncApiConfig =
       XrayEnabled: bool voption
       LogLevel: FieldLogLevel voption }
 
-type AppSyncApiResource =
-    {
-        ApiName: string
-        ConstructId: string
-        Props: GraphqlApiProps
-        /// The underlying CDK GraphqlApi construct
-        mutable GraphqlApi: GraphqlApi option
-    }
+type AppSyncApiSpec =
+    { ApiName: string
+      ConstructId: string
+      Props: GraphqlApiProps
+      mutable GraphqlApi: GraphqlApi option }
 
     /// Gets the API ID
     member this.ApiId =
@@ -99,7 +96,7 @@ type AppSyncApiBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: AppSyncApiConfig) : AppSyncApiResource =
+    member _.Run(config: AppSyncApiConfig) : AppSyncApiSpec =
         let apiName = config.ApiName
         let constructId = config.ConstructId |> Option.defaultValue apiName
 
@@ -154,7 +151,7 @@ type AppSyncDataSourceConfig =
       LambdaFunction: IFunction option
       Description: string option }
 
-type AppSyncDataSourceResource =
+type AppSyncDataSourceSpec =
     { Name: string
       ConstructId: string
       Config: AppSyncDataSourceConfig
@@ -195,7 +192,7 @@ type AppSyncDataSourceBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: AppSyncDataSourceConfig) : AppSyncDataSourceResource =
+    member _.Run(config: AppSyncDataSourceConfig) : AppSyncDataSourceSpec =
         let name = config.Name
         let constructId = config.ConstructId |> Option.defaultValue name
 
@@ -215,7 +212,7 @@ type AppSyncDataSourceBuilder(name: string) =
     member _.Api(config: AppSyncDataSourceConfig, api: GraphqlApi) = { config with Api = Some api }
 
     [<CustomOperation("api")>]
-    member _.Api(config: AppSyncDataSourceConfig, apiSpec: AppSyncApiResource) =
+    member _.Api(config: AppSyncDataSourceConfig, apiSpec: AppSyncApiSpec) =
         match apiSpec.GraphqlApi with
         | Some api -> { config with Api = Some api }
         | None ->

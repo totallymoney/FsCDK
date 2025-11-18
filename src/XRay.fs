@@ -34,14 +34,11 @@ type XRayGroupConfig =
       InsightsEnabled: bool voption
       Tags: (string * string) list }
 
-type XRayGroupResource =
-    {
-        GroupName: string
-        ConstructId: string
-        Props: CfnGroupProps
-        /// The underlying CDK CfnGroup construct
-        mutable Group: CfnGroup option
-    }
+type XRayGroupSpec =
+    { GroupName: string
+      ConstructId: string
+      Props: CfnGroupProps
+      mutable Group: CfnGroup option }
 
     /// Gets the group ARN
     member this.GroupArn =
@@ -81,7 +78,7 @@ type XRayGroupBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: XRayGroupConfig) : XRayGroupResource =
+    member _.Run(config: XRayGroupConfig) : XRayGroupSpec =
         let groupName = config.GroupName
         let constructId = config.ConstructId |> Option.defaultValue groupName
 
@@ -144,14 +141,11 @@ type XRaySamplingRuleConfig =
       ResourceArn: string option
       Tags: (string * string) list }
 
-type XRaySamplingRuleResource =
-    {
-        RuleName: string
-        ConstructId: string
-        Props: CfnSamplingRuleProps
-        /// The underlying CDK CfnSamplingRule construct
-        mutable SamplingRule: CfnSamplingRule option
-    }
+type XRaySamplingRuleSpec =
+    { RuleName: string
+      ConstructId: string
+      Props: CfnSamplingRuleProps
+      mutable SamplingRule: CfnSamplingRule option }
 
     /// Gets the sampling rule ARN
     member this.RuleArn =
@@ -216,7 +210,7 @@ type XRaySamplingRuleBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: XRaySamplingRuleConfig) : XRaySamplingRuleResource =
+    member _.Run(config: XRaySamplingRuleConfig) : XRaySamplingRuleSpec =
         let ruleName = config.RuleName
         let constructId = config.ConstructId |> Option.defaultValue ruleName
 
