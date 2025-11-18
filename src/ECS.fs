@@ -219,7 +219,7 @@ type ECSFargateServiceBuilder(name: string) =
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: SecurityGroupSpec list) =
         { config with
-            SecurityGroups = config.SecurityGroups }
+            SecurityGroups = sgs @ config.SecurityGroups }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: ECSFargateServiceConfig, subnets: SubnetSelection) =
