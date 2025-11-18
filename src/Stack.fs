@@ -198,40 +198,8 @@ module StackOperations =
         | TopicOp topicSpec -> Topic(stack, topicSpec.ConstructId, topicSpec.Props) |> ignore
 
         | QueueOp queueSpec ->
-            // Build QueueProps from spec (convert primitives to Duration etc.)
-            let props = QueueProps()
-            props.QueueName <- queueSpec.QueueName
+            let queue = Queue(stack, queueSpec.ConstructId, queueSpec.Props)
 
-            queueSpec.VisibilityTimeout
-            |> Option.iter (fun v -> props.VisibilityTimeout <- Duration.Seconds(v))
-
-            queueSpec.MessageRetention
-            |> Option.iter (fun r -> props.RetentionPeriod <- Duration.Seconds(r))
-
-            queueSpec.FifoQueue |> Option.iter (fun f -> props.Fifo <- f)
-
-            queueSpec.ContentBasedDeduplication
-            |> Option.iter (fun c -> props.ContentBasedDeduplication <- c)
-
-            queueSpec.DelaySeconds
-            |> Option.iter (fun d -> props.DeliveryDelay <- Duration.Seconds(float d))
-
-            queueSpec.Encryption |> Option.iter (fun e -> props.Encryption <- e)
-
-            queueSpec.EncryptionMasterKey
-            |> Option.iter (fun k -> props.EncryptionMasterKey <- k)
-
-            match queueSpec.DeadLetterQueueName, queueSpec.MaxReceiveCount with
-            | Some dlqName, Some maxReceive ->
-                try
-                    let dlq = stack.Node.FindChild(dlqName) :?> Queue
-                    let dlqSpec = DeadLetterQueue(Queue = dlq, MaxReceiveCount = maxReceive)
-                    props.DeadLetterQueue <- dlqSpec
-                with ex ->
-                    printfn $"Warning: Could not configure DLQ for queue %s{queueSpec.QueueName}: %s{ex.Message}"
-            | _ -> ()
-
-            let queue = Queue(stack, queueSpec.ConstructId, props)
             queueSpec.Queue <- Some queue
 
         | BucketOp bucketSpec ->
