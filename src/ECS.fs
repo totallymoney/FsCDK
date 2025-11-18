@@ -23,13 +23,10 @@ type ECSClusterConfig =
       ContainerInsights: ContainerInsights option
       EnableFargateCapacityProviders: bool option }
 
-type ECSClusterResource =
-    {
-        ClusterName: string
-        ConstructId: string
-        /// The underlying CDK Cluster construct
-        Cluster: Cluster
-    }
+type ECSClusterSpec =
+    { ClusterName: string
+      ConstructId: string
+      mutable Cluster: Cluster option }
 
 type ECSClusterBuilder(name: string) =
     member _.Yield _ : ECSClusterConfig =
@@ -59,7 +56,7 @@ type ECSClusterBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ECSClusterConfig) : ECSClusterResource =
+    member _.Run(config: ECSClusterConfig) : ECSClusterSpec =
         let clusterName = config.ClusterName
         let constructId = config.ConstructId |> Option.defaultValue clusterName
 
@@ -76,7 +73,7 @@ type ECSClusterBuilder(name: string) =
 
         { ClusterName = clusterName
           ConstructId = constructId
-          Cluster = null }
+          Cluster = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ECSClusterConfig, id: string) = { config with ConstructId = Some id }
@@ -118,13 +115,10 @@ type ECSFargateServiceConfig =
       SecurityGroups: ISecurityGroup list
       VpcSubnets: SubnetSelection option }
 
-type ECSFargateServiceResource =
-    {
-        ServiceName: string
-        ConstructId: string
-        /// The underlying CDK FargateService construct
-        Service: FargateService
-    }
+type ECSFargateServiceSpec =
+    { ServiceName: string
+      ConstructId: string
+      mutable Service: FargateService option }
 
 type ECSFargateServiceBuilder(name: string) =
     member _.Yield _ : ECSFargateServiceConfig =
@@ -165,7 +159,7 @@ type ECSFargateServiceBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ECSFargateServiceConfig) : ECSFargateServiceResource =
+    member _.Run(config: ECSFargateServiceConfig) : ECSFargateServiceSpec =
         let serviceName = config.ServiceName
         let constructId = config.ConstructId |> Option.defaultValue serviceName
 
@@ -186,7 +180,7 @@ type ECSFargateServiceBuilder(name: string) =
 
         { ServiceName = serviceName
           ConstructId = constructId
-          Service = null }
+          Service = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ECSFargateServiceConfig, id: string) = { config with ConstructId = Some id }
@@ -212,12 +206,6 @@ type ECSFargateServiceBuilder(name: string) =
     /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: ISecurityGroup list) =
-        { config with
-            SecurityGroups = sgs @ config.SecurityGroups }
-
-    /// Add groups to securityGroups
-    [<CustomOperation("securityGroups")>]
-    member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: SecurityGroupSpec list) =
         { config with
             SecurityGroups = sgs @ config.SecurityGroups }
 

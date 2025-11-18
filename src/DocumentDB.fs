@@ -55,26 +55,11 @@ type DocumentDBClusterConfig =
       RemovalPolicy: RemovalPolicy option
       Tags: (string * string) list }
 
-type DocumentDBClusterResource =
-    {
-        ClusterName: string
-        ConstructId: string
-        /// The underlying CDK DatabaseCluster construct
-        Cluster: DatabaseCluster
-    }
-
-    /// Gets the cluster endpoint
-    member this.ClusterEndpoint = this.Cluster.ClusterEndpoint
-
-    /// Gets the cluster read endpoint
-    member this.ClusterReadEndpoint = this.Cluster.ClusterReadEndpoint
-
-    /// Gets the connection string (without credentials)
-    member this.ConnectionString =
-        sprintf
-            "mongodb://%s:%d"
-            this.Cluster.ClusterEndpoint.Hostname
-            (this.Cluster.ClusterEndpoint.Port |> float |> int)
+type DocumentDBClusterSpec =
+    { ClusterName: string
+      ConstructId: string
+      Props: DatabaseClusterProps
+      mutable Cluster: DatabaseCluster option }
 
 type DocumentDBClusterBuilder(name: string) =
     member _.Yield _ : DocumentDBClusterConfig =
@@ -150,7 +135,7 @@ type DocumentDBClusterBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: DocumentDBClusterConfig) : DocumentDBClusterResource =
+    member _.Run(config: DocumentDBClusterConfig) : DocumentDBClusterSpec =
         let clusterName = config.ClusterName
         let constructId = config.ConstructId |> Option.defaultValue clusterName
 
@@ -196,7 +181,8 @@ type DocumentDBClusterBuilder(name: string) =
 
         { ClusterName = clusterName
           ConstructId = constructId
-          Cluster = null }
+          Props = props
+          Cluster = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: DocumentDBClusterConfig, id: string) = { config with ConstructId = Some id }

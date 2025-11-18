@@ -50,14 +50,11 @@ type StepFunctionConfig =
       Role: IRole option
       Comment: string option }
 
-type StepFunctionResource =
-    {
-        StateMachineName: string
-        ConstructId: string
-        Props: StateMachineProps
-        /// The underlying CDK StateMachine construct
-        mutable StateMachine: StateMachine option
-    }
+type StepFunctionSpec =
+    { StateMachineName: string
+      ConstructId: string
+      Props: StateMachineProps
+      mutable StateMachine: StateMachine option }
 
     /// Gets the state machine ARN
     member this.StateMachineArn =
@@ -112,7 +109,7 @@ type StepFunctionBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: StepFunctionConfig) : StepFunctionResource =
+    member _.Run(config: StepFunctionConfig) : StepFunctionSpec =
         let stateMachineName = config.StateMachineName
         let constructId = config.ConstructId |> Option.defaultValue stateMachineName
 

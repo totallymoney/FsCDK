@@ -75,27 +75,27 @@ type Operation =
     | SecretsManagerOp of SecretsManagerSpec
     | ElasticBeanstalkEnvironmentOp of ElasticBeanstalkEnvironmentSpec
     | DnsValidatedCertificateOp of DnsValidatedCertificateSpec
-    | AppRunnerServiceOp of AppRunnerServiceResource
-    | ElastiCacheRedisOp of ElastiCacheRedisResource
-    | DocumentDBClusterOp of DocumentDBClusterResource
-    | CustomResourceOp of CustomResourceResource
-    | StepFunctionOp of StepFunctionResource
-    | XRayGroupOp of XRayGroupResource
-    | XRaySamplingRuleOp of XRaySamplingRuleResource
-    | AppSyncApiOp of AppSyncApiResource
-    | AppSyncDataSourceOp of AppSyncDataSourceResource
+    | AppRunnerServiceOp of AppRunnerServiceSpec
+    | ElasticCacheRedisOp of ElasticCacheRedisSpec
+    | DocumentDBClusterOp of DocumentDBClusterSpec
+    | CustomResourceOp of CustomResourceSpec
+    | StepFunctionOp of StepFunctionSpec
+    | XRayGroupOp of XRayGroupSpec
+    | XRaySamplingRuleOp of XRaySamplingRuleSpec
+    | AppSyncApiOp of AppSyncApiSpec
+    | AppSyncDataSourceOp of AppSyncDataSourceSpec
     | RestApiOp of RestApiSpec
     | TokenAuthorizerOp of TokenAuthorizerSpec
     | VpcLinkOp of VpcLinkSpec
     | FargateTaskDefinitionOp of FargateTaskDefinitionSpec
-    | ECSClusterOp of ECSClusterResource
-    | ECSFargateServiceOp of ECSFargateServiceResource
+    | ECSClusterOp of ECSClusterSpec
+    | ECSFargateServiceOp of ECSFargateServiceSpec
     | GatewayVpcEndpointOp of GatewayVpcEndpointSpec
     | InterfaceVpcEndpointOp of InterfaceVpcEndpointSpec
     | DatabaseProxyOp of DatabaseProxySpec
     | CloudWatchLogGroupOp of CloudWatchLogGroupSpec
-    | CloudWatchMetricFilterOp of CloudWatchMetricFilterResource
-    | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterResource
+    | CloudWatchMetricFilterOp of CloudWatchMetricFilterSpec
+    | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -150,8 +150,7 @@ module StackOperations =
             tableSpec.Table <- Some t
 
         | FunctionOp lambdaSpec ->
-            // Yan Cui Production Best Practice: Auto-create DLQ if enabled
-            // Check is DeadLetterQueueEnabled is set but no queue provided
+            // Check if DeadLetterQueueEnabled is set but no queue provided
             let propsToUse =
                 if
                     lambdaSpec.Props.DeadLetterQueueEnabled.HasValue
@@ -415,46 +414,27 @@ module StackOperations =
             certSpec.Certificate <- cert
 
         | AppRunnerServiceOp serviceSpec ->
-            let props = Amazon.CDK.AWS.AppRunner.CfnServiceProps()
-            props.ServiceName <- serviceSpec.ServiceName
-
-            serviceSpec.Config.SourceConfiguration
-            |> Option.iter (fun v -> props.SourceConfiguration <- v)
-
-            serviceSpec.Config.InstanceConfiguration
-            |> Option.iter (fun v -> props.InstanceConfiguration <- v)
-
-            serviceSpec.Config.HealthCheckConfiguration
-            |> Option.iter (fun v -> props.HealthCheckConfiguration <- v)
-
-            serviceSpec.Config.AutoScalingConfigurationArn
-            |> Option.iter (fun v -> props.AutoScalingConfigurationArn <- v)
-
-            if not serviceSpec.Config.Tags.IsEmpty then
-                props.Tags <-
-                    serviceSpec.Config.Tags
-                    |> List.map (fun (k, v) -> CfnTag(Key = k, Value = v) :> ICfnTag)
-                    |> Array.ofList
-
             let service =
-                Amazon.CDK.AWS.AppRunner.CfnService(stack, serviceSpec.ConstructId, props)
+                Amazon.CDK.AWS.AppRunner.CfnService(stack, serviceSpec.ConstructId, serviceSpec.Props)
 
             serviceSpec.Service <- Some service
 
-        | ElastiCacheRedisOp clusterSpec ->
-            let _ =
+        | ElasticCacheRedisOp clusterSpec ->
+            let cfnCacheCluster =
                 CfnCacheCluster(
                     stack,
                     clusterSpec.ConstructId,
                     CfnCacheClusterProps(ClusterName = clusterSpec.ClusterName)
                 )
-            // Note: Full configuration handled in builder
-            ()
 
-        | DocumentDBClusterOp _ ->
-            // Note: DocumentDB cluster creation requires VPC and credentials
-            // Full implementation would use DatabaseCluster
-            ()
+            clusterSpec.CacheCluster <- Some cfnCacheCluster
+
+        | DocumentDBClusterOp clusterSpec ->
+            let databaseCluster =
+                AWS.DocDB.DatabaseCluster(stack, clusterSpec.ConstructId, clusterSpec.Props)
+
+            clusterSpec.Cluster <- Some databaseCluster
+
 
         | CustomResourceOp resourceSpec ->
             let customResource =
@@ -516,21 +496,21 @@ module StackOperations =
 
             taskDefSpec.TaskDefinition <- Some taskDef
 
-        | ECSClusterOp clusterResource ->
-            let _ =
-                Cluster(stack, clusterResource.ConstructId, ClusterProps(ClusterName = clusterResource.ClusterName))
-            // Note: Full configuration handled in builder
-            ()
+        | ECSClusterOp clusterSpec ->
+            let cluster =
+                Cluster(stack, clusterSpec.ConstructId, ClusterProps(ClusterName = clusterSpec.ClusterName))
+
+            clusterSpec.Cluster <- Some cluster
 
         | ECSFargateServiceOp serviceResource ->
-            let _ =
+            let service =
                 FargateService(
                     stack,
                     serviceResource.ConstructId,
                     FargateServiceProps(ServiceName = serviceResource.ServiceName)
                 )
-            // Note: Full configuration handled in builder
-            ()
+
+            serviceResource.Service <- Some service
 
         | GatewayVpcEndpointOp endpointSpec ->
             let endpoint =
@@ -1296,7 +1276,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (CloudWatchAlarmOp alarmSpec) ] }
 
-    member _.Yield(customResourceResource: CustomResourceResource) : StackConfig =
+    member _.Yield(customResourceResource: CustomResourceSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1312,7 +1292,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (CustomResourceOp customResourceResource) ] }
 
-    member _.Yield(sfResource: StepFunctionResource) : StackConfig =
+    member _.Yield(sfResource: StepFunctionSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1328,7 +1308,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (StepFunctionOp sfResource) ] }
 
-    member _.Yield(xrayGroupResource: XRayGroupResource) : StackConfig =
+    member _.Yield(xrayGroupResource: XRayGroupSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1344,7 +1324,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (XRayGroupOp xrayGroupResource) ] }
 
-    member _.Yield(xraySamplingRuleResource: XRaySamplingRuleResource) : StackConfig =
+    member _.Yield(xraySamplingRuleResource: XRaySamplingRuleSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1360,7 +1340,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (XRaySamplingRuleOp xraySamplingRuleResource) ] }
 
-    member _.Yield(appSyncApiResource: AppSyncApiResource) : StackConfig =
+    member _.Yield(appSyncApiResource: AppSyncApiSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1376,7 +1356,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (AppSyncApiOp appSyncApiResource) ] }
 
-    member _.Yield(appSyncDataSourceResource: AppSyncDataSourceResource) : StackConfig =
+    member _.Yield(appSyncDataSourceResource: AppSyncDataSourceSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1456,7 +1436,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (FargateTaskDefinitionOp taskDefSpec) ] }
 
-    member _.Yield(clusterResource: ECSClusterResource) : StackConfig =
+    member _.Yield(clusterResource: ECSClusterSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1472,7 +1452,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (ECSClusterOp clusterResource) ] }
 
-    member _.Yield(serviceResource: ECSFargateServiceResource) : StackConfig =
+    member _.Yield(serviceResource: ECSFargateServiceSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1552,7 +1532,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (CloudWatchLogGroupOp logGroupResource) ] }
 
-    member _.Yield(filterResource: CloudWatchMetricFilterResource) : StackConfig =
+    member _.Yield(filterResource: CloudWatchMetricFilterSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1568,7 +1548,7 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (CloudWatchMetricFilterOp filterResource) ] }
 
-    member _.Yield(subscriptionResource: CloudWatchSubscriptionFilterResource) : StackConfig =
+    member _.Yield(subscriptionResource: CloudWatchSubscriptionFilterSpec) : StackConfig =
         { Name = name
           Construct = None
           Env = None
@@ -1883,7 +1863,7 @@ type StackBuilder(name: string) =
     /// Bind for Step Functions State Machine
     member inline this.Bind
         (
-            spec: StepFunctionResource,
+            spec: StepFunctionSpec,
             [<InlineIfLambda>] cont: StateMachine -> StackConfig
         ) : StackConfig =
         let baseCfg = this.Yield(spec)
