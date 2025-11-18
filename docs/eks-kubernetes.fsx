@@ -324,7 +324,7 @@ stack "SecureEKSStack" {
         }
 
     // Create KMS key for secrets encryption
-    let secretsKey =
+    let! secretsKey =
         kmsKey "EKSSecretsKey" {
             description "KMS key for EKS secrets encryption"
             enableKeyRotation
@@ -577,7 +577,7 @@ stack "ProductionEKSStack" {
 
     // KMS key for secrets encryption
 
-    let eksKey =
+    let! eksKey =
         kmsKey "ProdEKSKey" {
             description "Production EKS secrets encryption key"
             alias "alias/prod-eks-secrets"

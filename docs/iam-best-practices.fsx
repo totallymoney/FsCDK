@@ -140,7 +140,7 @@ stack "MyStack" {
             cidr "10.0.0.0/16"
         }
 
-    let lambdaSecurityGroup =
+    let! lambdaSecurityGroup =
         securityGroup "MySecurityGroup" {
             vpc myVpc
             description "Security group for Lambda"
@@ -396,7 +396,7 @@ stack "DatabaseStack" {
             cidr "10.0.0.0/16"
         }
 
-    let lambdaSecurityGroup =
+    let! lambdaSecurityGroup =
         securityGroup "MySecurityGroup" {
             vpc myVpc
             description "Security group for Lambda"

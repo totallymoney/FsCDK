@@ -58,7 +58,7 @@ stack "S3EncryptionStack" {
     description "S3 bucket with KMS encryption"
 
     // Create KMS key for S3
-    let s3Key =
+    let! s3Key =
         kmsKey "s3-encryption-key" {
             description "KMS key for S3 bucket encryption"
             alias "alias/s3-data-encryption"
@@ -84,7 +84,7 @@ stack "SecretsEncryptionStack" {
     description "Secrets Manager with custom KMS key"
 
     // Create KMS key for secrets
-    let secretsKey =
+    let! secretsKey =
         kmsKey "secrets-encryption-key" {
             description "KMS key for Secrets Manager"
             alias "alias/secrets-encryption"
@@ -110,7 +110,7 @@ stack "LambdaEncryptionStack" {
     description "Lambda with encrypted environment variables"
 
     // Create KMS key for Lambda
-    let lambdaKey =
+    let! lambdaKey =
         kmsKey "lambda-env-key" {
             description "Encrypts Lambda environment variables"
             alias "alias/lambda-env-encryption"
@@ -139,7 +139,7 @@ stack "LambdaEncryptionStack" {
 stack "SigningKeyStack" {
     description "Asymmetric KMS key for digital signatures"
 
-    // Create signing key
+    // Create a signing key
     let signingKey =
         kmsKey "code-signing-key" {
             description "Signs application artifacts"
@@ -166,7 +166,7 @@ stack "ProductionKMSStack" {
     tags [ "Environment", "Production"; "ManagedBy", "FsCDK" ]
 
     // Application data encryption key
-    let appDataKey =
+    let! appDataKey =
         kmsKey "app-data-key" {
             description "Encrypts application data at rest"
             alias "alias/prod-app-data"
@@ -203,7 +203,7 @@ stack "ProductionKMSStack" {
         description "Alert on unusual KMS key usage"
         metricNamespace "AWS/KMS"
         metricName "NumberOfOperations"
-        dimensions [ "KeyId", appDataKey.Key.Value.KeyId ]
+        dimensions [ "KeyId", appDataKey.KeyId ]
         statistic "Sum"
         threshold 1000.0
         evaluationPeriods 1

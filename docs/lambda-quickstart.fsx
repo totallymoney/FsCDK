@@ -137,17 +137,18 @@ Enables AWS X-Ray for distributed tracing.
 ### Example 5: Cost optimization with custom ephemeral storage
 *)
 
-let logGroupItm =
-    logGroup "optimized-function-logs" { retention RetentionDays.THREE_DAYS }
+stack "LambdaQuickstartStack" {
+    let! logGroupItm = logGroup "optimized-function-logs" { retention RetentionDays.THREE_DAYS }
 
-lambda "optimized-function" {
-    handler "index.handler"
-    runtime Runtime.PYTHON_3_11
-    code "./lambda-code"
-    ephemeralStorageSize 1024 // Increase /tmp storage to 1 GB
+    lambda "optimized-function" {
+        handler "index.handler"
+        runtime Runtime.PYTHON_3_11
+        code "./lambda-code"
+        ephemeralStorageSize 1024 // Increase /tmp storage to 1 GB
 
-    // For custom log retention, use logGroup builder:
-    logGroup logGroupItm
+        // For custom log retention, use logGroup builder:
+        logGroup logGroupItm
+    }
 }
 
 (**
@@ -314,14 +315,16 @@ Logs are retained for 1 week by default (via CloudWatch Log Groups) following Co
 To customize, use the `logGroup` builder:
 **)
 
-let logGrp = logGroup "MyFunction-logs" { retention RetentionDays.ONE_MONTH }
+stack "LambdaQuickstartStack" {
+    let! logGrp = logGroup "MyFunction-logs" { retention RetentionDays.ONE_MONTH }
 
-lambda "MyFunction" {
-    handler "index.handler"
-    runtime Runtime.NODEJS_18_X
-    code "./code"
+    lambda "MyFunction" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./code"
 
-    logGroup logGrp
+        logGroup logGrp
+    }
 }
 
 (*

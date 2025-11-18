@@ -91,7 +91,7 @@ stack "MultiTierApp" {
 
     // Step 2: Create Security Group for Lambda functions
     // AWS Best Practice: Least privilege - no outbound by default
-    let lambdaSecurityGroup =
+    let! lambdaSecurityGroup =
         securityGroup "LambdaSecurityGroup" {
             vpc myVpc
             description "Security group for Lambda functions"
@@ -99,7 +99,7 @@ stack "MultiTierApp" {
         }
 
     // Step 3: Create Security Group for RDS
-    let dbSecurityGroup =
+    let! dbSecurityGroup =
         securityGroup "DatabaseSecurityGroup" {
             vpc myVpc
             description "Security group for RDS PostgreSQL"

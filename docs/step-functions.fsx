@@ -51,8 +51,7 @@ stack "BasicStateMachine" {
         }
 
     // Create log group for state machine
-    let logGroup =
-        logGroup "/aws/vendedlogs/states/MyStateMachine" { retention RetentionDays.ONE_MONTH }
+    let! logGroup = logGroup "/aws/vendedlogs/states/MyStateMachine" { retention RetentionDays.ONE_MONTH }
 
     // Create state machine
     // Note: State definitions must be created using CDK Tasks
@@ -79,7 +78,7 @@ Step Functions offers two types of state machines:
 *)
 
 stack "StateMachineTypes" {
-    let logGroup =
+    let! logGroup =
         logGroup "Logs" {
             retention RetentionDays.ONE_WEEK
             ()
@@ -195,7 +194,7 @@ Step Functions provides comprehensive monitoring capabilities.
 *)
 
 stack "MonitoredStateMachine" {
-    let logGroup =
+    let! logGroup =
         logGroup "DetailedLogs" {
             retention RetentionDays.THREE_MONTHS
             ()
