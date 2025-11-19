@@ -1,7 +1,7 @@
 (**
 ---
 title: CloudTrail Audit Logging
-category: Resources
+category: 3. Resources
 categoryindex: 5
 ---
 

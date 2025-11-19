@@ -1,7 +1,7 @@
 (**
 ---
 title: Network Load Balancer
-category: Resources
+category: 3. Resources
 categoryindex: 20
 ---
 

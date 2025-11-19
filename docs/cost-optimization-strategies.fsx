@@ -1,7 +1,7 @@
 (**
 ---
 title: AWS Cost Optimization Strategies
-category: Best Practices
+category: 6. Best Practices
 categoryindex: 1
 ---
 

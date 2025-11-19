@@ -1,7 +1,7 @@
 (**
 ---
 title: S3 Quickstart Example
-category: Resources
+category: 3. Resources
 categoryindex: 23
 ---
 

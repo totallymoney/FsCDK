@@ -1,7 +1,7 @@
 (**
 ---
 title: Cognito OAuth 2.0 Machine-to-Machine (M2M)
-category: Resources
+category: 3. Resources
 categoryindex: 7
 ---
 
@@ -11,7 +11,7 @@ Implement secure service-to-service authentication using Cognito User Pools, OAu
 
 ## OAuth 2.0 M2M Flow
 
-<div class="mermaid">
+<pre class="mermaid">
 sequenceDiagram
     participant Service as Service A<br/>(Client)
     participant Cognito as Cognito<br/>User Pool

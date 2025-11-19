@@ -1,7 +1,7 @@
 (**
 ---
 title: ECR Repository (Container Registry)
-category: Resources
+category: 3. Resources
 categoryindex: 11
 ---
 

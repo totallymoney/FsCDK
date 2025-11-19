@@ -1,7 +1,7 @@
 (**
 ---
 title: Multi-Tenant SaaS Patterns
-category: Tutorials
+category: 5. Tutorials
 categoryindex: 2
 ---
 

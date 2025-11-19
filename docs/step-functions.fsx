@@ -1,7 +1,7 @@
 (**
 ---
 title: Step Functions (State Machines)
-category: Resources
+category: 3. Resources
 categoryindex: 25
 ---
 
@@ -12,7 +12,7 @@ and other AWS services into business-critical workflows.
 
 ## Order Processing Workflow Example
 
-<div class="mermaid">
+<pre class="mermaid">
 stateDiagram-v2
     [*] --> ValidateOrder
     

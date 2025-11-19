@@ -1,7 +1,7 @@
 (**
 ---
 title: EventBridge
-category: Resources
+category: 3. Resources
 categoryindex: 13
 ---
 
@@ -12,7 +12,7 @@ Build event-driven architectures with decoupled microservices.
 
 ## EventBridge Event-Driven Architecture
 
-<div class="mermaid">
+<pre class="mermaid">
 graph LR
     subgraph "Event Producers"
         A1[Custom Application]

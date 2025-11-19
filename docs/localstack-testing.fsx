@@ -1,7 +1,7 @@
 (**
 ---
 title: Local Testing with LocalStack
-category: Testing
+category: 7. Testing
 categoryindex: 1
 ---
 

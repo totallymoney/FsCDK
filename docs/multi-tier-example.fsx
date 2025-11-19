@@ -1,7 +1,7 @@
 (**
 ---
 title: FsCDK Multi-Tier Application Example
-category: Tutorials
+category: 5. Tutorials
 categoryindex: 1
 ---
 
@@ -11,7 +11,7 @@ This example demonstrates how to build a complete multi-tier web application usi
 
 ## Architecture Overview
 
-<div class="mermaid">
+<pre class="mermaid">
 graph TB
     subgraph "Presentation Layer"
         A[CloudFront CDN]

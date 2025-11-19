@@ -1,7 +1,7 @@
 (**
 ---
 title: DynamoDB Tables
-category: Resources
+category: 3. Resources
 categoryindex: 9
 ---
 
@@ -525,9 +525,7 @@ Run this checklist for every new table or major schema change to align with expe
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
     allowfullscreen>
   </iframe>
-</div>
-
-**Rick Houlihan (AWS Principal Technologist) - 250k+ views, 4.8★ rating**
+</pre>**Rick Houlihan (AWS Principal Technologist) - 250k+ views, 4.8★ rating**
 
 This is **the definitive DynamoDB masterclass**. Houlihan covers:
 - Single-table design principles and patterns

@@ -1,7 +1,7 @@
 (**
 ---
 title: Load Balancer, Secrets Manager, and Route 53 Example
-category: Resources
+category: 3. Resources
 categoryindex: 1
 ---
 

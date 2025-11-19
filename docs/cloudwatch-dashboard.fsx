@@ -1,7 +1,7 @@
 (**
 ---
 title: CloudWatch Monitoring and Dashboards
-category: Resources
+category: 3. Resources
 categoryindex: 6
 ---
 

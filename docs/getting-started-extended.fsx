@@ -1,7 +1,7 @@
 (**
 ---
 title: Getting Started with FsCDK - Extended Features
-category: Getting Started
+category: 2. Getting Started
 categoryindex: 2
 ---
 

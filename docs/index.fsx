@@ -120,7 +120,7 @@ stack "Prod" {
 
 ### FsCDK Architecture Overview
 
-<div class="mermaid">
+<pre class="mermaid">
 graph TB
     subgraph "Your F# Code"
         A[FsCDK Builders<br/>Computation Expressions]
@@ -158,7 +158,7 @@ graph TB
     style F fill:#e8f5e9
     style G fill:#e8f5e9
     style H fill:#e8f5e9
-</div>
+</pre>
 
 **Production-Safe Defaults**
 

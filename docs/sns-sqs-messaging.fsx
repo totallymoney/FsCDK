@@ -1,7 +1,7 @@
 (**
 ---
 title: SNS and SQS Messaging
-category: Resources
+category: 3. Resources
 categoryindex: 24
 ---
 
@@ -12,7 +12,7 @@ that enable you to decouple and scale microservices, distributed systems, and se
 
 ## SNS/SQS Messaging Patterns
 
-<div class="mermaid">
+<pre class="mermaid">
 graph TB
     subgraph "Publishers"
         A1[Lambda Function]

@@ -1,7 +1,7 @@
 (**
 ---
 title: AWS Learning Resources
-category: Reference
+category: 8. Reference
 categoryindex: 2
 ---
 

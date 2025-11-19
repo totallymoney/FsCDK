@@ -14,7 +14,7 @@ FsCDK bakes in the guidance from AWS Heroes **Yan Cui**, **Heitor Lessa**, and *
 
 ### Lambda Production Architecture
 
-<div class="mermaid">
+<pre class="mermaid">
 graph TB
     subgraph "Event Sources"
         A1[API Gateway]

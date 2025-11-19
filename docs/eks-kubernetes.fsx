@@ -1,7 +1,7 @@
 (**
 ---
 title: EKS (Elastic Kubernetes Service) Example
-category: Resources
+category: 3. Resources
 categoryindex: 12
 ---
 
