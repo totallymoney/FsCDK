@@ -1,7 +1,7 @@
 (**
 ---
 title: Complete Feature Reference
-category: 8. Reference
+category: Reference
 categoryindex: 3
 ---
 

@@ -1,7 +1,7 @@
 (**
 ---
 title: S3 Bucket Policy
-category: 3. Resources
+category: Resources
 categoryindex: 22
 ---
 

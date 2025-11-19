@@ -1,7 +1,7 @@
 (**
 ---
 title: Step Functions (State Machines)
-category: 3. Resources
+category: Resources
 categoryindex: 25
 ---
 
@@ -12,46 +12,7 @@ and other AWS services into business-critical workflows.
 
 ## Order Processing Workflow Example
 
-<pre class="mermaid">
-stateDiagram-v2
-    [*] --> ValidateOrder
-    
-    ValidateOrder --> CheckInventory: Valid
-    ValidateOrder --> SendFailureNotification: Invalid
-    
-    CheckInventory --> ReserveInventory: In Stock
-    CheckInventory --> SendOutOfStockNotification: Out of Stock
-    
-    ReserveInventory --> ProcessPayment
-    
-    ProcessPayment --> ShipOrder: Success
-    ProcessPayment --> ReleaseInventory: Failed
-    
-    ShipOrder --> SendConfirmationEmail
-    SendConfirmationEmail --> [*]
-    
-    ReleaseInventory --> SendPaymentFailureNotification
-    SendPaymentFailureNotification --> [*]
-    
-    SendFailureNotification --> [*]
-    SendOutOfStockNotification --> [*]
-    
-    note right of ValidateOrder
-        Lambda: Validate order data
-        Check customer, items, pricing
-    end note
-    
-    note right of ProcessPayment
-        Lambda: Charge customer
-        Uses payment gateway API
-        Includes retry logic
-    end note
-    
-    note right of ShipOrder
-        Lambda: Create shipment
-        Integrates with logistics API
-    end note
-</div>
+![Step Functions Order Processing Workflow](img/diagrams/step-functions-order-workflow.svg)
 
 ## Quick Start
 

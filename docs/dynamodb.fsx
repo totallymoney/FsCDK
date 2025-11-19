@@ -1,7 +1,7 @@
 (**
 ---
 title: DynamoDB Tables
-category: 3. Resources
+category: Resources
 categoryindex: 9
 ---
 

@@ -1,7 +1,7 @@
 (**
 ---
 title: KMS Key Management
-category: 3. Resources
+category: Resources
 categoryindex: 15
 ---
 

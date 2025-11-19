@@ -1,7 +1,7 @@
 (**
 ---
 title: RDS Relational Databases
-category: 3. Resources
+category: Resources
 categoryindex: 21
 ---
 

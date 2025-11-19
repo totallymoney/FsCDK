@@ -1,7 +1,7 @@
 (**
 ---
 title: API Gateway V2 (HTTP API)
-category: 3. Resources
+category: Resources
 categoryindex: 2
 ---
 

@@ -1,0 +1,38 @@
+stateDiagram-v2
+[*] --> ValidateOrder
+
+ValidateOrder --> CheckInventory: Valid
+ValidateOrder --> SendFailureNotification: Invalid
+
+CheckInventory --> ReserveInventory: In Stock
+CheckInventory --> SendOutOfStockNotification: Out of Stock
+
+ReserveInventory --> ProcessPayment
+
+ProcessPayment --> ShipOrder: Success
+ProcessPayment --> ReleaseInventory: Failed
+
+ShipOrder --> SendConfirmationEmail
+SendConfirmationEmail --> [*]
+
+ReleaseInventory --> SendPaymentFailureNotification
+SendPaymentFailureNotification --> [*]
+
+SendFailureNotification --> [*]
+SendOutOfStockNotification --> [*]
+
+note right of ValidateOrder
+    Lambda: Validate order data
+    Check customer, items, pricing
+end note
+
+note right of ProcessPayment
+    Lambda: Charge customer
+    Uses payment gateway API
+    Includes retry logic
+end note
+
+note right of ShipOrder
+    Lambda: Create shipment
+    Integrates with logistics API
+end note

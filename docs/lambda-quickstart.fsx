@@ -1,7 +1,7 @@
 (**
 ---
 title: Lambda Quickstart Example
-category: 3. Resources
+category: Resources
 categoryindex: 18
 ---
 

@@ -1,7 +1,7 @@
 (**
 ---
 title: Comparison with Azure (Farmer F#) to AWS (FsCDK)
-category: 8. Reference
+category: Reference
 categoryindex: 1
 ---
 

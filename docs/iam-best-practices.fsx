@@ -1,7 +1,7 @@
 (**
 ---
 title: IAM Best Practices for FsCDK
-category: 6. Best Practices
+category: Best Practices
 categoryindex: 2
 ---
 

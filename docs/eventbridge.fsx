@@ -1,7 +1,7 @@
 (**
 ---
 title: EventBridge
-category: 3. Resources
+category: Resources
 categoryindex: 13
 ---
 
@@ -12,50 +12,7 @@ Build event-driven architectures with decoupled microservices.
 
 ## EventBridge Event-Driven Architecture
 
-<pre class="mermaid">
-graph LR
-    subgraph "Event Producers"
-        A1[Custom Application]
-        A2[AWS Service<br/>S3, EC2, etc]
-        A3[SaaS Partner]
-    end
-    
-    subgraph "EventBridge"
-        B[Event Bus<br/>Default/Custom]
-        C[Event Rules<br/>Pattern Matching]
-    end
-    
-    subgraph "Event Targets"
-        D1[Lambda Function]
-        D2[Step Functions]
-        D3[SQS Queue]
-        D4[SNS Topic]
-        D5[Kinesis Stream]
-        D6[Another Event Bus]
-    end
-    
-    A1 -->|PutEvents| B
-    A2 -->|AWS Events| B
-    A3 -->|Partner Events| B
-    
-    B -->|Match| C
-    
-    C -->|Invoke| D1
-    C -->|Start Execution| D2
-    C -->|Send Message| D3
-    C -->|Publish| D4
-    C -->|Put Record| D5
-    C -->|Forward| D6
-    
-    style B fill:#fff4e6
-    style C fill:#f3e5f5
-    style D1 fill:#e8f5e9
-    style D2 fill:#e8f5e9
-    style D3 fill:#e8f5e9
-    style D4 fill:#e8f5e9
-    style D5 fill:#e8f5e9
-    style D6 fill:#e8f5e9
-</div>
+![EventBridge Event-Driven Architecture](img/diagrams/eventbridge-architecture.svg)
 
 ## Quick Start
 

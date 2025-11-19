@@ -1,7 +1,7 @@
 (**
 ---
 title: Bastion Host
-category: 3. Resources
+category: Resources
 categoryindex: 3
 ---
 

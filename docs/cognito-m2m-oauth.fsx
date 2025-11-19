@@ -1,7 +1,7 @@
 (**
 ---
 title: Cognito OAuth 2.0 Machine-to-Machine (M2M)
-category: 3. Resources
+category: Resources
 categoryindex: 7
 ---
 
@@ -11,35 +11,7 @@ Implement secure service-to-service authentication using Cognito User Pools, OAu
 
 ## OAuth 2.0 M2M Flow
 
-<pre class="mermaid">
-sequenceDiagram
-    participant Service as Service A<br/>(Client)
-    participant Cognito as Cognito<br/>User Pool
-    participant API as API Gateway<br/>+ Lambda Authorizer
-    participant Backend as Service B<br/>(Protected Resource)
-    
-    Service->>Cognito: 1. POST /oauth2/token<br/>grant_type=client_credentials<br/>client_id & client_secret
-    
-    Cognito->>Cognito: 2. Validate credentials<br/>Check scopes
-    
-    Cognito->>Service: 3. Return Access Token<br/>JWT with scopes
-    
-    Service->>API: 4. Request with<br/>Authorization: Bearer {token}
-    
-    API->>API: 5. Lambda Authorizer<br/>Validate JWT signature<br/>Check scopes & claims
-    
-    alt Token Valid
-        API->>Backend: 6. Forward Request<br/>with user context
-        Backend->>Backend: 7. Process Request
-        Backend->>API: 8. Response
-        API->>Service: 9. Return Response
-    else Token Invalid
-        API->>Service: 401 Unauthorized
-    end
-    
-    Note over Service,Cognito: OAuth 2.0 Client Credentials Flow
-    Note over API,Backend: Scope-based authorization
-</div>
+![OAuth 2.0 Machine-to-Machine Authentication Flow](img/diagrams/cognito-oauth-m2m-flow.svg)
 
 ## Architecture Overview
 

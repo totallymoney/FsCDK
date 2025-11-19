@@ -1,7 +1,7 @@
 (**
 ---
 title: Managed IAM Policy
-category: 3. Resources
+category: Resources
 categoryindex: 19
 ---
 

@@ -1,7 +1,7 @@
 (**
 ---
 title: EC2 and ECS Example
-category: 3. Resources
+category: Resources
 categoryindex: 10
 ---
 

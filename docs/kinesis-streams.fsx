@@ -1,7 +1,7 @@
 (**
 ---
 title: Kinesis Streams Example
-category: 3. Resources
+category: Resources
 categoryindex: 14
 ---
 

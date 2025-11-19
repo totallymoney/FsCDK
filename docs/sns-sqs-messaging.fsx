@@ -1,7 +1,7 @@
 (**
 ---
 title: SNS and SQS Messaging
-category: 3. Resources
+category: Resources
 categoryindex: 24
 ---
 
@@ -12,66 +12,7 @@ that enable you to decouple and scale microservices, distributed systems, and se
 
 ## SNS/SQS Messaging Patterns
 
-<pre class="mermaid">
-graph TB
-    subgraph "Publishers"
-        A1[Lambda Function]
-        A2[EC2 Application]
-        A3[ECS Service]
-    end
-    
-    subgraph "SNS Topic - Fan-Out Pattern"
-        B[SNS Topic<br/>Order Events]
-    end
-    
-    subgraph "Subscribers"
-        C1[SQS: Inventory Queue]
-        C2[SQS: Shipping Queue]
-        C3[SQS: Analytics Queue]
-        C4[Lambda: Email Notification]
-        C5[HTTP Endpoint]
-    end
-    
-    subgraph "Dead Letter Queues"
-        D1[DLQ: Inventory]
-        D2[DLQ: Shipping]
-        D3[DLQ: Analytics]
-    end
-    
-    subgraph "Consumers"
-        E1[Lambda: Process Inventory]
-        E2[Lambda: Process Shipping]
-        E3[Lambda: Process Analytics]
-    end
-    
-    A1 -->|Publish| B
-    A2 -->|Publish| B
-    A3 -->|Publish| B
-    
-    B -->|Subscribe| C1
-    B -->|Subscribe| C2
-    B -->|Subscribe| C3
-    B -->|Invoke| C4
-    B -->|POST| C5
-    
-    C1 -->|Poll| E1
-    C2 -->|Poll| E2
-    C3 -->|Poll| E3
-    
-    C1 -.Failed Messages.-> D1
-    C2 -.Failed Messages.-> D2
-    C3 -.Failed Messages.-> D3
-    
-    style B fill:#fff4e6
-    style C1 fill:#e8f5e9
-    style C2 fill:#e8f5e9
-    style C3 fill:#e8f5e9
-    style C4 fill:#e1f5fe
-    style C5 fill:#e1f5fe
-    style D1 fill:#ffebee
-    style D2 fill:#ffebee
-    style D3 fill:#ffebee
-</div>
+![SNS/SQS Messaging Patterns](img/diagrams/sns-sqs-messaging-patterns.svg)
 
 ## Quick Start
 

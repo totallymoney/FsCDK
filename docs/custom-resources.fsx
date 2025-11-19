@@ -5,7 +5,7 @@
 (**
 ---
 title: Custom Resources
-category: 3. Resources
+category: Resources
 categoryindex: 8
 ---
 
