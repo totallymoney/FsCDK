@@ -1,8 +1,8 @@
 (**
 ---
 title: IAM Best Practices for FsCDK
-category: docs
-index: 1
+category: Best Practices
+categoryindex: 2
 ---
 
 # ![IAM](img/icons/Arch_AWS-Identity-and-Access-Management_48.png) IAM (Identity and Access Management) Best Practices for FsCDK

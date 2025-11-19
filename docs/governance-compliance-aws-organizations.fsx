@@ -1,8 +1,8 @@
 (**
 ---
 title: Governance and Compliance with AWS Organizations
-category: docs
-index: 36
+category: Best Practices
+categoryindex: 4
 ---
 
 # Governance and Compliance with AWS Organizations

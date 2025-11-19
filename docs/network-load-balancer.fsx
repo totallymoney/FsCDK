@@ -1,8 +1,8 @@
 (**
 ---
 title: Network Load Balancer
-category: docs
-index: 10
+category: Resources
+categoryindex: 20
 ---
 
 # ![NLB](img/icons/Arch_Elastic-Load-Balancing_48.png) Network Load Balancer (NLB)

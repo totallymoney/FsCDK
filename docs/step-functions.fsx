@@ -1,15 +1,57 @@
 (**
 ---
 title: Step Functions (State Machines)
-category: docs
-index: 22
+category: Resources
+categoryindex: 25
 ---
 
 # ![AWS Step Functions](img/icons/Arch_AWS-Step-Functions_48.png) AWS Step Functions
 
 AWS Step Functions is a serverless orchestration service that lets you combine AWS Lambda functions
-and other AWS services to build business-critical applications. Step Functions provides a graphical
-console to arrange and visualize the components of your application as a series of steps.
+and other AWS services into business-critical workflows.
+
+## Order Processing Workflow Example
+
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> ValidateOrder
+    
+    ValidateOrder --> CheckInventory: Valid
+    ValidateOrder --> SendFailureNotification: Invalid
+    
+    CheckInventory --> ReserveInventory: In Stock
+    CheckInventory --> SendOutOfStockNotification: Out of Stock
+    
+    ReserveInventory --> ProcessPayment
+    
+    ProcessPayment --> ShipOrder: Success
+    ProcessPayment --> ReleaseInventory: Failed
+    
+    ShipOrder --> SendConfirmationEmail
+    SendConfirmationEmail --> [*]
+    
+    ReleaseInventory --> SendPaymentFailureNotification
+    SendPaymentFailureNotification --> [*]
+    
+    SendFailureNotification --> [*]
+    SendOutOfStockNotification --> [*]
+    
+    note right of ValidateOrder
+        Lambda: Validate order data
+        Check customer, items, pricing
+    end note
+    
+    note right of ProcessPayment
+        Lambda: Charge customer
+        Uses payment gateway API
+        Includes retry logic
+    end note
+    
+    note right of ShipOrder
+        Lambda: Create shipment
+        Integrates with logistics API
+    end note
+</div>
 
 ## Quick Start
 

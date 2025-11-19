@@ -1,8 +1,8 @@
 (**
 ---
 title: Bastion Host
-category: docs
-index: 12
+category: Resources
+categoryindex: 3
 ---
 
 # ![Bastion Host](img/icons/Res_Amazon-EC2_Instance_48.png) Hardening bastion hosts with FsCDK

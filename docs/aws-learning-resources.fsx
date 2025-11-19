@@ -1,8 +1,8 @@
 (**
 ---
 title: AWS Learning Resources
-category: docs
-index: 100
+category: Reference
+categoryindex: 2
 ---
 
 # AWS Learning Portal

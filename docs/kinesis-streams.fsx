@@ -1,8 +1,8 @@
 (**
 ---
 title: Kinesis Streams Example
-category: docs
-index: 9
+category: Resources
+categoryindex: 14
 ---
 
 # ![Kinesis](img/icons/Arch_Amazon-Kinesis_48.png) Kinesis Streams Example

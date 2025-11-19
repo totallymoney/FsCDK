@@ -1,8 +1,8 @@
 (**
 ---
 title: EKS (Elastic Kubernetes Service) Example
-category: docs
-index: 10
+category: Resources
+categoryindex: 12
 ---
 
 # ![EKS](img/icons/Arch_Amazon-Elastic-Kubernetes-Service_48.png) Amazon EKS (Elastic Kubernetes Service) Example

@@ -3,6 +3,12 @@
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 (**
+---
+title: Custom Resources
+category: Resources
+categoryindex: 8
+---
+
 # Production-grade custom resources with FsCDK
 
 Custom resources extend CloudFormation beyond native resources, letting you call AWS APIs or third-party systems during stack operations. Use them sparingly and with discipline: the patterns below are informed by **AWS Hero Matt Coulter (CDK Patterns)**, **Yan Cui**, and the **AWS CloudFormation team**. Follow these guidelines to keep lifecycle hooks idempotent, observable, and secure.

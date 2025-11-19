@@ -1,8 +1,8 @@
-﻿(**
+(**
 ---
 title: Lambda Quickstart Example
-category: docs
-index: 5
+category: Resources
+categoryindex: 18
 ---
 
 # ![AWS Lambda](img/icons/Arch_AWS-Lambda_48.png) Lambda quickstart

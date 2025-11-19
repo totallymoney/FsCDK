@@ -1,8 +1,8 @@
 (**
 ---
 title: KMS Key Management
-category: docs
-index: 11
+category: Resources
+categoryindex: 15
 ---
 
 # ![KMS](img/icons/Arch_AWS-Key-Management-Service_48.png) AWS Key Management Service (KMS): Cryptographic Excellence with FsCDK

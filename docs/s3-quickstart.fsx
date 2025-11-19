@@ -1,8 +1,8 @@
 (**
 ---
 title: S3 Quickstart Example
-category: docs
-index: 6
+category: Resources
+categoryindex: 23
 ---
 
 # ![Amazon S3](img/icons/Arch_Amazon-Simple-Storage-Service_48.png) Amazon S3: Building Scalable Storage with FsCDK

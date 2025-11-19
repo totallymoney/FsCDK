@@ -1,8 +1,8 @@
 (**
 ---
 title: Local Testing with LocalStack
-category: docs
-index: 50
+category: Testing
+categoryindex: 1
 ---
 
 # Local Testing with LocalStack

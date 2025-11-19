@@ -1,9 +1,8 @@
 (**
 ---
 title: Lambda Production Defaults
-category: AWS Lambda
-categoryindex: 3
-index: 2
+category: Resources
+categoryindex: 17
 description: Production-safe defaults for AWS Lambda functions based on Yan Cui's serverless best practices
 ---
 
@@ -12,6 +11,62 @@ description: Production-safe defaults for AWS Lambda functions based on Yan Cui'
 ![Lambda Production Defaults](img/FsCDK-lambda-production-defaults.png)
 
 FsCDK bakes in the guidance from AWS Heroes **Yan Cui**, **Heitor Lessa**, and **Alex Casalboni**, along with the **AWS Lambda Operator Guide**, so every function starts production-ready without additional wiring.
+
+### Lambda Production Architecture
+
+<div class="mermaid">
+graph TB
+    subgraph "Event Sources"
+        A1[API Gateway]
+        A2[EventBridge]
+        A3[SQS Queue]
+    end
+    
+    subgraph "Lambda Function with FsCDK Defaults"
+        B[Lambda Handler]
+        B1[X-Ray Tracing ✓]
+        B2[Structured Logging ✓]
+        B3[Environment Encryption ✓]
+        B4[Reserved Concurrency ✓]
+        B5[Timeout: 30s]
+        B6[Memory: 512 MB]
+    end
+    
+    subgraph "Failure Handling"
+        C[Dead Letter Queue<br/>Auto-Created]
+        D[Retry Config<br/>maxEventAge: 6 hours<br/>retryAttempts: 2]
+    end
+    
+    subgraph "Observability"
+        E[CloudWatch Logs<br/>7-day retention]
+        F[X-Ray Traces]
+        G[CloudWatch Metrics]
+    end
+    
+    A1 -->|Invoke| B
+    A2 -->|Invoke| B
+    A3 -->|Invoke| B
+    
+    B --> B1
+    B --> B2
+    B --> B3
+    B --> B4
+    B --> B5
+    B --> B6
+    
+    B -->|Failed Events| C
+    B -->|Retry Policy| D
+    B -->|Logs| E
+    B -->|Traces| F
+    B -->|Metrics| G
+    
+    style B fill:#fff4e6
+    style C fill:#ffebee
+    style D fill:#ffebee
+    style E fill:#e8f5e9
+    style F fill:#e8f5e9
+    style G fill:#e8f5e9
+</div>
 
 ## Why these defaults matter
 

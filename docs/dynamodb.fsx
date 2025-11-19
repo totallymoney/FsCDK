@@ -1,8 +1,8 @@
-﻿(**
+(**
 ---
 title: DynamoDB Tables
-category: docs
-index: 23
+category: Resources
+categoryindex: 9
 ---
 
 # ![Amazon DynamoDB](img/icons/Arch_Amazon-DynamoDB_48.png) Amazon DynamoDB: Mastering NoSQL at Scale

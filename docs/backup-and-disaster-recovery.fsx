@@ -1,8 +1,8 @@
 (**
 ---
 title: Backup and Disaster Recovery on AWS
-category: docs
-index: 35
+category: Best Practices
+categoryindex: 3
 ---
 
 # Backup and Disaster Recovery on AWS

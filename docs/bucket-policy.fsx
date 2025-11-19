@@ -1,8 +1,8 @@
 (**
 ---
 title: S3 Bucket Policy
-category: docs
-index: 14
+category: Resources
+categoryindex: 22
 ---
 
 # ![S3](img/icons/Arch_Amazon-Simple-Storage-Service_48.png) Crafting world-class S3 bucket policies with FsCDK

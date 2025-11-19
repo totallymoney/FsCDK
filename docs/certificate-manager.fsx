@@ -1,8 +1,8 @@
 (**
 ---
 title: Certificate Manager
-category: docs
-index: 13
+category: Resources
+categoryindex: 5
 ---
 
 # ![Certificate Manager](img/icons/Arch_AWS-Certificate-Manager_48.png) Shipping production-grade TLS with AWS Certificate Manager

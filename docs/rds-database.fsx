@@ -1,8 +1,8 @@
 (**
 ---
 title: RDS Relational Databases
-category: docs
-index: 25
+category: Resources
+categoryindex: 21
 ---
 
 # ![Amazon RDS](img/icons/Arch_Amazon-RDS_48.png) Amazon RDS

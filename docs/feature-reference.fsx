@@ -1,8 +1,8 @@
-﻿(**
+(**
 ---
 title: Complete Feature Reference
-category: docs
-index: 30
+category: Reference
+categoryindex: 3
 ---
 
 # FsCDK Complete Feature Reference

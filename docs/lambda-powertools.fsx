@@ -1,9 +1,8 @@
 (**
 ---
 title: Lambda Powertools Integration
-category: AWS Lambda
-categoryindex: 3
-index: 3
+category: Resources
+categoryindex: 16
 description: AWS Lambda Powertools integration for production-grade observability
 ---
 

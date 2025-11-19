@@ -1,8 +1,8 @@
 (**
 ---
 title: Load Balancer, Secrets Manager, and Route 53 Example
-category: docs
-index: 7
+category: Resources
+categoryindex: 1
 ---
 
 # ![ALB](img/icons/Arch_Elastic-Load-Balancing_48.png) ![Secrets Manager](img/icons/Arch_AWS-Secrets-Manager_48.png) ![Route53](img/icons/Arch_Amazon-Route-53_48.png) Secure Ingress with Application Load Balancer, Secrets Manager, and Route 53

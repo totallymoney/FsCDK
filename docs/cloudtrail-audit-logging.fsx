@@ -1,8 +1,8 @@
 (**
 ---
 title: CloudTrail Audit Logging
-category: docs
-index: 30
+category: Resources
+categoryindex: 5
 ---
 
 # ![CloudTrail](img/icons/Arch_AWS-CloudTrail_48.png) AWS CloudTrail - Audit Logging

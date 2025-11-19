@@ -1,8 +1,8 @@
 (**
 ---
 title: FsCDK
-category: docs
-index: 0
+category: Getting Started
+categoryindex: 1
 ---
 
 FsCDK lets you describe AWS infrastructure with a small, expressive F# DSL built on top of the AWS Cloud Development Kit (CDK). If you like computation expressions, immutability, and readable diffs, you’ll feel right at home.
@@ -118,6 +118,48 @@ stack "Prod" {
 
 ![Why FsCDK](img/Why-FsCDK.png)
 
+### FsCDK Architecture Overview
+
+<div class="mermaid">
+graph TB
+    subgraph "Your F# Code"
+        A[FsCDK Builders<br/>Computation Expressions]
+    end
+    
+    subgraph "AWS CDK"
+        B[AWS CDK Library<br/>Amazon.CDK.Lib]
+    end
+    
+    subgraph "CloudFormation"
+        C[CloudFormation Template<br/>JSON/YAML]
+    end
+    
+    subgraph "AWS Cloud"
+        D[Lambda Functions]
+        E[DynamoDB Tables]
+        F[S3 Buckets]
+        G[API Gateway]
+        H[Other AWS Resources]
+    end
+    
+    A -->|Type-safe F# DSL| B
+    B -->|Synthesize| C
+    C -->|Deploy| D
+    C -->|Deploy| E
+    C -->|Deploy| F
+    C -->|Deploy| G
+    C -->|Deploy| H
+    
+    style A fill:#e1f5ff
+    style B fill:#fff4e6
+    style C fill:#f3e5f5
+    style D fill:#e8f5e9
+    style E fill:#e8f5e9
+    style F fill:#e8f5e9
+    style G fill:#e8f5e9
+    style H fill:#e8f5e9
+</div>
+
 **Production-Safe Defaults**
 
 - Implements [Yan Cui's serverless best practices](https://theburningmonk.com/) by default
@@ -141,6 +183,24 @@ stack "Prod" {
 ## List of builders and their operations
 
 (Most of them, this might not be complete)
+
+<style>
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+table th,
+table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+</style>
 
 | AWS Resource | Builder Name(s) | Parameters |
 |-------------|------------------|---------------------------|

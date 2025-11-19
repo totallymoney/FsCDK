@@ -1,8 +1,8 @@
 (**
 ---
 title: CloudWatch Monitoring and Dashboards
-category: docs
-index: 15
+category: Resources
+categoryindex: 6
 ---
 
 # ![CloudWatch](img/icons/Arch_Amazon-CloudWatch_48.png) CloudWatch Monitoring and Dashboards

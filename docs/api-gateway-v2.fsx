@@ -1,8 +1,8 @@
 (**
 ---
 title: API Gateway V2 (HTTP API)
-category: docs
-index: 20
+category: Resources
+categoryindex: 2
 ---
 
 # ![API Gateway](img/icons/Arch_Amazon-API-Gateway_48.png) Designing world-class HTTP APIs with FsCDK

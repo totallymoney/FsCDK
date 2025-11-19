@@ -1,8 +1,8 @@
-﻿(**
+(**
 ---
 title: EC2 and ECS Example
-category: docs
-index: 8
+category: Resources
+categoryindex: 10
 ---
 
 # ![EC2](img/icons/Arch_Amazon-EC2_48.png) ![ECS](img/icons/Arch_Amazon-Elastic-Container-Service_48.png) Amazon EC2 and ECS (Elastic Container Service) Example

@@ -1,8 +1,8 @@
-﻿(**
+(**
 ---
 title: ECR Repository (Container Registry)
-category: docs
-index: 21
+category: Resources
+categoryindex: 11
 ---
 
 # ![ECR](img/icons/Arch_Amazon-Elastic-Container-Registry_48.png) Amazon ECR (Elastic Container Registry)

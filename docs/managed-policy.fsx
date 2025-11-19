@@ -1,8 +1,8 @@
 (**
 ---
 title: Managed IAM Policy
-category: docs
-index: 16
+category: Resources
+categoryindex: 19
 ---
 
 # ![IAM](img/icons/Arch_AWS-Identity-and-Access-Management_48.png) AWS IAM Managed Policy
