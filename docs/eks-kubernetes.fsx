@@ -1,11 +1,11 @@
 (**
 ---
 title: EKS (Elastic Kubernetes Service) Example
-category: docs
-index: 10
+category: Resources
+categoryindex: 12
 ---
 
-# Amazon EKS (Elastic Kubernetes Service) Example
+# ![EKS](img/icons/Arch_Amazon-Elastic-Kubernetes-Service_48.png) Amazon EKS (Elastic Kubernetes Service) Example
 
 This example demonstrates how to create Amazon EKS (Elastic Kubernetes Service) clusters using FsCDK for container orchestration with Kubernetes.
 

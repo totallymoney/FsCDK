@@ -1,11 +1,11 @@
 (**
 ---
 title: KMS Key Management
-category: docs
-index: 11
+category: Resources
+categoryindex: 15
 ---
 
-# AWS Key Management Service (KMS): Cryptographic Excellence with FsCDK
+# ![KMS](img/icons/Arch_AWS-Key-Management-Service_48.png) AWS Key Management Service (KMS): Cryptographic Excellence with FsCDK
 
 AWS Key Management Service (KMS) provides secure key management. As AWS cryptographer Colm MacCárthaigh advises: "Encryption is table stakes—do it right with KMS." This portal enhances docs with hero insights, checklists, drills, and rated resources (4.5+).
 
@@ -243,6 +243,7 @@ Log all ops with CloudTrail.
 2. Verify access logs.
 
 ## Further Learning
+
 - [KMS Deep Dive (4.8 rating)](https://www.youtube.com/watch?v=EDygwIgxCfo) - 120k views.
 - MacCárthaigh's [Crypto Blog](https://maccg.com/posts/aws-crypto).
 *)

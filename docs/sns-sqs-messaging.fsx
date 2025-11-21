@@ -1,14 +1,18 @@
 (**
 ---
 title: SNS and SQS Messaging
-category: docs
-index: 24
+category: Resources
+categoryindex: 24
 ---
 
-# Amazon SNS and SQS
+# ![SNS](img/icons/Arch_Amazon-Simple-Notification-Service_48.png) ![SQS](img/icons/Arch_Amazon-Simple-Queue-Service_48.png) Amazon SNS and SQS
 
 Amazon SNS (Simple Notification Service) and SQS (Simple Queue Service) are fully managed messaging services
-that enable decoupled microservices, distributed systems, and serverless applications.
+that enable you to decouple and scale microservices, distributed systems, and serverless applications.
+
+## SNS/SQS Messaging Patterns
+
+![SNS/SQS Messaging Patterns](img/diagrams/sns-sqs-messaging-patterns.svg)
 
 ## Quick Start
 

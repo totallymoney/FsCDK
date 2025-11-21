@@ -43,16 +43,32 @@ type TransitionBuilder() =
 
         transition
 
+    /// <summary>
+    /// Sets the storage class to transition to.
+    /// Common classes: GLACIER (low-cost archival), DEEP_ARCHIVE (lowest cost, rare access),
+    /// INTELLIGENT_TIERING (automatic cost optimization), GLACIER_IR (instant retrieval).
+    /// </summary>
+    /// <param name="storageClass">The target storage class.</param>
     [<CustomOperation("storageClass")>]
     member _.StorageClass(config: TransitionConfig, storageClass: StorageClass) =
         { config with
             StorageClass = Some storageClass }
 
+    /// <summary>
+    /// Sets when objects transition after creation (use Duration.Days()).
+    /// Example: transitionAfter (Duration.Days(90.0)) moves objects after 90 days.
+    /// </summary>
+    /// <param name="duration">Time after object creation to transition.</param>
     [<CustomOperation("transitionAfter")>]
     member _.TransitionAfter(config: TransitionConfig, duration: Duration) =
         { config with
             TransitionAfter = Some duration }
 
+    /// <summary>
+    /// Sets a specific date when objects should transition.
+    /// Use this for one-time transitions on a specific date.
+    /// </summary>
+    /// <param name="date">The date to perform the transition.</param>
     [<CustomOperation("transitionDate")>]
     member _.TransitionDate(config: TransitionConfig, date: DateTime) =
         { config with
@@ -112,16 +128,31 @@ type NoncurrentVersionTransitionBuilder() =
 
         transition :> INoncurrentVersionTransition
 
+    /// <summary>
+    /// Sets the storage class to transition noncurrent versions to.
+    /// Use GLACIER or DEEP_ARCHIVE for old versions to reduce costs.
+    /// </summary>
+    /// <param name="storageClass">The target storage class.</param>
     [<CustomOperation("storageClass")>]
     member _.StorageClass(config: NoncurrentVersionTransitionConfig, storageClass: StorageClass) =
         { config with
             StorageClass = Some storageClass }
 
+    /// <summary>
+    /// Sets when noncurrent versions transition after becoming noncurrent.
+    /// Example: transitionAfter (Duration.Days(30.0)) moves old versions after 30 days.
+    /// </summary>
+    /// <param name="duration">Time after version becomes noncurrent to transition.</param>
     [<CustomOperation("transitionAfter")>]
     member _.TransitionAfter(config: NoncurrentVersionTransitionConfig, duration: Duration) =
         { config with
             TransitionAfter = Some duration }
 
+    /// <summary>
+    /// Sets the number of noncurrent versions to retain before transitioning.
+    /// Example: noncurrentVersionsToRetain 3.0 keeps the 3 most recent noncurrent versions.
+    /// </summary>
+    /// <param name="count">Number of noncurrent versions to keep in standard storage.</param>
     [<CustomOperation("noncurrentVersionsToRetain")>]
     member _.NoncurrentVersionsToRetain(config: NoncurrentVersionTransitionConfig, count: float) =
         { config with
@@ -133,5 +164,27 @@ type NoncurrentVersionTransitionBuilder() =
 
 [<AutoOpen>]
 module S3TransitionBuilders =
+    /// <summary>
+    /// Creates an S3 lifecycle transition rule for moving objects to different storage classes.
+    /// Transitions reduce storage costs by automatically moving objects to cheaper storage tiers.
+    /// </summary>
+    /// <code lang="fsharp">
+    /// transition {
+    ///     storageClass StorageClass.GLACIER
+    ///     transitionAfter (Duration.Days(90.0))
+    /// }
+    /// </code>
     let transition = TransitionBuilder()
+
+    /// <summary>
+    /// Creates an S3 lifecycle transition rule for noncurrent (versioned) objects.
+    /// Use this when versioning is enabled to transition old versions to cheaper storage.
+    /// </summary>
+    /// <code lang="fsharp">
+    /// noncurrentVersionTransition {
+    ///     storageClass StorageClass.GLACIER
+    ///     transitionAfter (Duration.Days(30.0))
+    ///     noncurrentVersionsToRetain 3.0
+    /// }
+    /// </code>
     let noncurrentVersionTransition = NoncurrentVersionTransitionBuilder()

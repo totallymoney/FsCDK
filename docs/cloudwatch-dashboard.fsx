@@ -1,11 +1,11 @@
 (**
 ---
 title: CloudWatch Monitoring and Dashboards
-category: docs
-index: 15
+category: Resources
+categoryindex: 6
 ---
 
-# CloudWatch Monitoring and Dashboards
+# ![CloudWatch](img/icons/Arch_Amazon-CloudWatch_48.png) CloudWatch Monitoring and Dashboards
 
 CloudWatch provides comprehensive monitoring for your AWS resources with dashboards, log groups, 
 metric filters, and subscription filters. Monitor metrics, logs, and alarms in a customizable (and visual) interface.

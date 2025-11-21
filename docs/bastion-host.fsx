@@ -1,11 +1,11 @@
 (**
 ---
 title: Bastion Host
-category: docs
-index: 12
+category: Resources
+categoryindex: 3
 ---
 
-# Hardening bastion hosts with FsCDK
+# ![Bastion Host](img/icons/Res_Amazon-EC2_Instance_48.png) Hardening bastion hosts with FsCDK
 
 Bastion hosts should be a last resort: short-lived, tightly monitored entry points into private subnets. This notebook codifies the controls highlighted by AWS Heroes **Scott Piper** and **Mark Nunnikhoven**, plus guidance from the **AWS re:Inforce** session “Secure remote access architectures.” Whenever possible, migrate to AWS Systems Manager Session Manager for zero-port-access workflows; when you cannot, adopt the configurations below.
 
@@ -123,10 +123,10 @@ stack "HABastion" {
 - Eliminates inbound ports, centralises access in IAM, and provides CloudTrail-backed audit trails. Complete the **Session Manager Workshop** (4.9★ rating) to migrate off legacy bastions.
 
 ### Further learning
-- **AWS re:Inforce SEC311** – Hardening administrative access.
-- **Scott Piper – Common AWS security mistakes** (summitroute.com).
-- **Session Manager Immersion Day** – Official AWS hands-on lab.
-- **Well-Architected Security Pillar** – Administration and access control section.
+- **[AWS re:Inforce SEC311](https://www.youtube.com/results?search_query=aws+reinforce+SEC311+administrative+access)** – Hardening administrative access.
+- **[Scott Piper – Common AWS security mistakes](https://summitroute.com/blog/)** (summitroute.com).
+- **[Session Manager Immersion Day](https://catalog.workshops.aws/session-manager/)** – Official AWS hands-on lab.
+- **[Well-Architected Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html)** – Administration and access control section.
 
 Document the access policy, monitor session activity, and track shutdown automation so your bastion hosts stay compliant and short-lived.
 *)

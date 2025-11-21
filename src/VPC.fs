@@ -11,6 +11,8 @@ type VpcSpec =
     { VpcName: string
       ConstructId: string
       Props: VpcProps
+      EnableFlowLogs: bool
+      FlowLogRetention: Amazon.CDK.AWS.Logs.RetentionDays option
       mutable Vpc: IVpc option }
 
 type SecurityGroupSpec =
@@ -33,7 +35,9 @@ type VpcConfig =
       EnableDnsSupport: bool option
       DefaultInstanceTenancy: DefaultInstanceTenancy option
       IpAddresses: IIpAddresses option
-      RemovalPolicy: RemovalPolicy option }
+      RemovalPolicy: RemovalPolicy option
+      EnableFlowLogs: bool option
+      FlowLogRetention: Amazon.CDK.AWS.Logs.RetentionDays option }
 
 type VpcBuilder(name: string) =
 
@@ -47,7 +51,9 @@ type VpcBuilder(name: string) =
           EnableDnsSupport = None
           DefaultInstanceTenancy = None
           IpAddresses = None
-          RemovalPolicy = None }
+          RemovalPolicy = None
+          EnableFlowLogs = Some true
+          FlowLogRetention = Some Amazon.CDK.AWS.Logs.RetentionDays.ONE_WEEK }
 
     member _.Zero() : VpcConfig =
         { VpcName = name
@@ -59,7 +65,9 @@ type VpcBuilder(name: string) =
           EnableDnsSupport = None
           DefaultInstanceTenancy = None
           IpAddresses = None
-          RemovalPolicy = None }
+          RemovalPolicy = None
+          EnableFlowLogs = Some true
+          FlowLogRetention = Some Amazon.CDK.AWS.Logs.RetentionDays.ONE_WEEK }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> VpcConfig) : VpcConfig = f ()
 
@@ -101,7 +109,15 @@ type VpcBuilder(name: string) =
           RemovalPolicy =
             match a.RemovalPolicy with
             | Some _ -> a.RemovalPolicy
-            | None -> b.RemovalPolicy }
+            | None -> b.RemovalPolicy
+          EnableFlowLogs =
+            match a.EnableFlowLogs with
+            | Some _ -> a.EnableFlowLogs
+            | None -> b.EnableFlowLogs
+          FlowLogRetention =
+            match a.FlowLogRetention with
+            | Some _ -> a.FlowLogRetention
+            | None -> b.FlowLogRetention }
 
     member _.Run(config: VpcConfig) : VpcSpec =
         let props = VpcProps()
@@ -134,6 +150,8 @@ type VpcBuilder(name: string) =
         { VpcName = config.VpcName
           ConstructId = constructId
           Props = props
+          EnableFlowLogs = config.EnableFlowLogs |> Option.defaultValue true
+          FlowLogRetention = config.FlowLogRetention
           Vpc = None }
 
     /// <summary>Sets the construct ID for the VPC.</summary>
@@ -248,6 +266,37 @@ type VpcBuilder(name: string) =
     member _.Cidr(config: VpcConfig, cidr: string) =
         { config with
             IpAddresses = Some(IpAddresses.Cidr(cidr)) }
+
+    /// <summary>
+    /// Enables or disables VPC Flow Logs for network traffic monitoring.
+    /// **Security Best Practice:** Flow logs are enabled by default for security monitoring and compliance.
+    /// Flow logs capture information about IP traffic going to and from network interfaces in your VPC.
+    /// </summary>
+    /// <param name="enabled">Whether to enable flow logs (default: true).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     // Disable flow logs if not needed
+    ///     enableFlowLogs false
+    /// }
+    /// </code>
+    [<CustomOperation("enableFlowLogs")>]
+    member _.EnableFlowLogs(config: VpcConfig, enabled: bool) =
+        { config with
+            EnableFlowLogs = Some enabled }
+
+    /// <summary>
+    /// Sets the retention period for VPC Flow Logs in CloudWatch.
+    /// </summary>
+    /// <param name="retention">The retention period (default: ONE_WEEK for cost optimization).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     flowLogRetention RetentionDays.ONE_MONTH
+    /// }
+    /// </code>
+    [<CustomOperation("flowLogRetention")>]
+    member _.FlowLogRetention(config: VpcConfig, retention: Amazon.CDK.AWS.Logs.RetentionDays) =
+        { config with
+            FlowLogRetention = Some retention }
 
 // ============================================================================
 // Security Group Configuration DSL

@@ -1,0 +1,72 @@
+graph TB
+subgraph "Presentation Layer"
+A[CloudFront CDN]
+B[S3 Static Website]
+end
+
+subgraph "API Layer"
+C[Application Load Balancer]
+D[API Gateway]
+end
+
+subgraph "Application Layer"
+E1[Lambda: Auth]
+E2[Lambda: API Handler]
+E3[ECS Fargate Service]
+end
+
+subgraph "Data Layer"
+F1[DynamoDB Table]
+F2[RDS PostgreSQL]
+F3[ElastiCache Redis]
+end
+
+subgraph "Messaging & Events"
+G1[SQS Queue]
+G2[SNS Topic]
+G3[EventBridge]
+end
+
+subgraph "Security & Monitoring"
+H1[Cognito User Pool]
+H2[CloudWatch Logs]
+H3[X-Ray Tracing]
+H4[KMS Keys]
+end
+
+A -->|Static Assets| B
+A -->|API Requests| C
+C -->|Route| E3
+D -->|Invoke| E1
+D -->|Invoke| E2
+
+E1 -->|Authenticate| H1
+E2 -->|Read/Write| F1
+E3 -->|Query| F2
+E3 -->|Cache| F3
+
+E2 -->|Queue Tasks| G1
+E2 -->|Notify| G2
+E2 -->|Publish Events| G3
+
+E1 --> H2
+E2 --> H2
+E3 --> H2
+E2 --> H3
+
+F1 -.Encrypt.-> H4
+F2 -.Encrypt.-> H4
+
+style A fill:#e3f2fd
+style B fill:#e3f2fd
+style C fill:#fff3e0
+style D fill:#fff3e0
+style E1 fill:#f3e5f5
+style E2 fill:#f3e5f5
+style E3 fill:#f3e5f5
+style F1 fill:#e8f5e9
+style F2 fill:#e8f5e9
+style F3 fill:#e8f5e9
+style G1 fill:#fce4ec
+style G2 fill:#fce4ec
+style G3 fill:#fce4ec

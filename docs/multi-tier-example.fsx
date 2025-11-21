@@ -1,30 +1,54 @@
 (**
 ---
 title: FsCDK Multi-Tier Application Example
-category: docs
-index: 4
+category: Tutorials
+categoryindex: 1
 ---
 
 # FsCDK Multi-Tier Application Example
 
 This example demonstrates how to build a complete multi-tier web application using FsCDK with AWS best practices.
 
-## Architecture
+## Architecture Overview
 
-```
-Internet
-    ↓
-CloudFront CDN
-    ↓
-Application Load Balancer (ALB)
-    ↓
-Lambda Functions (in VPC)
-    ↓
-RDS PostgreSQL (Multi-AZ)
-    ↓
-S3 for static assets
-Cognito for authentication
-```
+![Multi-Tier Application Architecture](img/diagrams/multi-tier-architecture.svg)
+
+## Architecture Details
+
+This example demonstrates a production-ready multi-tier application with security best practices:
+- **High Availability**: Multi-AZ deployment across 2 availability zones
+- **Security**: VPC isolation, security groups, encryption at rest and in transit
+- **Scalability**: Auto-scaling Lambda, Multi-AZ RDS with read replicas
+- **Performance**: CloudFront CDN for global content delivery
+
+### Architecture Diagram
+
+![Multi-Tier Architecture](img/multi-tier-architecture.png)
+
+*Production-ready multi-tier web application showing VPC network segmentation, security zones, and data flow. Components: CloudFront CDN → Application Load Balancer → Lambda Functions → RDS PostgreSQL, with S3 static assets and Cognito authentication.*
+
+**Key Components:**
+- **CloudFront CDN**: Global content delivery with HTTPS/TLS 1.2+
+- **Application Load Balancer**: Multi-AZ load balancing in public subnets
+- **Lambda Functions**: Serverless compute in private subnets with auto-scaling
+- **RDS PostgreSQL**: Multi-AZ database with encryption and automated backups
+- **S3**: Static asset storage with versioning and encryption
+- **Cognito**: Managed authentication and user management
+
+**Security Layers:**
+- Public subnets: ALB with internet-facing access
+- Private subnets: Lambda and RDS with no direct internet access
+- Security groups: Least-privilege network access control
+- NAT Gateway: Controlled outbound internet access for private resources
+
+**Network Flow:**
+1. User requests → CloudFront → Internet Gateway → ALB (public subnet)
+2. ALB → Lambda functions (private subnet, security group SG-Lambda)
+3. Lambda → RDS database (private subnet, security group SG-Database, inbound only from SG-Lambda)
+4. Lambda outbound → NAT Gateway → Internet Gateway (for API calls)
+5. Static content → S3 → CloudFront cache
+
+> **Note:** To generate this diagram, use the specifications in `docs/img/DIAGRAM_SPECIFICATIONS.md` with tools like Cloudcraft, Draw.io, or Lucidchart.
 
 ## Example Stack
 *)

@@ -1,22 +1,24 @@
 (**
 ---
 title: S3 Quickstart Example
-category: docs
-index: 6
+category: Resources
+categoryindex: 23
 ---
 
-# Amazon S3: Building Scalable Storage with FsCDK
+# ![Amazon S3](img/icons/Arch_Amazon-Simple-Storage-Service_48.png) Amazon S3: Building Scalable Storage with FsCDK
 
 Amazon S3 is the cornerstone of cloud storage, offering 99.999999999% durability and infinite scale. As AWS Hero Ben Kehoe notes: "S3 isn't just storage—it's a platform for building resilient, global applications." This enhanced guide transforms FsCDK's S3 documentation into a world-class learning portal, incorporating insights from heroes like Ben Kehoe, Yan Cui, and Adrian Hornsby. We'll cover secure configurations, cost optimization, performance patterns, operational checklists, practice drills, and curated resources—all vetted for quality (4.5+ ratings, 100k+ views).
 
 Perfect for beginners and experts, this portal emphasizes security-first defaults in FsCDK while teaching real-world best practices.
 
 ## Features Demonstrated in FsCDK
+
 - Automatic KMS encryption and public access blocking.
 - Versioning, lifecycle rules, and tagging for management.
 - Integration with CDK for infrastructure as code.
 
 ## Prerequisites
+
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/cli.html) (`npm install -g aws-cdk`)
 - AWS credentials for deployment.
@@ -65,14 +67,17 @@ See [examples/s3-quickstart](https://github.com/Thorium/FsCDK/tree/main/examples
 From Ben Kehoe's blogs and Yan Cui's serverless patterns.
 
 ### Security
+
 - Use bucket policies over ACLs (Kehoe advice).
 - Enable Macie for sensitive data detection.
 
 ### Cost Optimization
+
 - Intelligent-Tiering for auto-savings.
 - Lifecycle to Glacier for archives.
 
 ### Performance
+
 - Multipart uploads for large files.
 - Transfer Acceleration for global speed.
 
@@ -95,6 +100,7 @@ From Ben Kehoe's blogs and Yan Cui's serverless patterns.
 3. Optimize for a 1TB dataset.
 
 ## Next Steps
+
 - Integrate with [Lambda](lambda-quickstart.html).
 - Study [IAM](iam-best-practices.html).
 - Apply [Well-Architected](https://aws.amazon.com/architecture/well-architected/).
@@ -243,18 +249,24 @@ From Ben Kehoe's blogs and Yan Cui's serverless patterns.
 
 ### AWS Heroes & Experts
 
-**Ben Kehoe (@ben11kehoe) - S3 Deep Dives:**
-- [S3 Best Practices Blog](https://ben11kehoe.medium.com/s3-tips-and-tricks-8f6a0b0b7527) - Advanced tips (community favorite)
-- [S3 as a Database](https://ben11kehoe.medium.com/using-amazon-s3-as-a-database-yes-really-4a91a2b6e83c) - Innovative patterns
+**AWS S3 Best Practices:**
+- [S3 Security Best Practices](https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html) - Official AWS security guidance
+- [S3 Performance Guidelines](https://docs.aws.amazon.com/AmazonS3/latest/userguide/optimizing-performance.html) - Performance optimization patterns
 
-**Yan Cui (@theburningmonk) - Serverless Storage:**
-- [S3 in Serverless Apps](https://theburningmonk.com/2020/06/aws-lambda-s3-integration-best-practices/) - Event-driven tips
-- [Cost Optimization](https://theburningmonk.com/2021/03/aws-s3-cost-optimization-strategies/) - Reduce bills effectively
+**Serverless Storage Best Practices:**
+- [S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/EventNotifications.html) - Trigger Lambda from S3 events
+- [S3 Intelligent-Tiering](https://aws.amazon.com/blogs/aws/new-automatic-cost-optimization-for-amazon-s3-via-intelligent-tiering/) - Automatic cost optimization
 
 **Security Experts:**
-- [Scott Piper (@0xdabbad00)](https://twitter.com/0xdabbad00) - Cloud security, S3 misconfigurations
-- [Chris Farris (@jcfarris)](https://twitter.com/jcfarris) - AWS security and compliance
-- [Mark Nunnikhoven (@marknca)](https://twitter.com/marknca) - Cloud security best practices
+- **Scott Piper** - Cloud security, S3 misconfigurations
+  - [Twitter/X: @0xdabbad00](https://twitter.com/0xdabbad00)
+  - [Mastodon: @0xdabbad00@infosec.exchange](https://infosec.exchange/@0xdabbad00)
+- **Chris Farris** - AWS security and compliance
+  - [Twitter/X: @jcfarris](https://twitter.com/jcfarris)
+  - [LinkedIn](https://www.linkedin.com/in/jcfarris/)
+- **Mark Nunnikhoven** - Cloud security best practices
+  - [Twitter/X: @marknca](https://twitter.com/marknca)
+  - [LinkedIn](https://www.linkedin.com/in/marknca/)
 
 ### Recommended Learning Path
 

@@ -29,7 +29,8 @@ type SecretsManagerConfig =
       EncryptionKey: IKey option
       RemovalPolicy: RemovalPolicy option
       SecretStringValue: SecretValue option
-      GenerateSecretString: SecretStringGenerator option }
+      GenerateSecretString: SecretStringGenerator option
+      ReplicaRegions: ReplicaRegion list option }
 
 type SecretsManagerSpec =
     { SecretName: string
@@ -45,7 +46,8 @@ type SecretsManagerBuilder(name: string) =
           EncryptionKey = None
           RemovalPolicy = Some RemovalPolicy.RETAIN
           SecretStringValue = None
-          GenerateSecretString = None }
+          GenerateSecretString = None
+          ReplicaRegions = None }
 
     member _.Zero() : SecretsManagerConfig =
         { SecretName = name
@@ -54,7 +56,8 @@ type SecretsManagerBuilder(name: string) =
           EncryptionKey = None
           RemovalPolicy = Some RemovalPolicy.RETAIN
           SecretStringValue = None
-          GenerateSecretString = None }
+          GenerateSecretString = None
+          ReplicaRegions = None }
 
     member _.Combine(state1: SecretsManagerConfig, state2: SecretsManagerConfig) : SecretsManagerConfig =
         { SecretName = state2.SecretName
@@ -63,7 +66,8 @@ type SecretsManagerBuilder(name: string) =
           EncryptionKey = state2.EncryptionKey |> Option.orElse state1.EncryptionKey
           RemovalPolicy = state2.RemovalPolicy |> Option.orElse state1.RemovalPolicy
           SecretStringValue = state2.SecretStringValue |> Option.orElse state1.SecretStringValue
-          GenerateSecretString = state2.GenerateSecretString |> Option.orElse state1.GenerateSecretString }
+          GenerateSecretString = state2.GenerateSecretString |> Option.orElse state1.GenerateSecretString
+          ReplicaRegions = state2.ReplicaRegions |> Option.orElse state1.ReplicaRegions }
 
     member inline x.For
         (
@@ -88,6 +92,11 @@ type SecretsManagerBuilder(name: string) =
 
         config.GenerateSecretString
         |> Option.iter (fun v -> props.GenerateSecretString <- v)
+
+        config.ReplicaRegions
+        |> Option.iter (fun regions ->
+            if not (List.isEmpty regions) then
+                props.ReplicaRegions <- regions |> List.map (fun r -> r :> IReplicaRegion) |> List.toArray)
 
         { SecretName = secretName
           ConstructId = constructId
@@ -120,6 +129,33 @@ type SecretsManagerBuilder(name: string) =
     member _.GenerateSecretString(config: SecretsManagerConfig, generator: SecretStringGenerator) =
         { config with
             GenerateSecretString = Some generator }
+
+    /// <summary>
+    /// Replicates the secret to additional AWS regions for disaster recovery.
+    ///
+    /// **Security Best Practice:** Replicate secrets for:
+    /// - Multi-region disaster recovery
+    /// - High-availability requirements
+    /// - Compliance with data residency requirements
+    ///
+    /// **Note:** Each replica can have its own KMS key for regional encryption.
+    ///
+    /// **Default:** None (single-region deployment)
+    /// </summary>
+    /// <param name="regions">List of replica regions with optional KMS keys.</param>
+    /// <code lang="fsharp">
+    /// secret "production-api-key" {
+    ///     description "API key for external service"
+    ///     replicaRegions [
+    ///         ReplicaRegion(Region = "us-west-2")
+    ///         ReplicaRegion(Region = "eu-west-1")
+    ///     ]
+    /// }
+    /// </code>
+    [<CustomOperation("replicaRegions")>]
+    member _.ReplicaRegions(config: SecretsManagerConfig, regions: ReplicaRegion list) =
+        { config with
+            ReplicaRegions = Some regions }
 
 /// <summary>
 /// Helper functions for creating secret string generators

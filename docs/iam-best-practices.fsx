@@ -1,11 +1,13 @@
 (**
 ---
 title: IAM Best Practices for FsCDK
-category: docs
-index: 1
+category: Best Practices
+categoryindex: 2
 ---
 
-# IAM (Identity and Access Management) Best Practices for FsCDK
+# ![IAM](img/icons/Arch_AWS-Identity-and-Access-Management_48.png) IAM (Identity and Access Management) Best Practices for FsCDK
+
+![IAM Authorization](img/IAM-authorize.png)
 
 AWS Identity and Access Management (IAM) is the foundation of AWS security. As AWS Hero Ben Kehoe states: "IAM isn't complicated—it's just misunderstood." This portal enhances FsCDK's IAM docs with insights from heroes like Ben Kehoe, Scott Piper, and Yan Cui. Includes narratives, checklists, drills, and resources (4.5+ rated, highly viewed).
 
@@ -43,9 +45,9 @@ lambda "MyFunction" {
 }
 
 (**
-#### ✅ GOOD: Specific permissions
+#### ❌ CRITICAL ERROR: Wildcard Actions AND Resources
 
-Grant only specific permissions needed:
+**FsCDK now blocks this at compile time:**
 *)
 
 (*** hide ***)
@@ -55,6 +57,40 @@ let myVpc =
         natGateways 1
         cidr "10.0.0.0/16"
     }
+
+(**
+```fsharp
+// This will FAIL compilation with security error:
+policyStatement {
+    actions [ "*" ]       // ❌ Wildcard actions
+    resources [ "*" ]     // ❌ Wildcard resources
+}
+// ERROR: PolicyStatement has wildcard actions ('*') AND resources ('*').
+//        This grants unrestricted access to ALL AWS services.
+```
+
+#### ⚠️ WARNING: Individual Wildcards
+
+FsCDK warns (but allows) single wildcards:
+*)
+
+// This generates a compilation WARNING:
+policyStatement {
+    actions [ "*" ] // ⚠️ Warning: wildcard actions
+    resources [ "arn:aws:s3:::my-bucket/*" ] // ✅ Specific resource
+}
+
+// This also generates a compilation WARNING:
+policyStatement {
+    actions [ "s3:GetObject"; "s3:PutObject" ] // ✅ Specific actions
+    resources [ "*" ] // ⚠️ Warning: wildcard resources
+}
+
+(**
+#### ✅ GOOD: Specific permissions
+
+Grant only specific permissions needed (no warnings):
+*)
 
 lambda "MyFunction" {
     runtime Runtime.DOTNET_8
@@ -570,6 +606,34 @@ stack "DatabaseStack" {
 }
 
 (**
+## OWASP Top 10 Applied to AWS Infrastructure
+
+The OWASP Top 10 (https://owasp.org/www-project-top-ten/) defines critical web application security risks. Here's how they map to AWS infrastructure and FsCDK protections:
+
+| OWASP Risk | AWS Context | FsCDK Protection |
+|------------|-------------|------------------|
+| **A01: Broken Access Control** | IAM too permissive, public S3 | Blocks wildcard actions+resources, private S3 default |
+| **A02: Cryptographic Failures** | Unencrypted data, no TLS | RDS/DynamoDB encryption enabled, HTTPS enforced |
+| **A03: Injection** | SQL/command injection | IAM DB auth, parameterized queries, AWS WAF |
+| **A05: Security Misconfiguration** | Public S3, open security groups | Secure defaults, deny-by-default security groups |
+| **A07: Broken Authentication** | Weak passwords, no MFA | Cognito password policies, MFA enforcement |
+| **A08: Integrity Failures** | Compromised packages | ECR image scanning, Lambda code signing |
+| **A09: Logging Failures** | No CloudTrail/GuardDuty | X-Ray tracing, CloudWatch logs, audit trails |
+
+**OWASP Serverless Top 10 for Lambda:**
+1. Injection flaws → validate inputs
+2. Broken authentication → use Cognito authorizers
+3. Sensitive data exposure → encrypt with KMS
+4. Broken access control → IAM resource policies
+5. Security misconfiguration → FsCDK secure defaults
+6. Over-privileged permissions → FsCDK blocks wildcards
+7. Inadequate logging → enable X-Ray tracing
+8. Business logic manipulation → validate state transitions
+9. Improper exception handling → don't leak secrets in errors
+10. DoS attacks → use reserved concurrency limits
+
+Reference: OWASP Serverless Top 10 (https://owasp.org/www-project-serverless-top-10/)
+
 ## Operational Checklist
 Use this before prod deploys (inspired by Piper's audits):
 1. Validate policies with IAM Access Analyzer.
@@ -610,23 +674,20 @@ Use this before prod deploys (inspired by Piper's audits):
 
 **Ben Kehoe (@ben11kehoe) - AWS Serverless Hero:**
 
-- [IAM for Humans](https://ben11kehoe.medium.com/iam-is-complicated-but-it-doesnt-have-to-be-b71e7b0b6c5c) - Simplifying IAM concepts
-- [AWS IAM Policies in a Nutshell](https://ben11kehoe.medium.com/aws-iam-policies-in-a-nutshell-63d42d1caec5) - Understanding policy evaluation
-- [Temporary Security Credentials](https://ben11kehoe.medium.com/you-should-never-use-aws-access-keys-or-iam-users-5d8e8e9f3d8e) - Why you should use roles
 - [IAM Roles Everywhere](https://www.youtube.com/watch?v=aISWoPf_XNE) - AWS re:Invent talk on IAM roles
+- [AWS IAM Best Practices](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html) - Official IAM guidance
+- Follow on [Mastodon: @ben11kehoe@mastodon.social](https://mastodon.social/@ben11kehoe) for latest insights
 
 **Scott Piper (@0xdabbad00) - AWS Security Hero:**
 
 - [Flaws.cloud](http://flaws.cloud/) - Learn AWS security through CTF challenges
 - [CloudSploit](https://github.com/aquasecurity/cloudsploit) - AWS security scanning tool
-- [AWS Security Mistakes](https://summitroute.com/blog/2020/05/21/aws_security_mistakes/) - Common pitfalls
+- [Summit Route Blog](https://summitroute.com/blog/) - AWS security research and common pitfalls
 - [IAM Vulnerable](https://github.com/BishopFox/iam-vulnerable) - Learn IAM privilege escalation
 
 **Yan Cui (The Burning Monk) - Serverless Security:**
 
-- [Serverless Security Best Practices](https://theburningmonk.com/2018/01/serverless-security-best-practices/) - Lambda-specific security
-- [API Gateway Security](https://theburningmonk.com/2019/02/securing-api-gateway-with-lambda-authorizer/) - Custom authorizers
-- [Secrets Management in Lambda](https://theburningmonk.com/2019/09/why-you-should-use-temporary-stack-credentials-for-your-aws-cloudformation-deployments/) - Handling sensitive data
+- [The Burning Monk Blog](https://theburningmonk.com/) - Comprehensive serverless best practices and security articles
 
 ### IAM Deep Dives
 
@@ -781,7 +842,7 @@ Use this before prod deploys (inspired by Piper's audits):
 **Week 2 - Policy Mastery:**
 
 1. Study [Policy Evaluation Logic](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html)
-2. Read [Ben Kehoe's IAM Posts](https://ben11kehoe.medium.com/)
+2. Follow [AWS Security Blog](https://aws.amazon.com/blogs/security/) for latest IAM updates
 3. Use [IAM Access Analyzer](https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html)
 4. Take [IAM Workshop](https://catalog.workshops.aws/iam/en-US)
 
@@ -808,18 +869,33 @@ Use this before prod deploys (inspired by Piper's audits):
 
 ### AWS Security Experts to Follow
 
+![AWS Heroes](img/awsheros.png)
+*AWS Heroes and community experts who contribute to cloud security knowledge*
+
 **AWS Heroes:**
 
-- **[Ben Kehoe (@ben11kehoe)](https://twitter.com/ben11kehoe)** - IAM and serverless security
-- **[Scott Piper (@0xdabbad00)](https://twitter.com/0xdabbad00)** - Cloud security, IAM privilege escalation
-- **[Chris Farris (@jcfarris)](https://twitter.com/jcfarris)** - AWS security and compliance
-- **[Yan Cui (@theburningmonk)](https://twitter.com/theburningmonk)** - Serverless security
+- **Ben Kehoe** - IAM and serverless security
+  - [Twitter/X: @ben11kehoe](https://twitter.com/ben11kehoe)
+  - [Mastodon: @ben11kehoe@mastodon.social](https://mastodon.social/@ben11kehoe)
+- **Scott Piper** - Cloud security, IAM privilege escalation
+  - [Twitter/X: @0xdabbad00](https://twitter.com/0xdabbad00)
+  - [Mastodon: @0xdabbad00@infosec.exchange](https://infosec.exchange/@0xdabbad00)
+- **Chris Farris** - AWS security and compliance
+  - [Twitter/X: @jcfarris](https://twitter.com/jcfarris)
+  - [LinkedIn](https://www.linkedin.com/in/jcfarris/)
+- **Yan Cui** - Serverless security
+  - [Twitter/X: @theburningmonk](https://twitter.com/theburningmonk)
 
 **Security Researchers:**
 
-- **[Mark Nunnikhoven (@marknca)](https://twitter.com/marknca)** - Cloud security best practices
-- **[Corey Quinn (@QuinnyPig)](https://twitter.com/QuinnyPig)** - AWS cost and security
-- **[Ian Mckay (@iann0036)](https://twitter.com/iann0036)** - AWS security tools
+- **Mark Nunnikhoven** - Cloud security best practices
+  - [Twitter/X: @marknca](https://twitter.com/marknca)
+  - [LinkedIn](https://www.linkedin.com/in/marknca/)
+- **Corey Quinn** - AWS cost and security
+  - [Twitter/X: @QuinnyPig](https://twitter.com/QuinnyPig)
+  - [Mastodon: @QuinnyPig@hachyderm.io](https://hachyderm.io/@QuinnyPig)
+- **Ian Mckay** - AWS security tools
+  - [Twitter/X: @iann0036](https://twitter.com/iann0036)
 
 **AWS Security Team:**
 
@@ -875,5 +951,6 @@ For implementation details, see [src/IAM.fs](../src/IAM.fs) and [src/Grants.fs](
 - [AWS Security Best Practices](https://aws.amazon.com/architecture/security-identity-compliance/)
 - [Yan Cui's Serverless Security Best Practices](https://theburningmonk.com/)
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [Have I Been Pwned](https://haveibeenpwned.com/) - Troy Hunt's breach notification service.
 - [CIS AWS Foundations Benchmark](https://www.cisecurity.org/benchmark/amazon_web_services)
 *)

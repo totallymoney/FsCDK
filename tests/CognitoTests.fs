@@ -103,3 +103,43 @@ let tests =
               Expect.isTrue spec.Props.AuthFlows.UserSrp.Value "SRP auth flow should be enabled"
               Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled" ]
     |> testSequenced
+              Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled"
+
+          testCase "resourceServer requires userPool"
+          <| fun _ ->
+              let mutable ex: exn option = None
+
+              try
+                  let _ = resourceServer "ApiServer" { () }
+                  ()
+              with e ->
+                  ex <- Some e
+
+              Expect.isSome ex "Expected an ArgumentException for missing user pool"
+
+              match ex with
+              | Some(:? ArgumentException as ae) ->
+                  Expect.equal ae.ParamName "userPool" "ParamName should be 'userPool'"
+              | Some e -> failtestf "Unexpected exception type: %A" e
+              | None -> ()
+
+          testCase "resourceServer builds with identifier and scopes"
+          <| fun _ ->
+              let app = new App()
+              let stack = new Stack(app, "TestStack")
+              let up = new UserPool(stack, "UP")
+
+              let spec =
+                  resourceServer "ApiServer" {
+                      userPool up
+                      identifier "api"
+                      name "API Resource Server"
+                      scope "read" "Read access"
+                      scope "write" "Write access"
+                      scope "admin" "Admin access"
+                  }
+
+              Expect.equal spec.Props.Identifier "api" "Identifier should be 'api'"
+              Expect.equal spec.Props.Name "API Resource Server" "Name should be set"
+              Expect.isNotNull spec.Props.Scopes "Scopes should be set" ]
+
