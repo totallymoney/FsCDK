@@ -10,10 +10,7 @@ open Amazon.CDK.AWS.Cognito
 let tests =
     testList
         "Cognito"
-        [
-
-          testCase "userPool applies secure defaults"
-          <| fun _ ->
+        [ test "userPool applies secure defaults" {
               let spec = userPool "Pool" { () }
 
               // Sign-in aliases default to email + username
@@ -41,10 +38,9 @@ let tests =
 
               Expect.isFalse spec.Props.SelfSignUpEnabled.Value "Self sign-up should default to false"
 
-          // This test is skipped because it works well as single execution, but may fail when run on parallel with other tests.
-          testCase "userPool custom attributes populate dictionary"
-          <| fun _ ->
+          }
 
+          test "userPool custom attributes populate dictionary" {
               let attr1 =
                   StringAttribute(
                       StringAttributeProps(
@@ -65,8 +61,9 @@ let tests =
               Expect.isNotNull spec.Props.CustomAttributes "CustomAttributes dictionary should be set"
               Expect.isTrue (spec.Props.CustomAttributes.Count >= 2) "At least two custom attributes expected"
 
-          testCase "userPoolClient requires userPool"
-          <| fun _ ->
+          }
+
+          test "userPoolClient requires userPool" {
               let mutable ex: exn option = None
 
               try
@@ -83,12 +80,13 @@ let tests =
               | Some e -> failtestf "Unexpected exception type: %A" e
               | None -> ()
 
-          testCase "userPoolClient applies secure client defaults"
-          <| fun _ ->
+          }
+
+          test "userPoolClient applies secure client defaults" {
               // Create a minimal real UserPool to satisfy required prop type
-              let app = new App()
-              let stack = new Stack(app, "TestStack")
-              let up = new UserPool(stack, "UP")
+              let app = App()
+              let stack = Stack(app, "TestStack")
+              let up = UserPool(stack, "UP")
 
               let spec = userPoolClient "Client" { userPool up }
 
@@ -101,12 +99,11 @@ let tests =
 
               // Auth flows default to SRP + password
               Expect.isTrue spec.Props.AuthFlows.UserSrp.Value "SRP auth flow should be enabled"
-              Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled" ]
-    |> testSequenced
               Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled"
 
-          testCase "resourceServer requires userPool"
-          <| fun _ ->
+          }
+
+          test "resourceServer requires userPool" {
               let mutable ex: exn option = None
 
               try
@@ -123,8 +120,9 @@ let tests =
               | Some e -> failtestf "Unexpected exception type: %A" e
               | None -> ()
 
-          testCase "resourceServer builds with identifier and scopes"
-          <| fun _ ->
+          }
+
+          test "resourceServer builds with identifier and scopes" {
               let app = new App()
               let stack = new Stack(app, "TestStack")
               let up = new UserPool(stack, "UP")
@@ -141,5 +139,7 @@ let tests =
 
               Expect.equal spec.Props.Identifier "api" "Identifier should be 'api'"
               Expect.equal spec.Props.Name "API Resource Server" "Name should be set"
-              Expect.isNotNull spec.Props.Scopes "Scopes should be set" ]
+              Expect.isNotNull spec.Props.Scopes "Scopes should be set"
 
+          } ]
+    |> testSequenced

@@ -63,7 +63,7 @@ stack "ProductionBackupStrategy" {
     description "Production database with automated backups"
 
     // VPC for database
-    let prodVpc =
+    let! prodVpc =
         vpc "ProductionVpc" {
             maxAzs 2
             natGateways 1
@@ -121,7 +121,7 @@ stack "ComplianceBackups" {
     environment { region "us-east-1" }
 
     // Compliance database with automated snapshots
-    let compVpc = vpc "ComplianceVpc" { maxAzs 2 }
+    let! compVpc = vpc "ComplianceVpc" { maxAzs 2 }
 
     rdsInstance "ComplianceDB" {
         vpc compVpc
@@ -166,7 +166,7 @@ RDS PITR allows restoration to any second within the retention period. This is c
 *)
 
 stack "PITRDatabase" {
-    let pitrVpc = vpc "PITRVpc" { maxAzs 2 }
+    let! pitrVpc = vpc "PITRVpc" { maxAzs 2 }
 
     rdsInstance "PITRDatabase" {
         vpc pitrVpc
@@ -219,7 +219,7 @@ stack "MultiRegionDatabase" {
 
     description "Primary database with cross-region DR"
 
-    let primaryVpc =
+    let! primaryVpc =
         vpc "PrimaryVpc" {
             maxAzs 3
             natGateways 2
@@ -365,7 +365,7 @@ stack "PilotLight" {
 
     description "Pilot light infrastructure - core services minimal"
 
-    let pilotVpc = vpc "PilotVpc" { maxAzs 2 }
+    let! pilotVpc = vpc "PilotVpc" { maxAzs 2 }
 
     // Minimal database that can be scaled up
     rdsInstance "PilotDB" {
@@ -400,7 +400,7 @@ stack "WarmStandby" {
 
     description "Warm standby - scaled down production environment"
 
-    let warmVpc = vpc "WarmStandbyVpc" { maxAzs 2 }
+    let! warmVpc = vpc "WarmStandbyVpc" { maxAzs 2 }
 
     // Scaled down but fully functional
     rdsInstance "WarmStandbyDB" {
@@ -440,7 +440,7 @@ stack "HotStandbyPrimary" {
 
     description "Active-Active primary region"
 
-    let primaryVpc = vpc "PrimaryVpc" { maxAzs 3 }
+    let! primaryVpc = vpc "PrimaryVpc" { maxAzs 3 }
 
     rdsInstance "PrimaryDB" {
         vpc primaryVpc
@@ -464,7 +464,7 @@ stack "HotStandbySecondary" {
 
     description "Active-Active secondary region"
 
-    let secondaryVpc = vpc "SecondaryVpc" { maxAzs 3 }
+    let! secondaryVpc = vpc "SecondaryVpc" { maxAzs 3 }
 
     rdsInstance "SecondaryDB" {
         vpc secondaryVpc

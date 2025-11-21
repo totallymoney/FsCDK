@@ -86,7 +86,7 @@ Best for: 100-1000 tenants, simplified operations, cost efficiency
 *)
 
 stack "SchemaPerTenant" {
-    let appVpc = vpc "AppVPC" { maxAzs 2 }
+    let! appVpc = vpc "AppVPC" { maxAzs 2 }
 
     rdsInstance "SharedDatabase" {
         vpc appVpc
@@ -131,7 +131,7 @@ Best for: <100 tenants, enterprise customers, regulatory isolation
 *)
 
 stack "DatabasePerTenant" {
-    let appVpc = vpc "AppVPC" { maxAzs 2 }
+    let! appVpc = vpc "AppVPC" { maxAzs 2 }
 
     // Template - deploy per large tenant
     rdsInstance "EnterpriseCustomerDB" {
@@ -216,7 +216,7 @@ let user = Users.getById(userId) // RLS enforces isolation
 
 ## Monitoring Multi-Tenant Systems
 
-Tag CloudWatch metrics with tenant ID for per-tenant observability in your application code (not IaC). 
+Tag CloudWatch metrics with tenant ID for per-tenant observability in your application code (not IaC).
 Use AWS SDK CloudWatch client to emit metrics with tenant dimensions.
 *)
 

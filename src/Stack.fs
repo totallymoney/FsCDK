@@ -98,9 +98,6 @@ type Operation =
     | CloudWatchLogGroupOp of CloudWatchLogGroupSpec
     | CloudWatchMetricFilterOp of CloudWatchMetricFilterSpec
     | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterSpec
-    | CloudWatchLogGroupOp of CloudWatchLogGroupResource
-    | CloudWatchMetricFilterOp of CloudWatchMetricFilterResource
-    | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterResource
     | CloudTrailOp of CloudTrailSpec
 
 // ============================================================================
@@ -999,7 +996,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ UserPoolResourceServerOp uprsSpec ] }
+          Operations = [ opToFunc (UserPoolResourceServerOp uprsSpec) ] }
 
     member _.Yield(nlbSpec: NetworkLoadBalancerSpec) : StackConfig =
         { Name = name
@@ -2107,7 +2104,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudTrailOp trailSpec ] }
+          Operations = [ opToFunc (CloudTrailOp trailSpec) ] }
 
     member _.Zero() : StackConfig =
         { Name = name

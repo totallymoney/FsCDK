@@ -253,7 +253,7 @@ Export database logs to CloudWatch for monitoring, compliance, and security anal
 *)
 
 stack "DatabaseWithLogging" {
-    let appVpc = vpc "AppVPC" { maxAzs 2 }
+    let! appVpc = vpc "AppVPC" { maxAzs 2 }
 
     rdsInstance "MonitoredDatabase" {
         vpc appVpc
