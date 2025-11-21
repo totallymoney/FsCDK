@@ -261,6 +261,32 @@ type BucketBuilder(name: string) =
     [<CustomOperation("enforceSSL")>]
     member _.EnforceSSL(config: BucketConfig, value: bool) = { config with EnforceSSL = Some value }
 
+    /// <summary>
+    /// Enables or disables versioning for the S3 bucket.
+    ///
+    /// **Security Best Practice:** Enable versioning for:
+    /// - Critical data that requires audit trails
+    /// - Data subject to compliance requirements (HIPAA, SOC2, etc.)
+    /// - Production buckets storing business data
+    ///
+    /// **Cost Consideration:** Versioning stores all versions of objects, increasing storage costs.
+    /// Only disable for:
+    /// - Temporary/cache buckets
+    /// - Build artifacts with short lifecycle
+    /// - Development/testing buckets
+    ///
+    /// **Default:** false (opt-in for cost optimization)
+    /// </summary>
+    /// <param name="value">True to enable versioning, false to disable.</param>
+    /// <code lang="fsharp">
+    /// bucket "production-data" {
+    ///     versioned true  // Enable for production
+    /// }
+    ///
+    /// bucket "cache-bucket" {
+    ///     versioned false  // Disable for temp data
+    /// }
+    /// </code>
     [<CustomOperation("versioned")>]
     member _.Versioned(config: BucketConfig, value: bool) = { config with Versioned = Some value }
 

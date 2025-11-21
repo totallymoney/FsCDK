@@ -28,6 +28,7 @@ open Amazon.CDK.AWS.XRay
 open Amazon.CDK.AWS.AppSync
 open Amazon.CDK.AWS.APIGateway
 open Amazon.CDK.AWS.ECS
+open Amazon.CDK.AWS.CloudTrail
 //open Amazon.CDK.AWS.CloudHSMV2
 
 // ============================================================================
@@ -49,6 +50,7 @@ type Operation =
     | CloudFrontDistributionOp of DistributionSpec
     | UserPoolOp of UserPoolSpec
     | UserPoolClientOp of UserPoolClientSpec
+    | UserPoolResourceServerOp of UserPoolResourceServerSpec
     | NetworkLoadBalancerOp of NetworkLoadBalancerSpec
     | EventBridgeRuleOp of EventBridgeRuleSpec
     | EventBusOp of EventBusSpec
@@ -96,6 +98,7 @@ type Operation =
     | CloudWatchLogGroupOp of CloudWatchLogGroupResource
     | CloudWatchMetricFilterOp of CloudWatchMetricFilterResource
     | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterResource
+    | CloudTrailOp of CloudTrailSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -253,6 +256,29 @@ module StackOperations =
             let vpc = Vpc(stack, vpcSpec.ConstructId, vpcSpec.Props)
             vpcSpec.Vpc <- Some vpc
 
+            // Security best practice: Enable VPC Flow Logs by default
+            if vpcSpec.EnableFlowLogs then
+                let flowLogGroupProps = LogGroupProps()
+
+                flowLogGroupProps.Retention <-
+                    vpcSpec.FlowLogRetention
+                    |> Option.defaultValue Amazon.CDK.AWS.Logs.RetentionDays.ONE_WEEK
+
+                let flowLogGroup =
+                    LogGroup(stack, $"{vpcSpec.ConstructId}-FlowLogs", flowLogGroupProps)
+
+                let flowLog =
+                    FlowLog(
+                        stack,
+                        $"{vpcSpec.ConstructId}-FlowLog",
+                        FlowLogProps(
+                            ResourceType = FlowLogResourceType.FromVpc(vpc),
+                            Destination = FlowLogDestination.ToCloudWatchLogs(flowLogGroup)
+                        )
+                    )
+
+                () // Return unit
+
         | SecurityGroupOp sgSpec ->
             let sg = SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props)
             sgSpec.SecurityGroup <- Some sg
@@ -269,7 +295,10 @@ module StackOperations =
 
         | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
 
-        // New operations
+        | UserPoolResourceServerOp uprsSpec ->
+            let rs = CfnUserPoolResourceServer(stack, uprsSpec.ConstructId, uprsSpec.Props)
+            uprsSpec.ResourceServer <- Some rs
+
         | NetworkLoadBalancerOp nlbSpec ->
             let nlb = NetworkLoadBalancer(stack, nlbSpec.ConstructId, nlbSpec.Props)
 
@@ -592,6 +621,25 @@ module StackOperations =
                 SubscriptionFilter(stack, subscriptionResource.ConstructId, subscriptionResource.Props)
 
             subscriptionResource.SubscriptionFilter <- Some subscriptionFilter
+
+        | CloudTrailOp trailSpec ->
+            // Create CloudWatch Log Group if CloudWatch logging is enabled
+            let trail =
+                if trailSpec.SendToCloudWatchLogs then
+                    let logGroupProps = LogGroupProps()
+
+                    logGroupProps.Retention <-
+                        trailSpec.CloudWatchLogsRetention
+                        |> Option.defaultValue Amazon.CDK.AWS.Logs.RetentionDays.ONE_MONTH
+
+                    let logGroup = LogGroup(stack, $"{trailSpec.ConstructId}-Logs", logGroupProps)
+
+                    trailSpec.Props.CloudWatchLogGroup <- logGroup
+                    Trail(stack, trailSpec.ConstructId, trailSpec.Props)
+                else
+                    Trail(stack, trailSpec.ConstructId, trailSpec.Props)
+
+            trailSpec.Trail <- Some trail
 
 // ============================================================================
 // Stack and App Configuration DSL
@@ -983,6 +1031,22 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ UserPoolClientOp upcSpec ] }
+
+    member _.Yield(uprsSpec: UserPoolResourceServerSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ UserPoolResourceServerOp uprsSpec ] }
 
     member _.Yield(nlbSpec: NetworkLoadBalancerSpec) : StackConfig =
         { Name = name
@@ -1581,6 +1645,22 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ CloudWatchSubscriptionFilterOp subscriptionResource ] }
+
+    member _.Yield(trailSpec: CloudTrailSpec) : StackConfig =
+        { Name = name
+          Construct = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ CloudTrailOp trailSpec ] }
 
     member _.Zero() : StackConfig =
         { Name = name

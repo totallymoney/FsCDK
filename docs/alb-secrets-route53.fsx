@@ -1,11 +1,11 @@
 (**
 ---
 title: Load Balancer, Secrets Manager, and Route 53 Example
-category: docs
-index: 7
+category: Resources
+categoryindex: 1
 ---
 
-# Secure Ingress with Application Load Balancer, Secrets Manager, and Route 53
+# ![ALB](img/icons/Arch_Elastic-Load-Balancing_48.png) ![Secrets Manager](img/icons/Arch_AWS-Secrets-Manager_48.png) ![Route53](img/icons/Arch_Amazon-Route-53_48.png) Secure Ingress with Application Load Balancer, Secrets Manager, and Route 53
 
 Design an internet-facing entry point that mirrors the guidance shared by AWS Heroes and principal engineers. The pattern below combines an Application Load Balancer (ALB), AWS Secrets Manager, and Amazon Route 53 so you can publish resilient HTTPS endpoints with strong secret hygiene and DNS best practices—all expressed through FsCDK.
 
@@ -197,11 +197,11 @@ cdk destroy # Tear down when finished
 ```
 
 ### Further learning (highly-rated resources)
-- **re:Invent NET406** – Best practices for Application Load Balancers (4.8★ session rating).
-- **AWS Security Blog** – “Simplify and automate SSL/TLS for Application Load Balancers.”
-- **AWS Architecture Blog** – “Designing secure remote access with bastion hosts and ALB.”
-- **Becky Weiss – Optimizing DNS with Route 53** – re:Invent video with 100k+ views and 4.8★ feedback.
-- **AWS Builders Library** – “Automating safe, hands-off deployments.”
+- **[re:Invent NET406 – Best practices for Application Load Balancers](https://www.youtube.com/results?search_query=aws+reinvent+NET406+application+load+balancer)** (4.8★ session rating).
+- **[AWS Security Blog](https://aws.amazon.com/blogs/security/)** – “Simplify and automate SSL/TLS for Application Load Balancers.”
+- **[AWS Architecture Blog](https://aws.amazon.com/blogs/architecture/)** – “Designing secure remote access with bastion hosts and ALB.”
+- **[Becky Weiss – Optimizing DNS with Route 53](https://www.youtube.com/results?search_query=aws+reinvent+route53+becky+weiss)** – re:Invent video with 100k+ views and 4.8★ feedback.
+- **[AWS Builders Library](https://aws.amazon.com/builders-library/automating-safe-hands-off-deployments/)** – “Automating safe, hands-off deployments.”
 
 Adopt these guard rails, document exceptions, and capture metrics so your ingress layer remains resilient, observable, and easy to evolve.
 *)

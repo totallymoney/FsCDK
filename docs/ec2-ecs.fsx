@@ -1,11 +1,11 @@
 (**
 ---
 title: EC2 and ECS Example
-category: docs
-index: 8
+category: Resources
+categoryindex: 10
 ---
 
-# Amazon EC2 and ECS (Elastic Container Service) Example
+# ![EC2](img/icons/Arch_Amazon-EC2_48.png) ![ECS](img/icons/Arch_Amazon-Elastic-Container-Service_48.png) Amazon EC2 and ECS (Elastic Container Service) Example
 
 This example demonstrates how to create Amazon EC2 (Elastic Compute Cloud) instances and ECS (Elastic Container Service) services using FsCDK.
 
@@ -94,12 +94,14 @@ stack "ECSStack" {
 ## Key Features
 
 ### EC2 (Virtual Machines)
+
 - **IMDSv2 Required**: Enhanced security for instance metadata by default
 - **EBS Encryption**: Enabled by default for data-at-rest protection
 - **Cost-Effective Defaults**: t3.micro instance type for dev/test workloads
 - **Flexible Configuration**: Support for custom instance types, AMIs, and user data
 
 ### ECS (Container Orchestration)
+
 - **Container Insights**: Enabled by default for monitoring and observability
 - **Fargate Support**: Serverless container execution
 - **Private by Default**: Services don't get public IPs unless explicitly configured

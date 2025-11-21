@@ -1,11 +1,11 @@
 (**
 ---
 title: RDS Relational Databases
-category: docs
-index: 25
+category: Resources
+categoryindex: 21
 ---
 
-# Amazon RDS
+# ![Amazon RDS](img/icons/Arch_Amazon-RDS_48.png) Amazon RDS
 
 Amazon RDS (Relational Database Service) makes it easy to set up, operate, and scale a relational database
 in the cloud. It provides cost-efficient and resizable capacity while automating time-consuming
@@ -145,13 +145,14 @@ stack "IAMAuthRDS" {
 
 ### Security
 
-- Always enable storage encryption
-- Use IAM authentication when possible
-- Never make databases publicly accessible
+- ✅ **Storage encryption enabled by default** (no action needed)
+- ✅ **IAM authentication enabled by default** (enhanced security)
+- ✅ **Deletion protection enabled by default** (prevents accidents)
+- ✅ **Private by default** (not publicly accessible)
 - Use security groups to restrict access
 - Store credentials in Secrets Manager
-- Enable deletion protection for production
 - Use SSL/TLS for connections
+- **NEW:** Export logs to CloudWatch using `cloudwatchLogsExports`
 - Audit access with CloudTrail and database logs
 
 ### Cost Optimization
@@ -198,18 +199,21 @@ FsCDK supports all RDS database engines:
 ## Instance Classes
 
 ### Burstable (T3)
+
 - **Use**: Dev/test, small workloads
 - **Cost**: Low
 - **Performance**: Burstable CPU
 - **Examples**: t3.micro, t3.small, t3.medium
 
 ### General Purpose (M5)
+
 - **Use**: Production, balanced workloads
 - **Cost**: Medium
 - **Performance**: Consistent CPU
 - **Examples**: m5.large, m5.xlarge, m5.2xlarge
 
 ### Memory Optimized (R5)
+
 - **Use**: Large datasets, high concurrency
 - **Cost**: High
 - **Performance**: High memory, consistent CPU
@@ -228,6 +232,7 @@ FsCDK supports all RDS database engines:
 ## Backup and Recovery
 
 ### Automated Backups
+
 - Daily full snapshot
 - Transaction logs every 5 minutes
 - Retention: 1-35 days
@@ -235,23 +240,98 @@ FsCDK supports all RDS database engines:
 - No performance impact
 
 ### Manual Snapshots
+
 - User-initiated
 - Retained until manually deleted
 - Can copy across regions
 - Can share with other accounts
 
-## Default Settings
+## CloudWatch Logs Export (NEW)
 
-The RDS instance builder applies these best practices:
+Export database logs to CloudWatch for monitoring, compliance, and security analysis.
+
+*)
+
+stack "DatabaseWithLogging" {
+    let appVpc = vpc "AppVPC" { maxAzs 2 }
+
+    rdsInstance "MonitoredDatabase" {
+        vpc appVpc
+        postgresEngine PostgresEngineVersion.VER_15
+        instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
+        databaseName "monitored"
+
+        // Enable CloudWatch Logs export for audit trails
+        cloudwatchLogsExports [ "postgresql"; "upgrade" ]
+
+        // Retention and encryption enabled by default
+        backupRetentionDays 7.0
+    }
+}
+
+(**
+### PostgreSQL Log Types
+
+- **"postgresql"** - General database logs (connections, queries, errors)
+- **"upgrade"** - Database upgrade logs
+
+### MySQL/MariaDB Log Types
+
+- **"error"** - Error logs
+- **"general"** - General query logs
+- **"slowquery"** - Slow query logs
+- **"audit"** - Audit logs (if enabled)
+
+### SQL Server Log Types
+
+- **"agent"** - SQL Server Agent logs
+- **"error"** - SQL Server error logs
+
+### Oracle Log Types
+
+- **"trace"** - Oracle trace files
+- **"audit"** - Oracle audit files
+- **"alert"** - Oracle alert logs
+- **"listener"** - Oracle listener logs
+
+## Default Settings (UPDATED)
+
+The RDS instance builder applies these **secure-by-default** best practices:
 
 - **Instance Type**: t3.micro (optimize for cost in dev)
 - **Backup Retention**: 7 days
 - **Delete Automated Backups**: true
 - **Multi-AZ**: false (enable explicitly for production)
-- **Publicly Accessible**: false (secure by default)
-- **Storage Encrypted**: true
-- **Deletion Protection**: false (enable for production)
+- **Publicly Accessible**: ✅ **false (explicitly private)**
+- **Storage Encrypted**: ✅ **true (encrypted by default)**
+- **Deletion Protection**: ✅ **true (prevent accidental deletion)**
+- **IAM Authentication**: ✅ **true (enhanced security)**
+- **CloudWatch Logs**: ✅ **Ready to configure (use cloudwatchLogsExports)**
 - **Auto Minor Version Upgrade**: true
+
+## RDS Proxy Considerations
+
+**Important limitation:** RDS Proxies receive only private IP addresses, regardless of subnet placement. External connections (from local machines, CI/CD, etc.) require:
+
+- **Bastion host** - Temporary EC2 instance for administrative access
+- **VPN/Direct Connect** - Private network connectivity
+- **AWS Systems Manager Session Manager** - Secure tunneling without SSH
+
+For development workflows requiring external access, consider direct RDS connections in non-production environments.
+
+## Environment-Specific Cost Optimization
+
+Balance security and cost based on environment:
+
+| Configuration | Dev | Production |
+|---------------|-----|------------|
+| **Multi-AZ** | `false` ($25/mo) | `true` ($50/mo) |
+| **Backup Retention** | 1 day | 7-30 days |
+| **Instance Class** | t3.micro | r5.large |
+| **Deletion Protection** | `false` | `true` |
+| **Performance Insights** | optional | recommended |
+
+Dev environments can use single-AZ, minimal backups, and smaller instances to reduce costs by 50-70%.
 
 ## Resources
 

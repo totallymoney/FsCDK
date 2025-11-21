@@ -1,0 +1,37 @@
+graph TB
+subgraph "Your F# Code"
+A[FsCDK Builders<br/>Computation Expressions]
+end
+
+subgraph "AWS CDK"
+B[AWS CDK Library<br/>Amazon.CDK.Lib]
+end
+
+subgraph "CloudFormation"
+C[CloudFormation Template<br/>JSON/YAML]
+end
+
+subgraph "AWS Cloud"
+D[Lambda Functions]
+E[DynamoDB Tables]
+F[S3 Buckets]
+G[API Gateway]
+H[Other AWS Resources]
+end
+
+A -->|Type-safe F# DSL| B
+B -->|Synthesize| C
+C -->|Deploy| D
+C -->|Deploy| E
+C -->|Deploy| F
+C -->|Deploy| G
+C -->|Deploy| H
+
+style A fill:#e1f5ff
+style B fill:#fff4e6
+style C fill:#f3e5f5
+style D fill:#e8f5e9
+style E fill:#e8f5e9
+style F fill:#e8f5e9
+style G fill:#e8f5e9
+style H fill:#e8f5e9

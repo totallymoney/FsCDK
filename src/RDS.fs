@@ -17,6 +17,7 @@ type DatabaseInstanceConfig =
       VpcSubnets: SubnetSelection option
       SecurityGroups: SecurityGroupRef list
       AllocatedStorage: int option
+      MaxAllocatedStorage: int option
       StorageType: StorageType option
       BackupRetention: Duration option
       DeleteAutomatedBackups: bool option
@@ -35,7 +36,8 @@ type DatabaseInstanceConfig =
       EnablePerformanceInsights: bool option
       PerformanceInsightRetention: PerformanceInsightRetention option
       AutoMinorVersionUpgrade: bool option
-      IamAuthentication: bool option }
+      IamAuthentication: bool option
+      CloudwatchLogsExports: string list option }
 
 type DatabaseInstanceSpec =
     { DatabaseName: string
@@ -53,25 +55,27 @@ type DatabaseInstanceBuilder(name: string) =
           VpcSubnets = None
           SecurityGroups = []
           AllocatedStorage = None
+          MaxAllocatedStorage = None
           StorageType = None
           BackupRetention = None
           DeleteAutomatedBackups = None
           RemovalPolicy = None
-          DeletionProtection = None
+          DeletionProtection = Some true // Security: Prevent accidental deletion
           MultiAz = None
-          PubliclyAccessible = None
+          PubliclyAccessible = Some false // Security: Never expose database to internet
           ParameterGroup = None
           DatabaseName_ = None
           MasterUsername = None
           Credentials = None
           PreferredBackupWindow = None
           PreferredMaintenanceWindow = None
-          StorageEncrypted = None
+          StorageEncrypted = Some true // Security: Always encrypt at rest
           MonitoringInterval = None
           EnablePerformanceInsights = None
           PerformanceInsightRetention = None
           AutoMinorVersionUpgrade = None
-          IamAuthentication = None }
+          IamAuthentication = Some true // Security: Use IAM authentication when possible
+          CloudwatchLogsExports = None }
 
     member _.Zero() : DatabaseInstanceConfig =
         { DatabaseName = name
@@ -82,25 +86,27 @@ type DatabaseInstanceBuilder(name: string) =
           VpcSubnets = None
           SecurityGroups = []
           AllocatedStorage = None
+          MaxAllocatedStorage = None
           StorageType = None
           BackupRetention = None
           DeleteAutomatedBackups = None
           RemovalPolicy = None
-          DeletionProtection = None
+          DeletionProtection = Some true // Security: Prevent accidental deletion
           MultiAz = None
-          PubliclyAccessible = None
+          PubliclyAccessible = Some false // Security: Never expose database to internet
           ParameterGroup = None
           DatabaseName_ = None
           MasterUsername = None
           Credentials = None
           PreferredBackupWindow = None
           PreferredMaintenanceWindow = None
-          StorageEncrypted = None
+          StorageEncrypted = Some true // Security: Always encrypt at rest
           MonitoringInterval = None
           EnablePerformanceInsights = None
           PerformanceInsightRetention = None
           AutoMinorVersionUpgrade = None
-          IamAuthentication = None }
+          IamAuthentication = Some true // Security: Use IAM authentication when possible
+          CloudwatchLogsExports = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> DatabaseInstanceConfig) : DatabaseInstanceConfig = f ()
 
@@ -139,6 +145,10 @@ type DatabaseInstanceBuilder(name: string) =
             match a.AllocatedStorage with
             | Some _ -> a.AllocatedStorage
             | None -> b.AllocatedStorage
+          MaxAllocatedStorage =
+            match a.MaxAllocatedStorage with
+            | Some _ -> a.MaxAllocatedStorage
+            | None -> b.MaxAllocatedStorage
           StorageType =
             match a.StorageType with
             | Some _ -> a.StorageType
@@ -214,7 +224,11 @@ type DatabaseInstanceBuilder(name: string) =
           IamAuthentication =
             match a.IamAuthentication with
             | Some _ -> a.IamAuthentication
-            | None -> b.IamAuthentication }
+            | None -> b.IamAuthentication
+          CloudwatchLogsExports =
+            match a.CloudwatchLogsExports with
+            | Some _ -> a.CloudwatchLogsExports
+            | None -> b.CloudwatchLogsExports }
 
     member _.Run(config: DatabaseInstanceConfig) : DatabaseInstanceSpec =
         let props = DatabaseInstanceProps()
@@ -244,18 +258,18 @@ type DatabaseInstanceBuilder(name: string) =
         props.DeleteAutomatedBackups <- config.DeleteAutomatedBackups |> Option.defaultValue true
 
         // AWS Best Practice: Enable Multi-AZ for production databases
-        // Default to false for cost optimization in dev/test
+        // Default to false for cost optimization in dev/test (can be overridden)
         props.MultiAz <- config.MultiAz |> Option.defaultValue false
 
-        // AWS Best Practice: Do not make databases publicly accessible
+        // AWS Security Best Practice: Never expose databases to internet (set in Yield)
         props.PubliclyAccessible <- config.PubliclyAccessible |> Option.defaultValue false
 
-        // AWS Best Practice: Enable storage encryption by default
+        // AWS Security Best Practice: Always encrypt at rest (set in Yield)
         props.StorageEncrypted <- config.StorageEncrypted |> Option.defaultValue true
 
-        // AWS Best Practice: Enable deletion protection for production
-        // Default to false for flexibility in dev/test
-        props.DeletionProtection <- config.DeletionProtection |> Option.defaultValue false
+        // AWS Security Best Practice: Prevent accidental deletion (set in Yield)
+        // Note: Set to true by default. Override with `deletionProtection false` only for dev/test
+        props.DeletionProtection <- config.DeletionProtection |> Option.defaultValue true
 
         // AWS Best Practice: Enable auto minor version upgrades
         props.AutoMinorVersionUpgrade <- config.AutoMinorVersionUpgrade |> Option.defaultValue true
@@ -270,6 +284,9 @@ type DatabaseInstanceBuilder(name: string) =
 
         config.AllocatedStorage
         |> Option.iter (fun s -> props.AllocatedStorage <- float s)
+
+        config.MaxAllocatedStorage
+        |> Option.iter (fun s -> props.MaxAllocatedStorage <- float s)
 
         config.StorageType |> Option.iter (fun t -> props.StorageType <- t)
         config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
@@ -292,7 +309,14 @@ type DatabaseInstanceBuilder(name: string) =
         config.PerformanceInsightRetention
         |> Option.iter (fun r -> props.PerformanceInsightRetention <- r)
 
-        config.IamAuthentication |> Option.iter (fun i -> props.IamAuthentication <- i)
+        // AWS Security Best Practice: Use IAM authentication when possible (set in Yield)
+        props.IamAuthentication <- config.IamAuthentication |> Option.defaultValue true
+
+        // AWS Security Best Practice: Export logs to CloudWatch for audit trail
+        config.CloudwatchLogsExports
+        |> Option.iter (fun logs ->
+            if not (List.isEmpty logs) then
+                props.CloudwatchLogsExports <- logs |> List.toArray)
 
         { DatabaseName = config.DatabaseName
           ConstructId = constructId
@@ -355,6 +379,12 @@ type DatabaseInstanceBuilder(name: string) =
     member _.AllocatedStorage(config: DatabaseInstanceConfig, gb: int) =
         { config with
             AllocatedStorage = Some gb }
+
+    /// <summary>Sets the maximum allocated storage in GB for autoscaling.</summary>
+    [<CustomOperation("maxAllocatedStorage")>]
+    member _.MaxAllocatedStorage(config: DatabaseInstanceConfig, gb: int) =
+        { config with
+            MaxAllocatedStorage = Some gb }
 
     /// <summary>Sets the storage type.</summary>
     [<CustomOperation("storageType")>]
@@ -461,6 +491,41 @@ type DatabaseInstanceBuilder(name: string) =
     member _.IamAuthentication(config: DatabaseInstanceConfig, enabled: bool) =
         { config with
             IamAuthentication = Some enabled }
+
+    /// <summary>
+    /// Enables CloudWatch Logs export for database audit and error logs.
+    ///
+    /// **Security Best Practice:** Export logs to CloudWatch for:
+    /// - Audit trails and compliance requirements
+    /// - Security incident investigation
+    /// - Performance troubleshooting
+    /// - Anomaly detection
+    ///
+    /// **Log Types by Engine:**
+    /// - PostgreSQL: ["postgresql", "upgrade"]
+    /// - MySQL: ["error", "general", "slowquery", "audit"]
+    /// - MariaDB: ["error", "general", "slowquery", "audit"]
+    /// - Oracle: ["alert", "audit", "trace", "listener"]
+    /// - SQL Server: ["error", "agent"]
+    ///
+    /// **Default:** None (opt-in for cost considerations)
+    /// </summary>
+    /// <param name="logTypes">List of log types to export (engine-specific).</param>
+    /// <code lang="fsharp">
+    /// rdsInstance "ProductionDB" {
+    ///     postgresEngine
+    ///     cloudwatchLogsExports ["postgresql", "upgrade"]  // PostgreSQL logs
+    /// }
+    ///
+    /// rdsInstance "MySQLDB" {
+    ///     engine mySqlEngine
+    ///     cloudwatchLogsExports ["error", "slowquery"]  // MySQL logs
+    /// }
+    /// </code>
+    [<CustomOperation("cloudwatchLogsExports")>]
+    member _.CloudwatchLogsExports(config: DatabaseInstanceConfig, logTypes: string list) =
+        { config with
+            CloudwatchLogsExports = Some logTypes }
 
 // ============================================================================
 // RDS Proxy Configuration DSL

@@ -18,6 +18,8 @@ FsCDK is an F# library for the AWS Cloud Development Kit (CDK), enabling you to 
 - **Immutable Infrastructure**: Define your infrastructure using immutable constructs, promoting reliable and predictable deployments
 - **IDE Support**: Excellent tooling support with type hints and IntelliSense in your favorite F# IDE
 
+![Why FsCDK?](/docs/img/Why-FsCDK.png)
+
 ## Quick Start
 
 1) Install the package:
@@ -90,12 +92,12 @@ FsCDK provides F# builders for 30+ AWS services across all major categories:
 
 | Service | What it does |
 |---------|--------------|
-| **ALB** (Application Load Balancer) | Distributes incoming HTTP/HTTPS traffic across multiple targets |
-| **API Gateway** (REST & HTTP API) | Creates REST and HTTP APIs to expose your backend services |
+| **ALB** (Application Load Balancer) | Distributes incoming HTTP/HTTPS traffic across multiple targets - [📚 Docs with learning resources](https://totallymoney.github.io/FsCDK/alb-secrets-route53.html) |
+| **API Gateway** (REST & HTTP API) | Creates REST and HTTP APIs to expose your backend services - [📚 Docs with learning resources](https://totallymoney.github.io/FsCDK/api-gateway-v2.html) |
 | **App Runner** | Fully managed container service for web apps and APIs |
 | **AppSync** | Builds managed GraphQL APIs with real-time data synchronization |
-| **Bastion Host** | Secure SSH access to instances in private subnets |
-| **Certificate Manager** | Manages SSL/TLS certificates for secure connections |
+| **Bastion Host** | Secure SSH access to instances in private subnets - [📚 Docs with learning resources](https://totallymoney.github.io/FsCDK/bastion-host.html) |
+| **Certificate Manager** | Manages SSL/TLS certificates for secure connections - [📚 Docs with learning resources](https://totallymoney.github.io/FsCDK/certificate-manager.html) |
 | **CloudFront** | Content delivery network (CDN) for fast global content distribution |
 | **CloudHSM** | Hardware security modules for cryptographic key storage |
 | **CloudWatch** | Monitors resources with alarms, log groups, metric filters, subscription filters, dashboards, and synthetic canaries |

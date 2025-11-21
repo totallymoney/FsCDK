@@ -1,11 +1,11 @@
 (**
 ---
 title: Certificate Manager
-category: docs
-index: 13
+category: Resources
+categoryindex: 5
 ---
 
-# Shipping production-grade TLS with AWS Certificate Manager
+# ![Certificate Manager](img/icons/Arch_AWS-Certificate-Manager_48.png) Shipping production-grade TLS with AWS Certificate Manager
 
 AWS Certificate Manager (ACM) issues and renews SSL/TLS certificates for free across AWS services. This notebook distils the guidance shared by **AWS Networking Hero Colm MacCárthaigh**, **Ben Kehoe**, and the ACM product team, so you can provision certificates programmatically, validate ownership securely, and deliver trusted HTTPS with FsCDK.
 
@@ -161,10 +161,10 @@ stack "HTTPSWebsite" {
 - Delete unused certificates to reduce operational noise.
 
 ### Further learning
-- **AWS Networking Blog** – “Simplify HTTPS with ACM and Route 53.”
-- **re:Invent NET409** – Advanced certificate management (4.8★ session rating).
-- **AWS Security Blog** – “Enforce TLS everywhere with ACM and CloudFront.”
-- **Ben Kehoe** – “Infrastructure as Policy: automating certificate issuance.”
+- **[AWS Networking Blog](https://aws.amazon.com/blogs/networking-and-content-delivery/)** – “Simplify HTTPS with ACM and Route 53.”
+- **[re:Invent NET409](https://www.youtube.com/results?search_query=aws+reinvent+NET409+certificate+management)** – Advanced certificate management (4.8★ session rating).
+- **[AWS Security Blog](https://aws.amazon.com/blogs/security/)** – “Enforce TLS everywhere with ACM and CloudFront.”
+- **[Ben Kehoe](https://ben11kehoe.medium.com/)** – “Infrastructure as Policy: automating certificate issuance.”
 
 Adopt these practices so every certificate request, validation, and renewal remains automated, auditable, and aligned with AWS Hero-recommended guard rails.
 *)

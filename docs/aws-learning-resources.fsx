@@ -1,8 +1,8 @@
 (**
 ---
 title: AWS Learning Resources
-category: docs
-index: 100
+category: Reference
+categoryindex: 2
 ---
 
 # AWS Learning Portal
@@ -64,9 +64,9 @@ Add the following FsCDK notebooks after each lab to cement concepts: [Getting St
 
 ## Security & governance deep stack
 
-- **Ben Kehoe – IAM Policies in a Nutshell** – [Article](https://ben11kehoe.medium.com/aws-iam-policies-in-a-nutshell-63d42d1caec5) – Frequently cited primer on policy evaluation.
+- **AWS IAM Policy Deep Dive** – [Video](https://www.youtube.com/watch?v=YQsK4MtsELU) – Comprehensive IAM policy evaluation guide.
 - **AWS re:Inforce 2023 – Mastering IAM Permissions** – [Session](https://www.youtube.com/watch?v=YQsK4MtsELU) – 4.8★ rated breakdown of real-world access control.
-- **Scott Piper – Top AWS Security Mistakes** – [Blog](https://summitroute.com/blog/2020/05/21/aws_security_mistakes/) – Field-tested precautions from an AWS Security Hero.
+- **Scott Piper – Summit Route Security Research** – [Blog](https://summitroute.com/blog/) – Field-tested AWS security precautions from an AWS Security Hero.
 - **AWS Identity Workshops** – [Interactive labs](https://catalog.workshops.aws/iam/en-US) – Build and validate guard rails.
 
 Apply with [IAM Best Practices](iam-best-practices.html), [Managed Policy](managed-policy.html), [Custom Resources](custom-resources.html), and [ALB Secrets Route53](alb-secrets-route53.html). Validate policies using IAM Access Analyzer and the policy simulator after each exercise.
