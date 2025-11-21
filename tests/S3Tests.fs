@@ -13,7 +13,7 @@ let s3_bucket_happy_path_tests =
               let app = App()
 
               stack "S3Stack" {
-                  app
+                  scope app
 
                   bucket "my-bucket" {
                       constructId "MyBucket"
@@ -49,7 +49,7 @@ let s3_bucket_happy_path_tests =
               let app = App()
 
               stack "S3DefaultsStack" {
-                  app
+                  scope app
                   // Uses secure defaults:
                   // - BlockPublicAccess = BLOCK_ALL
                   // - Encryption = KMS_MANAGED

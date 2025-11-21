@@ -1,5 +1,6 @@
 module FsCDK.Tests.DocumentDBTests
 
+open Amazon.CDK
 open Expecto
 open FsCDK
 
@@ -15,7 +16,12 @@ let documentdb_cluster_tests =
           }
 
           test "fails when master password is missing" {
+              let app = app { context [ "masterPassword", "" ] }
+
+              let stage = Stage(app, "TestStage")
+
               stack "TestStack" {
+                  scope app
                   let! vpcSpec = vpc "TestVpc" { () }
 
                   let thrower () =

@@ -532,7 +532,7 @@ module StackOperations =
         | CloudWatchMetricFilterOp filterResource ->
             // Resolve LogGroup from either direct reference or CloudWatchLogGroupResource
             let logGroup =
-                match filterResource.LogGroupToAttach, filterResource.LogGroupResourceRef with
+                match filterResource.LogGroupToAttach, filterResource.LogGroupResource with
                 | Some lg, _ -> lg
                 | None, Some lgResource ->
                     match lgResource.LogGroup with
@@ -550,7 +550,7 @@ module StackOperations =
         | CloudWatchSubscriptionFilterOp subscriptionResource ->
             // Resolve LogGroup from either direct reference or CloudWatchLogGroupResource
             let logGroup =
-                match subscriptionResource.LogGroupToAttach, subscriptionResource.LogGroupResourceRef with
+                match subscriptionResource.LogGroupToAttach, subscriptionResource.LogGroupResource with
                 | Some lg, _ -> lg
                 | None, Some lgResource ->
                     match lgResource.LogGroup with
@@ -593,7 +593,7 @@ module StackOperations =
 
 type StackConfig =
     { Name: string
-      Construct: Construct option
+      Scope: Construct option
       Env: IEnvironment option
       Description: string option
       Tags: Map<string, string> option
@@ -615,24 +615,8 @@ type StackBuilder(name: string) =
 
     member _.Yield(_: unit) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
-          Description = None
-          Tags = None
-          TerminationProtection = None
-          AnalyticsReporting = None
-          CrossRegionReferences = None
-          SuppressTemplateIndentation = None
-          NotificationArns = None
-          PermissionsBoundary = None
-          PropertyInjectors = None
-          Synthesizer = None
-          Operations = [] }
-
-    member _.Yield(env: IEnvironment) : StackConfig =
-        { Name = name
-          Construct = None
-          Env = Some env
           Description = None
           Tags = None
           TerminationProtection = None
@@ -647,7 +631,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(tableSpec: TableSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -663,7 +647,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(tableSpec: EC2InstanceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -679,7 +663,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(tableSpec: Route53ARecordSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -696,7 +680,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(albSpec: ALBSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -712,7 +696,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(secretsSpec: SecretsManagerSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -728,7 +712,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(secretsSpec: ElasticBeanstalkEnvironmentSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -744,7 +728,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(secretsSpec: DnsValidatedCertificateSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -758,25 +742,9 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (DnsValidatedCertificateOp secretsSpec) ] }
 
-    member _.Yield(app: Construct) : StackConfig =
-        { Name = name
-          Construct = Some app
-          Env = None
-          Description = None
-          Tags = None
-          TerminationProtection = None
-          AnalyticsReporting = None
-          CrossRegionReferences = None
-          SuppressTemplateIndentation = None
-          NotificationArns = None
-          PermissionsBoundary = None
-          PropertyInjectors = None
-          Synthesizer = None
-          Operations = [] }
-
     member _.Yield(funcSpec: FunctionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -792,7 +760,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(dockerSpec: DockerImageFunctionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -808,7 +776,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(grantSpec: GrantSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -824,7 +792,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(topicSpec: TopicSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -840,7 +808,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(queueSpec: QueueSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -856,7 +824,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(bucketSpec: BucketSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -872,7 +840,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -888,7 +856,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(vpcSpec: VpcSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -904,7 +872,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(sgSpec: SecurityGroupSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -920,7 +888,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(rdsSpec: DatabaseInstanceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -936,7 +904,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(cfSpec: DistributionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -952,7 +920,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(upSpec: UserPoolSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -968,7 +936,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(upcSpec: UserPoolClientSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -984,7 +952,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(uprsSpec: UserPoolResourceServerSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1000,7 +968,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(nlbSpec: NetworkLoadBalancerSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1016,7 +984,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(ruleSpec: EventBridgeRuleSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1032,7 +1000,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(busSpec: EventBusSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1048,7 +1016,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(bastionSpec: BastionHostSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1064,7 +1032,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(attachSpec: VPCGatewayAttachmentSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1080,7 +1048,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(rtSpec: RouteTableSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1096,7 +1064,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(routeSpec: RouteSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1112,7 +1080,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(oidcSpec: OIDCProviderSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1128,7 +1096,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(policySpec: ManagedPolicySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1144,7 +1112,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(certSpec: CertificateSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1160,7 +1128,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(policySpec: BucketPolicySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1176,7 +1144,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(keySpec: KMSKeySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1192,7 +1160,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(dashSpec: DashboardSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1208,7 +1176,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(spec: EKSClusterSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1224,7 +1192,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(spec: KinesisStreamSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1240,7 +1208,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(spec: Route53HostedZoneSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1256,7 +1224,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(spec: OriginAccessIdentitySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1278,7 +1246,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(roleSpec: LambdaRoleSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1294,7 +1262,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(alarmSpec: CloudWatchAlarmSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1310,7 +1278,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(customResourceResource: CustomResourceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1326,7 +1294,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(sfResource: StepFunctionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1342,7 +1310,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(xrayGroupResource: XRayGroupSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1358,7 +1326,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(xraySamplingRuleResource: XRaySamplingRuleSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1374,7 +1342,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(appSyncApiResource: AppSyncApiSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1390,7 +1358,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(appSyncDataSourceResource: AppSyncDataSourceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1406,7 +1374,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(restApiSpec: RestApiSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1422,7 +1390,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(authorizerSpec: TokenAuthorizerSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1438,7 +1406,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(vpcLinkSpec: VpcLinkSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1454,7 +1422,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(taskDefSpec: FargateTaskDefinitionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1470,7 +1438,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(clusterResource: ECSClusterSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1486,7 +1454,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(serviceResource: ECSFargateServiceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1502,7 +1470,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(endpointSpec: GatewayVpcEndpointSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1518,7 +1486,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(endpointSpec: InterfaceVpcEndpointSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1534,7 +1502,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(proxySpec: DatabaseProxySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1550,7 +1518,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(logGroupResource: CloudWatchLogGroupSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1566,7 +1534,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(filterResource: CloudWatchMetricFilterSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1582,7 +1550,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(subscriptionResource: CloudWatchSubscriptionFilterSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1649,6 +1617,7 @@ type StackBuilder(name: string) =
 
         { baseCfg with
             Operations = [ createSecurityGroup; executeContinuation ] }
+
 
     /// Bind for S3 Bucket
     member inline this.Bind(spec: BucketSpec, [<InlineIfLambda>] cont: IBucket -> StackConfig) : StackConfig =
@@ -1786,6 +1755,31 @@ type StackBuilder(name: string) =
 
         { baseCfg with
             Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    member inline this.Bind
+        (
+            spec: FunctionSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.Lambda.IFunction -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Function with
+                | Some func ->
+                    let contCfg = cont func
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"Lambda Function '{spec.FunctionName}' was not created. Make sure to create the Function first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+
+
 
     /// Bind for EC2 Instance
     member inline this.Bind(spec: EC2InstanceSpec, [<InlineIfLambda>] cont: Instance_ -> StackConfig) : StackConfig =
@@ -2092,7 +2086,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(trailSpec: CloudTrailSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -2108,7 +2102,7 @@ type StackBuilder(name: string) =
 
     member _.Zero() : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -2124,7 +2118,7 @@ type StackBuilder(name: string) =
 
     member _.Combine(state1: StackConfig, state2: StackConfig) : StackConfig =
         { Name = state1.Name
-          Construct = state1.Construct
+          Scope = state1.Scope
           Env = if state2.Env.IsSome then state2.Env else state1.Env
           Description = state1.Description |> Option.orElse state2.Description
           Tags =
@@ -2209,7 +2203,7 @@ type StackBuilder(name: string) =
 
         config.Synthesizer |> Option.iter (fun v -> props.Synthesizer <- v)
 
-        let app = config.Construct |> Option.defaultWith (fun () -> App(AppProps()))
+        let app = config.Scope |> Option.defaultWith (fun () -> App(AppProps()))
         let stack = Stack(app, config.Name, props)
 
         // Execute all operations in order
@@ -2242,6 +2236,12 @@ type StackBuilder(name: string) =
     member _.Tags(config: StackConfig, tags: (string * string) seq) =
         { config with
             Tags = Some(tags |> Map.ofSeq) }
+
+    [<CustomOperation("scope")>]
+    member _.Scope(config: StackConfig, scope: Construct) = { config with Scope = Some scope }
+
+    [<CustomOperation("env")>]
+    member _.Env(config: StackConfig, env: IEnvironment) = { config with Env = Some env }
 
     /// <summary>Enables or disables termination protection for the stack.</summary>
     /// <param name="config">The current stack configuration.</param>

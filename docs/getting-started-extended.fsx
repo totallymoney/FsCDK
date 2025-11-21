@@ -57,7 +57,7 @@ Here's how to add a PostgreSQL database (shown in full stack example below):
 ```fsharp
 rdsInstance "MyDatabase" {
     vpc myVpc
-    postgresEngine                     // PostgreSQL 15
+    postgresEngine // PostgreSQL 15
     instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
     allocatedStorage 20
 
@@ -67,7 +67,7 @@ rdsInstance "MyDatabase" {
     // Auto minor version upgrades
     // Private subnet placement
 
-    multiAz true                       // High availability
+    multiAz true // High availability
     databaseName "myapp"
 }
 ```
@@ -84,23 +84,25 @@ rdsInstance "MyDatabase" {
 
 open Amazon.CDK.AWS.Cognito
 
-// Create user pool
-let myUserPool =
-    userPool "MyUserPool" {
-        signInWithEmail // Users sign in with email
-        selfSignUpEnabled true // Allow self-registration
-        mfa Mfa.OPTIONAL // Users can enable MFA
+stack "MyApp" {
+    // Create user pool
+    let! myUserPool =
+        userPool "MyUserPool" {
+            signInWithEmail // Users sign in with email
+            selfSignUpEnabled true // Allow self-registration
+            mfa Mfa.OPTIONAL // Users can enable MFA
 
-    // Automatic best practices:
-    // Strong password policy (8+ chars, mixed case, digits, symbols)
-    // Email verification required
-    // Account recovery via email
+        // Automatic best practices:
+        // Strong password policy (8+ chars, mixed case, digits, symbols)
+        // Email verification required
+        // Account recovery via email
+        }
+
+    // Create an app client
+    userPoolClient "MyAppClient" {
+        userPool myUserPool
+        generateSecret false // For web/mobile apps
     }
-
-// Create app client
-userPoolClient "MyAppClient" {
-    userPool myUserPool
-    generateSecret false // For web/mobile apps
 
 // Automatic best practices:
 // SRP authentication flow
@@ -168,10 +170,12 @@ let cdnBehavior =
 
 stack "ProductionApp" {
 
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Production application stack"
     tags [ "environment", "production"; "managed-by", "FsCDK" ]

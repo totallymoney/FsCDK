@@ -58,7 +58,7 @@ RDS automatically takes continuous backups, enabling restoration to any point wi
 *)
 
 stack "ProductionBackupStrategy" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     description "Production database with automated backups"
 
@@ -118,7 +118,7 @@ For long-term compliance retention beyond 35 days, use RDS snapshots exported to
 *)
 
 stack "ComplianceBackups" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     // Compliance database with automated snapshots
     let! compVpc = vpc "ComplianceVpc" { maxAzs 2 }
@@ -215,7 +215,7 @@ Create read replicas in secondary regions that can be promoted during a disaster
 *)
 
 stack "MultiRegionDatabase" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     description "Primary database with cross-region DR"
 
@@ -266,7 +266,7 @@ DynamoDB Global Tables provide automatic multi-region replication with typical l
 *)
 
 stack "GlobalDynamoDB" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     table "GlobalUserData" {
         partitionKey "userId" AttributeType.STRING
@@ -361,7 +361,7 @@ Maintain minimal version of environment running in DR region. Core infrastructur
 *)
 
 stack "PilotLight" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     description "Pilot light infrastructure - core services minimal"
 
@@ -394,9 +394,11 @@ Scaled-down but fully functional version runs in DR region.
 *)
 
 stack "WarmStandby" {
-    environment {
-        region "us-west-2" // DR region
-    }
+    env (
+        environment {
+            region "us-west-2" // DR region
+        }
+    )
 
     description "Warm standby - scaled down production environment"
 
@@ -436,7 +438,7 @@ Used by Netflix, Airbnb, and other companies requiring five-nines availability.
 *)
 
 stack "HotStandbyPrimary" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     description "Active-Active primary region"
 
@@ -460,7 +462,7 @@ stack "HotStandbyPrimary" {
 }
 
 stack "HotStandbySecondary" {
-    environment { region "us-west-2" }
+    env (environment { region "us-west-2" })
 
     description "Active-Active secondary region"
 

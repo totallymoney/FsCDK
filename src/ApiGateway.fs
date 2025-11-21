@@ -12,36 +12,11 @@ open Amazon.CDK.AWS.IAM
 // Type References and Helpers
 // ============================================================================
 
-/// Represents a reference to a REST API that can be resolved later
-type RestApiRef =
-    | RestApiInterface of IRestApi
-    | RestApiSpecRef of RestApiSpec
-
-and RestApiSpec =
+type RestApiSpec =
     { ApiName: string
       ConstructId: string
       Props: RestApiProps
       mutable RestApi: IRestApi option }
-
-    /// Gets the underlying IRestApi resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.RestApi with
-        | Some api -> api
-        | None ->
-            failwith
-                $"RestApi '{this.ApiName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-module RestApiHelpers =
-    /// Resolves a REST API reference to an IRestApi
-    let resolveRestApiRef (ref: RestApiRef) =
-        match ref with
-        | RestApiInterface api -> api
-        | RestApiSpecRef spec ->
-            match spec.RestApi with
-            | Some api -> api
-            | None ->
-                failwith
-                    $"RestApi '{spec.ApiName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 // ============================================================================
 // REST API Configuration DSL

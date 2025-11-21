@@ -31,12 +31,14 @@ module Config =
 let config = Config.get ()
 
 stack "EC2Stack" {
-    app { context [ "environment", "production" ] }
+    scope (app { context [ "environment", "production" ] })
 
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "EC2 instance example"
 
@@ -48,7 +50,7 @@ stack "EC2Stack" {
             cidr "10.0.0.0/16"
         }
 
-    // Create EC2 instance with secure defaults
+    // Create an EC2 instance with secure defaults
     ec2Instance "MyWebServer" {
         instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
         machineImage (MachineImage.LatestAmazonLinux2())
@@ -67,7 +69,7 @@ stack "EC2Stack" {
 open Amazon.CDK.AWS.ECS
 
 stack "ECSStack" {
-    app { context [ "environment", "production" ] }
+    scope (app { context [ "environment", "production" ] })
 
     description "ECS cluster with Fargate service"
 

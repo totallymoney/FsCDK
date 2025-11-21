@@ -14,7 +14,7 @@ let function_url_options_builder_tests =
               let app = App()
 
               stack "LambdaFnUrl" {
-                  app
+                  scope app
 
                   lambda "fn-url" {
                       handler "Program::Handler"
@@ -32,7 +32,7 @@ let function_url_options_builder_tests =
               let app = App()
 
               stack "LambdaFnUrlCors" {
-                  app
+                  scope app
 
                   lambda "fn-url-cors" {
                       handler "Program::Handler"

@@ -43,18 +43,6 @@ type EventBridgeRuleSpec =
       Props: RuleProps
       mutable Rule: IRule option }
 
-    /// Gets the underlying IRule resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Rule with
-        | Some rule -> rule
-        | None ->
-            failwith
-                $"EventBridge Rule '{this.RuleName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-type EventBridgeRuleRef =
-    | EventBridgeRuleInterface of IRule
-    | EventBridgeRuleSpecRef of EventBridgeRuleSpec
-
 type EventBridgeRuleBuilder(name: string) =
     member _.Yield _ : EventBridgeRuleConfig =
         { RuleName = name

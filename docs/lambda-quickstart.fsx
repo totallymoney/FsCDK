@@ -166,10 +166,12 @@ module Config =
 let config = Config.get ()
 
 stack "LambdaQuickstartStack" {
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "FsCDK Lambda Quickstart Example - demonstrates Lambda functions with security defaults"
 

@@ -13,7 +13,7 @@ let s3_cors_rule_builder_tests =
               let app = App()
 
               stack "S3StackCorsBuilder" {
-                  app
+                  scope app
 
                   bucket "my-bucket-cors-builder" {
                       constructId "MyBucketCorsBuilder"

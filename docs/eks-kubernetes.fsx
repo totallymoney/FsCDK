@@ -51,10 +51,12 @@ module Config =
 let config = Config.get ()
 
 stack "BasicEKSStack" {
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Basic EKS cluster with managed node group"
 
@@ -559,10 +561,12 @@ stack "AutoScalingEKSStack" {
 *)
 
 stack "ProductionEKSStack" {
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Production-ready EKS cluster with security and monitoring"
     tags [ "Environment", "Production"; "Project", "K8sCluster"; "ManagedBy", "FsCDK" ]

@@ -113,7 +113,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaStack" {
-                  app
+                  scope app
 
                   lambda "my-fn" {
                       constructId "MyFunction"
@@ -150,7 +150,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaESM" {
-                  app
+                  scope app
 
                   lambda "fn-esm" {
                       handler "Program::Handler"
@@ -172,7 +172,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaPerm" {
-                  app
+                  scope app
 
                   lambda "fn-perm" {
                       handler "Program::Handler"
@@ -195,7 +195,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaPolicy" {
-                  app
+                  scope app
 
                   lambda "fn-policy" {
                       handler "Program::Handler"
@@ -223,7 +223,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaAsync" {
-                  app
+                  scope app
 
                   lambda "fn-async" {
                       handler "Program::Handler"
@@ -263,7 +263,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaPolicyBuilders" {
-                  app
+                  scope app
 
                   lambda "fn-policy-b" {
                       handler "Program::Handler"

@@ -34,9 +34,9 @@ let appTests =
 
               // 2) A Dev stack you can actually work with
               stack "Dev" {
-                  app
+                  scope app
 
-                  devEnv
+                  env devEnv
 
                   description "Developer stack for feature work"
                   tags [ "service", "users"; "env", "dev" ]
@@ -65,8 +65,8 @@ let appTests =
               }
 
               stack "Prod" {
-                  app
-                  prodEnv
+                  scope app
+                  env prodEnv
                   terminationProtection true
                   tags [ "service", "users"; "env", "prod" ]
 
@@ -113,14 +113,14 @@ let appTests =
               let app = app { stackTraces true }
 
               stack "Dev" {
-                  app
-                  devEnv
+                  scope app
+                  env devEnv
                   table "users" { partitionKey "id" AttributeType.STRING }
               }
 
               stack "Prod" {
-                  app
-                  prodEnv
+                  scope app
+                  env prodEnv
                   table "users" { partitionKey "id" AttributeType.STRING }
               }
 

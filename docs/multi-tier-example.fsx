@@ -66,7 +66,6 @@ open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.Cognito
 open Amazon.CDK.AWS.CloudFront
-open Amazon.CDK.AWS.DynamoDB
 open FsCDK
 
 (*** hide ***)
@@ -85,17 +84,9 @@ let regionName =
     |> Option.defaultValue "us-east-1"
 
 (*** hide ***)
-let staticAssetsBucket =
-    bucket "CloudFrontLogs" {
-        blockPublicAccess BlockPublicAccess.BLOCK_ALL
-        encryption BucketEncryption.S3_MANAGED
-        enforceSSL true
-        versioned false
-        removalPolicy RemovalPolicy.RETAIN
-    }
 
 stack "MultiTierApp" {
-    app { context [ "environment", "production"; "app-name", "my-web-app" ] }
+    scope (app { context [ "environment", "production"; "app-name", "my-web-app" ] })
 
     description "Multi-tier web application with database and CDN"
 
@@ -103,6 +94,15 @@ stack "MultiTierApp" {
         [ "project", "MultiTierApp"
           "environment", "production"
           "managed-by", "FsCDK" ]
+
+    let! staticAssetsBucket =
+        bucket "CloudFrontLogs" {
+            blockPublicAccess BlockPublicAccess.BLOCK_ALL
+            encryption BucketEncryption.S3_MANAGED
+            enforceSSL true
+            versioned false
+            removalPolicy RemovalPolicy.RETAIN
+        }
 
     // Step 1: Create VPC with public and private subnets
     // AWS Best Practice: Multi-AZ for high availability
@@ -113,8 +113,8 @@ stack "MultiTierApp" {
             cidr "10.0.0.0/16"
         }
 
-    // Step 2: Create Security Group for Lambda functions
-    // AWS Best Practice: Least privilege - no outbound by default
+    // Step 2: Create a Security Group for Lambda functions
+    // AWS Best Practice: The Least privilege - no outbound by default
     let! lambdaSecurityGroup =
         securityGroup "LambdaSecurityGroup" {
             vpc myVpc
@@ -122,7 +122,7 @@ stack "MultiTierApp" {
             allowAllOutbound false // Explicit configuration required
         }
 
-    // Step 3: Create Security Group for RDS
+    // Step 3: Create a Security Group for RDS
     let! dbSecurityGroup =
         securityGroup "DatabaseSecurityGroup" {
             vpc myVpc
@@ -186,7 +186,7 @@ stack "MultiTierApp" {
 
     // Step 6: Create Cognito User Pool for authentication
     // AWS Best Practice: MFA, strong password policy, email verification
-    let myUserPool =
+    let! myUserPool =
         userPool "AppUserPool" {
             signInWithEmail
             selfSignUpEnabled true

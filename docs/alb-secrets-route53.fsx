@@ -39,12 +39,14 @@ module Config =
 let config = Config.get ()
 
 stack "ALBStack" {
-    app { context [ "environment", "production" ] }
+    scope (app { context [ "environment", "production" ] })
 
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Application Load Balancer example"
 
@@ -74,12 +76,14 @@ Secrets Manager is the recommended vault for database credentials, API keys, and
 open Amazon.CDK.AWS.SecretsManager
 
 stack "SecretsStack" {
-    app { context [ "environment", "production" ] }
+    scope (app { context [ "environment", "production" ] })
 
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Secrets Manager example"
 
@@ -105,12 +109,14 @@ Amazon Route 53 provides globally distributed DNS with health checks and failov
 open Amazon.CDK.AWS.Route53
 
 stack "DNSStack" {
-    app { context [ "environment", "production" ] }
+    scope (app { context [ "environment", "production" ] })
 
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Route 53 DNS example"
 
@@ -148,12 +154,14 @@ While many teams now default to containers or serverless, Elastic Beanstalk rema
 open Amazon.CDK.AWS.ElasticBeanstalk
 
 stack "BeanstalkStack" {
-    app { context [ "environment", "production" ] }
+    scope (app { context [ "environment", "production" ] })
 
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Elastic Beanstalk example"
 

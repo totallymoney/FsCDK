@@ -52,21 +52,6 @@ type NetworkLoadBalancerSpec =
             failwith
                 $"NetworkLoadBalancer '{this.LoadBalancerName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
-type NetworkLoadBalancerRef =
-    | NetworkLoadBalancerInterface of INetworkLoadBalancer
-    | NetworkLoadBalancerSpecRef of NetworkLoadBalancerSpec
-
-module NetworkLoadBalancerHelpers =
-    let resolveNetworkLoadBalancerRef (ref: NetworkLoadBalancerRef) =
-        match ref with
-        | NetworkLoadBalancerInterface nlb -> nlb
-        | NetworkLoadBalancerSpecRef spec ->
-            match spec.LoadBalancer with
-            | Some nlb -> nlb
-            | None ->
-                failwith
-                    $"NetworkLoadBalancer '{spec.LoadBalancerName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type NetworkLoadBalancerBuilder(name: string) =
     member _.Yield _ : NetworkLoadBalancerConfig =
         { LoadBalancerName = name

@@ -20,33 +20,6 @@ type CloudTrailSpec =
       SendToCloudWatchLogs: bool
       mutable Trail: Trail option }
 
-    /// Gets the underlying Trail resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Trail with
-        | Some trail -> trail
-        | None ->
-            failwith
-                $"CloudTrail '{this.TrailName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-/// <summary>
-/// Reference to a CloudTrail trail that can be resolved later.
-/// </summary>
-type CloudTrailRef =
-    | TrailInterface of Trail
-    | TrailSpecRef of CloudTrailSpec
-
-module CloudTrailHelpers =
-    /// Resolves a CloudTrail reference to a Trail
-    let resolveTrailRef (ref: CloudTrailRef) =
-        match ref with
-        | TrailInterface trail -> trail
-        | TrailSpecRef spec ->
-            match spec.Trail with
-            | Some trail -> trail
-            | None ->
-                failwith
-                    $"CloudTrail '{spec.TrailName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 /// <summary>
 /// High-level CloudTrail builder following AWS security best practices.
 ///
@@ -78,7 +51,7 @@ type CloudTrailConfig =
       IncludeGlobalServiceEvents: bool option
       EnableFileValidation: bool option
       ManagementEvents: ReadWriteType option
-      S3Bucket: BucketRef option
+      S3Bucket: IBucket option
       CloudWatchLogsRetention: RetentionDays option
       SendToCloudWatchLogs: bool option
       IsOrganizationTrail: bool option }
@@ -146,19 +119,7 @@ type CloudTrailBuilder(name: string) =
         props.ManagementEvents <- config.ManagementEvents |> Option.defaultValue ReadWriteType.ALL
 
         // Optional: Custom S3 bucket (if not provided, CDK will create one)
-        config.S3Bucket
-        |> Option.iter (fun bucket ->
-            let resolvedBucket =
-                match bucket with
-                | BucketInterface b -> b
-                | BucketSpecRef bucketSpec ->
-                    match bucketSpec.Bucket with
-                    | Some b -> b :> IBucket
-                    | None ->
-                        failwith
-                            $"Bucket '{bucketSpec.BucketName}' has not been created yet. Ensure it's yielded before the CloudTrail."
-
-            props.Bucket <- resolvedBucket)
+        config.S3Bucket |> Option.iter (fun bucket -> props.Bucket <- bucket)
 
         // Optional: Organization trail (for AWS Organizations)
         config.IsOrganizationTrail
@@ -172,6 +133,7 @@ type CloudTrailBuilder(name: string) =
           Trail = None }
 
     /// <summary>Sets the construct ID for the CloudTrail.</summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="id">The construct ID.</param>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: CloudTrailConfig, id: string) = { config with ConstructId = Some id }
@@ -180,10 +142,11 @@ type CloudTrailBuilder(name: string) =
     /// Sets whether this is a multi-region trail.
     /// **Security Best Practice:** Multi-region trails are enabled by default to capture events from all AWS regions.
     /// </summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="enabled">Whether to enable multi-region (default: true).</param>
     /// <code lang="fsharp">
     /// cloudTrail "MyTrail" {
-    ///     isMultiRegionTrail false  // Only if single-region monitoring is acceptable
+    ///     isMultiRegionTrail false // Only if single-region monitoring is acceptable
     /// }
     /// </code>
     [<CustomOperation("isMultiRegionTrail")>]
@@ -195,6 +158,7 @@ type CloudTrailBuilder(name: string) =
     /// Sets whether to include global service events (IAM, STS, CloudFront, etc.).
     /// **Security Best Practice:** Enabled by default to capture critical security events.
     /// </summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="enabled">Whether to include global events (default: true).</param>
     [<CustomOperation("includeGlobalServiceEvents")>]
     member _.IncludeGlobalServiceEvents(config: CloudTrailConfig, enabled: bool) =
@@ -206,6 +170,7 @@ type CloudTrailBuilder(name: string) =
     /// **Security Best Practice:** Enabled by default for log integrity verification.
     /// This allows you to detect if log files were tampered with after delivery.
     /// </summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="enabled">Whether to enable validation (default: true).</param>
     [<CustomOperation("enableFileValidation")>]
     member _.EnableFileValidation(config: CloudTrailConfig, enabled: bool) =
@@ -215,10 +180,11 @@ type CloudTrailBuilder(name: string) =
     /// <summary>
     /// Sets the management event logging type.
     /// </summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="readWriteType">The type of events to log (default: ReadWriteType.ALL).</param>
     /// <code lang="fsharp">
     /// cloudTrail "MyTrail" {
-    ///     managementEvents ReadWriteType.WRITE_ONLY  // Only log write events
+    ///     managementEvents ReadWriteType.WRITE_ONLY // Only log write events
     /// }
     /// </code>
     [<CustomOperation("managementEvents")>]
@@ -230,24 +196,15 @@ type CloudTrailBuilder(name: string) =
     /// Sets a custom S3 bucket for CloudTrail logs.
     /// If not specified, CDK will create a bucket with appropriate security settings.
     /// </summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="bucket">The S3 bucket interface.</param>
     [<CustomOperation("s3Bucket")>]
-    member _.S3Bucket(config: CloudTrailConfig, bucket: IBucket) =
-        { config with
-            S3Bucket = Some(BucketInterface bucket) }
-
-    /// <summary>
-    /// Sets a custom S3 bucket for CloudTrail logs from a BucketSpec.
-    /// </summary>
-    /// <param name="bucketSpec">The S3 bucket specification.</param>
-    [<CustomOperation("s3Bucket")>]
-    member _.S3Bucket(config: CloudTrailConfig, bucketSpec: BucketSpec) =
-        { config with
-            S3Bucket = Some(BucketSpecRef bucketSpec) }
+    member _.S3Bucket(config: CloudTrailConfig, bucket: IBucket) = { config with S3Bucket = Some(bucket) }
 
     /// <summary>
     /// Sets the CloudWatch Logs retention period for the trail.
     /// </summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="retention">The retention period (default: ONE_MONTH).</param>
     /// <code lang="fsharp">
     /// cloudTrail "MyTrail" {
@@ -263,6 +220,7 @@ type CloudTrailBuilder(name: string) =
     /// Sets whether to send trail logs to CloudWatch Logs.
     /// **Note:** CloudWatch Logs integration enables real-time monitoring but adds cost.
     /// </summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="enabled">Whether to send to CloudWatch (default: true).</param>
     [<CustomOperation("sendToCloudWatchLogs")>]
     member _.SendToCloudWatchLogs(config: CloudTrailConfig, enabled: bool) =
@@ -273,6 +231,7 @@ type CloudTrailBuilder(name: string) =
     /// Sets whether this is an organization trail (requires AWS Organizations).
     /// Organization trails log events for all accounts in the organization.
     /// </summary>
+    /// <param name="config">The current CloudTrail configuration.</param>
     /// <param name="enabled">Whether this is an organization trail.</param>
     /// <code lang="fsharp">
     /// cloudTrail "OrgTrail" {

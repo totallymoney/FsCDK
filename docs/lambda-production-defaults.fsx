@@ -64,7 +64,7 @@ open FsCDK
 let app = App()
 
 stack "ProductionStack" {
-    app
+    scope app
 
     lambda "OrderProcessor" {
         handler "index.handler"
@@ -93,7 +93,7 @@ When you understand traffic patterns and operational maturity, override the pres
 *)
 
 stack "CustomStack" {
-    app
+    scope app
 
     // High-throughput function
     lambda "HighVolumeProcessor" {
@@ -148,7 +148,7 @@ Large or regulated workloads may require custom encryption, retention, or monito
 open Amazon.CDK.AWS.SQS
 
 stack "CustomDLQStack" {
-    app
+    scope app
 
     // Create custom DLQ with specific settings
     let! customDlq =
@@ -226,9 +226,9 @@ metrics = Metrics()
 def handler(event: dict, context: LambdaContext) -> dict:
     logger.info("Processing user request", extra={"user_id": event.get("user_id")})
     metrics.add_metric(name="UserRequestProcessed", unit="Count", value=1)
-    
+
     # Your business logic here
-    
+
     return {"statusCode": 200, "body": "Success"}
 ```
 
@@ -263,9 +263,9 @@ const metrics = new Metrics();
 export const handler = async (event: any) => {
     logger.info('Processing order', { orderId: event.orderId });
     metrics.addMetric('OrderProcessed', 'Count', 1);
-    
+
     // Your business logic here
-    
+
     return { statusCode: 200, body: 'Success' };
 };
 ```
@@ -379,7 +379,7 @@ tracer = Tracer()
 def handler(event, context):
     # Automatically creates X-Ray segments
     process_order()
-    
+
 @tracer.capture_method
 def process_order():
     # Creates subsegments for detailed tracing
@@ -471,7 +471,7 @@ Here's a complete example showing all production features:
 let productionApp = App()
 
 stack "ProductionOrderService" {
-    productionApp
+    scope productionApp
 
     // DynamoDB table for orders
     let ordersTable =

@@ -47,37 +47,6 @@ type ManagedPolicySpec =
       Props: ManagedPolicyProps
       mutable Policy: IManagedPolicy option }
 
-    /// Gets the underlying IManagedPolicy resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Policy with
-        | Some policy -> policy
-        | None ->
-            failwith
-                $"ManagedPolicy '{this.PolicyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-    /// Gets the managed policy ARN
-    member this.Arn =
-        match this.Policy with
-        | Some policy -> policy.ManagedPolicyArn
-        | None ->
-            failwith
-                $"ManagedPolicy '{this.PolicyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-type ManagedPolicyRef =
-    | ManagedPolicyInterface of IManagedPolicy
-    | ManagedPolicySpecRef of ManagedPolicySpec
-
-module ManagedPolicyHelpers =
-    let resolveManagedPolicyRef (ref: ManagedPolicyRef) =
-        match ref with
-        | ManagedPolicyInterface policy -> policy
-        | ManagedPolicySpecRef spec ->
-            match spec.Policy with
-            | Some policy -> policy
-            | None ->
-                failwith
-                    $"ManagedPolicy '{spec.PolicyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type ManagedPolicyBuilder(name: string) =
     member _.Yield _ : ManagedPolicyConfig =
         { PolicyName = name

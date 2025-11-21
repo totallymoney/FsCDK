@@ -13,10 +13,12 @@ let main _ =
 
     let createStack envName =
         stack envName {
-            environment {
-                account config.Account
-                region config.Region
-            }
+            env (
+                environment {
+                    account config.Account
+                    region config.Region
+                }
+            )
 
             lambda $"playground-{envName}-sayHello" {
                 runtime Runtime.DOTNET_8

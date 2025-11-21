@@ -61,6 +61,28 @@ type DocumentDBClusterSpec =
       Props: DatabaseClusterProps
       mutable Cluster: DatabaseCluster option }
 
+    interface IVpc with
+        member this.AddClientVpnEndpoint(id, options) = failwith "todo"
+        member this.AddFlowLog(id, options) = failwith "todo"
+        member this.AddGatewayEndpoint(id, options) = failwith "todo"
+        member this.AddInterfaceEndpoint(id, options) = failwith "todo"
+        member this.AddVpnConnection(id, options) = failwith "todo"
+        member this.ApplyRemovalPolicy(policy) = failwith "todo"
+        member this.EnableVpnGateway(options) = failwith "todo"
+        member this.SelectSubnets(selection) = failwith "todo"
+        member this.AvailabilityZones = failwith "todo"
+        member this.Env = failwith "todo"
+        member this.InternetConnectivityEstablished = failwith "todo"
+        member this.IsolatedSubnets = failwith "todo"
+        member this.Node = failwith "todo"
+        member this.PrivateSubnets = failwith "todo"
+        member this.PublicSubnets = failwith "todo"
+        member this.Stack = failwith "todo"
+        member this.VpcArn = failwith "todo"
+        member this.VpcCidrBlock = failwith "todo"
+        member this.VpcId = failwith "todo"
+        member this.VpnGatewayId = failwith "todo"
+
 type DocumentDBClusterBuilder(name: string) =
     member _.Yield _ : DocumentDBClusterConfig =
         { ClusterName = name
@@ -210,6 +232,7 @@ type DocumentDBClusterBuilder(name: string) =
 
     [<CustomOperation("vpc")>]
     member _.Vpc(config: DocumentDBClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
+
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: DocumentDBClusterConfig, subnets: SubnetSelection) =

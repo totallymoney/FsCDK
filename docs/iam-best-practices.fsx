@@ -208,57 +208,58 @@ Implement strong authentication and authorization.
 
 open Amazon.CDK.AWS.Cognito
 
-// ✅ GOOD: Secure user pool configuration
-let myUserPool =
-    userPool "SecureUserPool" {
-        signInWithEmail
+stack "MyStack" {
+    // ✅ GOOD: Secure user pool configuration
+    let! myUserPool =
+        userPool "SecureUserPool" {
+            signInWithEmail
 
-        // Disable self sign-up to prevent unauthorized accounts
-        selfSignUpEnabled false // Approve users manually or via API
+            // Disable self sign-up to prevent unauthorized accounts
+            selfSignUpEnabled false // Approve users manually or via API
 
-        // Require MFA for sensitive operations
-        mfa Mfa.REQUIRED
+            // Require MFA for sensitive operations
+            mfa Mfa.REQUIRED
 
-        // Strong password policy
-        passwordPolicy (
-            PasswordPolicy(
-                MinLength = 12,
-                RequireLowercase = true,
-                RequireUppercase = true,
-                RequireDigits = true,
-                RequireSymbols = true,
-                TempPasswordValidity = Duration.Days(7.0)
+            // Strong password policy
+            passwordPolicy (
+                PasswordPolicy(
+                    MinLength = 12,
+                    RequireLowercase = true,
+                    RequireUppercase = true,
+                    RequireDigits = true,
+                    RequireSymbols = true,
+                    TempPasswordValidity = Duration.Days(7.0)
+                )
+            )
+
+            // Account recovery via email only (more secure than SMS)
+            accountRecovery AccountRecovery.EMAIL_ONLY
+        }
+
+    // ✅ GOOD: Secure client configuration
+    userPoolClient "SecureClient" {
+        userPool myUserPool
+
+        // Don't generate secret for public clients (web/mobile)
+        generateSecret false
+
+        // Use SRP for secure authentication
+        authFlows (
+            AuthFlow(
+                UserSrp = true,
+                UserPassword = true,
+                AdminUserPassword = false // Don't allow admin-initiated auth
             )
         )
 
-        // Account recovery via email only (more secure than SMS)
-        accountRecovery AccountRecovery.EMAIL_ONLY
-    }
-
-// ✅ GOOD: Secure client configuration
-userPoolClient "SecureClient" {
-    userPool myUserPool
-
-    // Don't generate secret for public clients (web/mobile)
-    generateSecret false
-
-    // Use SRP for secure authentication
-    authFlows (
-        AuthFlow(
-            UserSrp = true,
-            UserPassword = true,
-            AdminUserPassword = false // Don't allow admin-initiated auth
+        // Short-lived tokens
+        tokenValidities (
+            (Duration.Minutes 60.0), // refreshToken
+            (Duration.Minutes 60.0), // accessToken
+            (Duration.Days 30.0) // idToken
         )
-    )
-
-    // Short-lived tokens
-    tokenValidities (
-        (Duration.Minutes 60.0), // refreshToken
-        (Duration.Minutes 60.0), // accessToken
-        (Duration.Days 30.0) // idToken
-    )
+    }
 }
-
 (**
 ## S3 Bucket Policies
 
@@ -299,29 +300,33 @@ let myBehavior =
     CloudFrontBehaviors.httpBehaviorDefault "origin.example.com" (Some true)
 
 (*** hide ***)
-let myLogBucket =
-    bucket "CloudFrontLogs" {
-        blockPublicAccess BlockPublicAccess.BLOCK_ALL
-        encryption BucketEncryption.S3_MANAGED
-        enforceSSL true
-        versioned false
-        removalPolicy RemovalPolicy.RETAIN
+
+stack "MyStack" {
+    let! myLogBucket =
+        bucket "CloudFrontLogs" {
+            blockPublicAccess BlockPublicAccess.BLOCK_ALL
+            encryption BucketEncryption.S3_MANAGED
+            enforceSSL true
+            versioned false
+            removalPolicy RemovalPolicy.RETAIN
+        }
+
+    // ✅ GOOD: Secure CloudFront distribution
+    cloudFrontDistribution "SecureCDN" {
+        defaultBehavior myBehavior
+
+        // Require HTTPS (Note: This is configured in the behavior)
+
+        // Use modern TLS version
+        minimumProtocolVersion SecurityPolicyProtocol.TLS_V1_2_2021
+
+        // Optional: Add WAF for additional protection
+        // webAclId myWafAclId
+
+        // Enable logging for audit trail
+        enableLogging myLogBucket "cloudfront-logs/"
     }
 
-// ✅ GOOD: Secure CloudFront distribution
-cloudFrontDistribution "SecureCDN" {
-    defaultBehavior myBehavior
-
-    // Require HTTPS (Note: This is configured in the behavior)
-
-    // Use modern TLS version
-    minimumProtocolVersion SecurityPolicyProtocol.TLS_V1_2_2021
-
-    // Optional: Add WAF for additional protection
-    // webAclId myWafAclId
-
-    // Enable logging for audit trail
-    enableLogging myLogBucket "cloudfront-logs/"
 }
 
 (**

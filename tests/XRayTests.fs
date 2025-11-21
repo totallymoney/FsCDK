@@ -48,7 +48,7 @@ let xray_group_tests =
 
               let _ =
                   stack "TestStack" {
-                      app
+                      scope app
 
                       xrayGroup "ProductionErrors" {
                           filterExpression XRayHelpers.FilterExpressions.serverErrors
@@ -114,7 +114,7 @@ let xray_sampling_rule_tests =
 
               let _ =
                   stack "TestStack" {
-                      app
+                      scope app
 
                       xraySamplingRule "HighPrioritySampling" {
                           priority 100

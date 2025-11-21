@@ -441,4 +441,4 @@ type CloudWatchAlarmBuilder(name: string) =
 
 [<AutoOpen>]
 module CloudWatchBuilders =
-    let cloudwatchAlarm = CloudWatchAlarmBuilder
+    let cloudwatchAlarm name = CloudWatchAlarmBuilder(name)

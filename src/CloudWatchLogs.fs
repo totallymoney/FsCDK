@@ -195,7 +195,7 @@ type CloudWatchMetricFilterSpec =
     { FilterName: string
       ConstructId: string
       LogGroupToAttach: LogGroup option
-      LogGroupResourceRef: CloudWatchLogGroupSpec option
+      LogGroupResource: CloudWatchLogGroupSpec option
       FilterOptions: MetricFilterOptions
       mutable MetricFilter: MetricFilter option }
 
@@ -288,7 +288,7 @@ type CloudWatchMetricFilterBuilder(name: string) =
         { FilterName = filterName
           ConstructId = constructId
           LogGroupToAttach = config.LogGroup // Direct LogGroup or None
-          LogGroupResourceRef = config.LogGroupResource // Store resource reference for Stack.fs to resolve
+          LogGroupResource = config.LogGroupResource // Store resource reference for Stack.fs to resolve
           FilterOptions = options
           MetricFilter = None }
 
@@ -369,7 +369,7 @@ type CloudWatchSubscriptionFilterSpec =
     { FilterName: string
       ConstructId: string
       LogGroupToAttach: LogGroup option
-      LogGroupResourceRef: CloudWatchLogGroupSpec option
+      LogGroupResource: CloudWatchLogGroupSpec option
       Props: SubscriptionFilterProps
       mutable SubscriptionFilter: SubscriptionFilter option }
 
@@ -440,7 +440,7 @@ type CloudWatchSubscriptionFilterBuilder(name: string) =
         { FilterName = filterName
           ConstructId = constructId
           LogGroupToAttach = config.LogGroup
-          LogGroupResourceRef = config.LogGroupResource
+          LogGroupResource = config.LogGroupResource
           Props = props
           SubscriptionFilter = None }
 

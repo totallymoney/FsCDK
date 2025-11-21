@@ -33,7 +33,7 @@ open Amazon.CDK.AWS.IAM
 type BucketPolicyConfig =
     { PolicyName: string
       ConstructId: string option
-      Bucket: BucketRef option
+      Bucket: IBucket option
       Statements: PolicyStatement list
       RemovalPolicy: Amazon.CDK.RemovalPolicy option }
 
@@ -42,14 +42,6 @@ type BucketPolicySpec =
       ConstructId: string
       Props: BucketPolicyProps
       mutable Policy: BucketPolicy option }
-
-    /// Gets the underlying BucketPolicy resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Policy with
-        | Some policy -> policy
-        | None ->
-            failwith
-                $"BucketPolicy '{this.PolicyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type BucketPolicyBuilder(name: string) =
     member _.Yield _ : BucketPolicyConfig =
@@ -103,21 +95,7 @@ type BucketPolicyBuilder(name: string) =
         let props = BucketPolicyProps()
         let constructId = config.ConstructId |> Option.defaultValue config.PolicyName
 
-        // Bucket is required
-        props.Bucket <-
-            match config.Bucket with
-            | Some bucketRef ->
-                match bucketRef with
-                | BucketInterface bucket -> bucket
-                | BucketSpecRef spec ->
-                    match spec.Bucket with
-                    | Some bucket -> bucket
-                    | None ->
-                        printfn
-                            $"Bucket '{spec.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-                        props.Bucket
-            | None -> invalidArg "bucket" "Bucket is required for Bucket Policy"
+        config.Bucket |> Option.iter (fun bucket -> props.Bucket <- bucket)
 
         config.RemovalPolicy |> Option.iter (fun rp -> props.RemovalPolicy <- rp)
 
@@ -127,20 +105,16 @@ type BucketPolicyBuilder(name: string) =
           Policy = None }
 
     /// <summary>Sets the construct ID for the bucket policy.</summary>
+    /// <param name="config">The configuration.</param>
+    /// <param name="id">The construct ID.</param>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: BucketPolicyConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the bucket for the policy.</summary>
+    /// <param name="config">The configuration.</param>
+    /// <param name="bucket">The bucket.</param>
     [<CustomOperation("bucket")>]
-    member _.Bucket(config: BucketPolicyConfig, bucket: IBucket) =
-        { config with
-            Bucket = Some(BucketInterface bucket) }
-
-    /// <summary>Sets the bucket for the policy from a BucketSpec.</summary>
-    [<CustomOperation("bucket")>]
-    member _.Bucket(config: BucketPolicyConfig, bucketSpec: BucketSpec) =
-        { config with
-            Bucket = Some(BucketSpecRef bucketSpec) }
+    member _.Bucket(config: BucketPolicyConfig, bucket: IBucket) = { config with Bucket = Some(bucket) }
 
     /// <summary>Adds a policy statement.</summary>
     [<CustomOperation("statement")>]
@@ -163,11 +137,7 @@ type BucketPolicyBuilder(name: string) =
                     Actions = [| "s3:*" |],
                     Resources =
                         [| match config.Bucket with
-                           | Some(BucketInterface b) -> b.BucketArn + "/*"
-                           | Some(BucketSpecRef spec) ->
-                               match spec.Bucket with
-                               | Some b -> b.BucketArn + "/*"
-                               | None -> "*"
+                           | Some b -> b.BucketArn + "/*"
                            | None -> "*" |],
                     Conditions = dict<string, obj> [ "Bool", conditions ]
                 )
@@ -188,11 +158,7 @@ type BucketPolicyBuilder(name: string) =
                     Actions = [| "s3:GetObject" |],
                     Resources =
                         [| match config.Bucket with
-                           | Some(BucketInterface b) -> b.BucketArn + "/*"
-                           | Some(BucketSpecRef spec) ->
-                               match spec.Bucket with
-                               | Some b -> b.BucketArn + "/*"
-                               | None -> "*"
+                           | Some(b) -> b.BucketArn + "/*"
                            | None -> "*" |]
                 )
             )
@@ -215,11 +181,7 @@ type BucketPolicyBuilder(name: string) =
                     Actions = [| "s3:GetObject" |],
                     Resources =
                         [| match config.Bucket with
-                           | Some(BucketInterface b) -> b.BucketArn + "/*"
-                           | Some(BucketSpecRef spec) ->
-                               match spec.Bucket with
-                               | Some b -> b.BucketArn + "/*"
-                               | None -> "*"
+                           | Some(b) -> b.BucketArn + "/*"
                            | None -> "*" |],
                     Conditions = dict [ "IpAddress", conditions ]
                 )
@@ -243,11 +205,7 @@ type BucketPolicyBuilder(name: string) =
                     Actions = [| "s3:*" |],
                     Resources =
                         [| match config.Bucket with
-                           | Some(BucketInterface b) -> b.BucketArn + "/*"
-                           | Some(BucketSpecRef spec) ->
-                               match spec.Bucket with
-                               | Some b -> b.BucketArn + "/*"
-                               | None -> "*"
+                           | Some b -> b.BucketArn + "/*"
                            | None -> "*" |],
                     Conditions = dict [ "IpAddress", conditions ]
                 )
@@ -321,4 +279,4 @@ module BucketPolicyBuilders =
     ///     allowFromIpAddresses ["203.0.113.0/24"; "198.51.100.0/24"]
     /// }
     /// </code>
-    let bucketPolicy (name: string) = BucketPolicyBuilder name
+    let bucketPolicy (name: string) = BucketPolicyBuilder(name)

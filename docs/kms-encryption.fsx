@@ -157,10 +157,12 @@ stack "SigningKeyStack" {
 *)
 
 stack "ProductionKMSStack" {
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Production KMS keys for multi-tier application"
     tags [ "Environment", "Production"; "ManagedBy", "FsCDK" ]

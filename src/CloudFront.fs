@@ -23,7 +23,7 @@ type DistributionConfig =
       DomainNames: string list
       EnableIpv6: bool option
       EnableLogging: bool option
-      LogBucket: BucketRef option
+      LogBucket: IBucket option
       LogFilePrefix: string option
       LogIncludesCookies: bool option
       GeoRestriction: GeoRestriction option
@@ -199,17 +199,7 @@ type DistributionBuilder(name: string) =
 
         config.EnableLogging |> Option.iter (fun v -> props.EnableLogging <- v)
 
-        config.LogBucket
-        |> Option.iter (fun v ->
-            props.LogBucket <-
-                match v with
-                | BucketRef.BucketInterface b -> b
-                | BucketRef.BucketSpecRef b ->
-                    match b.Bucket with
-                    | None ->
-                        failwith
-                            $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-                    | Some bu -> bu)
+        config.LogBucket |> Option.iter (fun v -> props.LogBucket <- v)
 
         config.LogFilePrefix |> Option.iter (fun v -> props.LogFilePrefix <- v)
 
@@ -338,7 +328,7 @@ type DistributionBuilder(name: string) =
             AdditionalBehaviors = config.AdditionalBehaviors |> Map.add pathPattern behavior }
 
     /// <summary>
-    /// Convenience: adds an additional S3 behavior at a path pattern.
+    /// Convenience: adds S3 behavior at a path pattern.
     /// Same defaults as s3DefaultBehavior unless overridden.
     /// </summary>
     [<CustomOperation("additionalS3Behavior")>]
@@ -475,16 +465,7 @@ type DistributionBuilder(name: string) =
     member _.EnableLogging(config: DistributionConfig, bucket: IBucket, ?prefix: string, ?includeCookies: bool) =
         { config with
             EnableLogging = Some true
-            LogBucket = Some(BucketRef.BucketInterface bucket)
-            LogFilePrefix = prefix
-            LogIncludesCookies = includeCookies }
-
-    /// <summary>Enables logging to an S3 bucket (optionally with a prefix and cookies flag).</summary>
-    [<CustomOperation("enableLogging")>]
-    member _.EnableLogging(config: DistributionConfig, bucket: BucketSpec, ?prefix: string, ?includeCookies: bool) =
-        { config with
-            EnableLogging = Some true
-            LogBucket = Some(BucketRef.BucketSpecRef bucket)
+            LogBucket = Some(bucket)
             LogFilePrefix = prefix
             LogIncludesCookies = includeCookies }
 
@@ -520,22 +501,6 @@ type OriginAccessIdentitySpec =
       ConstructId: string
       Props: OriginAccessIdentityProps
       mutable Identity: IOriginAccessIdentity option }
-
-    /// Gets the underlying IOriginAccessIdentity resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Identity with
-        | Some identity -> identity
-        | None ->
-            failwith
-                $"OriginAccessIdentity '{this.IdentityName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-/// Gets the canonical user ID for use in S3 bucket policies
-//member this.CanonicalUserId =
-//    match this.Identity with
-//    | Some identity -> identity.CloudFrontOriginAccessIdentityS3CanonicalUserId
-//    | None ->
-//        failwith
-//            $"OriginAccessIdentity '{this.IdentityName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type OriginAccessIdentityBuilder(name: string) =
     member _.Yield _ : OriginAccessIdentityConfig =

@@ -47,37 +47,6 @@ type CertificateSpec =
       Props: CertificateProps
       mutable Certificate: ICertificate option }
 
-    /// Gets the underlying ICertificate resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Certificate with
-        | Some cert -> cert
-        | None ->
-            failwith
-                $"Certificate '{this.CertificateName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-    /// Gets the certificate ARN
-    member this.Arn =
-        match this.Certificate with
-        | Some cert -> cert.CertificateArn
-        | None ->
-            failwith
-                $"Certificate '{this.CertificateName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-type CertificateRef =
-    | CertificateInterface of ICertificate
-    | CertificateSpecRef of CertificateSpec
-
-module CertificateHelpers =
-    let resolveCertificateRef (ref: CertificateRef) =
-        match ref with
-        | CertificateInterface cert -> cert
-        | CertificateSpecRef spec ->
-            match spec.Certificate with
-            | Some cert -> cert
-            | None ->
-                failwith
-                    $"Certificate '{spec.CertificateName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type CertificateBuilder(name: string) =
     member _.Yield _ : CertificateConfig =
         { CertificateName = name
@@ -224,7 +193,7 @@ type DnsValidatedCertificateConfig =
       ConstructId: string option
       DomainName: string option
       SubjectAlternativeNames: string list
-      HostedZone: Route53HostedZoneRef option
+      HostedZone: IHostedZone option
       Region: string option
       CertificateName_: string option
       KeyAlgorithm: KeyAlgorithm option }
@@ -312,13 +281,7 @@ type DnsValidatedCertificateBuilder(name: string) =
         // Hosted zone is required for DNS validation
         props.HostedZone <-
             match config.HostedZone with
-            | Some hz ->
-                match hz with
-                | Route53HostedZoneRef.Route53HostedZoneInterface ihz -> ihz
-                | Route53HostedZoneRef.Route53HostedZoneSpecRef sp ->
-                    match sp.HostedZone with
-                    | Some hz -> hz
-                    | None -> invalidArg "hostedZone" $"Hosted zone {sp.ZoneName} has to be resolved first."
+            | Some hz -> hz
             | None -> invalidArg "hostedZone" "Hosted zone is required for DNS Validated Certificate"
 
         if not (List.isEmpty config.SubjectAlternativeNames) then
@@ -352,13 +315,7 @@ type DnsValidatedCertificateBuilder(name: string) =
     [<CustomOperation("hostedZone")>]
     member _.HostedZone(config: DnsValidatedCertificateConfig, hostedZone: IHostedZone) =
         { config with
-            HostedZone = Some(Route53HostedZoneRef.Route53HostedZoneInterface hostedZone) }
-
-    /// <summary>Sets the Route53 hosted zone for DNS validation.</summary>
-    [<CustomOperation("hostedZone")>]
-    member _.HostedZone(config: DnsValidatedCertificateConfig, hostedZone: Route53HostedZoneSpec) =
-        { config with
-            HostedZone = Some(Route53HostedZoneRef.Route53HostedZoneSpecRef hostedZone) }
+            HostedZone = Some(hostedZone) }
 
     /// <summary>Sets the region for the certificate (useful for CloudFront which requires us-east-1).</summary>
     [<CustomOperation("region")>]

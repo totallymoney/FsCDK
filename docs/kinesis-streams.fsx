@@ -43,10 +43,12 @@ module Config =
 let config = Config.get ()
 
 stack "KinesisStack" {
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Kinesis Data Streams example with Lambda consumer"
     tags [ "Project", "FsCDK-Examples"; "Service", "Kinesis"; "ManagedBy", "FsCDK" ]
@@ -468,10 +470,12 @@ stack "OptimizedProcessingStack" {
 *)
 
 stack "ProductionKinesisStack" {
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Production-ready Kinesis streaming pipeline"
     tags [ "Environment", "Production"; "Project", "DataPipeline"; "ManagedBy", "FsCDK" ]
