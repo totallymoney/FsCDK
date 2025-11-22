@@ -11,7 +11,7 @@ type EnvironmentConfig =
       Region: string option }
 
 type EnvironmentBuilder() =
-    member _.Yield _ : EnvironmentConfig = { Account = None; Region = None }
+    member _.Yield(_: unit) : EnvironmentConfig = { Account = None; Region = None }
 
     member _.Zero() : EnvironmentConfig = { Account = None; Region = None }
 

@@ -256,7 +256,7 @@ type CloudWatchAlarmSpec =
       mutable Alarm: IAlarm option }
 
 type CloudWatchAlarmBuilder(name: string) =
-    member _.Yield _ : CloudWatchAlarmConfig =
+    member _.Yield(_: unit) : CloudWatchAlarmConfig =
         { AlarmName = name
           ConstructId = None
           Description = None

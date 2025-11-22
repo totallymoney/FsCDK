@@ -58,7 +58,7 @@ type CloudTrailConfig =
 
 type CloudTrailBuilder(name: string) =
 
-    member _.Yield _ : CloudTrailConfig =
+    member _.Yield(_: unit) : CloudTrailConfig =
         { TrailName = name
           ConstructId = None
           IsMultiRegionTrail = Some true

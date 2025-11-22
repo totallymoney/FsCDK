@@ -62,7 +62,7 @@ type AppRunnerServiceSpec =
         | None -> null
 
 type AppRunnerServiceBuilder(name: string) =
-    member _.Yield _ : AppRunnerServiceConfig =
+    member _.Yield(_: unit) : AppRunnerServiceConfig =
         { ServiceName = name
           ConstructId = None
           SourceConfiguration = None

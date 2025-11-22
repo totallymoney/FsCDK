@@ -47,7 +47,7 @@ and Route53HostedZoneSpec =
                 $"HostedZone '{this.ZoneName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type Route53HostedZoneBuilder(zoneName: string) =
-    member _.Yield _ : Route53HostedZoneConfig =
+    member _.Yield(_: unit) : Route53HostedZoneConfig =
         { ZoneName = zoneName
           ConstructId = None
           Comment = None
@@ -153,7 +153,7 @@ type Route53PrivateHostedZoneResource =
                 $"PrivateHostedZone '{this.ZoneName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type Route53PrivateHostedZoneBuilder(zoneName: string) =
-    member _.Yield _ : Route53PrivateHostedZoneConfig =
+    member _.Yield(_: unit) : Route53PrivateHostedZoneConfig =
         { ZoneName = zoneName
           ConstructId = None
           Comment = None
@@ -236,7 +236,7 @@ type Route53ARecordSpec =
       Props: ARecordProps }
 
 type Route53ARecordBuilder(name: string) =
-    member _.Yield _ : Route53ARecordConfig =
+    member _.Yield(_: unit) : Route53ARecordConfig =
         { RecordName = name
           ConstructId = None
           Zone = None
@@ -366,7 +366,7 @@ type Route53HealthCheckResource =
     member this.HealthCheckId = this.HealthCheck.AttrHealthCheckId
 
 type Route53HealthCheckBuilder(name: string) =
-    member _.Yield _ : Route53HealthCheckConfig =
+    member _.Yield(_: unit) : Route53HealthCheckConfig =
         { HealthCheckName = name
           ConstructId = None
           Type = Some "HTTPS"

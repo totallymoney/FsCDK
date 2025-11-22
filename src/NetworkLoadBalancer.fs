@@ -44,16 +44,8 @@ type NetworkLoadBalancerSpec =
       Props: NetworkLoadBalancerProps
       mutable LoadBalancer: INetworkLoadBalancer option }
 
-    /// Gets the underlying INetworkLoadBalancer resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.LoadBalancer with
-        | Some nlb -> nlb
-        | None ->
-            failwith
-                $"NetworkLoadBalancer '{this.LoadBalancerName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type NetworkLoadBalancerBuilder(name: string) =
-    member _.Yield _ : NetworkLoadBalancerConfig =
+    member _.Yield(_: unit) : NetworkLoadBalancerConfig =
         { LoadBalancerName = name
           ConstructId = None
           Vpc = None
@@ -215,4 +207,4 @@ module NetworkLoadBalancerBuilders =
     ///     crossZoneEnabled true
     /// }
     /// </code>
-    let networkLoadBalancer (name: string) = NetworkLoadBalancerBuilder name
+    let networkLoadBalancer name = NetworkLoadBalancerBuilder(name)

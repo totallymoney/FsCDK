@@ -26,7 +26,7 @@ type EventSourceMappingOptionsConfig =
       ParallelizationFactor: int option }
 
 type EventSourceMappingOptionsBuilder(id: string) =
-    member _.Yield _ : EventSourceMappingOptionsConfig =
+    member _.Yield(_: unit) : EventSourceMappingOptionsConfig =
         { EventSourceArn = None
           BatchSize = None
           StartingPosition = None

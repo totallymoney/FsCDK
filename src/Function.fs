@@ -35,11 +35,11 @@ type FunctionConfig =
       LogGroup: ILogGroup option
       Role: IRole option
       InsightsVersion: LambdaInsightsVersion option
-      CurrentVersionOptions: VersionOptions option
+      CurrentVersionOptions: IVersionOptions option
       Layers: ILayerVersion list
       Architecture: Architecture option
       Tracing: Tracing option
-      VpcSubnets: SubnetSelection option
+      VpcSubnets: ISubnetSelection option
       SecurityGroups: ISecurityGroup list
       FileSystem: FileSystem option
       DeadLetterQueue: IQueue option
@@ -127,7 +127,7 @@ type FunctionBuilder(name: string) =
         { defaultConfig () with
             EventSourceMappings = [ (spec.Id, spec.Options) ] }
 
-    member _.Yield _ : FunctionConfig = defaultConfig ()
+    member _.Yield(_: unit) : FunctionConfig = defaultConfig ()
 
     member _.Zero() : FunctionConfig = defaultConfig ()
 
@@ -282,6 +282,8 @@ type FunctionBuilder(name: string) =
                 state1.EphemeralStorageSize
             else
                 state2.EphemeralStorageSize }
+
+
 
     member _.Run(config: FunctionConfig) : FunctionSpec =
         let props = FunctionProps()
@@ -592,6 +594,11 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("description")>]
     member _.Description(config: FunctionConfig, desc: string) = { config with Description = Some desc }
 
+    [<CustomOperation("fileSystem")>]
+    member _.FileSystem(config: FunctionConfig, fileSystem: Amazon.CDK.AWS.Lambda.FileSystem) =
+        { config with
+            FileSystem = Some fileSystem }
+
     [<CustomOperation("reservedConcurrentExecutions")>]
     member _.ReservedConcurrentExecutions(config: FunctionConfig, value: int) =
         { config with
@@ -699,26 +706,15 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("role")>]
     member _.Role(config: FunctionConfig, role: IRole) = { config with Role = Some role }
 
-    // Implicit yields for complex types
-    member _.Yield(logGroup: ILogGroup) : FunctionConfig =
-        { defaultConfig () with
-            LogGroup = Some logGroup }
+    [<CustomOperation("vpcSubnets")>]
+    member _.VpcSubnets(config: FunctionConfig, subnets: ISubnetSelection) =
+        { config with
+            VpcSubnets = Some subnets }
 
-    member _.Yield(role: IRole) : FunctionConfig =
-        { defaultConfig () with
-            Role = Some role }
-
-    member _.Yield(versionOptions: VersionOptions) : FunctionConfig =
-        { defaultConfig () with
-            CurrentVersionOptions = Some versionOptions }
-
-    member _.Yield(vpcSubnets: SubnetSelection) : FunctionConfig =
-        { defaultConfig () with
-            VpcSubnets = Some vpcSubnets }
-
-    member _.Yield(fileSystem: FileSystem) : FunctionConfig =
-        { defaultConfig () with
-            FileSystem = Some fileSystem }
+    [<CustomOperation("currentVersionOptions")>]
+    member _.CurrentVersionOptions(config: FunctionConfig, options: IVersionOptions) =
+        { config with
+            CurrentVersionOptions = Some options }
 
 // ============================================================================
 // Builders

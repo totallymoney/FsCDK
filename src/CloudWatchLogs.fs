@@ -37,7 +37,7 @@ type CloudWatchLogGroupSpec =
       mutable LogGroup: LogGroup option }
 
 type CloudWatchLogGroupBuilder(name: string) =
-    member _.Yield _ : CloudWatchLogGroupConfig =
+    member _.Yield(_: unit) : CloudWatchLogGroupConfig =
         { LogGroupName = name
           ConstructId = None
           Retention = ValueSome RetentionDays.ONE_WEEK
@@ -200,7 +200,7 @@ type CloudWatchMetricFilterSpec =
       mutable MetricFilter: MetricFilter option }
 
 type CloudWatchMetricFilterBuilder(name: string) =
-    member _.Yield _ : CloudWatchMetricFilterConfig =
+    member _.Yield(_: unit) : CloudWatchMetricFilterConfig =
         { FilterName = name
           ConstructId = None
           LogGroup = None
@@ -374,7 +374,7 @@ type CloudWatchSubscriptionFilterSpec =
       mutable SubscriptionFilter: SubscriptionFilter option }
 
 type CloudWatchSubscriptionFilterBuilder(name: string) =
-    member _.Yield _ : CloudWatchSubscriptionFilterConfig =
+    member _.Yield(_: unit) : CloudWatchSubscriptionFilterConfig =
         { FilterName = name
           ConstructId = None
           LogGroup = None

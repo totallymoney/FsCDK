@@ -56,7 +56,7 @@ type BucketConfig =
       Metrics: IBucketMetrics list }
 
 type BucketBuilder(name: string) =
-    member _.Yield _ : BucketConfig =
+    member _.Yield(_: unit) : BucketConfig =
         { BucketName = name
           ConstructId = None
           BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
@@ -306,7 +306,7 @@ type CorsRuleConfig =
       MaxAge: int option }
 
 type CorsRuleBuilder() =
-    member _.Yield _ : CorsRuleConfig =
+    member _.Yield(_: unit) : CorsRuleConfig =
         { AllowedMethods = None
           AllowedOrigins = None
           AllowedHeaders = None

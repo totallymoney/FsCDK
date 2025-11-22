@@ -40,14 +40,8 @@ type XRayGroupSpec =
       Props: CfnGroupProps
       mutable Group: CfnGroup option }
 
-    /// Gets the group ARN
-    member this.GroupArn =
-        match this.Group with
-        | Some g -> g.AttrGroupArn
-        | None -> null
-
 type XRayGroupBuilder(name: string) =
-    member _.Yield _ : XRayGroupConfig =
+    member _.Yield(_: unit) : XRayGroupConfig =
         { GroupName = name
           ConstructId = None
           FilterExpression = None
@@ -154,7 +148,7 @@ type XRaySamplingRuleSpec =
         | None -> null
 
 type XRaySamplingRuleBuilder(name: string) =
-    member _.Yield _ : XRaySamplingRuleConfig =
+    member _.Yield(_: unit) : XRaySamplingRuleConfig =
         { RuleName = name
           ConstructId = None
           Priority = ValueSome 1000

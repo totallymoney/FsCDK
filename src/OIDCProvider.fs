@@ -53,7 +53,7 @@ type OIDCProviderSpec =
                 $"OIDCProvider '{this.ProviderName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type OIDCProviderBuilder(name: string) =
-    member _.Yield _ : OIDCProviderConfig =
+    member _.Yield(_: unit) : OIDCProviderConfig =
         { ProviderName = name
           ConstructId = None
           Url = None

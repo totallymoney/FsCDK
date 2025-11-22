@@ -58,7 +58,7 @@ type KinesisStreamSpec =
                 $"Kinesis Stream '{this.StreamName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type KinesisStreamBuilder(name: string) =
-    member _.Yield _ : KinesisStreamConfig =
+    member _.Yield(_: unit) : KinesisStreamConfig =
         { StreamName = name
           ConstructId = None
           StreamName_ = None

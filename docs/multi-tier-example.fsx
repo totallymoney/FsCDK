@@ -229,7 +229,7 @@ stack "MultiTierApp" {
         description "API handler for the web application"
 
         // VPC configuration for database access
-        vpcSubnets { yield SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) }
+        vpcSubnets (subnetSelection { subnetType SubnetType.PRIVATE_WITH_EGRESS })
 
         securityGroups [ lambdaSecurityGroup ]
 

@@ -57,7 +57,7 @@ type BastionHostSpec =
                 $"BastionHost '{this.BastionName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type BastionHostBuilder(name: string) =
-    member _.Yield _ : BastionHostConfig =
+    member _.Yield(_: unit) : BastionHostConfig =
         { BastionName = name
           ConstructId = None
           Vpc = None

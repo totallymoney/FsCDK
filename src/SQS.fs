@@ -29,7 +29,7 @@ type QueueSpec =
       mutable Queue: IQueue option }
 
 type QueueBuilder(name: string) =
-    member _.Yield _ : QueueConfig =
+    member _.Yield(_: unit) : QueueConfig =
         { QueueName = name
           ConstructId = None
           VisibilityTimeout = None

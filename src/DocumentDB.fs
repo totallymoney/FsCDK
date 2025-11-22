@@ -84,7 +84,7 @@ type DocumentDBClusterSpec =
         member this.VpnGatewayId = failwith "todo"
 
 type DocumentDBClusterBuilder(name: string) =
-    member _.Yield _ : DocumentDBClusterConfig =
+    member _.Yield(_: unit) : DocumentDBClusterConfig =
         { ClusterName = name
           ConstructId = None
           MasterUsername = Some "docdbadmin"

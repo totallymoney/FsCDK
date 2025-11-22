@@ -48,7 +48,7 @@ type ManagedPolicySpec =
       mutable Policy: IManagedPolicy option }
 
 type ManagedPolicyBuilder(name: string) =
-    member _.Yield _ : ManagedPolicyConfig =
+    member _.Yield(_: unit) : ManagedPolicyConfig =
         { PolicyName = name
           ConstructId = None
           ManagedPolicyName = None

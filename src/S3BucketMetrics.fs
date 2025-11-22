@@ -9,7 +9,7 @@ type BucketMetricsConfig =
       TagFilters: (string * obj) seq }
 
 type BucketMetricsBuilder() =
-    member _.Yield _ : BucketMetricsConfig =
+    member _.Yield(_: unit) : BucketMetricsConfig =
         { Id = None
           Prefix = None
           TagFilters = [] }

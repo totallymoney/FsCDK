@@ -34,7 +34,7 @@ type UserPoolSpec =
 
 type UserPoolBuilder(name: string) =
 
-    member _.Yield _ : UserPoolConfig =
+    member _.Yield(_: unit) : UserPoolConfig =
         { UserPoolName = name
           ConstructId = None
           UserPoolName_ = None
@@ -313,7 +313,7 @@ type UserPoolClientSpec =
 
 type UserPoolClientBuilder(name: string) =
 
-    member _.Yield _ : UserPoolClientConfig =
+    member _.Yield(_: unit) : UserPoolClientConfig =
         { ClientName = name
           ConstructId = None
           UserPool = None
@@ -502,7 +502,7 @@ type UserPoolResourceServerSpec =
 
 type UserPoolResourceServerBuilder(name: string) =
 
-    member _.Yield _ : UserPoolResourceServerConfig =
+    member _.Yield(_: unit) : UserPoolResourceServerConfig =
         { ResourceServerName = name
           ConstructId = None
           UserPool = None

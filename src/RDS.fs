@@ -46,7 +46,7 @@ type DatabaseInstanceSpec =
 
 type DatabaseInstanceBuilder(name: string) =
 
-    member _.Yield _ : DatabaseInstanceConfig =
+    member _.Yield(_: unit) : DatabaseInstanceConfig =
         { DatabaseName = name
           ConstructId = None
           Engine = None
@@ -566,7 +566,7 @@ type DatabaseProxySpec =
 
 type DatabaseProxyBuilder(name: string) =
 
-    member _.Yield _ : DatabaseProxyConfig =
+    member _.Yield(_: unit) : DatabaseProxyConfig =
         { ProxyName = name
           ConstructId = None
           Vpc = None

@@ -29,7 +29,7 @@ type ElasticBeanstalkApplicationResource =
     }
 
 type ElasticBeanstalkApplicationBuilder(name: string) =
-    member _.Yield _ : ElasticBeanstalkApplicationConfig =
+    member _.Yield(_: unit) : ElasticBeanstalkApplicationConfig =
         { ApplicationName = name
           ConstructId = None
           Description = None }
@@ -103,7 +103,7 @@ type ElasticBeanstalkEnvironmentSpec =
       Props: CfnEnvironmentProps }
 
 type ElasticBeanstalkEnvironmentBuilder(name: string) =
-    member _.Yield _ : ElasticBeanstalkEnvironmentConfig =
+    member _.Yield(_: unit) : ElasticBeanstalkEnvironmentConfig =
         { EnvironmentName = name
           ConstructId = None
           ApplicationName = None

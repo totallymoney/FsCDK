@@ -37,7 +37,7 @@ type VPCGatewayAttachmentSpec =
       mutable Attachment: CfnVPCGatewayAttachment option }
 
 type VPCGatewayAttachmentBuilder(name: string) =
-    member _.Yield _ : VPCGatewayAttachmentConfig =
+    member _.Yield(_: unit) : VPCGatewayAttachmentConfig =
         { AttachmentName = name
           ConstructId = None
           Vpc = None

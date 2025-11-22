@@ -41,7 +41,7 @@ type ALBSpec =
       Props: ApplicationLoadBalancerProps }
 
 type ALBBuilder(name: string) =
-    member _.Yield _ : ALBConfig =
+    member _.Yield(_: unit) : ALBConfig =
         { LoadBalancerName = name
           ConstructId = None
           Vpc = None
@@ -177,7 +177,7 @@ type ALBTargetGroupResource =
     }
 
 type ALBTargetGroupBuilder(name: string) =
-    member _.Yield _ : ALBTargetGroupConfig =
+    member _.Yield(_: unit) : ALBTargetGroupConfig =
         { TargetGroupName = name
           ConstructId = None
           Vpc = None
@@ -343,7 +343,7 @@ type ALBListenerResource =
     }
 
 type ALBListenerBuilder(loadBalancer: IApplicationLoadBalancer) =
-    member _.Yield _ : ALBListenerConfig =
+    member _.Yield(_: unit) : ALBListenerConfig =
         { ConstructId = None
           LoadBalancer = Some loadBalancer
           Port = ValueSome 80

@@ -61,7 +61,7 @@ type RestApiConfig =
 
 type RestApiBuilder(name: string) =
 
-    member _.Yield _ : RestApiConfig =
+    member _.Yield(_: unit) : RestApiConfig =
         { ApiName = name
           ConstructId = None
           Description = None
@@ -291,7 +291,7 @@ type TokenAuthorizerSpec =
 
 type TokenAuthorizerBuilder(name: string) =
 
-    member _.Yield _ : TokenAuthorizerConfig =
+    member _.Yield(_: unit) : TokenAuthorizerConfig =
         { AuthorizerName = name
           ConstructId = None
           Handler = None
@@ -407,7 +407,7 @@ type VpcLinkSpec =
 
 type VpcLinkBuilder(name: string) =
 
-    member _.Yield _ : VpcLinkConfig =
+    member _.Yield(_: unit) : VpcLinkConfig =
         { VpcLinkName = name
           ConstructId = None
           Description = None

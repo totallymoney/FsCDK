@@ -57,7 +57,7 @@ type ElasticCacheRedisSpec =
       mutable CacheCluster: CfnCacheCluster option }
 
 type ElasticCacheRedisBuilder(name: string) =
-    member _.Yield _ : ElastiCacheRedisConfig =
+    member _.Yield(_: unit) : ElastiCacheRedisConfig =
         { ClusterName = name
           ConstructId = None
           CacheNodeType = Some "cache.t3.micro"

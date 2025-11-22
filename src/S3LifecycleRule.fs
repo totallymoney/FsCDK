@@ -52,7 +52,7 @@ type LifecycleRuleBuilder() =
           TagFilters = None
           Transitions = [] }
 
-    member _.Yield _ : LifecycleRuleConfig =
+    member _.Yield(_: unit) : LifecycleRuleConfig =
         { AbortIncompleteMultipartUploadAfter = None
           Enabled = None
           Expiration = None

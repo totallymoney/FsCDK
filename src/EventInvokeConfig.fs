@@ -18,7 +18,7 @@ type EventInvokeConfigOptionsConfig =
       RetryAttempts: int option }
 
 type EventInvokeConfigOptionsBuilder() =
-    member _.Yield _ : EventInvokeConfigOptionsConfig =
+    member _.Yield(_: unit) : EventInvokeConfigOptionsConfig =
         { MaxEventAge = None
           RetryAttempts = None }
 

@@ -48,7 +48,7 @@ type CertificateSpec =
       mutable Certificate: ICertificate option }
 
 type CertificateBuilder(name: string) =
-    member _.Yield _ : CertificateConfig =
+    member _.Yield(_: unit) : CertificateConfig =
         { CertificateName = name
           ConstructId = None
           DomainName = None
@@ -205,7 +205,7 @@ type DnsValidatedCertificateSpec =
       mutable Certificate: Certificate }
 
 type DnsValidatedCertificateBuilder(name: string) =
-    member _.Yield _ : DnsValidatedCertificateConfig =
+    member _.Yield(_: unit) : DnsValidatedCertificateConfig =
         { CertificateName = name
           ConstructId = None
           DomainName = None

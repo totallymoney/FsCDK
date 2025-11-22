@@ -33,16 +33,8 @@ type RouteTableSpec =
       Props: CfnRouteTableProps
       mutable RouteTable: CfnRouteTable option }
 
-    /// Gets the underlying CfnRouteTable resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.RouteTable with
-        | Some rt -> rt
-        | None ->
-            failwith
-                $"RouteTable '{this.RouteTableName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type RouteTableBuilder(name: string) =
-    member _.Yield _ : RouteTableConfig =
+    member _.Yield(_: unit) : RouteTableConfig =
         { RouteTableName = name
           ConstructId = None
           Vpc = None
@@ -129,7 +121,7 @@ type RouteSpec =
       Props: CfnRouteProps }
 
 type RouteBuilder(name: string) =
-    member _.Yield _ : RouteConfig =
+    member _.Yield(_: unit) : RouteConfig =
         { RouteName = name
           ConstructId = None
           RouteTable = None

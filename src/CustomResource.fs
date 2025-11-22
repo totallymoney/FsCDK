@@ -55,7 +55,7 @@ type CustomResourceSpec =
                 $"Custom Resource '{this.ResourceName}' has not been created yet. Ensure it's yielded in the stack before accessing it."
 
 type CustomResourceBuilder(name: string) =
-    member _.Yield _ : CustomResourceConfig =
+    member _.Yield(_: unit) : CustomResourceConfig =
         { ResourceName = name
           ConstructId = None
           OnCreate = None

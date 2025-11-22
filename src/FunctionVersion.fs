@@ -13,7 +13,7 @@ type VersionOptionsConfig =
       CodeSha256: string option }
 
 type VersionOptionsBuilder() =
-    member _.Yield _ : VersionOptionsConfig =
+    member _.Yield(_: unit) : VersionOptionsConfig =
         { Description = None
           RemovalPolicy = None
           CodeSha256 = None }

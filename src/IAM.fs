@@ -170,7 +170,7 @@ module IAM =
           IncludeXRay: bool option }
 
     type LambdaRoleBuilder(name: string) =
-        member _.Yield _ : LambdaRoleConfig =
+        member _.Yield(_: unit) : LambdaRoleConfig =
             { RoleName = name
               ConstructId = None
               AssumeRolePrincipal = Some "lambda.amazonaws.com"

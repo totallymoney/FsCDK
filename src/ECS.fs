@@ -29,7 +29,7 @@ type ECSClusterSpec =
       mutable Cluster: Cluster option }
 
 type ECSClusterBuilder(name: string) =
-    member _.Yield _ : ECSClusterConfig =
+    member _.Yield(_: unit) : ECSClusterConfig =
         { ClusterName = name
           ConstructId = None
           Vpc = None
@@ -121,7 +121,7 @@ type ECSFargateServiceSpec =
       mutable Service: FargateService option }
 
 type ECSFargateServiceBuilder(name: string) =
-    member _.Yield _ : ECSFargateServiceConfig =
+    member _.Yield(_: unit) : ECSFargateServiceConfig =
         { ServiceName = name
           ConstructId = None
           Cluster = None
@@ -258,7 +258,7 @@ type FargateTaskDefinitionSpec =
 
 type FargateTaskDefinitionBuilder(name: string) =
 
-    member _.Yield _ : FargateTaskDefinitionConfig =
+    member _.Yield(_: unit) : FargateTaskDefinitionConfig =
         { TaskDefinitionName = name
           ConstructId = None
           Cpu = Some 256

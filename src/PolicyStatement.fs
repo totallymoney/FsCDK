@@ -14,7 +14,7 @@ type PolicyStatementPropsConfig =
       Sid: string option }
 
 type PolicyStatementPropsBuilder() =
-    member _.Yield _ : PolicyStatementPropsConfig =
+    member _.Yield(_: unit) : PolicyStatementPropsConfig =
         { Actions = None
           Resources = None
           Effect = None
@@ -72,7 +72,7 @@ type PolicyStatementConfig =
       Sid: string option }
 
 type PolicyStatementBuilder() =
-    member _.Yield _ : PolicyStatementConfig =
+    member _.Yield(_: unit) : PolicyStatementConfig =
         { Props = None
           Actions = []
           Resources = []
@@ -129,7 +129,7 @@ type PolicyStatementBuilder() =
                 """
 SECURITY ERROR: PolicyStatement has wildcard actions ('*') AND resources ('*').
 
-This grants unrestricted access to ALL AWS services and violates the 
+This grants unrestricted access to ALL AWS services and violates the
 principle of least privilege recommended in AWS Well-Architected Framework.
 
 Please specify:

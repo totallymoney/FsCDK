@@ -23,7 +23,7 @@ type ImportSourceConfig =
       KeyPrefix: string option }
 
 type ImportSourceBuilder() =
-    member _.Yield _ : ImportSourceConfig =
+    member _.Yield(_: unit) : ImportSourceConfig =
         { Bucket = None
           InputFormat = None
           BucketOwner = None
@@ -180,7 +180,7 @@ type TableSpec =
       mutable Table: ITable option }
 
 type TableBuilder(name: string) =
-    member _.Yield _ : TableConfig =
+    member _.Yield(_: unit) : TableConfig =
         { TableName = name
           ConstructId = None
           PartitionKey = None

@@ -41,7 +41,7 @@ type VpcConfig =
 
 type VpcBuilder(name: string) =
 
-    member _.Yield _ : VpcConfig =
+    member _.Yield(_: unit) : VpcConfig =
         { VpcName = name
           ConstructId = None
           MaxAzs = None
@@ -312,7 +312,7 @@ type SecurityGroupConfig =
 
 type SecurityGroupBuilder(name: string) =
 
-    member _.Yield _ : SecurityGroupConfig =
+    member _.Yield(_: unit) : SecurityGroupConfig =
         { SecurityGroupName = name
           ConstructId = None
           Vpc = None
@@ -473,7 +473,7 @@ type GatewayVpcEndpointSpec =
 
 type GatewayVpcEndpointBuilder(name: string) =
 
-    member _.Yield _ : GatewayVpcEndpointConfig =
+    member _.Yield(_: unit) : GatewayVpcEndpointConfig =
         { EndpointName = name
           ConstructId = None
           Vpc = None
@@ -615,7 +615,7 @@ type InterfaceVpcEndpointSpec =
 
 type InterfaceVpcEndpointBuilder(name: string) =
 
-    member _.Yield _ : InterfaceVpcEndpointConfig =
+    member _.Yield(_: unit) : InterfaceVpcEndpointConfig =
         { EndpointName = name
           ConstructId = None
           Vpc = None

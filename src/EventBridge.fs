@@ -44,7 +44,7 @@ type EventBridgeRuleSpec =
       mutable Rule: IRule option }
 
 type EventBridgeRuleBuilder(name: string) =
-    member _.Yield _ : EventBridgeRuleConfig =
+    member _.Yield(_: unit) : EventBridgeRuleConfig =
         { RuleName = name
           ConstructId = None
           RuleName_ = None
@@ -194,7 +194,7 @@ type EventBusSpec =
                 $"EventBus '{this.EventBusName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type EventBusBuilder(name: string) =
-    member _.Yield _ : EventBusConfig =
+    member _.Yield(_: unit) : EventBusConfig =
         { EventBusName = name
           ConstructId = None
           EventSourceName = None }

@@ -47,7 +47,7 @@ type CloudHSMClusterSpec =
       Props: CfnClusterProps }
 
 type CloudHSMClusterBuilder(name: string) =
-    member _.Yield _ : CloudHSMClusterConfig =
+    member _.Yield (_: unit) : CloudHSMClusterConfig =
         { ClusterName = name
           ConstructId = None
           Vpc = None

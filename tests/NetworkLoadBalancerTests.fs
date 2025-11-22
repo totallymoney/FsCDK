@@ -105,7 +105,6 @@ let network_load_balancer_tests =
 
               let nlbSpec =
                   networkLoadBalancer "MyNLB" {
-                      stack
                       vpc ivpc
                       loadBalancerName "production-nlb"
                   }

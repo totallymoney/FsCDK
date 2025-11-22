@@ -23,7 +23,7 @@ type TopicSpec =
       Props: TopicProps }
 
 type TopicBuilder(name: string) =
-    member _.Yield _ : TopicConfig =
+    member _.Yield(_: unit) : TopicConfig =
         { TopicName = name
           ConstructId = None
           DisplayName = None
@@ -142,7 +142,7 @@ type SubscriptionSpec =
       DeadLetterQueue: string option }
 
 type SubscriptionBuilder() =
-    member _.Yield _ : SubscriptionConfig =
+    member _.Yield(_: unit) : SubscriptionConfig =
         { TopicConstructId = None
           Endpoint = None
           FilterPolicy = None

@@ -55,7 +55,7 @@ type CloudWatchCanaryResource =
     }
 
 type CloudWatchCanaryBuilder(name: string) =
-    member _.Yield _ : CloudWatchCanaryConfig =
+    member _.Yield(_: unit) : CloudWatchCanaryConfig =
         { CanaryName = name
           ConstructId = None
           Runtime = Some Runtime.SYNTHETICS_PYTHON_SELENIUM_3_0
@@ -212,11 +212,11 @@ def handler(event, context):
     browser = webdriver.Chrome()
     browser.get("{url}")
     logger.info("Navigated to URL: {url}")
-    
+
     response_code = browser.execute_script("return window.performance.getEntries()[0].responseStatus")
     if response_code != 200:
         raise Exception(f"Failed with response code: {{response_code}}")
-    
+
     logger.info("Canary completed successfully")
     browser.quit()
 """
@@ -235,11 +235,11 @@ def handler(event, context):
     browser = webdriver.Chrome()
     browser.get("{url}")
     logger.info("Navigated to URL: {url}")
-    
+
     response_code = browser.execute_script("return window.performance.getEntries()[0].responseStatus")
     if response_code != {expectedStatus}:
         raise Exception(f"Expected {{expected}}, got {{response_code}}")
-    
+
     logger.info("Canary completed successfully")
     browser.quit()
 """

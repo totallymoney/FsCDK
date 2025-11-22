@@ -40,7 +40,7 @@ type S3OriginType =
     | GenericOrigin of origin: IOrigin
 
 type DistributionBuilder(name: string) =
-    member _.Yield _ : DistributionConfig =
+    member _.Yield(_: unit) : DistributionConfig =
         { DistributionName = name
           ConstructId = None
           DefaultBehavior = None
@@ -503,7 +503,7 @@ type OriginAccessIdentitySpec =
       mutable Identity: IOriginAccessIdentity option }
 
 type OriginAccessIdentityBuilder(name: string) =
-    member _.Yield _ : OriginAccessIdentityConfig =
+    member _.Yield(_: unit) : OriginAccessIdentityConfig =
         { IdentityName = name
           ConstructId = None
           Comment = None }

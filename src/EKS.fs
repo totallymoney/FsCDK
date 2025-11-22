@@ -68,7 +68,7 @@ type EKSClusterSpec =
                 $"EKS Cluster '{this.ClusterName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type EKSClusterBuilder(name: string) =
-    member _.Yield _ : EKSClusterConfig =
+    member _.Yield(_: unit) : EKSClusterConfig =
         { ClusterName = name
           ConstructId = None
           Version = Some KubernetesVersion.V1_28

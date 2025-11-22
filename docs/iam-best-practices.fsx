@@ -455,7 +455,7 @@ stack "DatabaseStack" {
         runtime Runtime.DOTNET_8
         handler "MyApp::Handler"
         code "./publish"
-        vpcSubnets { yield SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) }
+        vpcSubnets (subnetSelection { subnetType SubnetType.PRIVATE_WITH_EGRESS })
         securityGroups [ lambdaSecurityGroup ]
     }
 }

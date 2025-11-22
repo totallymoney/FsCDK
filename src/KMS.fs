@@ -59,7 +59,7 @@ type KMSKeySpec =
 
 
 type KMSKeyBuilder(name: string) =
-    member _.Yield _ : KMSKeyConfig =
+    member _.Yield(_: unit) : KMSKeyConfig =
         { KeyName = name
           ConstructId = None
           Description = None

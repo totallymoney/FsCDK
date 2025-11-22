@@ -99,6 +99,8 @@ type Operation =
     | CloudWatchMetricFilterOp of CloudWatchMetricFilterSpec
     | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterSpec
     | CloudTrailOp of CloudTrailSpec
+    | AccessPointOp of AccessPointSpec
+    | EfsFileSystemOp of EfsFileSystemSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -587,6 +589,20 @@ module StackOperations =
 
             trailSpec.Trail <- Some trail
 
+        | AccessPointOp accessPointSpec ->
+            let accessPoint =
+                Amazon.CDK.AWS.EFS.AccessPoint(stack, accessPointSpec.ConstructId, accessPointSpec.Props)
+
+            accessPointSpec.AccessPoint <- Some accessPoint
+
+        | EfsFileSystemOp fileSystemSpec ->
+            let fileSystem =
+                Amazon.CDK.AWS.EFS.FileSystem(stack, fileSystemSpec.ConstructId, fileSystemSpec.Props)
+
+            fileSystemSpec.FileSystem <- Some fileSystem
+
+
+
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
@@ -789,6 +805,23 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ opToFunc (GrantOp grantSpec) ] }
+
+
+    member _.Yield(grantSpec: AccessPointSpec) : StackConfig =
+        { Name = name
+          Scope = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ opToFunc (AccessPointOp grantSpec) ] }
 
     member _.Yield(topicSpec: TopicSpec) : StackConfig =
         { Name = name
@@ -1943,6 +1976,52 @@ type StackBuilder(name: string) =
         { baseCfg with
             Operations = baseCfg.Operations @ [ executeContinuation ] }
 
+    member inline this.Bind
+        (
+            spec: AccessPointSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.EFS.IAccessPoint -> StackConfig
+        ) : StackConfig =
+
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.AccessPoint with
+                | Some ap ->
+                    let contCfg = cont ap
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"Access Point '{spec.ConstructId}' was not created. Make sure to create the Access Point first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    member inline this.Bind
+        (
+            spec: EfsFileSystemSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.EFS.IFileSystem -> StackConfig
+        ) : StackConfig =
+
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.FileSystem with
+                | Some fs ->
+                    let contCfg = cont fs
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"EFS File System '{spec.ConstructId}' was not created. Make sure to create the File System first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
     /// Bind for CloudWatch Log Group
     member inline this.Bind
         (
@@ -2099,6 +2178,22 @@ type StackBuilder(name: string) =
           PropertyInjectors = None
           Synthesizer = None
           Operations = [ opToFunc (CloudTrailOp trailSpec) ] }
+
+    member _.Yield(trailSpec: EfsFileSystemSpec) : StackConfig =
+        { Name = name
+          Scope = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ opToFunc (EfsFileSystemOp trailSpec) ] }
 
     member _.Zero() : StackConfig =
         { Name = name

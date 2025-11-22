@@ -63,7 +63,7 @@ type StepFunctionSpec =
         | None -> null
 
 type StepFunctionBuilder(name: string) =
-    member _.Yield _ : StepFunctionConfig =
+    member _.Yield(_: unit) : StepFunctionConfig =
         { StateMachineName = name
           ConstructId = None
           Definition = None

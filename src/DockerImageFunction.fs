@@ -33,7 +33,7 @@ type DockerImageFunctionBuilder(name: string) =
         if String.IsNullOrWhiteSpace(name) then
             failwith "Docker image function name is required"
 
-    member _.Yield _ : DockerImageFunctionConfig =
+    member _.Yield(_: unit) : DockerImageFunctionConfig =
         { FunctionName = name
           ConstructId = None
           Code = None

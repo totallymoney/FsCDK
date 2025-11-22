@@ -44,7 +44,7 @@ type BucketPolicySpec =
       mutable Policy: BucketPolicy option }
 
 type BucketPolicyBuilder(name: string) =
-    member _.Yield _ : BucketPolicyConfig =
+    member _.Yield(_: unit) : BucketPolicyConfig =
         { PolicyName = name
           ConstructId = None
           Bucket = None

@@ -69,7 +69,7 @@ type AppSyncApiSpec =
         | None -> null
 
 type AppSyncApiBuilder(name: string) =
-    member _.Yield _ : AppSyncApiConfig =
+    member _.Yield(_: unit) : AppSyncApiConfig =
         { ApiName = name
           ConstructId = None
           SchemaDefinition = None
@@ -158,7 +158,7 @@ type AppSyncDataSourceSpec =
       mutable DataSource: BaseDataSource option }
 
 type AppSyncDataSourceBuilder(name: string) =
-    member _.Yield _ : AppSyncDataSourceConfig =
+    member _.Yield(_: unit) : AppSyncDataSourceConfig =
         { Name = name
           ConstructId = None
           Api = None

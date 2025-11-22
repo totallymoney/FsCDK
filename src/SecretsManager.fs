@@ -39,7 +39,7 @@ type SecretsManagerSpec =
       Props: SecretProps }
 
 type SecretsManagerBuilder(name: string) =
-    member _.Yield _ : SecretsManagerConfig =
+    member _.Yield(_: unit) : SecretsManagerConfig =
         { SecretName = name
           ConstructId = None
           Description = None
