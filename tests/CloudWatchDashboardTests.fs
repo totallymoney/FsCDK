@@ -7,8 +7,7 @@ open FsCDK
 
 [<Tests>]
 let cloudwatch_dashboard_tests =
-    testSequenced
-    <| testList
+    testList
         "CloudWatch Dashboard DSL"
         [ test "creates empty dashboard" {
               let dashboardSpec = dashboard "MyDashboard" { () }
@@ -55,3 +54,4 @@ let cloudwatch_dashboard_tests =
 
               Expect.equal dashboardSpec.ConstructId "MyDashboard" "ConstructId should default to name"
           } ]
+    |> testSequenced

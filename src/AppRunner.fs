@@ -43,14 +43,11 @@ type AppRunnerServiceConfig =
       AccessRole: IRole option
       Tags: (string * string) list }
 
-type AppRunnerServiceResource =
-    {
-        ServiceName: string
-        ConstructId: string
-        Config: AppRunnerServiceConfig
-        /// The underlying CDK CfnService construct
-        mutable Service: CfnService option
-    }
+type AppRunnerServiceSpec =
+    { ServiceName: string
+      ConstructId: string
+      Props: CfnServiceProps
+      mutable Service: CfnService option }
 
     /// Gets the service URL
     member this.ServiceUrl =
@@ -65,7 +62,7 @@ type AppRunnerServiceResource =
         | None -> null
 
 type AppRunnerServiceBuilder(name: string) =
-    member _.Yield _ : AppRunnerServiceConfig =
+    member _.Yield(_: unit) : AppRunnerServiceConfig =
         { ServiceName = name
           ConstructId = None
           SourceConfiguration = None
@@ -114,9 +111,30 @@ type AppRunnerServiceBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: AppRunnerServiceConfig) : AppRunnerServiceResource =
+    member _.Run(config: AppRunnerServiceConfig) : AppRunnerServiceSpec =
         let serviceName = config.ServiceName
         let constructId = config.ConstructId |> Option.defaultValue serviceName
+
+        let props = Amazon.CDK.AWS.AppRunner.CfnServiceProps()
+        props.ServiceName <- config.ServiceName
+
+        config.SourceConfiguration
+        |> Option.iter (fun v -> props.SourceConfiguration <- v)
+
+        config.InstanceConfiguration
+        |> Option.iter (fun v -> props.InstanceConfiguration <- v)
+
+        config.HealthCheckConfiguration
+        |> Option.iter (fun v -> props.HealthCheckConfiguration <- v)
+
+        config.AutoScalingConfigurationArn
+        |> Option.iter (fun v -> props.AutoScalingConfigurationArn <- v)
+
+        if not config.Tags.IsEmpty then
+            props.Tags <-
+                config.Tags
+                |> List.map (fun (k, v) -> CfnTag(Key = k, Value = v) :> ICfnTag)
+                |> Array.ofList
 
         // Validate required configuration
         match config.SourceConfiguration with
@@ -125,7 +143,7 @@ type AppRunnerServiceBuilder(name: string) =
 
         { ServiceName = serviceName
           ConstructId = constructId
-          Config = config
+          Props = props
           Service = None }
 
     [<CustomOperation("constructId")>]

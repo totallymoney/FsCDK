@@ -48,7 +48,7 @@ let xray_group_tests =
 
               let _ =
                   stack "TestStack" {
-                      app
+                      scope app
 
                       xrayGroup "ProductionErrors" {
                           filterExpression XRayHelpers.FilterExpressions.serverErrors
@@ -69,6 +69,7 @@ let xray_group_tests =
 
               Expect.isNotEmpty httpErrors "Filters should work"
           } ]
+    |> testSequenced
 
 [<Tests>]
 let xray_sampling_rule_tests =
@@ -113,7 +114,7 @@ let xray_sampling_rule_tests =
 
               let _ =
                   stack "TestStack" {
-                      app
+                      scope app
 
                       xraySamplingRule "HighPrioritySampling" {
                           priority 100
@@ -132,3 +133,4 @@ let xray_sampling_rule_tests =
               Expect.equal XRayHelpers.SamplingRates.tenPercent 0.10 "10% rate should be 0.10"
               Expect.equal XRayHelpers.SamplingRates.all 1.0 "All rate should be 1.0"
           } ]
+    |> testSequenced

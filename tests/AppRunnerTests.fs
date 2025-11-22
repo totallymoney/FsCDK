@@ -38,3 +38,4 @@ let apprunner_service_tests =
               Expect.isNotNull AppRunnerHelpers.InstanceSizes.medium "Medium size should exist"
               Expect.isNotNull AppRunnerHelpers.InstanceSizes.large "Large size should exist"
           } ]
+    |> testSequenced

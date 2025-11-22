@@ -33,16 +33,17 @@ type SSMParameterConfig =
       ParameterTier: ParameterTier option
       AllowedPattern: string option }
 
-type SSMParameterResource =
+type SSMParameterSpec =
     {
         ParameterName: string
         ConstructId: string
         /// The underlying CDK StringParameter construct
-        Parameter: StringParameter
+        Props: StringParameterProps
+        mutable Parameter: StringParameter option
     }
 
 type SSMParameterBuilder(name: string) =
-    member _.Yield _ : SSMParameterConfig =
+    member _.Yield(_: unit) : SSMParameterConfig =
         { ParameterName = name
           ConstructId = None
           StringValue = None
@@ -76,7 +77,7 @@ type SSMParameterBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: SSMParameterConfig) : SSMParameterResource =
+    member _.Run(config: SSMParameterConfig) : SSMParameterSpec =
         let parameterName = config.ParameterName
         let constructId = config.ConstructId |> Option.defaultValue parameterName
 
@@ -93,7 +94,8 @@ type SSMParameterBuilder(name: string) =
 
         { ParameterName = parameterName
           ConstructId = constructId
-          Parameter = null }
+          Props = props
+          Parameter = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: SSMParameterConfig, id: string) = { config with ConstructId = Some id }
@@ -142,16 +144,16 @@ type SSMDocumentConfig =
       DocumentFormat: string option
       TargetType: string option }
 
-type SSMDocumentResource =
+type SSMDocumentSpec =
     {
         DocumentName: string
         ConstructId: string
         /// The underlying CDK CfnDocument construct
-        Document: CfnDocument
+        mutable Document: CfnDocument option
     }
 
 type SSMDocumentBuilder(name: string) =
-    member _.Yield _ : SSMDocumentConfig =
+    member _.Yield(_: unit) : SSMDocumentConfig =
         { DocumentName = name
           ConstructId = None
           Content = None
@@ -185,7 +187,7 @@ type SSMDocumentBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: SSMDocumentConfig) : SSMDocumentResource =
+    member _.Run(config: SSMDocumentConfig) : SSMDocumentSpec =
         let documentName = config.DocumentName
         let constructId = config.ConstructId |> Option.defaultValue documentName
 
@@ -202,7 +204,7 @@ type SSMDocumentBuilder(name: string) =
 
         { DocumentName = documentName
           ConstructId = constructId
-          Document = null }
+          Document = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: SSMDocumentConfig, id: string) = { config with ConstructId = Some id }
@@ -254,10 +256,10 @@ module SSMBuilders =
     /// Creates a new SSM Parameter Store parameter builder.
     /// Example: ssmParameter "/myapp/config/dbhost" { stringValue "localhost"; description "Database host" }
     /// </summary>
-    let ssmParameter name = SSMParameterBuilder name
+    let ssmParameter name = SSMParameterBuilder(name)
 
     /// <summary>
     /// Creates a new SSM Document builder.
     /// Example: ssmDocument "InstallSoftware" { content (powerShellRunCommand ["choco install nodejs"]) }
     /// </summary>
-    let ssmDocument name = SSMDocumentBuilder name
+    let ssmDocument name = SSMDocumentBuilder(name)

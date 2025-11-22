@@ -22,7 +22,7 @@ type PermissionConfig =
       EventSourceToken: string option }
 
 type PermissionBuilder(id: string) =
-    member _.Yield _ : PermissionConfig =
+    member _.Yield(_: unit) : PermissionConfig =
         { Id = id
           Principal = None
           Action = None

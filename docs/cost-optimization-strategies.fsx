@@ -36,7 +36,7 @@ Minimize costs in development without sacrificing functionality:
 
 stack "DevEnvironment" {
     // Minimal VPC - single NAT or no NAT
-    let devVpc =
+    let! devVpc =
         vpc "DevVPC" {
             maxAzs 2
             natGateways 0 // Save ~$32/month - use public subnets
@@ -80,7 +80,7 @@ Full security and high availability:
 
 stack "ProductionEnvironment" {
     // Production VPC with HA
-    let prodVpc =
+    let! prodVpc =
         vpc "ProdVPC" {
             maxAzs 3
             natGateways 2 // HA: one per AZ
@@ -170,22 +170,27 @@ Gateway endpoints (S3, DynamoDB) are **free** - always use them!
 ### Storage Optimization
 *)
 // Define VPC first
-let myVpc =
-    vpc "MyVpc" {
-        maxAzs 2
-        natGateways 1
-        cidr "10.0.0.0/16"
+
+stack "DatabaseStack" {
+
+    let! myVpc =
+        vpc "MyVpc" {
+            maxAzs 2
+            natGateways 1
+            cidr "10.0.0.0/16"
+        }
+
+    rdsInstance "OptimizedDB" {
+        vpc myVpc
+        postgresEngine
+
+        // Auto-scaling storage - pay only for what you use
+        allocatedStorage 20 // Start small (20GB minimum)
+        maxAllocatedStorage 100 // Auto-scale up to 100GB as needed
+
+        storageType StorageType.GP3 // 20% cheaper than gp2, better performance
     }
 
-rdsInstance "OptimizedDB" {
-    vpc myVpc
-    postgresEngine
-
-    // Auto-scaling storage - pay only for what you use
-    allocatedStorage 20 // Start small (20GB minimum)
-    maxAllocatedStorage 100 // Auto-scale up to 100GB as needed
-
-    storageType StorageType.GP3 // 20% cheaper than gp2, better performance
 }
 
 (**
@@ -304,7 +309,7 @@ Set up budget alerts for each environment:
 ```fsharp
 // Use AWS Budgets to alert on cost thresholds
 // Dev: Alert at $50
-// Staging: Alert at $150  
+// Staging: Alert at $150
 // Production: Alert at $300
 ```
 

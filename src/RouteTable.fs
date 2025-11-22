@@ -24,7 +24,7 @@ open Amazon.CDK
 type RouteTableConfig =
     { RouteTableName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       Tags: (string * string) list }
 
 type RouteTableSpec =
@@ -33,16 +33,8 @@ type RouteTableSpec =
       Props: CfnRouteTableProps
       mutable RouteTable: CfnRouteTable option }
 
-    /// Gets the underlying CfnRouteTable resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.RouteTable with
-        | Some rt -> rt
-        | None ->
-            failwith
-                $"RouteTable '{this.RouteTableName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type RouteTableBuilder(name: string) =
-    member _.Yield _ : RouteTableConfig =
+    member _.Yield(_: unit) : RouteTableConfig =
         { RouteTableName = name
           ConstructId = None
           Vpc = None
@@ -79,9 +71,7 @@ type RouteTableBuilder(name: string) =
         // VPC is required
         props.VpcId <-
             match config.Vpc with
-            | Some vpcRef ->
-                let vpc = VpcHelpers.resolveVpcRef vpcRef
-                vpc.VpcId
+            | Some vpc -> vpc.VpcId
             | None -> invalidArg "vpc" "VPC is required for Route Table"
 
         if not (List.isEmpty config.Tags) then
@@ -101,15 +91,7 @@ type RouteTableBuilder(name: string) =
 
     /// <summary>Sets the VPC for the route table.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: RouteTableConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: RouteTableConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: RouteTableConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Adds a tag to the route table.</summary>
     [<CustomOperation("tag")>]
@@ -139,7 +121,7 @@ type RouteSpec =
       Props: CfnRouteProps }
 
 type RouteBuilder(name: string) =
-    member _.Yield _ : RouteConfig =
+    member _.Yield(_: unit) : RouteConfig =
         { RouteName = name
           ConstructId = None
           RouteTable = None

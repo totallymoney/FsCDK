@@ -50,3 +50,4 @@ let oidc_provider_tests =
 
               Expect.equal providerSpec.ConstructId "MyProvider" "ConstructId should default to name"
           } ]
+    |> testSequenced

@@ -13,7 +13,7 @@ let s3_lifecycle_rule_builder_tests =
               let app = App()
 
               stack "S3StackLifecycleBuilder" {
-                  app
+                  scope app
 
                   bucket "my-bucket-lifecycle-builder" {
                       constructId "MyBucketLifecycleBuilder"
@@ -36,7 +36,7 @@ let s3_lifecycle_rule_builder_tests =
               let app = App()
 
               stack "S3StackLifecycleBuilder" {
-                  app
+                  scope app
 
                   bucket "my-bucket-lifecycle-builder" {
                       constructId "MyBucketLifecycleBuilder"
@@ -67,7 +67,7 @@ let s3_lifecycle_rule_builder_tests =
               let app = App()
 
               stack "S3StackLifecycleBuilder" {
-                  app
+                  scope app
 
                   bucket "my-bucket-lifecycle-builder" {
                       constructId "MyBucketLifecycleBuilder"

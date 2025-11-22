@@ -4,6 +4,7 @@ namespace FsCDK
 // SQS Queue Configuration DSL
 // ============================================================================
 
+open Amazon.CDK
 open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.KMS
 
@@ -23,36 +24,12 @@ type QueueConfig =
 
 type QueueSpec =
     { QueueName: string
-      ConstructId: string // Construct ID for CDK
-      VisibilityTimeout: float option // seconds
-      MessageRetention: float option // seconds
-      FifoQueue: bool option
-      ContentBasedDeduplication: bool option
-      DelaySeconds: int option
-      DeadLetterQueueName: string option
-      MaxReceiveCount: int option
-      Encryption: QueueEncryption option
-      EncryptionMasterKey: IKey option
+      ConstructId: string
+      Props: QueueProps
       mutable Queue: IQueue option }
 
-type QueueRef =
-    | QueueInterface of IQueue
-    | QueueSpecRef of QueueSpec
-
-module QueueHelpers =
-    /// Resolves a QueueRef to an IQueue
-    let resolveQueueRef (ref: QueueRef) =
-        match ref with
-        | QueueInterface qi -> qi
-        | QueueSpecRef spec ->
-            match spec.Queue with
-            | Some q -> q
-            | None ->
-                failwith
-                    $"Queue '{spec.QueueName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type QueueBuilder(name: string) =
-    member _.Yield _ : QueueConfig =
+    member _.Yield(_: unit) : QueueConfig =
         { QueueName = name
           ConstructId = None
           VisibilityTimeout = None
@@ -106,18 +83,32 @@ type QueueBuilder(name: string) =
         // Construct ID defaults to queue name if not specified
         let constructId = config.ConstructId |> Option.defaultValue queueName
 
+        let props = QueueProps()
+        props.QueueName <- config.QueueName
+
+        config.VisibilityTimeout
+        |> Option.iter (fun v -> props.VisibilityTimeout <- Duration.Seconds(v))
+
+        config.MessageRetention
+        |> Option.iter (fun r -> props.RetentionPeriod <- Duration.Seconds(r))
+
+        config.FifoQueue |> Option.iter (fun f -> props.Fifo <- f)
+
+        config.ContentBasedDeduplication
+        |> Option.iter (fun c -> props.ContentBasedDeduplication <- c)
+
+        config.DelaySeconds
+        |> Option.iter (fun d -> props.DeliveryDelay <- Duration.Seconds(float d))
+
+        config.Encryption |> Option.iter (fun e -> props.Encryption <- e)
+
+        config.EncryptionMasterKey
+        |> Option.iter (fun k -> props.EncryptionMasterKey <- k)
+
         // Avoid using Amazon.CDK.Duration at spec-build time to keep tests jsii-free
         { QueueName = queueName
           ConstructId = constructId
-          VisibilityTimeout = config.VisibilityTimeout
-          MessageRetention = config.MessageRetention
-          FifoQueue = config.FifoQueue
-          ContentBasedDeduplication = config.ContentBasedDeduplication
-          DelaySeconds = config.DelaySeconds
-          DeadLetterQueueName = config.DeadLetterQueueName
-          MaxReceiveCount = config.MaxReceiveCount
-          Encryption = config.Encryption
-          EncryptionMasterKey = config.EncryptionMasterKey
+          Props = props
           Queue = None }
 
     /// <summary>Sets the construct ID for the queue.</summary>

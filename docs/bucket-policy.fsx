@@ -31,7 +31,7 @@ Mirror the AWS Security Blog post “How to enforce TLS for S3” by denying any
 *)
 
 stack "SecureBucket" {
-    let myBucket =
+    let! myBucket =
         bucket "MyBucket" {
             versioned true
             encryption BucketEncryption.S3_MANAGED
@@ -54,7 +54,7 @@ open Amazon.CDK.AWS.CloudFront
 
 stack "CloudFrontOrigin" {
 
-    let websiteBucket =
+    let! websiteBucket =
         bucket "Website" {
             blockPublicAccess BlockPublicAccess.BLOCK_ALL
             encryption BucketEncryption.S3_MANAGED
@@ -78,8 +78,7 @@ Restrict bucket access to specific IP addresses.
 *)
 
 stack "IPRestrictedBucket" {
-    let privateBucket =
-        bucket "PrivateBucket" { blockPublicAccess BlockPublicAccess.BLOCK_ALL }
+    let! privateBucket = bucket "PrivateBucket" { blockPublicAccess BlockPublicAccess.BLOCK_ALL }
 
     bucketPolicy "IPRestriction" {
         bucket privateBucket
@@ -95,7 +94,7 @@ Block access from known malicious IPs.
 *)
 
 stack "BlockMaliciousIPs" {
-    let publicBucket = bucket "PublicBucket" { () }
+    let! publicBucket = bucket "PublicBucket" { () }
 
     bucketPolicy "BlockBadActors" {
         bucket publicBucket
@@ -111,7 +110,7 @@ Add custom policy statements for specific requirements.
 *)
 
 stack "CustomPolicy" {
-    let dataBucket = bucket "DataBucket" { versioned true }
+    let! dataBucket = bucket "DataBucket" { versioned true }
 
     let readOnlyStatement =
         PolicyStatement(
@@ -120,9 +119,7 @@ stack "CustomPolicy" {
                 Effect = Effect.ALLOW,
                 Principals = [| AccountPrincipal("123456789012") :> IPrincipal |],
                 Actions = [| "s3:GetObject"; "s3:ListBucket" |],
-                Resources =
-                    [| dataBucket.Bucket.Value.BucketArn
-                       dataBucket.Bucket.Value.BucketArn + "/*" |]
+                Resources = [| dataBucket.BucketArn; dataBucket.BucketArn + "/*" |]
             )
         )
 
@@ -140,7 +137,7 @@ Combine multiple security controls in one policy.
 *)
 
 stack "ComprehensivePolicy" {
-    let secureBucket =
+    let! secureBucket =
         bucket "SecureBucket" {
             versioned true
             encryption BucketEncryption.KMS_MANAGED
@@ -153,9 +150,7 @@ stack "ComprehensivePolicy" {
                 Effect = Effect.ALLOW,
                 Principals = [| ArnPrincipal("arn:aws:iam::123456789012:role/AdminRole") :> IPrincipal |],
                 Actions = [| "s3:*" |],
-                Resources =
-                    [| secureBucket.Bucket.Value.BucketArn
-                       secureBucket.Bucket.Value.BucketArn + "/*" |]
+                Resources = [| secureBucket.BucketArn; secureBucket.BucketArn + "/*" |]
             )
         )
 

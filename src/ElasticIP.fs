@@ -49,7 +49,7 @@ type ElasticIPResource =
     member this.AllocationId = this.ElasticIP.AttrAllocationId
 
 type ElasticIPBuilder(name: string) =
-    member _.Yield _ : ElasticIPConfig =
+    member _.Yield(_: unit) : ElasticIPConfig =
         { EipName = name
           ConstructId = None
           Domain = Some "vpc"

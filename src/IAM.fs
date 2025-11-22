@@ -3,21 +3,8 @@ namespace FsCDK
 open Amazon.CDK.AWS.IAM
 open System.Text.RegularExpressions
 
-// ============================================================================
-// Role Reference Types - Support for referencing roles flexibly
-// ============================================================================
-
-/// <summary>
-/// Discriminated union for referencing IAM roles in two ways:
-/// - RoleInterface: Direct reference to an IRole instance
-/// - RoleSpecRef: Reference to a LambdaRoleSpec (will be resolved at build time)
-/// </summary>
-type RoleRef =
-    | RoleInterface of IRole
-    | RoleSpecRef of LambdaRoleSpec
-
 // Forward declaration - LambdaRoleSpec is defined below
-and LambdaRoleSpec =
+type LambdaRoleSpec =
     { RoleName: string
       ConstructId: string
       mutable Role: IRole option }
@@ -29,13 +16,6 @@ and LambdaRoleSpec =
         | None ->
             failwith
                 $"Role '{this.RoleName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-module RoleHelpers =
-    /// Resolves a role reference to an IRole
-    let resolveRoleRef (ref: RoleRef) =
-        match ref with
-        | RoleInterface role -> role
-        | RoleSpecRef spec -> spec.Resource
 
 /// <summary>
 /// IAM helpers for creating roles and policies following least-privilege principles.
@@ -190,7 +170,7 @@ module IAM =
           IncludeXRay: bool option }
 
     type LambdaRoleBuilder(name: string) =
-        member _.Yield _ : LambdaRoleConfig =
+        member _.Yield(_: unit) : LambdaRoleConfig =
             { RoleName = name
               ConstructId = None
               AssumeRolePrincipal = Some "lambda.amazonaws.com"

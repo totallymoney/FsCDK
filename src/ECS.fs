@@ -4,12 +4,6 @@ open Amazon.CDK
 open Amazon.CDK.AWS.ECS
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.IAM
-open Amazon.CDK.AWS.ElasticLoadBalancingV2
-open Amazon.CDK.AWS.Logs
-open Amazon.CDK.AWS.SecretsManager
-open Amazon.CDK.AWS.SSM
-open Amazon.CDK.AWS.KMS
-open Amazon.CDK.AWS.ECR
 
 /// <summary>
 /// High-level ECS Cluster builder following AWS best practices.
@@ -25,20 +19,17 @@ open Amazon.CDK.AWS.ECR
 type ECSClusterConfig =
     { ClusterName: string
       ConstructId: string option
-      Vpc: FsCDK.VpcRef option
+      Vpc: IVpc option
       ContainerInsights: ContainerInsights option
       EnableFargateCapacityProviders: bool option }
 
-type ECSClusterResource =
-    {
-        ClusterName: string
-        ConstructId: string
-        /// The underlying CDK Cluster construct
-        Cluster: Cluster
-    }
+type ECSClusterSpec =
+    { ClusterName: string
+      ConstructId: string
+      mutable Cluster: Cluster option }
 
 type ECSClusterBuilder(name: string) =
-    member _.Yield _ : ECSClusterConfig =
+    member _.Yield(_: unit) : ECSClusterConfig =
         { ClusterName = name
           ConstructId = None
           Vpc = None
@@ -65,15 +56,14 @@ type ECSClusterBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ECSClusterConfig) : ECSClusterResource =
+    member _.Run(config: ECSClusterConfig) : ECSClusterSpec =
         let clusterName = config.ClusterName
         let constructId = config.ConstructId |> Option.defaultValue clusterName
 
         let props = ClusterProps()
         props.ClusterName <- clusterName
 
-        config.Vpc
-        |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
 
         config.ContainerInsights
         |> Option.iter (fun v -> props.ContainerInsightsV2 <- v)
@@ -83,20 +73,13 @@ type ECSClusterBuilder(name: string) =
 
         { ClusterName = clusterName
           ConstructId = constructId
-          Cluster = null }
+          Cluster = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ECSClusterConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: ECSClusterConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: ECSClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     [<CustomOperation("containerInsights")>]
     member _.ContainerInsights(config: ECSClusterConfig, insights: ContainerInsights) =
@@ -129,19 +112,16 @@ type ECSFargateServiceConfig =
       TaskDefinition: TaskDefinition option
       DesiredCount: int option
       AssignPublicIp: bool option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       VpcSubnets: SubnetSelection option }
 
-type ECSFargateServiceResource =
-    {
-        ServiceName: string
-        ConstructId: string
-        /// The underlying CDK FargateService construct
-        Service: FargateService
-    }
+type ECSFargateServiceSpec =
+    { ServiceName: string
+      ConstructId: string
+      mutable Service: FargateService option }
 
 type ECSFargateServiceBuilder(name: string) =
-    member _.Yield _ : ECSFargateServiceConfig =
+    member _.Yield(_: unit) : ECSFargateServiceConfig =
         { ServiceName = name
           ConstructId = None
           Cluster = None
@@ -168,11 +148,7 @@ type ECSFargateServiceBuilder(name: string) =
           TaskDefinition = state2.TaskDefinition |> Option.orElse state1.TaskDefinition
           DesiredCount = state2.DesiredCount |> Option.orElse state1.DesiredCount
           AssignPublicIp = state2.AssignPublicIp |> Option.orElse state1.AssignPublicIp
-          SecurityGroups =
-            if state2.SecurityGroups.IsEmpty then
-                state1.SecurityGroups
-            else
-                state2.SecurityGroups
+          SecurityGroups = state1.SecurityGroups @ state2.SecurityGroups
           VpcSubnets = state2.VpcSubnets |> Option.orElse state1.VpcSubnets }
 
     member inline x.For
@@ -183,7 +159,7 @@ type ECSFargateServiceBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ECSFargateServiceConfig) : ECSFargateServiceResource =
+    member _.Run(config: ECSFargateServiceConfig) : ECSFargateServiceSpec =
         let serviceName = config.ServiceName
         let constructId = config.ConstructId |> Option.defaultValue serviceName
 
@@ -198,16 +174,13 @@ type ECSFargateServiceBuilder(name: string) =
         config.AssignPublicIp |> Option.iter (fun v -> props.AssignPublicIp <- v)
 
         if not config.SecurityGroups.IsEmpty then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.toArray
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
         { ServiceName = serviceName
           ConstructId = constructId
-          Service = null }
+          Service = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ECSFargateServiceConfig, id: string) = { config with ConstructId = Some id }
@@ -233,18 +206,8 @@ type ECSFargateServiceBuilder(name: string) =
     /// Add groups to securityGroups
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: ISecurityGroup list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupInterface
-
         { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
-
-    /// Add groups to securityGroups
-    [<CustomOperation("securityGroups")>]
-    member _.SecurityGroups(config: ECSFargateServiceConfig, sgs: SecurityGroupSpec list) =
-        let sgsrefs = sgs |> List.map SecurityGroupRef.SecurityGroupSpecRef
-
-        { config with
-            SecurityGroups = sgsrefs @ config.SecurityGroups }
+            SecurityGroups = sgs @ config.SecurityGroups }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: ECSFargateServiceConfig, subnets: SubnetSelection) =
@@ -272,8 +235,8 @@ type FargateTaskDefinitionConfig =
       ConstructId: string option
       Cpu: int option
       MemoryLimitMiB: int option
-      TaskRole: RoleRef option
-      ExecutionRole: RoleRef option
+      TaskRole: IRole option
+      ExecutionRole: IRole option
       Family: string option
       RuntimePlatform: RuntimePlatform option
       EphemeralStorageGiB: int option
@@ -295,7 +258,7 @@ type FargateTaskDefinitionSpec =
 
 type FargateTaskDefinitionBuilder(name: string) =
 
-    member _.Yield _ : FargateTaskDefinitionConfig =
+    member _.Yield(_: unit) : FargateTaskDefinitionConfig =
         { TaskDefinitionName = name
           ConstructId = None
           Cpu = Some 256
@@ -362,11 +325,9 @@ type FargateTaskDefinitionBuilder(name: string) =
         config.MemoryLimitMiB
         |> Option.iter (fun v -> props.MemoryLimitMiB <- System.Nullable<float>(float v))
 
-        config.TaskRole
-        |> Option.iter (fun v -> props.TaskRole <- RoleHelpers.resolveRoleRef v)
+        config.TaskRole |> Option.iter (fun v -> props.TaskRole <- v)
 
-        config.ExecutionRole
-        |> Option.iter (fun v -> props.ExecutionRole <- RoleHelpers.resolveRoleRef v)
+        config.ExecutionRole |> Option.iter (fun v -> props.ExecutionRole <- v)
 
         config.Family |> Option.iter (fun v -> props.Family <- v)
         config.RuntimePlatform |> Option.iter (fun v -> props.RuntimePlatform <- v)
@@ -401,27 +362,13 @@ type FargateTaskDefinitionBuilder(name: string) =
 
     /// <summary>Sets the IAM role for the task (application permissions).</summary>
     [<CustomOperation("taskRole")>]
-    member _.TaskRole(config: FargateTaskDefinitionConfig, role: IRole) =
-        { config with
-            TaskRole = Some(RoleInterface role) }
-
-    /// <summary>Sets the IAM role for the task (application permissions) using a LambdaRoleSpec.</summary>
-    [<CustomOperation("taskRole")>]
-    member _.TaskRoleSpec(config: FargateTaskDefinitionConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            TaskRole = Some(RoleSpecRef roleSpec) }
+    member _.TaskRole(config: FargateTaskDefinitionConfig, role: IRole) = { config with TaskRole = Some role }
 
     /// <summary>Sets the IAM role for the execution (pulls images, writes logs).</summary>
     [<CustomOperation("executionRole")>]
     member _.ExecutionRole(config: FargateTaskDefinitionConfig, role: IRole) =
         { config with
-            ExecutionRole = Some(RoleInterface role) }
-
-    /// <summary>Sets the IAM role for the execution (pulls images, writes logs) using a LambdaRoleSpec.</summary>
-    [<CustomOperation("executionRole")>]
-    member _.ExecutionRoleSpec(config: FargateTaskDefinitionConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            ExecutionRole = Some(RoleSpecRef roleSpec) }
+            ExecutionRole = Some role }
 
     /// <summary>Sets the task definition family name.</summary>
     [<CustomOperation("family")>]
@@ -463,12 +410,12 @@ type ContainerDefinitionConfig =
       MemoryReservationMiB: int option
       Essential: bool option
       Environment: Map<string, string>
-      Secrets: Map<string, Amazon.CDK.AWS.ECS.Secret>
-      PortMappings: Amazon.CDK.AWS.ECS.PortMapping list
+      Secrets: Map<string, Secret>
+      PortMappings: PortMapping list
       Command: string list
       EntryPoint: string list
       WorkingDirectory: string option
-      HealthCheck: Amazon.CDK.AWS.ECS.HealthCheck option
+      HealthCheck: HealthCheck option
       Logging: LogDriver option
       User: string option
       Privileged: bool option
@@ -506,13 +453,10 @@ type ContainerDefinitionHelper() =
             options.Environment <- System.Collections.Generic.Dictionary<string, string>(config.Environment)
 
         if not (Map.isEmpty config.Secrets) then
-            options.Secrets <- System.Collections.Generic.Dictionary<string, Amazon.CDK.AWS.ECS.Secret>(config.Secrets)
+            options.Secrets <- System.Collections.Generic.Dictionary<string, Secret>(config.Secrets)
 
         if not config.PortMappings.IsEmpty then
-            options.PortMappings <-
-                config.PortMappings
-                |> List.map (fun p -> p :> Amazon.CDK.AWS.ECS.IPortMapping)
-                |> Array.ofList
+            options.PortMappings <- config.PortMappings |> List.map (fun p -> p :> IPortMapping) |> Array.ofList
 
         if not config.Command.IsEmpty then
             options.Command <- Array.ofList config.Command

@@ -33,3 +33,4 @@ let elasticache_redis_tests =
               Expect.equal ElastiCacheHelpers.NodeTypes.micro "cache.t3.micro" "Micro type should match"
               Expect.equal ElastiCacheHelpers.NodeTypes.small "cache.t3.small" "Small type should match"
           } ]
+    |> testSequenced

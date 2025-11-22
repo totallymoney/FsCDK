@@ -104,14 +104,14 @@ Include CloudWatch alarms for critical metrics.
 
 
 stack "DashboardWithAlarms" {
-    let webFunction =
+    let! webFunction =
         lambda "WebApp" {
             runtime Runtime.DOTNET_8
             handler "App::Handle"
             code "./lambda"
         }
 
-    let errorMetric = webFunction.Function.Value.MetricErrors()
+    let errorMetric = webFunction.MetricErrors()
 
     let errorAlarm =
         // CloudWatch Alarm for Lambda errors

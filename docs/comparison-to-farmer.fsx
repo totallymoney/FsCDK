@@ -173,7 +173,7 @@ let myFunction = functions {
     service_plan_name "myserviceplan"
     runtime_stack Runtime.DotNet80
     operating_system OS.Linux
-    
+
     setting "StorageConnection" storageConnection
 }
 ```
@@ -227,7 +227,7 @@ let myDynamoTable =
 let vnet = vnet {
     name "myvnet"
     add_address_spaces [ "10.0.0.0/16" ]
-    
+
     add_subnets [
         subnet {
             name "webapp-subnet"
@@ -292,7 +292,7 @@ let aks = aks {
     name "myakscluster"
     service_principal_use_msi Enabled
     dns_prefix "myaks"
-    
+
     add_agent_pools [
         agentPool {
             name "nodepool1"
@@ -459,10 +459,12 @@ let regionName =
     |> Option.defaultValue "us-east-1"
 
 stack "MyStack" {
-    environment {
-        account accountId
-        region regionName
-    }
+    env (
+        environment {
+            account accountId
+            region regionName
+        }
+    )
 }
 
 (**
@@ -513,7 +515,7 @@ open FsCDK
 
 stack "MyStack" {
     Tags.tagStack this "my-project" "production" (Some "team@example.com")
-    
+
     // Resources...
 }
 ```

@@ -92,7 +92,7 @@ Use a custom S3 bucket for CloudTrail logs (with lifecycle rules for cost optimi
 
 stack "CustomBucketCloudTrail" {
     // Create custom S3 bucket with lifecycle rules
-    let trailBucket =
+    let! trailBucket =
         s3Bucket "CloudTrailLogs" {
             versioned true // Enable versioning for audit trail integrity
 

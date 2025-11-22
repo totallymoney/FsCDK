@@ -58,12 +58,12 @@ RDS automatically takes continuous backups, enabling restoration to any point wi
 *)
 
 stack "ProductionBackupStrategy" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     description "Production database with automated backups"
 
     // VPC for database
-    let prodVpc =
+    let! prodVpc =
         vpc "ProductionVpc" {
             maxAzs 2
             natGateways 1
@@ -118,10 +118,10 @@ For long-term compliance retention beyond 35 days, use RDS snapshots exported to
 *)
 
 stack "ComplianceBackups" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     // Compliance database with automated snapshots
-    let compVpc = vpc "ComplianceVpc" { maxAzs 2 }
+    let! compVpc = vpc "ComplianceVpc" { maxAzs 2 }
 
     rdsInstance "ComplianceDB" {
         vpc compVpc
@@ -166,7 +166,7 @@ RDS PITR allows restoration to any second within the retention period. This is c
 *)
 
 stack "PITRDatabase" {
-    let pitrVpc = vpc "PITRVpc" { maxAzs 2 }
+    let! pitrVpc = vpc "PITRVpc" { maxAzs 2 }
 
     rdsInstance "PITRDatabase" {
         vpc pitrVpc
@@ -215,11 +215,11 @@ Create read replicas in secondary regions that can be promoted during a disaster
 *)
 
 stack "MultiRegionDatabase" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     description "Primary database with cross-region DR"
 
-    let primaryVpc =
+    let! primaryVpc =
         vpc "PrimaryVpc" {
             maxAzs 3
             natGateways 2
@@ -266,7 +266,7 @@ DynamoDB Global Tables provide automatic multi-region replication with typical l
 *)
 
 stack "GlobalDynamoDB" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     table "GlobalUserData" {
         partitionKey "userId" AttributeType.STRING
@@ -361,11 +361,11 @@ Maintain minimal version of environment running in DR region. Core infrastructur
 *)
 
 stack "PilotLight" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     description "Pilot light infrastructure - core services minimal"
 
-    let pilotVpc = vpc "PilotVpc" { maxAzs 2 }
+    let! pilotVpc = vpc "PilotVpc" { maxAzs 2 }
 
     // Minimal database that can be scaled up
     rdsInstance "PilotDB" {
@@ -394,13 +394,15 @@ Scaled-down but fully functional version runs in DR region.
 *)
 
 stack "WarmStandby" {
-    environment {
-        region "us-west-2" // DR region
-    }
+    env (
+        environment {
+            region "us-west-2" // DR region
+        }
+    )
 
     description "Warm standby - scaled down production environment"
 
-    let warmVpc = vpc "WarmStandbyVpc" { maxAzs 2 }
+    let! warmVpc = vpc "WarmStandbyVpc" { maxAzs 2 }
 
     // Scaled down but fully functional
     rdsInstance "WarmStandbyDB" {
@@ -436,11 +438,11 @@ Used by Netflix, Airbnb, and other companies requiring five-nines availability.
 *)
 
 stack "HotStandbyPrimary" {
-    environment { region "us-east-1" }
+    env (environment { region "us-east-1" })
 
     description "Active-Active primary region"
 
-    let primaryVpc = vpc "PrimaryVpc" { maxAzs 3 }
+    let! primaryVpc = vpc "PrimaryVpc" { maxAzs 3 }
 
     rdsInstance "PrimaryDB" {
         vpc primaryVpc
@@ -460,11 +462,11 @@ stack "HotStandbyPrimary" {
 }
 
 stack "HotStandbySecondary" {
-    environment { region "us-west-2" }
+    env (environment { region "us-west-2" })
 
     description "Active-Active secondary region"
 
-    let secondaryVpc = vpc "SecondaryVpc" { maxAzs 3 }
+    let! secondaryVpc = vpc "SecondaryVpc" { maxAzs 3 }
 
     rdsInstance "SecondaryDB" {
         vpc secondaryVpc

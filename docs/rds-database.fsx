@@ -33,7 +33,7 @@ Create a PostgreSQL database with secure defaults.
 
 stack "BasicRDS" {
     // Create VPC
-    let appVpc = vpc "AppVPC" { maxAzs 2 }
+    let! appVpc = vpc "AppVPC" { maxAzs 2 }
 
     // Create database
     rdsInstance "AppDatabase" {
@@ -52,7 +52,7 @@ Production-ready configuration with Multi-AZ, encryption, and backups.
 *)
 
 stack "ProductionRDS" {
-    let prodVpc = vpc "ProdVPC" { maxAzs 3 }
+    let! prodVpc = vpc "ProdVPC" { maxAzs 3 }
 
     rdsInstance "ProdDatabase" {
         vpc prodVpc
@@ -91,7 +91,7 @@ Cost-optimized database for development/testing.
 *)
 
 stack "DevRDS" {
-    let devVpc = vpc "DevVPC" { maxAzs 2 }
+    let! devVpc = vpc "DevVPC" { maxAzs 2 }
 
     rdsInstance "DevDatabase" {
         vpc devVpc
@@ -120,7 +120,7 @@ Enable IAM database authentication for enhanced security.
 *)
 
 stack "IAMAuthRDS" {
-    let appVpc = vpc "AppVPC" { maxAzs 2 }
+    let! appVpc = vpc "AppVPC" { maxAzs 2 }
 
     rdsInstance "SecureDatabase" {
         vpc appVpc
@@ -253,7 +253,7 @@ Export database logs to CloudWatch for monitoring, compliance, and security anal
 *)
 
 stack "DatabaseWithLogging" {
-    let appVpc = vpc "AppVPC" { maxAzs 2 }
+    let! appVpc = vpc "AppVPC" { maxAzs 2 }
 
     rdsInstance "MonitoredDatabase" {
         vpc appVpc

@@ -5,8 +5,7 @@ open FsCDK
 
 [<Tests>]
 let custom_resource_tests =
-    testSequenced
-    <| testList
+    testList
         "Custom Resource DSL"
         [ test "fails when onCreate is missing" {
               let thrower () =
@@ -26,3 +25,4 @@ let custom_resource_tests =
               Expect.isNotNull (box CustomResourceHelpers.createSdkCall) "createSdkCall should exist"
               Expect.isTrue true "Custom resource helpers should be available"
           } ]
+    |> testSequenced

@@ -7,13 +7,7 @@ open Amazon.CDK.AWS.EC2
 // Resource Reference Types - for cross-referencing resources in the same stack
 // ============================================================================
 
-/// Represents a reference to a VPC that can be resolved later
-type VpcRef =
-    | VpcInterface of IVpc
-    | VpcSpecRef of VpcSpec
-
-// Forward declaration - VpcSpec is defined below
-and VpcSpec =
+type VpcSpec =
     { VpcName: string
       ConstructId: string
       Props: VpcProps
@@ -21,47 +15,11 @@ and VpcSpec =
       FlowLogRetention: Amazon.CDK.AWS.Logs.RetentionDays option
       mutable Vpc: IVpc option }
 
-    /// Gets the underlying IVpc resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Vpc with
-        | Some vpc -> vpc
-        | None ->
-            failwith
-                $"VPC '{this.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type SecurityGroupSpec =
     { SecurityGroupName: string
       ConstructId: string
       Props: SecurityGroupProps
       mutable SecurityGroup: ISecurityGroup option }
-
-type SecurityGroupRef =
-    | SecurityGroupInterface of ISecurityGroup
-    | SecurityGroupSpecRef of SecurityGroupSpec
-
-module VpcHelpers =
-    /// Resolves a VPC reference to an IVpc
-    let resolveVpcRef (ref: VpcRef) =
-        match ref with
-        | VpcInterface vpc -> vpc
-        | VpcSpecRef spec ->
-            match spec.Vpc with
-            | Some vpc -> vpc
-            | None ->
-                failwith
-                    $"VPC '{spec.VpcName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-    /// Resolves a VPC reference to an IVpc
-    let resolveSecurityGroupRef (ref: SecurityGroupRef) =
-        match ref with
-        | SecurityGroupInterface sgi -> sgi
-        | SecurityGroupSpecRef spec ->
-            match spec.SecurityGroup with
-            | Some sg -> sg
-            | None ->
-                failwith
-                    $"SecurityGroup '{spec.SecurityGroupName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 
 // ============================================================================
 // VPC Configuration DSL
@@ -83,7 +41,7 @@ type VpcConfig =
 
 type VpcBuilder(name: string) =
 
-    member _.Yield _ : VpcConfig =
+    member _.Yield(_: unit) : VpcConfig =
         { VpcName = name
           ConstructId = None
           MaxAzs = None
@@ -197,59 +155,113 @@ type VpcBuilder(name: string) =
           Vpc = None }
 
     /// <summary>Sets the construct ID for the VPC.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     constructId "MyCustomVpc"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: VpcConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the maximum number of Availability Zones to use.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="maxAzs">The maximum number of AZs (default: 2 for HA).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     maxAzs 3
+    /// }
+    /// </code>
     [<CustomOperation("maxAzs")>]
     member _.MaxAzs(config: VpcConfig, maxAzs: int) = { config with MaxAzs = Some maxAzs }
 
     /// <summary>Sets the number of NAT Gateways.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="natGateways">The number of NAT gateways (default: 1 for cost optimization).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     natGateways 2
+    /// }
+    /// </code>
     [<CustomOperation("natGateways")>]
     member _.NatGateways(config: VpcConfig, natGateways: int) =
         { config with
             NatGateways = Some natGateways }
 
     /// <summary>Adds a subnet configuration.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="subnetConfig">The subnet configuration.</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     subnet (SubnetConfiguration(Name = "Public", SubnetType = SubnetType.PUBLIC, CidrMask = 24))
+    /// }
+    /// </code>
     [<CustomOperation("subnet")>]
     member _.Subnet(config: VpcConfig, subnetConfig: SubnetConfiguration) =
         { config with
             SubnetConfiguration = subnetConfig :: config.SubnetConfiguration }
 
     /// <summary>Sets whether to enable DNS hostnames.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="enabled">Whether DNS hostnames are enabled (default: true).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     enableDnsHostnames false
+    /// }
+    /// </code>
     [<CustomOperation("enableDnsHostnames")>]
     member _.EnableDnsHostnames(config: VpcConfig, enabled: bool) =
         { config with
             EnableDnsHostnames = Some enabled }
 
     /// <summary>Sets whether to enable DNS support.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="enabled">Whether DNS support is enabled (default: true).</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     enableDnsSupport false
+    /// }
+    /// </code>
     [<CustomOperation("enableDnsSupport")>]
     member _.EnableDnsSupport(config: VpcConfig, enabled: bool) =
         { config with
             EnableDnsSupport = Some enabled }
 
     /// <summary>Sets the default instance tenancy.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="tenancy">The instance tenancy.</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     defaultInstanceTenancy DefaultInstanceTenancy.DEDICATED
+    /// }
+    /// </code>
     [<CustomOperation("defaultInstanceTenancy")>]
     member _.DefaultInstanceTenancy(config: VpcConfig, tenancy: DefaultInstanceTenancy) =
         { config with
             DefaultInstanceTenancy = Some tenancy }
 
     /// <summary>Sets the IP address configuration.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="ipAddresses">The IP addresses configuration.</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     ipAddresses (IpAddresses.Cidr "10.0.0.0/16")
+    /// }
+    /// </code>
     [<CustomOperation("ipAddresses")>]
     member _.IpAddresses(config: VpcConfig, ipAddresses: IIpAddresses) =
         { config with
             IpAddresses = Some ipAddresses }
 
     /// <summary>Sets the CIDR block for the VPC.</summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="cidr">The CIDR block (e.g., "10.0.0.0/16").</param>
+    /// <code lang="fsharp">
+    /// vpc "MyVpc" {
+    ///     cidr "10.0.0.0/16"
+    /// }
+    /// </code>
     [<CustomOperation("cidr")>]
     member _.Cidr(config: VpcConfig, cidr: string) =
         { config with
@@ -293,14 +305,14 @@ type VpcBuilder(name: string) =
 type SecurityGroupConfig =
     { SecurityGroupName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       Description: string option
       AllowAllOutbound: bool option
       DisableInlineRules: bool option }
 
 type SecurityGroupBuilder(name: string) =
 
-    member _.Yield _ : SecurityGroupConfig =
+    member _.Yield(_: unit) : SecurityGroupConfig =
         { SecurityGroupName = name
           ConstructId = None
           Vpc = None
@@ -356,10 +368,10 @@ type SecurityGroupBuilder(name: string) =
         // VPC is required
         props.Vpc <-
             match config.Vpc with
-            | Some vpcRef -> VpcHelpers.resolveVpcRef vpcRef
+            | Some vpc -> vpc
             | None -> invalidArg "vpc" "VPC is required for Security Group"
 
-        // AWS Best Practice: Least privilege - don't allow all outbound by default
+        // AWS Best Practice: the least privilege - don't allow all outbound by default
         // Users should explicitly allow what they need
         props.AllowAllOutbound <- config.AllowAllOutbound |> Option.defaultValue false
 
@@ -374,40 +386,61 @@ type SecurityGroupBuilder(name: string) =
           SecurityGroup = None }
 
     /// <summary>Sets the construct ID for the Security Group.</summary>
+    /// <param name="config">The current Security Group configuration.</param>
     /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     constructId "MyCustomSG"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: SecurityGroupConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the VPC for the Security Group.</summary>
+    /// <param name="config">The current Security Group configuration.</param>
     /// <param name="vpc">The VPC.</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     vpc myVpc
+    /// }
+    /// </code>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: SecurityGroupConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the Security Group from a VpcSpec.</summary>
-    /// <param name="vpcSpec">The VPC specification.</param>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: SecurityGroupConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: SecurityGroupConfig, vpc: IVpc) = { config with Vpc = Some vpc }
 
     /// <summary>Sets the description for the Security Group.</summary>
+    /// <param name="config">The current Security Group configuration.</param>
     /// <param name="description">The description.</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     description "Security group for my application"
+    /// }
+    /// </code>
     [<CustomOperation("description")>]
     member _.Description(config: SecurityGroupConfig, description: string) =
         { config with
             Description = Some description }
 
     /// <summary>Sets whether to allow all outbound traffic.</summary>
+    /// <param name="config">The current Security Group configuration.</param>
     /// <param name="allow">Whether to allow all outbound (default: false for least privilege).</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     allowAllOutbound true
+    /// }
+    /// </code>
     [<CustomOperation("allowAllOutbound")>]
     member _.AllowAllOutbound(config: SecurityGroupConfig, allow: bool) =
         { config with
             AllowAllOutbound = Some allow }
 
     /// <summary>Sets whether to disable inline rules.</summary>
+    /// <param name="config">The current Security Group configuration.</param>
     /// <param name="disable">Whether to disable inline rules.</param>
+    /// <code lang="fsharp">
+    /// securityGroup "MySecurityGroup" {
+    ///     disableInlineRules true
+    /// }
+    /// </code>
     [<CustomOperation("disableInlineRules")>]
     member _.DisableInlineRules(config: SecurityGroupConfig, disable: bool) =
         { config with
@@ -420,7 +453,7 @@ type SecurityGroupBuilder(name: string) =
 type GatewayVpcEndpointConfig =
     { EndpointName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       Service: IGatewayVpcEndpointService option
       Subnets: SubnetSelection list }
 
@@ -440,7 +473,7 @@ type GatewayVpcEndpointSpec =
 
 type GatewayVpcEndpointBuilder(name: string) =
 
-    member _.Yield _ : GatewayVpcEndpointConfig =
+    member _.Yield(_: unit) : GatewayVpcEndpointConfig =
         { EndpointName = name
           ConstructId = None
           Vpc = None
@@ -482,7 +515,7 @@ type GatewayVpcEndpointBuilder(name: string) =
         let props = GatewayVpcEndpointProps()
 
         match config.Vpc with
-        | Some vpc -> props.Vpc <- VpcHelpers.resolveVpcRef vpc
+        | Some vpc -> props.Vpc <- vpc
         | None -> invalidArg "vpc" "VPC is required for Gateway VPC Endpoint"
 
         match config.Service with
@@ -498,33 +531,60 @@ type GatewayVpcEndpointBuilder(name: string) =
           VpcEndpoint = None }
 
     /// <summary>Sets a custom construct ID.</summary>
+    /// <param name="config">The current Gateway VPC Endpoint configuration.</param>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// gatewayVpcEndpoint "S3Endpoint" {
+    ///     constructId "MyEndpointId"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: GatewayVpcEndpointConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the VPC for the endpoint.</summary>
+    /// <param name="config">The current Gateway VPC Endpoint configuration.</param>
+    /// <param name="vpc">The VPC.</param>
+    /// <code lang="fsharp">
+    /// gatewayVpcEndpoint "S3Endpoint" {
+    ///     vpc myVpc
+    /// }
+    /// </code>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: GatewayVpcEndpointConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the endpoint from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: GatewayVpcEndpointConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: GatewayVpcEndpointConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the service for the endpoint (e.g., S3, DynamoDB).</summary>
+    /// <param name="config">The current Gateway VPC Endpoint configuration.</param>
+    /// <param name="service">The gateway endpoint service (e.g., GatewayVpcEndpointAwsService.S3).</param>
+    /// <code lang="fsharp">
+    /// gatewayVpcEndpoint "S3Endpoint" {
+    ///     service GatewayVpcEndpointAwsService.S3
+    /// }
+    /// </code>
     [<CustomOperation("service")>]
     member _.Service(config: GatewayVpcEndpointConfig, service: IGatewayVpcEndpointService) =
         { config with Service = Some service }
 
     /// <summary>Adds subnet selection for the endpoint.</summary>
+    /// <param name="config">The current Gateway VPC Endpoint configuration.</param>
+    /// <param name="subnet">The subnet selection.</param>
+    /// <code lang="fsharp">
+    /// gatewayVpcEndpoint "S3Endpoint" {
+    ///     subnet (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
+    /// }
+    /// </code>
     [<CustomOperation("subnet")>]
     member _.Subnet(config: GatewayVpcEndpointConfig, subnet: SubnetSelection) =
         { config with
             Subnets = subnet :: config.Subnets }
 
     /// <summary>Adds multiple subnets for the endpoint.</summary>
+    /// <param name="config">The current Gateway VPC Endpoint configuration.</param>
+    /// <param name="subnets">The list of subnet selections.</param>
+    /// <code lang="fsharp">
+    /// gatewayVpcEndpoint "S3Endpoint" {
+    ///     subnets [ SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS) ]
+    /// }
+    /// </code>
     [<CustomOperation("subnets")>]
     member _.Subnets(config: GatewayVpcEndpointConfig, subnets: SubnetSelection list) =
         { config with
@@ -533,10 +593,10 @@ type GatewayVpcEndpointBuilder(name: string) =
 type InterfaceVpcEndpointConfig =
     { EndpointName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       Service: IInterfaceVpcEndpointService option
       PrivateDnsEnabled: bool option
-      SecurityGroups: SecurityGroupRef list
+      SecurityGroups: ISecurityGroup list
       Subnets: SubnetSelection option }
 
 type InterfaceVpcEndpointSpec =
@@ -555,7 +615,7 @@ type InterfaceVpcEndpointSpec =
 
 type InterfaceVpcEndpointBuilder(name: string) =
 
-    member _.Yield _ : InterfaceVpcEndpointConfig =
+    member _.Yield(_: unit) : InterfaceVpcEndpointConfig =
         { EndpointName = name
           ConstructId = None
           Vpc = None
@@ -583,11 +643,7 @@ type InterfaceVpcEndpointBuilder(name: string) =
           Vpc = state2.Vpc |> Option.orElse state1.Vpc
           Service = state2.Service |> Option.orElse state1.Service
           PrivateDnsEnabled = state2.PrivateDnsEnabled |> Option.orElse state1.PrivateDnsEnabled
-          SecurityGroups =
-            if state2.SecurityGroups.IsEmpty then
-                state1.SecurityGroups
-            else
-                state2.SecurityGroups @ state1.SecurityGroups
+          SecurityGroups = state1.SecurityGroups @ state2.SecurityGroups
           Subnets = state2.Subnets |> Option.orElse state1.Subnets }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> InterfaceVpcEndpointConfig) : InterfaceVpcEndpointConfig = f ()
@@ -607,7 +663,7 @@ type InterfaceVpcEndpointBuilder(name: string) =
         let props = InterfaceVpcEndpointProps()
 
         match config.Vpc with
-        | Some vpc -> props.Vpc <- VpcHelpers.resolveVpcRef vpc
+        | Some vpc -> props.Vpc <- vpc
         | None -> invalidArg "vpc" "VPC is required for Interface VPC Endpoint"
 
         match config.Service with
@@ -617,10 +673,7 @@ type InterfaceVpcEndpointBuilder(name: string) =
         config.PrivateDnsEnabled |> Option.iter (fun v -> props.PrivateDnsEnabled <- v)
 
         if not config.SecurityGroups.IsEmpty then
-            props.SecurityGroups <-
-                config.SecurityGroups
-                |> List.map VpcHelpers.resolveSecurityGroupRef
-                |> Array.ofList
+            props.SecurityGroups <- config.SecurityGroups |> List.toArray
 
         config.Subnets |> Option.iter (fun v -> props.Subnets <- v)
 
@@ -630,51 +683,86 @@ type InterfaceVpcEndpointBuilder(name: string) =
           VpcEndpoint = None }
 
     /// <summary>Sets a custom construct ID.</summary>
+    /// <param name="config">The current Interface VPC Endpoint configuration.</param>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// interfaceVpcEndpoint "SecretsManagerEndpoint" {
+    ///     constructId "MyInterfaceEndpointId"
+    /// }
+    /// </code>
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: InterfaceVpcEndpointConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the VPC for the endpoint.</summary>
+    /// <param name="config">The current Interface VPC Endpoint configuration.</param>
+    /// <param name="vpc">The VPC.</param>
+    /// <code lang="fsharp">
+    /// interfaceVpcEndpoint "SecretsManagerEndpoint" {
+    ///     vpc myVpc
+    /// }
+    /// </code>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: InterfaceVpcEndpointConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the endpoint from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: InterfaceVpcEndpointConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: InterfaceVpcEndpointConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the service for the endpoint.</summary>
+    /// <param name="config">The current Interface VPC Endpoint configuration.</param>
+    /// <param name="service">The interface endpoint service (e.g., InterfaceVpcEndpointAwsService.SECRETS_MANAGER).</param>
+    /// <code lang="fsharp">
+    /// interfaceVpcEndpoint "SecretsManagerEndpoint" {
+    ///     service InterfaceVpcEndpointAwsService.SECRETS_MANAGER
+    /// }
+    /// </code>
     [<CustomOperation("service")>]
     member _.Service(config: InterfaceVpcEndpointConfig, service: IInterfaceVpcEndpointService) =
         { config with Service = Some service }
 
     /// <summary>Controls whether to enable private DNS for the endpoint.</summary>
+    /// <param name="config">The current Interface VPC Endpoint configuration.</param>
+    /// <param name="enabled">Whether to enable private DNS (default: true).</param>
+    /// <code lang="fsharp">
+    /// interfaceVpcEndpoint "SecretsManagerEndpoint" {
+    ///     privateDnsEnabled true
+    /// }
+    /// </code>
     [<CustomOperation("privateDnsEnabled")>]
     member _.PrivateDnsEnabled(config: InterfaceVpcEndpointConfig, enabled: bool) =
         { config with
             PrivateDnsEnabled = Some enabled }
 
     /// <summary>Adds a security group to the endpoint.</summary>
+    /// <param name="config">The current Interface VPC Endpoint configuration.</param>
+    /// <param name="sg">The security group.</param>
+    /// <code lang="fsharp">
+    /// interfaceVpcEndpoint "SecretsManagerEndpoint" {
+    ///     securityGroup mySecurityGroup
+    /// }
+    /// </code>
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: InterfaceVpcEndpointConfig, sg: ISecurityGroup) =
         { config with
-            SecurityGroups = SecurityGroupInterface sg :: config.SecurityGroups }
-
-    /// <summary>Adds a security group to the endpoint from a SecurityGroupSpec.</summary>
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: InterfaceVpcEndpointConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroups = SecurityGroupSpecRef sg :: config.SecurityGroups }
+            SecurityGroups = sg :: config.SecurityGroups }
 
     /// <summary>Adds multiple security groups to the endpoint.</summary>
+    /// <param name="config">The current Interface VPC Endpoint configuration.</param>
+    /// <param name="sgs">The list of security groups.</param>
+    /// <code lang="fsharp">
+    /// interfaceVpcEndpoint "SecretsManagerEndpoint" {
+    ///     securityGroups [ sg1; sg2 ]
+    /// }
+    /// </code>
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: InterfaceVpcEndpointConfig, sgs: ISecurityGroup list) =
         { config with
-            SecurityGroups = (sgs |> List.map SecurityGroupInterface) @ config.SecurityGroups }
+            SecurityGroups = sgs @ config.SecurityGroups }
 
     /// <summary>Sets the subnets for the endpoint.</summary>
+    /// <param name="config">The current Interface VPC Endpoint configuration.</param>
+    /// <param name="subnets">The subnet selection.</param>
+    /// <code lang="fsharp">
+    /// interfaceVpcEndpoint "SecretsManagerEndpoint" {
+    ///     subnets (SubnetSelection(SubnetType = SubnetType.PRIVATE_WITH_EGRESS))
+    /// }
+    /// </code>
     [<CustomOperation("subnets")>]
     member _.Subnets(config: InterfaceVpcEndpointConfig, subnets: SubnetSelection) =
         { config with Subnets = Some subnets }

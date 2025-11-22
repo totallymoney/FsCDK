@@ -77,7 +77,7 @@ CloudFront requires certificates in us-east-1. Use DnsValidatedCertificate for c
 *)
 
 stack "CloudFrontCert" {
-    let myHostedZone = hostedZone "example.com" { comment "Production domain" }
+    let! myHostedZone = hostedZone "example.com" { comment "Production domain" }
 
     dnsValidatedCertificate "CFCert" {
         domainName "cdn.example.com"

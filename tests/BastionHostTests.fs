@@ -6,8 +6,7 @@ open FsCDK
 
 [<Tests>]
 let bastion_host_tests =
-    testSequenced
-    <| testList
+    testList
         "Bastion Host DSL"
         [ test "requires VPC configuration" {
               let stack = Amazon.CDK.Stack(Amazon.CDK.App(), "Test")
@@ -88,3 +87,4 @@ let bastion_host_tests =
 
               Expect.equal bastionSpec.Props.RequireImdsv2.Value false "Should allow disabling IMDSv2"
           } ]
+    |> testSequenced

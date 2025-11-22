@@ -52,3 +52,4 @@ let lambda_powertools_tests =
               | Some(_, level) -> Expect.equal level "INFO" "Production should use INFO level"
               | None -> failtest "Log level not found"
           } ]
+    |> testSequenced

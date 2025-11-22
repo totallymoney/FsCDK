@@ -1,5 +1,6 @@
 module FsCDK.Tests.DocumentDBTests
 
+open Amazon.CDK
 open Expecto
 open FsCDK
 
@@ -15,12 +16,19 @@ let documentdb_cluster_tests =
           }
 
           test "fails when master password is missing" {
-              let vpcSpec = vpc "TestVpc" { () }
+              let app = app { context [ "masterPassword", "" ] }
 
-              let thrower () =
-                  documentDBCluster "MyDocDB" { vpc vpcSpec } |> ignore
+              let stage = Stage(app, "TestStage")
 
-              Expect.throws thrower "DocumentDB builder should throw when master password is missing"
+              stack "TestStack" {
+                  scope app
+                  let! vpcSpec = vpc "TestVpc" { () }
+
+                  let thrower () =
+                      documentDBCluster "MyDocDB" { vpc vpcSpec } |> ignore
+
+                  Expect.throws thrower "DocumentDB builder should throw when master password is missing"
+              }
           }
 
           test "defaults constructId to cluster name" {
@@ -34,3 +42,4 @@ let documentdb_cluster_tests =
               Expect.equal DocumentDBHelpers.InstanceTypes.t3_medium "db.t3.medium" "t3.medium type should match"
               Expect.equal DocumentDBHelpers.InstanceTypes.r5_large "db.r5.large" "r5.large type should match"
           } ]
+    |> testSequenced

@@ -36,7 +36,7 @@ open FsCDK
 let app = App()
 
 stack "PowertoolsDemo" {
-    app
+    scope app
 
     lambda "MyFunction" {
         handler "app.handler"
@@ -478,7 +478,7 @@ public class OrderHandler implements RequestHandler<OrderEvent, OrderResponse> {
 *)
 
 stack "MultiRuntimeStack" {
-    app
+    scope app
 
     // Python function - Powertools added automatically
     lambda "PythonFunction" {

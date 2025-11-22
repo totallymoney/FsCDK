@@ -74,12 +74,15 @@ let rds_proxy_dsl_tests =
           }
 
           test "fails when proxy target is missing" {
-              let vpcSpec = vpc "TestVpc" { () }
+              stack "TestStack" {
+                  let! vpcSpec = vpc "TestVpc" { () }
 
-              let thrower () =
-                  rdsProxy "MyProxy" { vpc vpcSpec } |> ignore
+                  let thrower () =
+                      rdsProxy "MyProxy" { vpc vpcSpec } |> ignore
 
-              Expect.throws thrower "RDS Proxy should throw when proxy target is missing"
+                  Expect.throws thrower "RDS Proxy should throw when proxy target is missing"
+
+              }
           }
 
           // NOTE: Full integration tests would need actual VPC and database resources

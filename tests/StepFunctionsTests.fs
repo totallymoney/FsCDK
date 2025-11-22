@@ -1,5 +1,6 @@
 module FsCDK.Tests.StepFunctionsTests
 
+open Amazon.CDK.AWS.Logs
 open Expecto
 open FsCDK
 open Amazon.CDK
@@ -7,8 +8,7 @@ open Amazon.CDK.AWS.StepFunctions
 
 [<Tests>]
 let step_functions_tests =
-    testSequenced
-    <| testList
+    testList
         "Step Functions DSL"
         [ test "fails when definition is missing" {
               let thrower () =
@@ -78,11 +78,11 @@ let step_functions_tests =
               let app = App()
               let testStack = Stack(app, "TestStack")
               let simplePass = Pass(testStack, "PassState")
-              let logGroup = Amazon.CDK.AWS.Logs.LogGroup(testStack, "OrderProcessorLogs")
+              let logGroup = LogGroup(testStack, "OrderProcessorLogs")
 
               let _ =
                   stack "TestStack2" {
-                      app
+                      scope app
 
                       stepFunction "OrderProcessor" {
                           definition simplePass
@@ -107,3 +107,4 @@ let step_functions_tests =
                   StateMachineType.EXPRESS
                   "Express type should match"
           } ]
+    |> testSequenced

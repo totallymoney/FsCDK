@@ -17,10 +17,6 @@ type BucketSpec =
         mutable Bucket: Bucket option
     }
 
-type BucketRef =
-    | BucketInterface of IBucket // AWS class
-    | BucketSpecRef of BucketSpec // FsCDK class
-
 /// <summary>
 /// High-level S3 Bucket builder following AWS security best practices.
 ///
@@ -46,11 +42,11 @@ type BucketConfig =
       ConstructId: string option
       BlockPublicAccess: BlockPublicAccess option
       Encryption: BucketEncryption option
-      EncryptionKey: KMSKeyRef option
+      EncryptionKey: IKey option
       EnforceSSL: bool option
       Versioned: bool option
       RemovalPolicy: RemovalPolicy option
-      ServerAccessLogsBucket: BucketRef option
+      ServerAccessLogsBucket: IBucket option
       ServerAccessLogsPrefix: string option
       AutoDeleteObjects: bool option
       WebsiteIndexDocument: string option
@@ -60,7 +56,7 @@ type BucketConfig =
       Metrics: IBucketMetrics list }
 
 type BucketBuilder(name: string) =
-    member _.Yield _ : BucketConfig =
+    member _.Yield(_: unit) : BucketConfig =
         { BucketName = name
           ConstructId = None
           BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
@@ -184,15 +180,7 @@ type BucketBuilder(name: string) =
         config.BlockPublicAccess |> Option.iter (fun v -> props.BlockPublicAccess <- v)
         config.Encryption |> Option.iter (fun v -> props.Encryption <- v)
 
-        config.EncryptionKey
-        |> Option.iter (fun v ->
-            props.EncryptionKey <-
-                match v with
-                | KMSKeyRef.KMSKeyInterface i -> i
-                | KMSKeyRef.KMSKeySpecRef pr ->
-                    match pr.Key with
-                    | Some k -> k
-                    | None -> failwith $"Key {pr.KeyName} has to be resolved first")
+        config.EncryptionKey |> Option.iter (fun k -> props.EncryptionKey <- k)
 
         config.EnforceSSL |> Option.iter (fun v -> props.EnforceSSL <- v)
         config.Versioned |> Option.iter (fun v -> props.Versioned <- v)
@@ -201,16 +189,7 @@ type BucketBuilder(name: string) =
         |> Option.iter (fun v -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(v))
 
         config.ServerAccessLogsBucket
-        |> Option.iter (fun v ->
-            props.ServerAccessLogsBucket <-
-                match v with
-                | BucketRef.BucketInterface b -> b
-                | BucketRef.BucketSpecRef b ->
-                    match b.Bucket with
-                    | None ->
-                        failwith
-                            $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-                    | Some bu -> bu)
+        |> Option.iter (fun v -> props.ServerAccessLogsBucket <- v)
 
         config.ServerAccessLogsPrefix
         |> Option.iter (fun v -> props.ServerAccessLogsPrefix <- v)
@@ -250,13 +229,7 @@ type BucketBuilder(name: string) =
 
     [<CustomOperation("encryptionKey")>]
     member _.EncryptionKey(config: BucketConfig, key: IKey) =
-        { config with
-            EncryptionKey = Some(KMSKeyRef.KMSKeyInterface key) }
-
-    [<CustomOperation("encryptionKey")>]
-    member _.EncryptionKey(config: BucketConfig, key: KMSKeySpec) =
-        { config with
-            EncryptionKey = Some(KMSKeyRef.KMSKeySpecRef key) }
+        { config with EncryptionKey = Some key }
 
     [<CustomOperation("enforceSSL")>]
     member _.EnforceSSL(config: BucketConfig, value: bool) = { config with EnforceSSL = Some value }
@@ -280,11 +253,11 @@ type BucketBuilder(name: string) =
     /// <param name="value">True to enable versioning, false to disable.</param>
     /// <code lang="fsharp">
     /// bucket "production-data" {
-    ///     versioned true  // Enable for production
+    ///     versioned true // Enable for production
     /// }
     ///
     /// bucket "cache-bucket" {
-    ///     versioned false  // Disable for temp data
+    ///     versioned false // Disable for temp data
     /// }
     /// </code>
     [<CustomOperation("versioned")>]
@@ -298,12 +271,7 @@ type BucketBuilder(name: string) =
     [<CustomOperation("serverAccessLogsBucket")>]
     member _.ServerAccessLogsBucket(config: BucketConfig, bucket: IBucket) =
         { config with
-            ServerAccessLogsBucket = Some(BucketRef.BucketInterface bucket) }
-
-    [<CustomOperation("serverAccessLogsBucket")>]
-    member _.ServerAccessLogsBucket(config: BucketConfig, bucket: BucketSpec) =
-        { config with
-            ServerAccessLogsBucket = Some(BucketRef.BucketSpecRef bucket) }
+            ServerAccessLogsBucket = Some(bucket) }
 
     [<CustomOperation("serverAccessLogsPrefix")>]
     member _.ServerAccessLogsPrefix(config: BucketConfig, prefix: string) =
@@ -338,7 +306,7 @@ type CorsRuleConfig =
       MaxAge: int option }
 
 type CorsRuleBuilder() =
-    member _.Yield _ : CorsRuleConfig =
+    member _.Yield(_: unit) : CorsRuleConfig =
         { AllowedMethods = None
           AllowedOrigins = None
           AllowedHeaders = None

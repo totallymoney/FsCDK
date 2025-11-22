@@ -11,7 +11,7 @@ type SubnetSelectionConfig =
       AvailabilityZones: string list option }
 
 type SubnetSelectionBuilder() =
-    member _.Yield _ : SubnetSelectionConfig =
+    member _.Yield(_: unit) : SubnetSelectionConfig =
         { SubnetType = None
           AvailabilityZones = None }
 
@@ -54,4 +54,3 @@ type SubnetSelectionBuilder() =
 [<AutoOpen>]
 module SubnetSelectionBuilders =
     let subnetSelection = SubnetSelectionBuilder()
-    let vpcSubnets = SubnetSelectionBuilder()

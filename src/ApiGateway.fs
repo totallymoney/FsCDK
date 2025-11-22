@@ -12,36 +12,11 @@ open Amazon.CDK.AWS.IAM
 // Type References and Helpers
 // ============================================================================
 
-/// Represents a reference to a REST API that can be resolved later
-type RestApiRef =
-    | RestApiInterface of IRestApi
-    | RestApiSpecRef of RestApiSpec
-
-and RestApiSpec =
+type RestApiSpec =
     { ApiName: string
       ConstructId: string
       Props: RestApiProps
       mutable RestApi: IRestApi option }
-
-    /// Gets the underlying IRestApi resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.RestApi with
-        | Some api -> api
-        | None ->
-            failwith
-                $"RestApi '{this.ApiName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-module RestApiHelpers =
-    /// Resolves a REST API reference to an IRestApi
-    let resolveRestApiRef (ref: RestApiRef) =
-        match ref with
-        | RestApiInterface api -> api
-        | RestApiSpecRef spec ->
-            match spec.RestApi with
-            | Some api -> api
-            | None ->
-                failwith
-                    $"RestApi '{spec.ApiName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 // ============================================================================
 // REST API Configuration DSL
@@ -86,7 +61,7 @@ type RestApiConfig =
 
 type RestApiBuilder(name: string) =
 
-    member _.Yield _ : RestApiConfig =
+    member _.Yield(_: unit) : RestApiConfig =
         { ApiName = name
           ConstructId = None
           Description = None
@@ -298,7 +273,7 @@ type TokenAuthorizerConfig =
       IdentitySource: string option
       ValidationRegex: string option
       AuthorizerResultTtl: Duration option
-      AssumeRole: RoleRef option }
+      AssumeRole: IRole option }
 
 type TokenAuthorizerSpec =
     { AuthorizerName: string
@@ -316,7 +291,7 @@ type TokenAuthorizerSpec =
 
 type TokenAuthorizerBuilder(name: string) =
 
-    member _.Yield _ : TokenAuthorizerConfig =
+    member _.Yield(_: unit) : TokenAuthorizerConfig =
         { AuthorizerName = name
           ConstructId = None
           Handler = None
@@ -368,8 +343,7 @@ type TokenAuthorizerBuilder(name: string) =
         config.ValidationRegex |> Option.iter (fun v -> props.ValidationRegex <- v)
         config.AuthorizerResultTtl |> Option.iter (fun v -> props.ResultsCacheTtl <- v)
 
-        config.AssumeRole
-        |> Option.iter (fun v -> props.AssumeRole <- RoleHelpers.resolveRoleRef v)
+        config.AssumeRole |> Option.iter (fun v -> props.AssumeRole <- v)
 
         { AuthorizerName = authorizerName
           ConstructId = constructId
@@ -404,15 +378,7 @@ type TokenAuthorizerBuilder(name: string) =
 
     /// <summary>Sets the IAM role for API Gateway to assume when calling the authorizer.</summary>
     [<CustomOperation("assumeRole")>]
-    member _.AssumeRole(config: TokenAuthorizerConfig, role: IRole) =
-        { config with
-            AssumeRole = Some(RoleInterface role) }
-
-    /// <summary>Sets the IAM role for API Gateway to assume when calling the authorizer using a LambdaRoleSpec.</summary>
-    [<CustomOperation("assumeRole")>]
-    member _.AssumeRoleSpec(config: TokenAuthorizerConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            AssumeRole = Some(RoleSpecRef roleSpec) }
+    member _.AssumeRole(config: TokenAuthorizerConfig, role: IRole) = { config with AssumeRole = Some role }
 
 // ============================================================================
 // VPC Link Configuration DSL
@@ -441,7 +407,7 @@ type VpcLinkSpec =
 
 type VpcLinkBuilder(name: string) =
 
-    member _.Yield _ : VpcLinkConfig =
+    member _.Yield(_: unit) : VpcLinkConfig =
         { VpcLinkName = name
           ConstructId = None
           Description = None

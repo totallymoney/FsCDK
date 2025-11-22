@@ -16,14 +16,14 @@ open Amazon.CDK.AWS.S3
 type ImportSourceSpec = { Source: IImportSourceSpecification }
 
 type ImportSourceConfig =
-    { Bucket: BucketRef option
+    { Bucket: IBucket option
       InputFormat: InputFormat option
       BucketOwner: string option
       CompressionType: InputCompressionType option
       KeyPrefix: string option }
 
 type ImportSourceBuilder() =
-    member _.Yield _ : ImportSourceConfig =
+    member _.Yield(_: unit) : ImportSourceConfig =
         { Bucket = None
           InputFormat = None
           BucketOwner = None
@@ -67,16 +67,7 @@ type ImportSourceBuilder() =
             | Some i -> i
             | None -> failwith "ImportSource.inputFormat is required"
 
-        spec.Bucket <-
-            match bucket with
-            | BucketRef.BucketInterface b -> b
-            | BucketRef.BucketSpecRef b ->
-                match b.Bucket with
-                | None ->
-                    failwith
-                        $"Bucket '{b.BucketName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-                | Some bu -> bu
-
+        spec.Bucket <- bucket
 
         spec.InputFormat <- input
 
@@ -87,6 +78,7 @@ type ImportSourceBuilder() =
         spec :> IImportSourceSpecification
 
     /// <summary>Sets the S3 bucket for the import source.</summary>
+    /// <param name="config">The current import source configuration.</param>
     /// <param name="bucket">The S3 bucket to import from.</param>
     /// <code lang="fsharp">
     /// importSource {
@@ -94,16 +86,10 @@ type ImportSourceBuilder() =
     /// }
     /// </code>
     [<CustomOperation("bucket")>]
-    member _.Bucket(config: ImportSourceConfig, bucket: IBucket) =
-        { config with
-            Bucket = Some(BucketRef.BucketInterface bucket) }
-
-    [<CustomOperation("bucket")>]
-    member _.Bucket(config: ImportSourceConfig, bucket: BucketSpec) =
-        { config with
-            Bucket = Some(BucketRef.BucketSpecRef bucket) }
+    member _.Bucket(config: ImportSourceConfig, bucket: IBucket) = { config with Bucket = Some(bucket) }
 
     /// <summary>Sets the input format for the import.</summary>
+    /// <param name="config">The current import source configuration.</param>
     /// <param name="input">The input format (e.g., CSV, DynamoDB JSON, ION).</param>
     /// <code lang="fsharp">
     /// importSource {
@@ -115,6 +101,7 @@ type ImportSourceBuilder() =
         { config with InputFormat = Some input }
 
     /// <summary>Sets the owner of the S3 bucket.</summary>
+    /// <param name="config">The current import source configuration.</param>
     /// <param name="owner">The AWS account ID that owns the bucket.</param>
     /// <code lang="fsharp">
     /// importSource {
@@ -126,6 +113,7 @@ type ImportSourceBuilder() =
         { config with BucketOwner = Some owner }
 
     /// <summary>Sets the compression type for the import files.</summary>
+    /// <param name="config">The current import source configuration.</param>
     /// <param name="c">The compression type (GZIP, ZSTD, or NONE).</param>
     /// <code lang="fsharp">
     /// importSource {
@@ -137,6 +125,7 @@ type ImportSourceBuilder() =
         { config with CompressionType = Some c }
 
     /// <summary>Sets the key prefix for filtering S3 objects.</summary>
+    /// <param name="config">The current import source configuration.</param>
     /// <param name="prefix">The S3 key prefix.</param>
     /// <code lang="fsharp">
     /// importSource {
@@ -191,7 +180,7 @@ type TableSpec =
       mutable Table: ITable option }
 
 type TableBuilder(name: string) =
-    member _.Yield _ : TableConfig =
+    member _.Yield(_: unit) : TableConfig =
         { TableName = name
           ConstructId = None
           PartitionKey = None

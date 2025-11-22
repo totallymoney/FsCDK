@@ -43,7 +43,7 @@ Create a Cognito User Pool with OAuth resource server for machine-to-machine aut
 
 stack "M2MAuth" {
     // User Pool for both user and M2M authentication
-    let myUserPool =
+    let! myUserPool =
         userPool "AppUserPool" {
             signInWithEmail
             selfSignUpEnabled false // M2M clients created administratively
@@ -89,7 +89,7 @@ Add more scopes to support different permission levels:
 *)
 
 stack "CompleteM2MOAuth" {
-    let myUserPool =
+    let! myUserPool =
         userPool "AppUserPool" {
             signInWithEmail
             selfSignUpEnabled false

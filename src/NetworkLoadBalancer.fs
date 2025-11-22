@@ -1,6 +1,7 @@
 namespace FsCDK
 
 open Amazon.CDK
+open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
 
 // ============================================================================
@@ -29,9 +30,9 @@ open Amazon.CDK.AWS.ElasticLoadBalancingV2
 type NetworkLoadBalancerConfig =
     { LoadBalancerName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       InternetFacing: bool option
-      VpcSubnets: Amazon.CDK.AWS.EC2.SubnetSelection option
+      VpcSubnets: SubnetSelection option
       CrossZoneEnabled: bool option
       DeletionProtection: bool option
       IpAddressType: IpAddressType option
@@ -43,31 +44,8 @@ type NetworkLoadBalancerSpec =
       Props: NetworkLoadBalancerProps
       mutable LoadBalancer: INetworkLoadBalancer option }
 
-    /// Gets the underlying INetworkLoadBalancer resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.LoadBalancer with
-        | Some nlb -> nlb
-        | None ->
-            failwith
-                $"NetworkLoadBalancer '{this.LoadBalancerName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-type NetworkLoadBalancerRef =
-    | NetworkLoadBalancerInterface of INetworkLoadBalancer
-    | NetworkLoadBalancerSpecRef of NetworkLoadBalancerSpec
-
-module NetworkLoadBalancerHelpers =
-    let resolveNetworkLoadBalancerRef (ref: NetworkLoadBalancerRef) =
-        match ref with
-        | NetworkLoadBalancerInterface nlb -> nlb
-        | NetworkLoadBalancerSpecRef spec ->
-            match spec.LoadBalancer with
-            | Some nlb -> nlb
-            | None ->
-                failwith
-                    $"NetworkLoadBalancer '{spec.LoadBalancerName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type NetworkLoadBalancerBuilder(name: string) =
-    member _.Yield _ : NetworkLoadBalancerConfig =
+    member _.Yield(_: unit) : NetworkLoadBalancerConfig =
         { LoadBalancerName = name
           ConstructId = None
           Vpc = None
@@ -140,7 +118,7 @@ type NetworkLoadBalancerBuilder(name: string) =
 
         // VPC is required
         match config.Vpc with
-        | Some vpcRef -> props.Vpc <- VpcHelpers.resolveVpcRef vpcRef
+        | Some vpcRef -> props.Vpc <- vpcRef
         | None -> printfn "Warning: VPC is required for Network Load Balancer"
 
         // AWS Best Practice: Internal by default for security
@@ -173,15 +151,7 @@ type NetworkLoadBalancerBuilder(name: string) =
 
     /// <summary>Sets the VPC for the Network Load Balancer.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: NetworkLoadBalancerConfig, vpc: Amazon.CDK.AWS.EC2.IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the Network Load Balancer from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: NetworkLoadBalancerConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: NetworkLoadBalancerConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets whether the load balancer is internet-facing.</summary>
     /// <param name="internetFacing">True for internet-facing, false for internal (default: false).</param>
@@ -192,7 +162,7 @@ type NetworkLoadBalancerBuilder(name: string) =
 
     /// <summary>Sets the VPC subnets for the load balancer.</summary>
     [<CustomOperation("vpcSubnets")>]
-    member _.VpcSubnets(config: NetworkLoadBalancerConfig, subnets: Amazon.CDK.AWS.EC2.SubnetSelection) =
+    member _.VpcSubnets(config: NetworkLoadBalancerConfig, subnets: SubnetSelection) =
         { config with
             VpcSubnets = Some subnets }
 
@@ -237,4 +207,4 @@ module NetworkLoadBalancerBuilders =
     ///     crossZoneEnabled true
     /// }
     /// </code>
-    let networkLoadBalancer (name: string) = NetworkLoadBalancerBuilder name
+    let networkLoadBalancer name = NetworkLoadBalancerBuilder(name)

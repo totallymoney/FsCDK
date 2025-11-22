@@ -50,26 +50,14 @@ type ElastiCacheRedisConfig =
       AutoMinorVersionUpgrade: bool voption
       Tags: (string * string) list }
 
-type ElastiCacheRedisResource =
-    {
-        ClusterName: string
-        ConstructId: string
-        /// The underlying CDK CfnCacheCluster construct
-        CacheCluster: CfnCacheCluster
-    }
+type ElasticCacheRedisSpec =
+    { ClusterName: string
+      ConstructId: string
+      Props: CfnCacheClusterProps
+      mutable CacheCluster: CfnCacheCluster option }
 
-    /// Gets the Redis endpoint address
-    member this.EndpointAddress = this.CacheCluster.AttrRedisEndpointAddress
-
-    /// Gets the Redis endpoint port
-    member this.EndpointPort = this.CacheCluster.AttrRedisEndpointPort
-
-    /// Gets the connection string for Redis
-    member this.ConnectionString =
-        sprintf "%s:%s" this.CacheCluster.AttrRedisEndpointAddress this.CacheCluster.AttrRedisEndpointPort
-
-type ElastiCacheRedisBuilder(name: string) =
-    member _.Yield _ : ElastiCacheRedisConfig =
+type ElasticCacheRedisBuilder(name: string) =
+    member _.Yield(_: unit) : ElastiCacheRedisConfig =
         { ClusterName = name
           ConstructId = None
           CacheNodeType = Some "cache.t3.micro"
@@ -146,7 +134,7 @@ type ElastiCacheRedisBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: ElastiCacheRedisConfig) : ElastiCacheRedisResource =
+    member _.Run(config: ElastiCacheRedisConfig) : ElasticCacheRedisSpec =
         let clusterName = config.ClusterName
         let constructId = config.ConstructId |> Option.defaultValue clusterName
 
@@ -187,7 +175,8 @@ type ElastiCacheRedisBuilder(name: string) =
 
         { ClusterName = clusterName
           ConstructId = constructId
-          CacheCluster = null }
+          Props = props
+          CacheCluster = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: ElastiCacheRedisConfig, id: string) = { config with ConstructId = Some id }
@@ -290,4 +279,4 @@ module ElastiCacheBuilders =
     /// Creates a new ElastiCache Redis cluster builder.
     /// Example: redisCluster "my-cache" { cacheNodeType "cache.t3.small"; numCacheNodes 1 }
     /// </summary>
-    let redisCluster name = ElastiCacheRedisBuilder name
+    let redisCluster name = ElasticCacheRedisBuilder name

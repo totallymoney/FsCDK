@@ -93,3 +93,4 @@ let fargateTaskDefinition_tests =
 
               Expect.equal spec.Props.Volumes.Length 2 "Should have 2 volumes"
           } ]
+    |> testSequenced

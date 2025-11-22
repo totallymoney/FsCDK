@@ -46,18 +46,15 @@ type StepFunctionConfig =
       Timeout: Duration option
       TracingEnabled: bool voption
       LoggingLevel: LogLevel voption
-      LogDestination: LogGroupRef option
-      Role: RoleRef option
+      LogDestination: ILogGroup option
+      Role: IRole option
       Comment: string option }
 
-type StepFunctionResource =
-    {
-        StateMachineName: string
-        ConstructId: string
-        Props: StateMachineProps
-        /// The underlying CDK StateMachine construct
-        mutable StateMachine: StateMachine option
-    }
+type StepFunctionSpec =
+    { StateMachineName: string
+      ConstructId: string
+      Props: StateMachineProps
+      mutable StateMachine: StateMachine option }
 
     /// Gets the state machine ARN
     member this.StateMachineArn =
@@ -66,7 +63,7 @@ type StepFunctionResource =
         | None -> null
 
 type StepFunctionBuilder(name: string) =
-    member _.Yield _ : StepFunctionConfig =
+    member _.Yield(_: unit) : StepFunctionConfig =
         { StateMachineName = name
           ConstructId = None
           Definition = None
@@ -112,7 +109,7 @@ type StepFunctionBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: StepFunctionConfig) : StepFunctionResource =
+    member _.Run(config: StepFunctionConfig) : StepFunctionSpec =
         let stateMachineName = config.StateMachineName
         let constructId = config.ConstructId |> Option.defaultValue stateMachineName
 
@@ -131,37 +128,22 @@ type StepFunctionBuilder(name: string) =
         config.TracingEnabled
         |> ValueOption.iter (fun v -> props.TracingEnabled <- System.Nullable<bool>(v))
 
-        config.Role
-        |> Option.iter (fun role ->
-            props.Role <-
-                match role with
-                | RoleRef.RoleInterface i -> i
-                | RoleRef.RoleSpecRef r ->
-                    match r.Role with
-                    | Some i -> i
-                    | None -> failwith $"Role has to be specified first {r.RoleName}")
+        config.Role |> Option.iter (fun role -> props.Role <- role)
 
         config.Comment |> Option.iter (fun v -> props.Comment <- v)
 
         // Logging configuration
         // Note: AWS requires a log destination when logging level is not OFF
-        match config.LoggingLevel, config.LogDestination with
-        | ValueSome level, Some logGroupRef ->
-            let logGroup =
-                match logGroupRef with
-                | LogGroupRef.LogGroupInterface i -> i
-                | LogGroupRef.LogGroupSpecRef lgSpec ->
-                    match lgSpec.LogGroup with
-                    | Some lg -> lg :> ILogGroup
-                    | None ->
-                        failwith
-                            $"LogGroup '{lgSpec.LogGroupName}' has not been created yet. Ensure it's yielded in the stack before the step function."
-
-            let logOptions = LogOptions()
-            logOptions.Level <- level
-            logOptions.Destination <- logGroup
-            logOptions.IncludeExecutionData <- System.Nullable<bool>(true)
-            props.Logs <- logOptions
+        match config.LoggingLevel with
+        | ValueSome level ->
+            match config.LogDestination with
+            | Some logGroup ->
+                let logOptions = LogOptions()
+                logOptions.Level <- level
+                logOptions.Destination <- logGroup
+                logOptions.IncludeExecutionData <- System.Nullable<bool>(true)
+                props.Logs <- logOptions
+            | None -> ()
         | _ -> ()
         // No logging if level not set or destination not provided
 
@@ -199,22 +181,10 @@ type StepFunctionBuilder(name: string) =
     [<CustomOperation("logDestination")>]
     member _.LogDestination(config: StepFunctionConfig, destination: ILogGroup) =
         { config with
-            LogDestination = Some(LogGroupRef.LogGroupInterface destination) }
-
-    [<CustomOperation("logDestination")>]
-    member _.LogDestination(config: StepFunctionConfig, logGroupResource: CloudWatchLogGroupResource) =
-        { config with
-            LogDestination = Some(LogGroupRef.LogGroupSpecRef logGroupResource) }
+            LogDestination = Some destination }
 
     [<CustomOperation("role")>]
-    member _.Role(config: StepFunctionConfig, role: IRole) =
-        { config with
-            Role = Some(RoleRef.RoleInterface role) }
-
-    [<CustomOperation("role")>]
-    member _.Role(config: StepFunctionConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            Role = Some(RoleRef.RoleSpecRef roleSpec) }
+    member _.Role(config: StepFunctionConfig, role: IRole) = { config with Role = Some role }
 
     [<CustomOperation("comment")>]
     member _.Comment(config: StepFunctionConfig, comment: string) = { config with Comment = Some comment }

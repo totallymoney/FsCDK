@@ -1,6 +1,5 @@
 namespace FsCDK
 
-open Amazon.CDK
 open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.IAM
 
@@ -29,9 +28,9 @@ type EC2InstanceConfig =
       ConstructId: string option
       InstanceType: InstanceType option
       MachineImage: IMachineImage option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       VpcSubnets: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       KeyPair: IKeyPair option
       KeyPairName: string option
       Role: IRole option
@@ -116,12 +115,11 @@ type EC2InstanceBuilder(name: string) =
         config.InstanceType |> Option.iter (fun v -> props.InstanceType <- v)
         config.MachineImage |> Option.iter (fun v -> props.MachineImage <- v)
 
-        config.Vpc |> Option.iter (fun v -> props.Vpc <- VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
-        config.SecurityGroup
-        |> Option.iter (fun v -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef v)
+        config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
         // Use KeyPair if provided, otherwise fall back to KeyPairName (for backward compatibility)
         match config.KeyPair, config.KeyPairName with
         | Some kp, _ -> props.KeyPair <- kp
@@ -157,14 +155,7 @@ type EC2InstanceBuilder(name: string) =
             MachineImage = Some machineImage }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: EC2InstanceConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: EC2InstanceConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: EC2InstanceConfig, vpc: IVpc) = { config with Vpc = Some vpc }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: EC2InstanceConfig, subnets: SubnetSelection) =
@@ -172,14 +163,7 @@ type EC2InstanceBuilder(name: string) =
             VpcSubnets = Some subnets }
 
     [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: EC2InstanceConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: EC2InstanceConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+    member _.SecurityGroup(config: EC2InstanceConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     [<CustomOperation("keyPair")>]
     member _.KeyPair(config: EC2InstanceConfig, keyPair: IKeyPair) = { config with KeyPair = Some keyPair }

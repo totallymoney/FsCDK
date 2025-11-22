@@ -9,8 +9,7 @@ open FsCDK
 
 [<Tests>]
 let cloudwatch_logs_tests =
-    testSequenced
-    <| testList
+    testList
         "CloudWatch Logs DSL"
         [ testList
               "Log Group Tests"
@@ -229,3 +228,4 @@ let cloudwatch_logs_tests =
                     let name = CloudWatchLogsHelpers.appLogGroup "my-app" "staging"
                     Expect.equal name "/my-app/staging" "Should format app log group name"
                 } ] ]
+    |> testSequenced

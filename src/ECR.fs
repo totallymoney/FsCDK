@@ -42,7 +42,7 @@ type ECRRepositoryResource =
     }
 
 type ECRRepositoryBuilder(name: string) =
-    member _.Yield _ : ECRRepositoryConfig =
+    member _.Yield(_: unit) : ECRRepositoryConfig =
         { RepositoryName = name
           ConstructId = None
           ImageScanOnPush = ValueSome true

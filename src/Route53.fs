@@ -29,11 +29,6 @@ type Route53HostedZoneConfig =
       QueryLogsLogGroupArn: string option
       Vpcs: IVpc list }
 
-
-type Route53HostedZoneRef =
-    | Route53HostedZoneInterface of IHostedZone
-    | Route53HostedZoneSpecRef of Route53HostedZoneSpec
-
 and Route53HostedZoneSpec =
     {
         ZoneName: string
@@ -52,7 +47,7 @@ and Route53HostedZoneSpec =
                 $"HostedZone '{this.ZoneName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type Route53HostedZoneBuilder(zoneName: string) =
-    member _.Yield _ : Route53HostedZoneConfig =
+    member _.Yield(_: unit) : Route53HostedZoneConfig =
         { ZoneName = zoneName
           ConstructId = None
           Comment = None
@@ -158,7 +153,7 @@ type Route53PrivateHostedZoneResource =
                 $"PrivateHostedZone '{this.ZoneName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type Route53PrivateHostedZoneBuilder(zoneName: string) =
-    member _.Yield _ : Route53PrivateHostedZoneConfig =
+    member _.Yield(_: unit) : Route53PrivateHostedZoneConfig =
         { ZoneName = zoneName
           ConstructId = None
           Comment = None
@@ -229,7 +224,7 @@ type Route53PrivateHostedZoneBuilder(zoneName: string) =
 type Route53ARecordConfig =
     { RecordName: string
       ConstructId: string option
-      Zone: Route53HostedZoneRef option
+      Zone: IHostedZone option
       Target: RecordTarget option
       Ttl: Duration option
       Comment: string option }
@@ -241,7 +236,7 @@ type Route53ARecordSpec =
       Props: ARecordProps }
 
 type Route53ARecordBuilder(name: string) =
-    member _.Yield _ : Route53ARecordConfig =
+    member _.Yield(_: unit) : Route53ARecordConfig =
         { RecordName = name
           ConstructId = None
           Zone = None
@@ -280,17 +275,7 @@ type Route53ARecordBuilder(name: string) =
         let props = ARecordProps()
         props.RecordName <- recordName
 
-        config.Zone
-        |> Option.iter (fun v ->
-            props.Zone <-
-                match v with
-                | Route53HostedZoneRef.Route53HostedZoneSpecRef isp ->
-                    match isp.HostedZone with
-                    | Some zone -> zone
-                    | None ->
-                        failwith
-                            $"Zone {isp.ZoneName} has to be resolved before using it in DNS zone record {config.RecordName}"
-                | Route53HostedZoneRef.Route53HostedZoneInterface izone -> izone)
+        config.Zone |> Option.iter (fun v -> props.Zone <- v)
 
         config.Target |> Option.iter (fun v -> props.Target <- v)
         config.Ttl |> Option.iter (fun v -> props.Ttl <- v)
@@ -305,19 +290,10 @@ type Route53ARecordBuilder(name: string) =
     member _.ConstructId(config: Route53ARecordConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("zone")>]
-    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone) =
-        { config with
-            Zone = Some(Route53HostedZoneRef.Route53HostedZoneInterface zone) }
+    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone) = { config with Zone = Some(zone) }
 
     [<CustomOperation("zone")>]
-    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone option) =
-        { config with
-            Zone = zone |> Option.map Route53HostedZoneRef.Route53HostedZoneInterface }
-
-    [<CustomOperation("zone")>]
-    member _.Zone(config: Route53ARecordConfig, zone: Route53HostedZoneSpec) =
-        { config with
-            Zone = Some(Route53HostedZoneRef.Route53HostedZoneSpecRef zone) }
+    member _.Zone(config: Route53ARecordConfig, zone: IHostedZone option) = { config with Zone = zone }
 
     [<CustomOperation("target")>]
     member _.Target(config: Route53ARecordConfig, target: RecordTarget) = { config with Target = Some target }
@@ -355,7 +331,7 @@ module Route53Helpers =
 /// - Type = HTTPS (more secure than HTTP)
 /// - Port = 443
 /// - Request interval = 30 seconds (standard)
-/// - Failure threshold = 3 (balanced sensitivity)
+/// - Failure thresholds = 3 (balanced sensitivity)
 ///
 /// **Rationale:**
 /// Health checks monitor endpoint availability for failover routing.
@@ -390,7 +366,7 @@ type Route53HealthCheckResource =
     member this.HealthCheckId = this.HealthCheck.AttrHealthCheckId
 
 type Route53HealthCheckBuilder(name: string) =
-    member _.Yield _ : Route53HealthCheckConfig =
+    member _.Yield(_: unit) : Route53HealthCheckConfig =
         { HealthCheckName = name
           ConstructId = None
           Type = Some "HTTPS"

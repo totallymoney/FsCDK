@@ -44,9 +44,9 @@ type DocumentDBClusterConfig =
       InstanceType: string option
       Instances: int option
       Port: int option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       VpcSubnets: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       BackupRetentionDays: int option
       PreferredBackupWindow: string option
       PreferredMaintenanceWindow: string option
@@ -55,29 +55,36 @@ type DocumentDBClusterConfig =
       RemovalPolicy: RemovalPolicy option
       Tags: (string * string) list }
 
-type DocumentDBClusterResource =
-    {
-        ClusterName: string
-        ConstructId: string
-        /// The underlying CDK DatabaseCluster construct
-        Cluster: DatabaseCluster
-    }
+type DocumentDBClusterSpec =
+    { ClusterName: string
+      ConstructId: string
+      Props: DatabaseClusterProps
+      mutable Cluster: DatabaseCluster option }
 
-    /// Gets the cluster endpoint
-    member this.ClusterEndpoint = this.Cluster.ClusterEndpoint
-
-    /// Gets the cluster read endpoint
-    member this.ClusterReadEndpoint = this.Cluster.ClusterReadEndpoint
-
-    /// Gets the connection string (without credentials)
-    member this.ConnectionString =
-        sprintf
-            "mongodb://%s:%d"
-            this.Cluster.ClusterEndpoint.Hostname
-            (this.Cluster.ClusterEndpoint.Port |> float |> int)
+    interface IVpc with
+        member this.AddClientVpnEndpoint(id, options) = failwith "todo"
+        member this.AddFlowLog(id, options) = failwith "todo"
+        member this.AddGatewayEndpoint(id, options) = failwith "todo"
+        member this.AddInterfaceEndpoint(id, options) = failwith "todo"
+        member this.AddVpnConnection(id, options) = failwith "todo"
+        member this.ApplyRemovalPolicy(policy) = failwith "todo"
+        member this.EnableVpnGateway(options) = failwith "todo"
+        member this.SelectSubnets(selection) = failwith "todo"
+        member this.AvailabilityZones = failwith "todo"
+        member this.Env = failwith "todo"
+        member this.InternetConnectivityEstablished = failwith "todo"
+        member this.IsolatedSubnets = failwith "todo"
+        member this.Node = failwith "todo"
+        member this.PrivateSubnets = failwith "todo"
+        member this.PublicSubnets = failwith "todo"
+        member this.Stack = failwith "todo"
+        member this.VpcArn = failwith "todo"
+        member this.VpcCidrBlock = failwith "todo"
+        member this.VpcId = failwith "todo"
+        member this.VpnGatewayId = failwith "todo"
 
 type DocumentDBClusterBuilder(name: string) =
-    member _.Yield _ : DocumentDBClusterConfig =
+    member _.Yield(_: unit) : DocumentDBClusterConfig =
         { ClusterName = name
           ConstructId = None
           MasterUsername = Some "docdbadmin"
@@ -150,14 +157,14 @@ type DocumentDBClusterBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: DocumentDBClusterConfig) : DocumentDBClusterResource =
+    member _.Run(config: DocumentDBClusterConfig) : DocumentDBClusterSpec =
         let clusterName = config.ClusterName
         let constructId = config.ConstructId |> Option.defaultValue clusterName
 
         let props = DatabaseClusterProps()
 
         match config.Vpc with
-        | Some vpc -> props.Vpc <- VpcHelpers.resolveVpcRef vpc
+        | Some vpc -> props.Vpc <- vpc
         | None -> failwith "VPC is required for DocumentDB cluster"
 
         match config.MasterPassword with
@@ -169,7 +176,7 @@ type DocumentDBClusterBuilder(name: string) =
         | None -> failwith "MasterPassword (ISecret) is required for DocumentDB cluster"
 
         config.InstanceType
-        |> Option.iter (fun v -> props.InstanceType <- InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MEDIUM))
+        |> Option.iter (fun _ -> props.InstanceType <- InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MEDIUM))
 
         config.Instances |> Option.iter (fun v -> props.Instances <- v)
 
@@ -177,6 +184,9 @@ type DocumentDBClusterBuilder(name: string) =
         |> Option.iter (fun v -> props.Port <- System.Nullable<float>(float v))
 
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
+
+        // Apply security group if provided
+        config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
 
         config.BackupRetentionDays
         |> Option.iter (fun v -> props.Backup <- BackupProps(Retention = Duration.Days(float v)))
@@ -193,7 +203,8 @@ type DocumentDBClusterBuilder(name: string) =
 
         { ClusterName = clusterName
           ConstructId = constructId
-          Cluster = null }
+          Props = props
+          Cluster = None }
 
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: DocumentDBClusterConfig, id: string) = { config with ConstructId = Some id }
@@ -220,14 +231,8 @@ type DocumentDBClusterBuilder(name: string) =
     member _.Port(config: DocumentDBClusterConfig, port: int) = { config with Port = Some port }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: DocumentDBClusterConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: DocumentDBClusterConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: DocumentDBClusterConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
 
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: DocumentDBClusterConfig, subnets: SubnetSelection) =
@@ -236,13 +241,7 @@ type DocumentDBClusterBuilder(name: string) =
 
     [<CustomOperation("securityGroup")>]
     member _.SecurityGroup(config: DocumentDBClusterConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: DocumentDBClusterConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+        { config with SecurityGroup = Some sg }
 
     [<CustomOperation("backupRetentionDays")>]
     member _.BackupRetentionDays(config: DocumentDBClusterConfig, days: int) =

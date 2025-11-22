@@ -113,7 +113,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaStack" {
-                  app
+                  scope app
 
                   lambda "my-fn" {
                       constructId "MyFunction"
@@ -150,7 +150,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaESM" {
-                  app
+                  scope app
 
                   lambda "fn-esm" {
                       handler "Program::Handler"
@@ -172,7 +172,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaPerm" {
-                  app
+                  scope app
 
                   lambda "fn-perm" {
                       handler "Program::Handler"
@@ -195,7 +195,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaPolicy" {
-                  app
+                  scope app
 
                   lambda "fn-policy" {
                       handler "Program::Handler"
@@ -223,7 +223,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaAsync" {
-                  app
+                  scope app
 
                   lambda "fn-async" {
                       handler "Program::Handler"
@@ -263,7 +263,7 @@ let lambda_function_dsl_tests =
               let app = App()
 
               stack "LambdaPolicyBuilders" {
-                  app
+                  scope app
 
                   lambda "fn-policy-b" {
                       handler "Program::Handler"
@@ -319,179 +319,181 @@ let lambda_function_dsl_tests =
           }
 
           test "file system CE yields correctly" {
-              let stack = Stack(App())
-              // Create a VPC since it's required for EFS
-              let vpc = Vpc(stack, "vpc", VpcProps())
-              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps(Vpc = vpc))
+              stack "LambdaFS" {
 
-              let ap =
-                  accessPoint "ap" {
-                      stack
-                      efsFs
-                      path "/export/lambda"
-                      posixUser "1000" "1000"
-                      createAcl "1000" "1000" "750"
-                  }
+                  let! vpc1 = vpc "vpc" { maxAzs 2 }
 
-              let spec =
-                  lambda "fn-fs" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                  let! efsFs = efsFileSystem "efs" { vpc vpc1 }
 
-                      lambdaFileSystem {
-                          ap
-                          localMountPath "/mnt/data"
+                  let! ap =
+                      accessPoint "ap" {
+                          fileSystem efsFs
+                          path "/export/lambda"
+                          posixUser "1000" "1000"
+                          createAcl "1000" "1000" "750"
                       }
-                  }
 
-              // Verify FileSystem is set correctly
-              Expect.isNotNull spec.Props.Filesystem "FileSystem should be set"
+                  let spec =
+                      lambda "fn-fs" {
+                          handler "Program::Handler"
+                          runtime Runtime.DOTNET_8
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                          fileSystem (
+                              lambdaFileSystem {
+                                  arn ap.AccessPointArn
+                                  localMountPath "/mnt/data"
+                              }
+                          )
+                      }
+
+                  // Verify FileSystem is set correctly
+                  Expect.isNotNull spec.Props.Filesystem "FileSystem should be set"
+              }
           }
 
           test "file system CE validates required properties" {
-              let stack = Stack(App())
-              // Create a VPC since it's required for EFS
-              let vpc = Vpc(stack, "vpc", VpcProps())
-              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps(Vpc = vpc))
+              stack "LambdaFS" {
+                  let! vpcFs = vpc "vpc" { maxAzs 2 }
 
-              let ap =
-                  accessPoint "ap" {
-                      stack
-                      efsFs
-                      path "/export/lambda"
-                      posixUser "1000" "1000"
-                      createAcl "1000" "1000" "750"
-                  }
+                  let! efsFs = efsFileSystem "efs" { vpc vpcFs }
 
-              // Empty configuration should throw
-              let thrower1 () =
-                  lambda "fn-fs1" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      lambdaFileSystem { () }
-                  }
-                  |> ignore
+                  let! ap =
+                      accessPoint "ap" {
+                          fileSystem efsFs
+                          path "/export/lambda"
+                          posixUser "1000" "1000"
+                          createAcl "1000" "1000" "750"
+                      }
 
-              // Missing localMountPath should throw
-              let thrower2 () =
-                  lambda "fn-fs2" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      lambdaFileSystem { ap }
-                  }
-                  |> ignore
+                  // Empty configuration should throw
+                  let thrower1 () =
+                      lambda "fn-fs1" {
+                          handler "Program::Handler"
+                          runtime Runtime.DOTNET_8
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                          fileSystem (lambdaFileSystem { () })
+                      }
+                      |> ignore
 
-              // Missing accessPoint should throw
-              let thrower3 () =
-                  lambda "fn-fs3" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      lambdaFileSystem { localMountPath "/mnt/data" }
-                  }
-                  |> ignore
+                  // Missing localMountPath should throw
+                  let thrower2 () =
+                      lambda "fn-fs2" {
+                          handler "Program::Handler"
+                          runtime Runtime.DOTNET_8
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                          fileSystem (lambdaFileSystem { arn ap.AccessPointArn })
+                      }
+                      |> ignore
 
-              Expect.throws thrower1 "Empty FileSystem configuration should throw"
-              Expect.throws thrower2 "FileSystem config missing localMountPath should throw"
-              Expect.throws thrower3 "FileSystem config missing accessPoint should throw"
+                  // Missing accessPoint should throw
+                  let thrower3 () =
+                      lambda "fn-fs3" {
+                          handler "Program::Handler"
+                          runtime Runtime.DOTNET_8
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                          fileSystem (lambdaFileSystem { localMountPath "/mnt/data" })
+                      }
+                      |> ignore
+
+                  Expect.throws thrower1 "Empty FileSystem configuration should throw"
+                  Expect.throws thrower2 "FileSystem config missing localMountPath should throw"
+                  Expect.throws thrower3 "FileSystem config missing accessPoint should throw"
+              }
 
           }
 
           test "access point CE creates correct resource" {
-              let stack = Stack(App())
-              // Create a VPC since it's required for EFS
-              let vpc = Vpc(stack, "vpc", VpcProps())
-              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps(Vpc = vpc))
+              // let stack = Stack(App())
+              // // Create a VPC since it's required for EFS
+              // let vpc = Vpc(stack, "vpc", VpcProps())
+              // let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps(Vpc = vpc))
 
-              let ap =
-                  accessPoint "ap" {
-                      stack
-                      efsFs
-                      path "/export/lambda"
-                      posixUser "1000" "1000"
-                      createAcl "1000" "1000" "750"
-                  }
+              stack "LambdaAP" {
 
-              // Check construction result (basic sanity: id and stack)
-              Expect.isNotNull ap "AccessPoint should be created"
-              Expect.equal ap.Node.Id "ap" "AccessPoint id should match"
+                  let! vpcFs = vpc "vpc" { maxAzs 2 }
 
-              Expect.equal
-                  (ap.Node.Scope :?> Stack).StackName
-                  stack.StackName
-                  "AccessPoint should be created in the provided stack"
+                  let! efsFs = efsFileSystem "efs" { vpc vpcFs }
+
+                  let! ap =
+                      accessPoint "ap" {
+                          fileSystem efsFs
+                          path "/export/lambda"
+                          posixUser "1000" "1000"
+                          createAcl "1000" "1000" "750"
+                      }
+
+                  // Check construction result (basic sanity: id and stack)
+                  Expect.isNotNull ap "AccessPoint should be created"
+                  Expect.equal ap.Node.Id "ap" "AccessPoint id should match"
+              }
           }
 
           test "access point CE validates required properties" {
-              let stack = Stack(App())
-              // Create a VPC since it's required for EFS
-              let vpc = Vpc(stack, "vpc", VpcProps())
-              let efsFs = Amazon.CDK.AWS.EFS.FileSystem(stack, "efs", FileSystemProps(Vpc = vpc))
+              stack "LambdaAP" {
+                  let! vpcFs = vpc "vpc" { maxAzs 2 }
 
-              // Only FileSystem is required
-              let ap =
-                  accessPoint "minimal" {
-                      stack
-                      efsFs
-                  }
+                  let! efsFs = efsFileSystem "efs" { vpc vpcFs }
 
-              // Verify minimal configuration creates a valid resource
-              Expect.isNotNull ap "AccessPoint should be created"
-              Expect.equal ap.Node.Id "minimal" "AccessPoint id should match"
-              Expect.isNotNull ap "AccessPoint should be created"
+                  // Only FileSystem is required
+                  let! ap = accessPoint "minimal" { fileSystem efsFs }
+
+                  // Verify minimal configuration creates a valid resource
+                  Expect.isNotNull ap "AccessPoint should be created"
+                  Expect.equal ap.Node.Id "minimal" "AccessPoint id should match"
+                  Expect.isNotNull ap "AccessPoint should be created"
+
+              }
           }
 
           test "file system CE properties are immutable" {
-              let stack = Stack(App())
-              // Create a VPC since it's required for EFS
-              let vpc = Vpc(stack, "vpc", VpcProps())
+              stack "LambdaFS" {
+                  // Create a VPC since it's required for EFS
+                  let! vpcFs = vpc "vpc" { maxAzs 2 }
 
-              let efsFs =
-                  efsFileSystem "efs" {
-                      stack
-                      vpc
-                  }
+                  let! efsFs = efsFileSystem "efs" { vpc vpcFs }
 
-              let ap =
-                  accessPoint "ap" {
-                      stack
-                      efsFs
-                      path "/export/lambda"
-                      posixUser "1000" "1000"
-                      createAcl "1000" "1000" "750"
-                  }
-
-              // First configuration
-              let spec1 =
-                  lambda "fn-fs1" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-
-                      lambdaFileSystem {
-                          ap
-                          localMountPath "/mnt/data1"
+                  let! ap =
+                      accessPoint "ap" {
+                          fileSystem efsFs
+                          path "/export/lambda"
+                          posixUser "1000" "1000"
+                          createAcl "1000" "1000" "750"
                       }
-                  }
 
-              // Second configuration with same access point but different mount path
-              let spec2 =
-                  lambda "fn-fs2" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+                  // First configuration
+                  let spec1 =
+                      lambda "fn-fs1" {
+                          handler "Program::Handler"
+                          runtime Runtime.DOTNET_8
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      lambdaFileSystem {
-                          ap
-                          localMountPath "/mnt/data2"
+                          fileSystem (
+                              lambdaFileSystem {
+                                  arn ap.AccessPointArn
+                                  localMountPath "/mnt/data1"
+                              }
+                          )
                       }
-                  }
 
-              Expect.isNotNull spec1.Props.Filesystem "FileSystem should be set in first config"
-              Expect.isNotNull spec2.Props.Filesystem "FileSystem should be set in second config"
+                  // Second configuration with same access point but different mount path
+                  let spec2 =
+                      lambda "fn-fs2" {
+                          handler "Program::Handler"
+                          runtime Runtime.DOTNET_8
+                          code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
+
+                          fileSystem (
+                              lambdaFileSystem {
+                                  arn ap.AccessPointArn
+                                  localMountPath "/mnt/data2"
+                              }
+                          )
+                      }
+
+                  Expect.isNotNull spec1.Props.Filesystem "FileSystem should be set in first config"
+                  Expect.isNotNull spec2.Props.Filesystem "FileSystem should be set in second config"
+              }
           }
 
           test "implicit yield sets VPC subnet selection correctly" {
@@ -500,7 +502,7 @@ let lambda_function_dsl_tests =
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      vpcSubnets { subnetType SubnetType.PRIVATE_WITH_EGRESS }
+                      vpcSubnets (subnetSelection { subnetType SubnetType.PRIVATE_WITH_EGRESS })
                   }
 
               let subnetTypeObj = box spec.Props.VpcSubnets.SubnetType
@@ -521,10 +523,12 @@ let lambda_function_dsl_tests =
                       architecture Architecture.ARM_64
                       tracing Tracing.ACTIVE
 
-                      vpcSubnets {
-                          subnetType SubnetType.PUBLIC
-                          availabilityZones [ "us-east-1a"; "us-east-1b" ]
-                      }
+                      vpcSubnets (
+                          subnetSelection {
+                              subnetType SubnetType.PUBLIC
+                              availabilityZones [ "us-east-1a"; "us-east-1b" ]
+                          }
+                      )
                   }
 
               Expect.equal spec.Props.Architecture Architecture.ARM_64 "Architecture should be set correctly"
@@ -559,11 +563,13 @@ let lambda_function_dsl_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      versionOptions {
-                          description "v1.0.0"
-                          removalPolicy RemovalPolicy.RETAIN
-                          codeSha256 "abc123"
-                      }
+                      currentVersionOptions (
+                          versionOptions {
+                              description "v1.0.0"
+                              removalPolicy RemovalPolicy.RETAIN
+                              codeSha256 "abc123"
+                          }
+                      )
                   }
 
               Expect.equal

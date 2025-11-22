@@ -3,73 +3,115 @@ namespace FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.EFS
 open Amazon.CDK.AWS.EC2
+open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.KMS
+open Amazon.CDK.AWS.Lambda
+open Constructs
 
 // ============================================================================
 // Lambda FileSystem Builder DSL
 // ============================================================================
 
 type LambdaFileSystemConfig =
-    { AccessPoint: IAccessPoint option
-      LocalMountPath: string option }
+    { Arn: string option
+      LocalMountPath: string option
+      Connections: Connections_ option
+      Dependency: IDependable array option
+      Policies: PolicyStatement array option }
 
 type LambdaFileSystemBuilder() =
-    member _.Yield _ : LambdaFileSystemConfig =
-        { AccessPoint = None
-          LocalMountPath = None }
+    member _.Yield(_: unit) : LambdaFileSystemConfig =
+        { Arn = None
+          LocalMountPath = None
+          Connections = None
+          Dependency = None
+          Policies = None }
 
     member _.Zero() : LambdaFileSystemConfig =
-        { AccessPoint = None
-          LocalMountPath = None }
+        { Arn = None
+          LocalMountPath = None
+          Connections = None
+          Dependency = None
+          Policies = None }
 
     member _.Combine(a: LambdaFileSystemConfig, b: LambdaFileSystemConfig) : LambdaFileSystemConfig =
-        { AccessPoint =
-            if a.AccessPoint.IsSome then
-                a.AccessPoint
-            else
-                b.AccessPoint
+        { Arn = Option.orElse a.Arn b.Arn
           LocalMountPath =
             if a.LocalMountPath.IsSome then
                 a.LocalMountPath
             else
-                b.LocalMountPath }
+                b.LocalMountPath
+          Connections =
+            if a.Connections.IsSome then
+                a.Connections
+            else
+                b.Connections
+          Dependency = if a.Dependency.IsSome then a.Dependency else b.Dependency
+          Policies = if a.Policies.IsSome then a.Policies else b.Policies }
 
     member inline _.Delay(f: unit -> LambdaFileSystemConfig) = f ()
     member inline x.For(state: LambdaFileSystemConfig, f: unit -> LambdaFileSystemConfig) = x.Combine(state, f ())
 
-    member _.Run(cfg: LambdaFileSystemConfig) : Amazon.CDK.AWS.Lambda.FileSystem =
-        match cfg.AccessPoint, cfg.LocalMountPath with
-        | Some ap, Some path -> Amazon.CDK.AWS.Lambda.FileSystem.FromEfsAccessPoint(ap, path)
-        | _ -> failwith "Both accessPoint and localMountPath are required for Lambda FileSystem"
+    member _.Run(config: LambdaFileSystemConfig) : FileSystem =
+
+        let fsConfig = FileSystemConfig()
+
+        config.Arn |> Option.iter (fun arn -> fsConfig.Arn <- arn)
+
+        config.LocalMountPath
+        |> Option.iter (fun path -> fsConfig.LocalMountPath <- path)
+
+        config.Connections |> Option.iter (fun conn -> fsConfig.Connections <- conn)
+
+        config.Dependency |> Option.iter (fun dep -> fsConfig.Dependency <- dep)
+
+        config.Policies |> Option.iter (fun pol -> fsConfig.Policies <- pol)
+
+        Amazon.CDK.AWS.Lambda.FileSystem(fsConfig)
+
+    [<CustomOperation("arn")>]
+    member _.Arn(config: LambdaFileSystemConfig, arn: string) = { config with Arn = Some arn }
 
     [<CustomOperation("localMountPath")>]
-    member _.LocalMountPath(cfg: LambdaFileSystemConfig, path: string) = { cfg with LocalMountPath = Some path }
+    member _.LocalMountPath(config: LambdaFileSystemConfig, path: string) =
+        { config with
+            LocalMountPath = Some path }
 
-    // Complex type as implicit yield
-    member _.Yield(ap: IAccessPoint) : LambdaFileSystemConfig =
-        { AccessPoint = Some ap
-          LocalMountPath = None }
+    [<CustomOperation("connections")>]
+    member _.Connections(config: LambdaFileSystemConfig, conn: Connections_) = { config with Connections = Some conn }
+
+    [<CustomOperation("dependency")>]
+    member _.Dependency(config: LambdaFileSystemConfig, dep: IDependable array) = { config with Dependency = Some dep }
+
+    [<CustomOperation("policies")>]
+    member _.Policies(config: LambdaFileSystemConfig, pol: PolicyStatement array) = { config with Policies = Some pol }
+
 
 // ============================================================================
 // EFS FileSystem Builder DSL
 // ============================================================================
 
 type EfsFileSystemConfig =
-    { Stack: Stack option
-      Id: string
-      Vpc: FsCDK.VpcRef option
+    { Name: string
+      ConstructId: string option
+      Vpc: IVpc option
       RemovalPolicy: RemovalPolicy option
       Encrypted: bool option
-      KmsKey: KMSKeyRef option
+      KmsKey: IKey option
       PerformanceMode: PerformanceMode option
       ThroughputMode: ThroughputMode option
       ProvisionedThroughputPerSecond: float option
-      SecurityGroup: SecurityGroupRef option }
+      SecurityGroup: ISecurityGroup option }
 
-type EfsFileSystemBuilder(id: string) =
-    member _.Yield _ : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
+type EfsFileSystemSpec =
+    { ConstructId: string
+      Props: FileSystemProps
+      mutable FileSystem: IFileSystem option }
+
+type EfsFileSystemBuilder(name) =
+    member _.Yield(_: unit) : EfsFileSystemConfig =
+        { Name = name
+          ConstructId = None
           Vpc = None
           RemovalPolicy = None
           Encrypted = None
@@ -80,9 +122,9 @@ type EfsFileSystemBuilder(id: string) =
           SecurityGroup = None }
 
     member _.Zero() : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
+        { Name = name
           Vpc = None
+          ConstructId = None
           RemovalPolicy = None
           Encrypted = None
           KmsKey = None
@@ -91,39 +133,9 @@ type EfsFileSystemBuilder(id: string) =
           ProvisionedThroughputPerSecond = None
           SecurityGroup = None }
 
-    member _.Run(config: EfsFileSystemConfig) : IFileSystem =
-        match config.Stack, config.Vpc with
-        | Some stack, Some vpc ->
-            let props = FileSystemProps()
-            props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef vpc
-            config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
-            config.Encrypted |> Option.iter (fun e -> props.Encrypted <- e)
-
-            config.KmsKey
-            |> Option.iter (fun v ->
-                props.KmsKey <-
-                    match v with
-                    | KMSKeyRef.KMSKeyInterface i -> i
-                    | KMSKeyRef.KMSKeySpecRef pr ->
-                        match pr.Key with
-                        | Some k -> k
-                        | None -> failwith $"Key {pr.KeyName} has to be resolved first")
-
-            config.PerformanceMode |> Option.iter (fun p -> props.PerformanceMode <- p)
-            config.ThroughputMode |> Option.iter (fun t -> props.ThroughputMode <- t)
-
-            config.ProvisionedThroughputPerSecond
-            |> Option.iter (fun t -> props.ProvisionedThroughputPerSecond <- Size.Mebibytes(t))
-
-            config.SecurityGroup
-            |> Option.iter (fun sg -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef sg)
-
-            FileSystem(stack, config.Id, props)
-        | _ -> failwith "Both stack and vpc are required for FileSystem"
-
     member _.Combine(a: EfsFileSystemConfig, b: EfsFileSystemConfig) : EfsFileSystemConfig =
-        { Stack = if a.Stack.IsSome then a.Stack else b.Stack
-          Id = a.Id
+        { Name = name
+          ConstructId = Option.orElse a.ConstructId b.ConstructId
           Vpc = if a.Vpc.IsSome then a.Vpc else b.Vpc
           RemovalPolicy =
             if a.RemovalPolicy.IsSome then
@@ -153,7 +165,32 @@ type EfsFileSystemBuilder(id: string) =
             else
                 b.SecurityGroup }
 
+    member _.Run(config: EfsFileSystemConfig) : EfsFileSystemSpec =
+        let props = FileSystemProps()
+
+        let constructId = config.ConstructId |> Option.defaultValue config.Name
+
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
+        config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
+        config.Encrypted |> Option.iter (fun e -> props.Encrypted <- e)
+
+        config.KmsKey |> Option.iter (fun k -> props.KmsKey <- k)
+
+        config.PerformanceMode |> Option.iter (fun p -> props.PerformanceMode <- p)
+        config.ThroughputMode |> Option.iter (fun t -> props.ThroughputMode <- t)
+
+        config.ProvisionedThroughputPerSecond
+        |> Option.iter (fun t -> props.ProvisionedThroughputPerSecond <- Size.Mebibytes(t))
+
+        config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
+
+        { ConstructId = constructId
+          Props = props
+          FileSystem = None }
+
+
     member inline _.Delay(f: unit -> EfsFileSystemConfig) = f ()
+
     member inline x.For(state: EfsFileSystemConfig, f: unit -> EfsFileSystemConfig) = x.Combine(state, f ())
 
     [<CustomOperation("encrypted")>]
@@ -179,233 +216,109 @@ type EfsFileSystemBuilder(id: string) =
         { config with
             RemovalPolicy = Some policy }
 
-    // Implicit yields for complex types
-    member _.Yield(stack: Stack) : EfsFileSystemConfig =
-        { Stack = Some stack
-          Id = id
-          Vpc = None
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = None
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = None }
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: EfsFileSystemConfig, vpc: IVpc) = { config with Vpc = Some vpc }
 
-    member _.Yield(vpc: IVpc) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = Some(FsCDK.VpcInterface vpc)
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = None
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = None }
+    [<CustomOperation("kmsKey")>]
+    member _.KmsKey(config: EfsFileSystemConfig, key: IKey) = { config with KmsKey = Some key }
 
-    member _.Yield(vpcSpec: FsCDK.VpcSpec) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = Some(FsCDK.VpcSpecRef vpcSpec)
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = None
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = None }
-
-    member _.Yield(key: IKey) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = None
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = Some(KMSKeyRef.KMSKeyInterface key)
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = None }
-
-    member _.Yield(key: KMSKeySpec) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = None
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = Some(KMSKeyRef.KMSKeySpecRef key)
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = None }
-
-    member _.Yield(sg: ISecurityGroup) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = None
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = None
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    member _.Yield(sg: SecurityGroupSpec) : EfsFileSystemConfig =
-        { Stack = None
-          Id = id
-          Vpc = None
-          RemovalPolicy = None
-          Encrypted = None
-          KmsKey = None
-          PerformanceMode = None
-          ThroughputMode = None
-          ProvisionedThroughputPerSecond = None
-          SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+    [<CustomOperation("securityGroup")>]
+    member _.SecurityGroup(config: EfsFileSystemConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
 // ============================================================================
 // EFS AccessPoint Builder DSL
 // ============================================================================
 
 type AccessPointConfig =
-    { Stack: Stack
-      Id: string
-      Props: AccessPointProps }
+    { FileSystem: IFileSystem option
+      ClientToken: string option
+      CreateAcl: IAcl option
+      Path: string option
+      PosixUser: IPosixUser option }
+
+type AccessPointSpec =
+    { ConstructId: string
+      Props: AccessPointProps
+      mutable AccessPoint: IAccessPoint option }
 
 type AccessPointBuilder(id: string) =
-    member _.Yield _ : AccessPointConfig =
-        { Stack = Unchecked.defaultof<Stack>
-          Id = id
-          Props = AccessPointProps() }
+    member _.Yield(_: unit) : AccessPointConfig =
+        { FileSystem = None
+          ClientToken = None
+          CreateAcl = None
+          Path = None
+          PosixUser = None }
 
     member _.Zero() : AccessPointConfig =
-        { Stack = Unchecked.defaultof<Stack>
-          Id = id
-          Props = AccessPointProps() }
-
-    member _.Run(config: AccessPointConfig) : IAccessPoint =
-        match isNull (box config.Stack), isNull (box config.Props.FileSystem) with
-        | true, _ -> failwith "Stack is required for AccessPointBuilder"
-        | _, true -> failwith "FileSystem is required for AccessPointBuilder"
-        | _ -> AccessPoint(config.Stack, config.Id, config.Props)
-
-    // Implicit yields for complex types
-    member _.Yield(stack: Stack) : AccessPointConfig =
-        { Stack = stack
-          Id = id
-          Props = AccessPointProps() }
-
-    member _.Yield(fs: IFileSystem) : AccessPointConfig =
-        { Stack = Unchecked.defaultof<Stack>
-          Id = id
-          Props = AccessPointProps(FileSystem = fs) }
+        { FileSystem = None
+          ClientToken = None
+          CreateAcl = None
+          Path = None
+          PosixUser = None }
 
     member _.Combine(a: AccessPointConfig, b: AccessPointConfig) : AccessPointConfig =
-        let stack = if isNull (box a.Stack) then b.Stack else a.Stack
+        { FileSystem = if a.FileSystem.IsSome then a.FileSystem else b.FileSystem
+          ClientToken =
+            if a.ClientToken.IsSome then
+                a.ClientToken
+            else
+                b.ClientToken
+          CreateAcl = if a.CreateAcl.IsSome then a.CreateAcl else b.CreateAcl
+          Path = if a.Path.IsSome then a.Path else b.Path
+          PosixUser = if a.PosixUser.IsSome then a.PosixUser else b.PosixUser }
+
+    member _.Run(config: AccessPointConfig) : AccessPointSpec =
+        let constructId = config.ClientToken |> Option.defaultValue id
         let props = AccessPointProps()
 
-        if not (isNull (box a.Props.FileSystem)) then
-            props.FileSystem <- a.Props.FileSystem
-        elif not (isNull (box b.Props.FileSystem)) then
-            props.FileSystem <- b.Props.FileSystem
+        config.FileSystem |> Option.iter (fun fs -> props.FileSystem <- fs)
 
-        if not (isNull (box a.Props.Path)) then
-            props.Path <- a.Props.Path
-        elif not (isNull (box b.Props.Path)) then
-            props.Path <- b.Props.Path
+        config.CreateAcl |> Option.iter (fun acl -> props.CreateAcl <- acl)
 
-        if not (isNull (box a.Props.PosixUser)) then
-            props.PosixUser <- a.Props.PosixUser
-        elif not (isNull (box b.Props.PosixUser)) then
-            props.PosixUser <- b.Props.PosixUser
+        config.PosixUser |> Option.iter (fun user -> props.PosixUser <- user)
 
-        if not (isNull (box a.Props.CreateAcl)) then
-            props.CreateAcl <- a.Props.CreateAcl
-        elif not (isNull (box b.Props.CreateAcl)) then
-            props.CreateAcl <- b.Props.CreateAcl
+        { ConstructId = constructId
+          Props = props
+          AccessPoint = None }
 
-        { Stack = stack
-          Id = id
-          Props = props }
 
     member inline _.Delay(f: unit -> AccessPointConfig) = f ()
     member inline x.For(state: AccessPointConfig, f: unit -> AccessPointConfig) = x.Combine(state, f ())
 
-    // Custom operations only for primitive values
-    [<CustomOperation("path")>]
-    member _.Path(config: AccessPointConfig, value: string) =
-        config.Props.Path <- value
-        config
+    [<CustomOperation("fileSystem")>]
+    member _.FileSystem(config: AccessPointConfig, fs: IFileSystem) = { config with FileSystem = Some fs }
+
+    [<CustomOperation("clientToken")>]
+    member _.ClientToken(config: AccessPointConfig, token: string) =
+        { config with ClientToken = Some token }
+
+    [<CustomOperation("createAcl")>]
+    member _.CreateAcl(config: AccessPointConfig, acl: Acl) = { config with CreateAcl = Some acl }
+
+    [<CustomOperation("createAcl")>]
+    member this.CreateAcl(config: AccessPointConfig, ownerGid: string, ownerUid: string, permissions: string) =
+        { config with
+            CreateAcl = Some(Acl(OwnerGid = ownerGid, OwnerUid = ownerUid, Permissions = permissions)) }
+
+    [<CustomOperation("posixUser")>]
+    member _.PosixUser(config: AccessPointConfig, user: IPosixUser) = { config with PosixUser = Some user }
 
     [<CustomOperation("posixUser")>]
     member _.PosixUser(config: AccessPointConfig, uid: string, gid: string) =
-        config.Props.PosixUser <- PosixUser(Uid = uid, Gid = gid)
-        config
-
-    [<CustomOperation("createAcl")>]
-    member _.CreateAcl(config: AccessPointConfig, ownerGid: string, ownerUid: string, permissions: string) =
-        config.Props.CreateAcl <- Acl(OwnerGid = ownerGid, OwnerUid = ownerUid, Permissions = permissions)
-        config
-
-// ============================================================================
-// EFS AccessPointProps Builder DSL
-// ============================================================================
-
-type AccessPointPropsConfig =
-    { FileSystem: IFileSystem
-      Path: string option
-      PosixUser: PosixUser option
-      CreateAcl: Acl option }
-
-type AccessPointPropsBuilder(fileSystem: IFileSystem) =
-    member _.Yield _ : AccessPointPropsConfig =
-        { FileSystem = fileSystem
-          Path = None
-          PosixUser = None
-          CreateAcl = None }
-
-    member _.Zero() : AccessPointPropsConfig =
-        { FileSystem = fileSystem
-          Path = None
-          PosixUser = None
-          CreateAcl = None }
-
-    member _.Combine(a: AccessPointPropsConfig, b: AccessPointPropsConfig) : AccessPointPropsConfig =
-        { FileSystem = a.FileSystem
-          Path = Option.orElse a.Path b.Path
-          PosixUser = Option.orElse a.PosixUser b.PosixUser
-          CreateAcl = Option.orElse a.CreateAcl b.CreateAcl }
-
-    member inline _.Delay(f: unit -> AccessPointPropsConfig) = f ()
-
-    member _.Run(config: AccessPointPropsConfig) =
-        let props = AccessPointProps(FileSystem = config.FileSystem)
-        config.Path |> Option.iter (fun p -> props.Path <- p)
-        config.PosixUser |> Option.iter (fun u -> props.PosixUser <- u)
-        config.CreateAcl |> Option.iter (fun a -> props.CreateAcl <- a)
-        props
-
-    [<CustomOperation("path")>]
-    member _.Path(config: AccessPointPropsConfig, value: string) = { config with Path = Some value }
+        { config with
+            PosixUser = Some(PosixUser(Gid = gid, Uid = uid)) }
 
     [<CustomOperation("posixUser")>]
-    member _.PosixUser(config: AccessPointPropsConfig, uid: string, gid: string) =
-        let user = PosixUser(Gid = gid, Uid = uid)
-        { config with PosixUser = Some user }
+    member _.PosixUser(config: AccessPointConfig, uid: string, gid: string, secondaryGids: string array) =
+        { config with
+            PosixUser = Some(PosixUser(Gid = gid, Uid = uid, SecondaryGids = secondaryGids)) }
 
-    [<CustomOperation("createAcl")>]
-    member _.CreateAcl(config: AccessPointPropsConfig, ownerGid: string, ownerUid: string, permissions: string) =
-        let acl = Acl(OwnerGid = ownerGid, OwnerUid = ownerUid, Permissions = permissions)
-        { config with CreateAcl = Some acl }
+    [<CustomOperation("path")>]
+    member _.Path(config: AccessPointConfig, path: string) = { config with Path = Some path }
 
-// ============================================================================
-// Builders
-// ============================================================================
 
 [<AutoOpen>]
 module LambdaFileSystemBuilders =
     let lambdaFileSystem = LambdaFileSystemBuilder()
-    let efsFileSystem id = EfsFileSystemBuilder(id)
+    let efsFileSystem name = EfsFileSystemBuilder(name)
     let accessPoint id = AccessPointBuilder(id)
-    let accessPointProps fs = AccessPointPropsBuilder(fs)

@@ -10,7 +10,7 @@ type TransitionConfig =
       TransitionDate: DateTime option }
 
 type TransitionBuilder() =
-    member _.Yield _ : TransitionConfig =
+    member _.Yield(_: unit) : TransitionConfig =
         { StorageClass = None
           TransitionAfter = None
           TransitionDate = None }
@@ -80,7 +80,7 @@ type NoncurrentVersionTransitionConfig =
       NoncurrentVersionsToRetain: float option }
 
 type NoncurrentVersionTransitionBuilder() =
-    member _.Yield _ : NoncurrentVersionTransitionConfig =
+    member _.Yield(_: unit) : NoncurrentVersionTransitionConfig =
         { StorageClass = None
           TransitionAfter = None
           NoncurrentVersionsToRetain = None }

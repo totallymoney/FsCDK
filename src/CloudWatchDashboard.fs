@@ -56,7 +56,7 @@ type DashboardSpec =
                 $"Dashboard '{this.DashboardName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type DashboardBuilder(name: string) =
-    member _.Yield _ : DashboardConfig =
+    member _.Yield(_: unit) : DashboardConfig =
         { DashboardName = name
           ConstructId = None
           DashboardName_ = None

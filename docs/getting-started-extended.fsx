@@ -32,7 +32,6 @@ All following AWS Well-Architected Framework best practices!
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
 open FsCDK
-open Amazon.CDK.AWS.EC2
 
 vpc "MyVpc" {
     maxAzs 2 // Multi-AZ for high availability
@@ -51,7 +50,6 @@ vpc "MyVpc" {
 ### 2. Add a PostgreSQL Database
 *)
 
-open Amazon.CDK.AWS.RDS
 
 (**
 Here's how to add a PostgreSQL database (shown in full stack example below):
@@ -59,7 +57,7 @@ Here's how to add a PostgreSQL database (shown in full stack example below):
 ```fsharp
 rdsInstance "MyDatabase" {
     vpc myVpc
-    postgresEngine                     // PostgreSQL 15
+    postgresEngine // PostgreSQL 15
     instanceType (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.SMALL))
     allocatedStorage 20
 
@@ -69,7 +67,7 @@ rdsInstance "MyDatabase" {
     // Auto minor version upgrades
     // Private subnet placement
 
-    multiAz true                       // High availability
+    multiAz true // High availability
     databaseName "myapp"
 }
 ```
@@ -86,23 +84,25 @@ rdsInstance "MyDatabase" {
 
 open Amazon.CDK.AWS.Cognito
 
-// Create user pool
-let myUserPool =
-    userPool "MyUserPool" {
-        signInWithEmail // Users sign in with email
-        selfSignUpEnabled true // Allow self-registration
-        mfa Mfa.OPTIONAL // Users can enable MFA
+stack "MyApp" {
+    // Create user pool
+    let! myUserPool =
+        userPool "MyUserPool" {
+            signInWithEmail // Users sign in with email
+            selfSignUpEnabled true // Allow self-registration
+            mfa Mfa.OPTIONAL // Users can enable MFA
 
-    // Automatic best practices:
-    // Strong password policy (8+ chars, mixed case, digits, symbols)
-    // Email verification required
-    // Account recovery via email
+        // Automatic best practices:
+        // Strong password policy (8+ chars, mixed case, digits, symbols)
+        // Email verification required
+        // Account recovery via email
+        }
+
+    // Create an app client
+    userPoolClient "MyAppClient" {
+        userPool myUserPool
+        generateSecret false // For web/mobile apps
     }
-
-// Create app client
-userPoolClient "MyAppClient" {
-    userPool myUserPool
-    generateSecret false // For web/mobile apps
 
 // Automatic best practices:
 // SRP authentication flow
@@ -120,8 +120,6 @@ userPoolClient "MyAppClient" {
 
 ### 4. Add a CDN for Fast Delivery
 *)
-
-open Amazon.CDK.AWS.CloudFront
 
 (*** hide ***)
 let myBehavior =
@@ -155,7 +153,6 @@ cloudFrontDistribution "MyCDN" {
 Here's how to combine everything into a production-ready stack:
 *)
 
-open Amazon.CDK
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.Lambda
 
@@ -173,16 +170,18 @@ let cdnBehavior =
 
 stack "ProductionApp" {
 
-    environment {
-        account config.Account
-        region config.Region
-    }
+    env (
+        environment {
+            account config.Account
+            region config.Region
+        }
+    )
 
     description "Production application stack"
     tags [ "environment", "production"; "managed-by", "FsCDK" ]
 
     // 1. Network layer
-    let myVpc =
+    let! myVpc =
         vpc "AppVpc" {
             maxAzs 2
             natGateways 1
@@ -290,7 +289,7 @@ stack "WebApp" {
 *)
 
 stack "DataPipeline" {
-    let myVpc = vpc "DataVpc" { () }
+    let! myVpc = vpc "DataVpc" { () }
 
     rdsInstance "DataWarehouse" {
         vpc myVpc
@@ -370,7 +369,7 @@ stack "EnhancedStack" {
     }
 
     // New services
-    let myVpc = vpc "MyVpc" { () }
+    let! myVpc = vpc "MyVpc" { () }
 
     rdsInstance "MyDB" {
         vpc myVpc

@@ -5,8 +5,7 @@ open FsCDK
 
 [<Tests>]
 let certificate_manager_tests =
-    testSequenced
-    <| testList
+    testList
         "Certificate Manager DSL"
         [ test "requires domain name" {
               let certSpec = certificate "MyCert" { domainName "example.com" }
@@ -71,3 +70,4 @@ let certificate_manager_tests =
               Expect.equal certSpec.Props.SubjectAlternativeNames.[0] "www.example.com" "First SAN should be last added"
               Expect.equal certSpec.Props.SubjectAlternativeNames.[2] "*.example.com" "Last SAN should be first added"
           } ]
+    |> testSequenced

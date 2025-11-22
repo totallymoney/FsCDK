@@ -10,17 +10,17 @@ open Amazon.CDK.AWS.EC2
 open Amazon.CDK.AWS.RDS
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.CloudFront
+open Amazon.CDK.AWS.CertificateManager
 open Amazon.CDK.AWS.Cognito
 open Amazon.CDK.AWS.ElasticLoadBalancingV2
 open Amazon.CDK.AWS.Events
 open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.CloudWatch
 open Amazon.CDK.AWS.Kinesis
+open Amazon.CDK.AWS.KMS
 open Amazon.CDK.AWS.Route53
 open Constructs
-open Amazon.CDK.AWS.AppRunner
 open Amazon.CDK.AWS.ElastiCache
-open Amazon.CDK.AWS.DocDB
 open Amazon.CDK.CustomResources
 open Amazon.CDK.AWS.Logs
 open Amazon.CDK.AWS.StepFunctions
@@ -77,28 +77,30 @@ type Operation =
     | SecretsManagerOp of SecretsManagerSpec
     | ElasticBeanstalkEnvironmentOp of ElasticBeanstalkEnvironmentSpec
     | DnsValidatedCertificateOp of DnsValidatedCertificateSpec
-    | AppRunnerServiceOp of AppRunnerServiceResource
-    | ElastiCacheRedisOp of ElastiCacheRedisResource
-    | DocumentDBClusterOp of DocumentDBClusterResource
-    | CustomResourceOp of CustomResourceResource
-    | StepFunctionOp of StepFunctionResource
-    | XRayGroupOp of XRayGroupResource
-    | XRaySamplingRuleOp of XRaySamplingRuleResource
-    | AppSyncApiOp of AppSyncApiResource
-    | AppSyncDataSourceOp of AppSyncDataSourceResource
+    | AppRunnerServiceOp of AppRunnerServiceSpec
+    | ElasticCacheRedisOp of ElasticCacheRedisSpec
+    | DocumentDBClusterOp of DocumentDBClusterSpec
+    | CustomResourceOp of CustomResourceSpec
+    | StepFunctionOp of StepFunctionSpec
+    | XRayGroupOp of XRayGroupSpec
+    | XRaySamplingRuleOp of XRaySamplingRuleSpec
+    | AppSyncApiOp of AppSyncApiSpec
+    | AppSyncDataSourceOp of AppSyncDataSourceSpec
     | RestApiOp of RestApiSpec
     | TokenAuthorizerOp of TokenAuthorizerSpec
     | VpcLinkOp of VpcLinkSpec
     | FargateTaskDefinitionOp of FargateTaskDefinitionSpec
-    | ECSClusterOp of ECSClusterResource
-    | ECSFargateServiceOp of ECSFargateServiceResource
+    | ECSClusterOp of ECSClusterSpec
+    | ECSFargateServiceOp of ECSFargateServiceSpec
     | GatewayVpcEndpointOp of GatewayVpcEndpointSpec
     | InterfaceVpcEndpointOp of InterfaceVpcEndpointSpec
     | DatabaseProxyOp of DatabaseProxySpec
-    | CloudWatchLogGroupOp of CloudWatchLogGroupResource
-    | CloudWatchMetricFilterOp of CloudWatchMetricFilterResource
-    | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterResource
+    | CloudWatchLogGroupOp of CloudWatchLogGroupSpec
+    | CloudWatchMetricFilterOp of CloudWatchMetricFilterSpec
+    | CloudWatchSubscriptionFilterOp of CloudWatchSubscriptionFilterSpec
     | CloudTrailOp of CloudTrailSpec
+    | AccessPointOp of AccessPointSpec
+    | EfsFileSystemOp of EfsFileSystemSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -132,7 +134,7 @@ module StackOperations =
 
                 gsi.WriteCapacity |> Option.iter (fun wc -> gsiProps.WriteCapacity <- wc)
 
-                t.AddGlobalSecondaryIndex(gsiProps) |> ignore
+                t.AddGlobalSecondaryIndex(gsiProps)
 
             // Add Local Secondary Indexes
             for lsi in tableSpec.LocalSecondaryIndexes do
@@ -148,12 +150,11 @@ module StackOperations =
                     if not (List.isEmpty attrs) then
                         lsiProps.NonKeyAttributes <- Array.ofList attrs)
 
-                t.AddLocalSecondaryIndex(lsiProps) |> ignore
+                t.AddLocalSecondaryIndex(lsiProps)
 
             tableSpec.Table <- Some t
 
         | FunctionOp lambdaSpec ->
-            // Yan Cui Production Best Practice: Auto-create DLQ if enabled
             // Check if DeadLetterQueueEnabled is set but no queue provided
             let propsToUse =
                 if
@@ -186,7 +187,7 @@ module StackOperations =
 
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, propsToUse)
 
-            let _ = lambdaSpec.EventSources |> Seq.map (fn.AddEventSource) |> Seq.toList
+            let _ = lambdaSpec.EventSources |> Seq.map fn.AddEventSource |> Seq.toList
 
             lambdaSpec.Function <- Some fn
 
@@ -194,7 +195,7 @@ module StackOperations =
                 action fn
 
         | DockerImageFunctionOp imageLambdaSpec ->
-            AWS.Lambda.DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
+            DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
             |> ignore
 
         | GrantOp grantSpec -> Grants.processGrant stack grantSpec
@@ -202,40 +203,8 @@ module StackOperations =
         | TopicOp topicSpec -> Topic(stack, topicSpec.ConstructId, topicSpec.Props) |> ignore
 
         | QueueOp queueSpec ->
-            // Build QueueProps from spec (convert primitives to Duration etc.)
-            let props = QueueProps()
-            props.QueueName <- queueSpec.QueueName
+            let queue = Queue(stack, queueSpec.ConstructId, queueSpec.Props)
 
-            queueSpec.VisibilityTimeout
-            |> Option.iter (fun v -> props.VisibilityTimeout <- Duration.Seconds(v))
-
-            queueSpec.MessageRetention
-            |> Option.iter (fun r -> props.RetentionPeriod <- Duration.Seconds(r))
-
-            queueSpec.FifoQueue |> Option.iter (fun f -> props.Fifo <- f)
-
-            queueSpec.ContentBasedDeduplication
-            |> Option.iter (fun c -> props.ContentBasedDeduplication <- c)
-
-            queueSpec.DelaySeconds
-            |> Option.iter (fun d -> props.DeliveryDelay <- Duration.Seconds(float d))
-
-            queueSpec.Encryption |> Option.iter (fun e -> props.Encryption <- e)
-
-            queueSpec.EncryptionMasterKey
-            |> Option.iter (fun k -> props.EncryptionMasterKey <- k)
-
-            match queueSpec.DeadLetterQueueName, queueSpec.MaxReceiveCount with
-            | Some dlqName, Some maxReceive ->
-                try
-                    let dlq = stack.Node.FindChild(dlqName) :?> Queue
-                    let dlqSpec = DeadLetterQueue(Queue = dlq, MaxReceiveCount = maxReceive)
-                    props.DeadLetterQueue <- dlqSpec
-                with ex ->
-                    printfn $"Warning: Could not configure DLQ for queue %s{queueSpec.QueueName}: %s{ex.Message}"
-            | _ -> ()
-
-            let queue = Queue(stack, queueSpec.ConstructId, props)
             queueSpec.Queue <- Some queue
 
         | BucketOp bucketSpec ->
@@ -283,7 +252,7 @@ module StackOperations =
             let sg = SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props)
             sgSpec.SecurityGroup <- Some sg
 
-        | RdsInstanceOp rdsSpec -> AWS.RDS.DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
+        | RdsInstanceOp rdsSpec -> DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
 
         | CloudFrontDistributionOp cfSpec ->
             Amazon.CDK.AWS.CloudFront.Distribution(stack, cfSpec.ConstructId, cfSpec.Props)
@@ -323,7 +292,7 @@ module StackOperations =
             bastionSpec.BastionHost <- Some bastion
 
         | KMSKeyOp keySpec ->
-            let key = Amazon.CDK.AWS.KMS.Key(stack, keySpec.ConstructId, keySpec.Props)
+            let key = Key(stack, keySpec.ConstructId, keySpec.Props)
             keySpec.Key <- Some key
 
         | VPCGatewayAttachmentOp attachSpec ->
@@ -353,8 +322,7 @@ module StackOperations =
             policySpec.Policy <- Some policy
 
         | CertificateOp certSpec ->
-            let cert =
-                Amazon.CDK.AWS.CertificateManager.Certificate(stack, certSpec.ConstructId, certSpec.Props)
+            let cert = Certificate(stack, certSpec.ConstructId, certSpec.Props)
 
             certSpec.Certificate <- Some cert
 
@@ -409,7 +377,7 @@ module StackOperations =
         //| CloudHSMClusterOp hsmSpec ->
         //    CfnCluster(stack, hsmSpec.ConstructId, hsmSpec.Props) |> ignore
 
-        | LambdaRoleOp roleSpec ->
+        | LambdaRoleOp _ ->
             // Role is already created in the builder, just store reference if needed
             // The role is available in roleSpec.Role
             ()
@@ -439,53 +407,33 @@ module StackOperations =
             envSpec.Environment <- env
 
         | DnsValidatedCertificateOp certSpec ->
-            let cert =
-                Amazon.CDK.AWS.CertificateManager.Certificate(stack, certSpec.ConstructId, certSpec.Props)
+            let cert = Certificate(stack, certSpec.ConstructId, certSpec.Props)
 
             certSpec.Certificate <- cert
             certSpec.Certificate <- cert
 
         | AppRunnerServiceOp serviceSpec ->
-            let props = Amazon.CDK.AWS.AppRunner.CfnServiceProps()
-            props.ServiceName <- serviceSpec.ServiceName
-
-            serviceSpec.Config.SourceConfiguration
-            |> Option.iter (fun v -> props.SourceConfiguration <- v)
-
-            serviceSpec.Config.InstanceConfiguration
-            |> Option.iter (fun v -> props.InstanceConfiguration <- v)
-
-            serviceSpec.Config.HealthCheckConfiguration
-            |> Option.iter (fun v -> props.HealthCheckConfiguration <- v)
-
-            serviceSpec.Config.AutoScalingConfigurationArn
-            |> Option.iter (fun v -> props.AutoScalingConfigurationArn <- v)
-
-            if not serviceSpec.Config.Tags.IsEmpty then
-                props.Tags <-
-                    serviceSpec.Config.Tags
-                    |> List.map (fun (k, v) -> CfnTag(Key = k, Value = v) :> ICfnTag)
-                    |> Array.ofList
-
             let service =
-                Amazon.CDK.AWS.AppRunner.CfnService(stack, serviceSpec.ConstructId, props)
+                Amazon.CDK.AWS.AppRunner.CfnService(stack, serviceSpec.ConstructId, serviceSpec.Props)
 
             serviceSpec.Service <- Some service
 
-        | ElastiCacheRedisOp clusterSpec ->
-            let cluster =
+        | ElasticCacheRedisOp clusterSpec ->
+            let cfnCacheCluster =
                 CfnCacheCluster(
                     stack,
                     clusterSpec.ConstructId,
                     CfnCacheClusterProps(ClusterName = clusterSpec.ClusterName)
                 )
-            // Note: Full configuration handled in builder
-            ()
+
+            clusterSpec.CacheCluster <- Some cfnCacheCluster
 
         | DocumentDBClusterOp clusterSpec ->
-            // Note: DocumentDB cluster creation requires VPC and credentials
-            // Full implementation would use DatabaseCluster
-            ()
+            let databaseCluster =
+                AWS.DocDB.DatabaseCluster(stack, clusterSpec.ConstructId, clusterSpec.Props)
+
+            clusterSpec.Cluster <- Some databaseCluster
+
 
         | CustomResourceOp resourceSpec ->
             let customResource =
@@ -547,11 +495,11 @@ module StackOperations =
 
             taskDefSpec.TaskDefinition <- Some taskDef
 
-        | ECSClusterOp clusterResource ->
+        | ECSClusterOp clusterSpec ->
             let cluster =
-                Cluster(stack, clusterResource.ConstructId, ClusterProps(ClusterName = clusterResource.ClusterName))
-            // Note: Full configuration handled in builder
-            ()
+                Cluster(stack, clusterSpec.ConstructId, ClusterProps(ClusterName = clusterSpec.ClusterName))
+
+            clusterSpec.Cluster <- Some cluster
 
         | ECSFargateServiceOp serviceResource ->
             let service =
@@ -560,8 +508,8 @@ module StackOperations =
                     serviceResource.ConstructId,
                     FargateServiceProps(ServiceName = serviceResource.ServiceName)
                 )
-            // Note: Full configuration handled in builder
-            ()
+
+            serviceResource.Service <- Some service
 
         | GatewayVpcEndpointOp endpointSpec ->
             let endpoint =
@@ -586,7 +534,7 @@ module StackOperations =
         | CloudWatchMetricFilterOp filterResource ->
             // Resolve LogGroup from either direct reference or CloudWatchLogGroupResource
             let logGroup =
-                match filterResource.LogGroupToAttach, filterResource.LogGroupResourceRef with
+                match filterResource.LogGroupToAttach, filterResource.LogGroupResource with
                 | Some lg, _ -> lg
                 | None, Some lgResource ->
                     match lgResource.LogGroup with
@@ -604,7 +552,7 @@ module StackOperations =
         | CloudWatchSubscriptionFilterOp subscriptionResource ->
             // Resolve LogGroup from either direct reference or CloudWatchLogGroupResource
             let logGroup =
-                match subscriptionResource.LogGroupToAttach, subscriptionResource.LogGroupResourceRef with
+                match subscriptionResource.LogGroupToAttach, subscriptionResource.LogGroupResource with
                 | Some lg, _ -> lg
                 | None, Some lgResource ->
                     match lgResource.LogGroup with
@@ -641,13 +589,27 @@ module StackOperations =
 
             trailSpec.Trail <- Some trail
 
+        | AccessPointOp accessPointSpec ->
+            let accessPoint =
+                Amazon.CDK.AWS.EFS.AccessPoint(stack, accessPointSpec.ConstructId, accessPointSpec.Props)
+
+            accessPointSpec.AccessPoint <- Some accessPoint
+
+        | EfsFileSystemOp fileSystemSpec ->
+            let fileSystem =
+                Amazon.CDK.AWS.EFS.FileSystem(stack, fileSystemSpec.ConstructId, fileSystemSpec.Props)
+
+            fileSystemSpec.FileSystem <- Some fileSystem
+
+
+
 // ============================================================================
 // Stack and App Configuration DSL
 // ============================================================================
 
 type StackConfig =
     { Name: string
-      Construct: Construct option
+      Scope: Construct option
       Env: IEnvironment option
       Description: string option
       Tags: Map<string, string> option
@@ -659,30 +621,18 @@ type StackConfig =
       PermissionsBoundary: Amazon.CDK.PermissionsBoundary option
       PropertyInjectors: IPropertyInjector list option
       Synthesizer: IStackSynthesizer option
-      Operations: Operation list }
+      Operations: (Stack -> unit) list }
 
 type StackBuilder(name: string) =
 
+    // Helper to convert Operation to function
+    let opToFunc op =
+        fun stack -> StackOperations.processOperation stack op
+
     member _.Yield(_: unit) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
-          Description = None
-          Tags = None
-          TerminationProtection = None
-          AnalyticsReporting = None
-          CrossRegionReferences = None
-          SuppressTemplateIndentation = None
-          NotificationArns = None
-          PermissionsBoundary = None
-          PropertyInjectors = None
-          Synthesizer = None
-          Operations = [] }
-
-    member _.Yield(env: IEnvironment) : StackConfig =
-        { Name = name
-          Construct = None
-          Env = Some env
           Description = None
           Tags = None
           TerminationProtection = None
@@ -697,7 +647,7 @@ type StackBuilder(name: string) =
 
     member _.Yield(tableSpec: TableSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -709,11 +659,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ TableOp tableSpec ] }
+          Operations = [ fun stack -> StackOperations.processOperation stack (TableOp tableSpec) ] }
 
     member _.Yield(tableSpec: EC2InstanceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -725,11 +675,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ EC2InstanceOp tableSpec ] }
+          Operations = [ opToFunc (EC2InstanceOp tableSpec) ] }
 
     member _.Yield(tableSpec: Route53ARecordSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -741,12 +691,12 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ Route53RecordOp tableSpec ] }
+          Operations = [ opToFunc (Route53RecordOp tableSpec) ] }
 
 
     member _.Yield(albSpec: ALBSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -758,11 +708,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ALBOp albSpec ] }
+          Operations = [ opToFunc (ALBOp albSpec) ] }
 
     member _.Yield(secretsSpec: SecretsManagerSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -774,11 +724,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ SecretsManagerOp secretsSpec ] }
+          Operations = [ opToFunc (SecretsManagerOp secretsSpec) ] }
 
     member _.Yield(secretsSpec: ElasticBeanstalkEnvironmentSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -790,11 +740,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ElasticBeanstalkEnvironmentOp secretsSpec ] }
+          Operations = [ opToFunc (ElasticBeanstalkEnvironmentOp secretsSpec) ] }
 
     member _.Yield(secretsSpec: DnsValidatedCertificateSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -806,27 +756,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ DnsValidatedCertificateOp secretsSpec ] }
-
-    member _.Yield(app: Construct) : StackConfig =
-        { Name = name
-          Construct = Some app
-          Env = None
-          Description = None
-          Tags = None
-          TerminationProtection = None
-          AnalyticsReporting = None
-          CrossRegionReferences = None
-          SuppressTemplateIndentation = None
-          NotificationArns = None
-          PermissionsBoundary = None
-          PropertyInjectors = None
-          Synthesizer = None
-          Operations = [] }
+          Operations = [ opToFunc (DnsValidatedCertificateOp secretsSpec) ] }
 
     member _.Yield(funcSpec: FunctionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -838,11 +772,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ FunctionOp funcSpec ] }
+          Operations = [ opToFunc (FunctionOp funcSpec) ] }
 
     member _.Yield(dockerSpec: DockerImageFunctionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -854,11 +788,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ DockerImageFunctionOp dockerSpec ] }
+          Operations = [ opToFunc (DockerImageFunctionOp dockerSpec) ] }
 
     member _.Yield(grantSpec: GrantSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -870,11 +804,28 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ GrantOp grantSpec ] }
+          Operations = [ opToFunc (GrantOp grantSpec) ] }
+
+
+    member _.Yield(grantSpec: AccessPointSpec) : StackConfig =
+        { Name = name
+          Scope = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ opToFunc (AccessPointOp grantSpec) ] }
 
     member _.Yield(topicSpec: TopicSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -886,11 +837,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ TopicOp topicSpec ] }
+          Operations = [ opToFunc (TopicOp topicSpec) ] }
 
     member _.Yield(queueSpec: QueueSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -902,11 +853,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ QueueOp queueSpec ] }
+          Operations = [ opToFunc (QueueOp queueSpec) ] }
 
     member _.Yield(bucketSpec: BucketSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -918,11 +869,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ BucketOp bucketSpec ] }
+          Operations = [ opToFunc (BucketOp bucketSpec) ] }
 
     member _.Yield(subSpec: SubscriptionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -934,11 +885,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ SubscriptionOp subSpec ] }
+          Operations = [ opToFunc (SubscriptionOp subSpec) ] }
 
     member _.Yield(vpcSpec: VpcSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -950,11 +901,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ VpcOp vpcSpec ] }
+          Operations = [ opToFunc (VpcOp vpcSpec) ] }
 
     member _.Yield(sgSpec: SecurityGroupSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -966,11 +917,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ SecurityGroupOp sgSpec ] }
+          Operations = [ opToFunc (SecurityGroupOp sgSpec) ] }
 
     member _.Yield(rdsSpec: DatabaseInstanceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -982,11 +933,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ RdsInstanceOp rdsSpec ] }
+          Operations = [ opToFunc (RdsInstanceOp rdsSpec) ] }
 
     member _.Yield(cfSpec: DistributionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -998,11 +949,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudFrontDistributionOp cfSpec ] }
+          Operations = [ opToFunc (CloudFrontDistributionOp cfSpec) ] }
 
     member _.Yield(upSpec: UserPoolSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1014,11 +965,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ UserPoolOp upSpec ] }
+          Operations = [ opToFunc (UserPoolOp upSpec) ] }
 
     member _.Yield(upcSpec: UserPoolClientSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1030,11 +981,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ UserPoolClientOp upcSpec ] }
+          Operations = [ opToFunc (UserPoolClientOp upcSpec) ] }
 
     member _.Yield(uprsSpec: UserPoolResourceServerSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1046,11 +997,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ UserPoolResourceServerOp uprsSpec ] }
+          Operations = [ opToFunc (UserPoolResourceServerOp uprsSpec) ] }
 
     member _.Yield(nlbSpec: NetworkLoadBalancerSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1062,11 +1013,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ NetworkLoadBalancerOp nlbSpec ] }
+          Operations = [ opToFunc (NetworkLoadBalancerOp nlbSpec) ] }
 
     member _.Yield(ruleSpec: EventBridgeRuleSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1078,11 +1029,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ EventBridgeRuleOp ruleSpec ] }
+          Operations = [ opToFunc (EventBridgeRuleOp ruleSpec) ] }
 
     member _.Yield(busSpec: EventBusSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1094,11 +1045,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ EventBusOp busSpec ] }
+          Operations = [ opToFunc (EventBusOp busSpec) ] }
 
     member _.Yield(bastionSpec: BastionHostSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1110,11 +1061,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ BastionHostOp bastionSpec ] }
+          Operations = [ opToFunc (BastionHostOp bastionSpec) ] }
 
     member _.Yield(attachSpec: VPCGatewayAttachmentSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1126,11 +1077,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ VPCGatewayAttachmentOp attachSpec ] }
+          Operations = [ opToFunc (VPCGatewayAttachmentOp attachSpec) ] }
 
     member _.Yield(rtSpec: RouteTableSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1142,11 +1093,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ RouteTableOp rtSpec ] }
+          Operations = [ opToFunc (RouteTableOp rtSpec) ] }
 
     member _.Yield(routeSpec: RouteSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1158,11 +1109,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ RouteOp routeSpec ] }
+          Operations = [ opToFunc (RouteOp routeSpec) ] }
 
     member _.Yield(oidcSpec: OIDCProviderSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1174,11 +1125,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ OIDCProviderOp oidcSpec ] }
+          Operations = [ opToFunc (OIDCProviderOp oidcSpec) ] }
 
     member _.Yield(policySpec: ManagedPolicySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1190,11 +1141,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ManagedPolicyOp policySpec ] }
+          Operations = [ opToFunc (ManagedPolicyOp policySpec) ] }
 
     member _.Yield(certSpec: CertificateSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1206,11 +1157,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CertificateOp certSpec ] }
+          Operations = [ opToFunc (CertificateOp certSpec) ] }
 
     member _.Yield(policySpec: BucketPolicySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1222,11 +1173,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ BucketPolicyOp policySpec ] }
+          Operations = [ opToFunc (BucketPolicyOp policySpec) ] }
 
     member _.Yield(keySpec: KMSKeySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1238,11 +1189,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ KMSKeyOp keySpec ] }
+          Operations = [ opToFunc (KMSKeyOp keySpec) ] }
 
     member _.Yield(dashSpec: DashboardSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1254,11 +1205,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchDashboardOp dashSpec ] }
+          Operations = [ opToFunc (CloudWatchDashboardOp dashSpec) ] }
 
     member _.Yield(spec: EKSClusterSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1270,11 +1221,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ EKSClusterOp spec ] }
+          Operations = [ opToFunc (EKSClusterOp spec) ] }
 
     member _.Yield(spec: KinesisStreamSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1286,11 +1237,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ KinesisStreamOp spec ] }
+          Operations = [ opToFunc (KinesisStreamOp spec) ] }
 
     member _.Yield(spec: Route53HostedZoneSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1302,11 +1253,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ HostedZoneOp spec ] }
+          Operations = [ opToFunc (HostedZoneOp spec) ] }
 
     member _.Yield(spec: OriginAccessIdentitySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1318,17 +1269,17 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ OriginAccessIdentityOp spec ] }
+          Operations = [ opToFunc (OriginAccessIdentityOp spec) ] }
 
     //member _.Yield(hsmSpec: CloudHSMClusterSpec) : StackConfig =
     //    { Name = name
     //      Construct = None
     //      Props = None
-    //      Operations = [ CloudHSMClusterOp hsmSpec ] }
+    //      Operations = [ opToFunc (CloudHSMClusterOp hsmSpec) ] }
 
     member _.Yield(roleSpec: LambdaRoleSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1340,11 +1291,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ LambdaRoleOp roleSpec ] }
+          Operations = [ opToFunc (LambdaRoleOp roleSpec) ] }
 
     member _.Yield(alarmSpec: CloudWatchAlarmSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1356,11 +1307,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchAlarmOp alarmSpec ] }
+          Operations = [ opToFunc (CloudWatchAlarmOp alarmSpec) ] }
 
-    member _.Yield(customResourceResource: CustomResourceResource) : StackConfig =
+    member _.Yield(customResourceResource: CustomResourceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1372,11 +1323,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CustomResourceOp customResourceResource ] }
+          Operations = [ opToFunc (CustomResourceOp customResourceResource) ] }
 
-    member _.Yield(sfResource: StepFunctionResource) : StackConfig =
+    member _.Yield(sfResource: StepFunctionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1388,11 +1339,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ StepFunctionOp sfResource ] }
+          Operations = [ opToFunc (StepFunctionOp sfResource) ] }
 
-    member _.Yield(xrayGroupResource: XRayGroupResource) : StackConfig =
+    member _.Yield(xrayGroupResource: XRayGroupSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1404,11 +1355,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ XRayGroupOp xrayGroupResource ] }
+          Operations = [ opToFunc (XRayGroupOp xrayGroupResource) ] }
 
-    member _.Yield(xraySamplingRuleResource: XRaySamplingRuleResource) : StackConfig =
+    member _.Yield(xraySamplingRuleResource: XRaySamplingRuleSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1420,11 +1371,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ XRaySamplingRuleOp xraySamplingRuleResource ] }
+          Operations = [ opToFunc (XRaySamplingRuleOp xraySamplingRuleResource) ] }
 
-    member _.Yield(appSyncApiResource: AppSyncApiResource) : StackConfig =
+    member _.Yield(appSyncApiResource: AppSyncApiSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1436,11 +1387,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ AppSyncApiOp appSyncApiResource ] }
+          Operations = [ opToFunc (AppSyncApiOp appSyncApiResource) ] }
 
-    member _.Yield(appSyncDataSourceResource: AppSyncDataSourceResource) : StackConfig =
+    member _.Yield(appSyncDataSourceResource: AppSyncDataSourceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1452,11 +1403,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ AppSyncDataSourceOp appSyncDataSourceResource ] }
+          Operations = [ opToFunc (AppSyncDataSourceOp appSyncDataSourceResource) ] }
 
     member _.Yield(restApiSpec: RestApiSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1468,11 +1419,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ RestApiOp restApiSpec ] }
+          Operations = [ opToFunc (RestApiOp restApiSpec) ] }
 
     member _.Yield(authorizerSpec: TokenAuthorizerSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1484,11 +1435,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ TokenAuthorizerOp authorizerSpec ] }
+          Operations = [ opToFunc (TokenAuthorizerOp authorizerSpec) ] }
 
     member _.Yield(vpcLinkSpec: VpcLinkSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1500,11 +1451,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ VpcLinkOp vpcLinkSpec ] }
+          Operations = [ opToFunc (VpcLinkOp vpcLinkSpec) ] }
 
     member _.Yield(taskDefSpec: FargateTaskDefinitionSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1516,11 +1467,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ FargateTaskDefinitionOp taskDefSpec ] }
+          Operations = [ opToFunc (FargateTaskDefinitionOp taskDefSpec) ] }
 
-    member _.Yield(clusterResource: ECSClusterResource) : StackConfig =
+    member _.Yield(clusterResource: ECSClusterSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1532,11 +1483,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ECSClusterOp clusterResource ] }
+          Operations = [ opToFunc (ECSClusterOp clusterResource) ] }
 
-    member _.Yield(serviceResource: ECSFargateServiceResource) : StackConfig =
+    member _.Yield(serviceResource: ECSFargateServiceSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1548,11 +1499,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ ECSFargateServiceOp serviceResource ] }
+          Operations = [ opToFunc (ECSFargateServiceOp serviceResource) ] }
 
     member _.Yield(endpointSpec: GatewayVpcEndpointSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1564,11 +1515,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ GatewayVpcEndpointOp endpointSpec ] }
+          Operations = [ opToFunc (GatewayVpcEndpointOp endpointSpec) ] }
 
     member _.Yield(endpointSpec: InterfaceVpcEndpointSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1580,11 +1531,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ InterfaceVpcEndpointOp endpointSpec ] }
+          Operations = [ opToFunc (InterfaceVpcEndpointOp endpointSpec) ] }
 
     member _.Yield(proxySpec: DatabaseProxySpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1596,11 +1547,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ DatabaseProxyOp proxySpec ] }
+          Operations = [ opToFunc (DatabaseProxyOp proxySpec) ] }
 
-    member _.Yield(logGroupResource: CloudWatchLogGroupResource) : StackConfig =
+    member _.Yield(logGroupResource: CloudWatchLogGroupSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1612,11 +1563,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchLogGroupOp logGroupResource ] }
+          Operations = [ opToFunc (CloudWatchLogGroupOp logGroupResource) ] }
 
-    member _.Yield(filterResource: CloudWatchMetricFilterResource) : StackConfig =
+    member _.Yield(filterResource: CloudWatchMetricFilterSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1628,11 +1579,11 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchMetricFilterOp filterResource ] }
+          Operations = [ opToFunc (CloudWatchMetricFilterOp filterResource) ] }
 
-    member _.Yield(subscriptionResource: CloudWatchSubscriptionFilterResource) : StackConfig =
+    member _.Yield(subscriptionResource: CloudWatchSubscriptionFilterSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1644,11 +1595,577 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudWatchSubscriptionFilterOp subscriptionResource ] }
+          Operations = [ opToFunc (CloudWatchSubscriptionFilterOp subscriptionResource) ] }
+
+    member inline this.Bind(spec: VpcSpec, [<InlineIfLambda>] cont: IVpc -> StackConfig) : StackConfig =
+        // Create the VPC first
+        let createVpc =
+            fun (stack: Stack) ->
+                let vpc = Vpc(stack, spec.ConstructId, spec.Props)
+                spec.Vpc <- Some vpc
+
+        // Then execute the continuation with the created VPC
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Vpc with
+                | Some vpc ->
+                    let contConfig = cont vpc
+                    // Execute all operations from the continuation
+                    for op in contConfig.Operations do
+                        op stack
+                | None -> failwith $"VPC '{spec.VpcName}' was not created. Make sure to create the VPC first."
+
+        // Return the configuration with both operations
+        let baseCfg = this.Yield(spec)
+
+        { baseCfg with
+            Operations = [ createVpc; executeContinuation ] }
+
+    member inline this.Bind
+        (
+            spec: SecurityGroupSpec,
+            [<InlineIfLambda>] cont: ISecurityGroup -> StackConfig
+        ) : StackConfig =
+        // Create the SecurityGroup first
+        let createSecurityGroup =
+            fun (stack: Stack) ->
+                let sg = SecurityGroup(stack, spec.ConstructId, spec.Props)
+                spec.SecurityGroup <- Some sg
+
+        // Then execute the continuation with the created SecurityGroup
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.SecurityGroup with
+                | Some sg ->
+                    let contConfig = cont sg
+                    // Execute all operations from the continuation
+                    for op in contConfig.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"SecurityGroup '{spec.SecurityGroupName}' was not created. Make sure to create the SecurityGroup first."
+
+        // Return the configuration with both operations
+        let baseCfg = this.Yield(spec)
+
+        { baseCfg with
+            Operations = [ createSecurityGroup; executeContinuation ] }
+
+
+    /// Bind for S3 Bucket
+    member inline this.Bind(spec: BucketSpec, [<InlineIfLambda>] cont: IBucket -> StackConfig) : StackConfig =
+        // Use existing Yield to enqueue Bucket creation, then run continuation
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Bucket with
+                | Some bucket ->
+                    let contCfg = cont (bucket :> IBucket)
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"Bucket '{spec.BucketName}' was not created. Make sure to create the Bucket first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Kinesis Stream
+    member inline this.Bind(spec: KinesisStreamSpec, [<InlineIfLambda>] cont: IStream -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Stream with
+                | Some stream ->
+                    let contCfg = cont stream
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"Kinesis Stream '{spec.StreamName}' was not created. Make sure to create the Stream first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Secrets Manager Secret
+    member inline this.Bind
+        (
+            spec: SecretsManagerSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.SecretsManager.ISecret -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                if isNull (box spec.Secret) then
+                    failwith $"Secret '{spec.SecretName}' was not created. Make sure to create the Secret first."
+                else
+                    let contCfg = cont (spec.Secret :> Amazon.CDK.AWS.SecretsManager.ISecret)
+
+                    for op in contCfg.Operations do
+                        op stack
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Managed Policy
+    member inline this.Bind
+        (
+            spec: ManagedPolicySpec,
+            [<InlineIfLambda>] cont: IManagedPolicy -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Policy with
+                | Some policy ->
+                    let contCfg = cont policy
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"ManagedPolicy '{spec.PolicyName}' was not created. Make sure to create the Managed Policy first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for ACM Certificate
+    member inline this.Bind(spec: CertificateSpec, [<InlineIfLambda>] cont: ICertificate -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Certificate with
+                | Some cert ->
+                    let contCfg = cont cert
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"Certificate '{spec.CertificateName}' was not created. Make sure to create the Certificate first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for EventBridge Rule
+    member inline this.Bind(spec: EventBridgeRuleSpec, [<InlineIfLambda>] cont: IRule -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Rule with
+                | Some rule ->
+                    let contCfg = cont rule
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"EventBridge Rule '{spec.RuleName}' was not created. Make sure to create the Rule first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for CloudWatch Alarm
+    member inline this.Bind(spec: CloudWatchAlarmSpec, [<InlineIfLambda>] cont: IAlarm -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Alarm with
+                | Some alarm ->
+                    let contCfg = cont alarm
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"CloudWatch Alarm '{spec.AlarmName}' was not created. Make sure to create the Alarm first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    member inline this.Bind
+        (
+            spec: FunctionSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.Lambda.IFunction -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Function with
+                | Some func ->
+                    let contCfg = cont func
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"Lambda Function '{spec.FunctionName}' was not created. Make sure to create the Function first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+
+
+
+    /// Bind for EC2 Instance
+    member inline this.Bind(spec: EC2InstanceSpec, [<InlineIfLambda>] cont: Instance_ -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                if isNull (box spec.Instance) then
+                    failwith
+                        $"EC2 Instance '{spec.InstanceName}' was not created. Make sure to create the Instance first."
+                else
+                    let contCfg = cont spec.Instance
+
+                    for op in contCfg.Operations do
+                        op stack
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Bastion Host
+    member inline this.Bind
+        (
+            spec: BastionHostSpec,
+            [<InlineIfLambda>] cont: BastionHostLinux -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.BastionHost with
+                | Some bastion ->
+                    let contCfg = cont bastion
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"BastionHost '{spec.BastionName}' was not created. Make sure to create the Bastion Host first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for API Gateway Token Authorizer
+    member inline this.Bind
+        (
+            spec: TokenAuthorizerSpec,
+            [<InlineIfLambda>] cont: IAuthorizer -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Authorizer with
+                | Some auth ->
+                    let contCfg = cont auth
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"TokenAuthorizer '{spec.AuthorizerName}' was not created. Make sure to create the Authorizer first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for API Gateway VpcLink
+    member inline this.Bind(spec: VpcLinkSpec, [<InlineIfLambda>] cont: IVpcLink -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.VpcLink with
+                | Some link ->
+                    let contCfg = cont link
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"VpcLink '{spec.VpcLinkName}' was not created. Make sure to create the VpcLink first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for ECS Fargate Task Definition
+    member inline this.Bind
+        (
+            spec: FargateTaskDefinitionSpec,
+            [<InlineIfLambda>] cont: FargateTaskDefinition -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.TaskDefinition with
+                | Some td ->
+                    let contCfg = cont td
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"FargateTaskDefinition '{spec.TaskDefinitionName}' was not created. Make sure to create the Task Definition first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Step Functions State Machine
+    member inline this.Bind
+        (
+            spec: StepFunctionSpec,
+            [<InlineIfLambda>] cont: StateMachine -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.StateMachine with
+                | Some sm ->
+                    let contCfg = cont sm
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"StateMachine '{spec.StateMachineName}' was not created. Make sure to create the State Machine first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for SQS Queue
+    member inline this.Bind(spec: QueueSpec, [<InlineIfLambda>] cont: IQueue -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Queue with
+                | Some queue ->
+                    let contCfg = cont queue
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"Queue '{spec.QueueName}' was not created. Make sure to create the Queue first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for KMS Key
+    member inline this.Bind(spec: KMSKeySpec, [<InlineIfLambda>] cont: IKey -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Key with
+                | Some key ->
+                    let contCfg = cont key
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"KMS Key '{spec.KeyName}' was not created. Make sure to create the Key first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    member inline this.Bind
+        (
+            spec: AccessPointSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.EFS.IAccessPoint -> StackConfig
+        ) : StackConfig =
+
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.AccessPoint with
+                | Some ap ->
+                    let contCfg = cont ap
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"Access Point '{spec.ConstructId}' was not created. Make sure to create the Access Point first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    member inline this.Bind
+        (
+            spec: EfsFileSystemSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.EFS.IFileSystem -> StackConfig
+        ) : StackConfig =
+
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.FileSystem with
+                | Some fs ->
+                    let contCfg = cont fs
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"EFS File System '{spec.ConstructId}' was not created. Make sure to create the File System first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for CloudWatch Log Group
+    member inline this.Bind
+        (
+            spec: CloudWatchLogGroupSpec,
+            [<InlineIfLambda>] cont: ILogGroup -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.LogGroup with
+                | Some lg ->
+                    let contCfg = cont (lg :> ILogGroup)
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"LogGroup '{spec.LogGroupName}' was not created. Make sure to create the LogGroup first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for IAM Lambda Role
+    member inline this.Bind(spec: LambdaRoleSpec, [<InlineIfLambda>] cont: IRole -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Role with
+                | Some role ->
+                    let contCfg = cont role
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"Role '{spec.RoleName}' was not created. Make sure to create the Role first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for API Gateway RestApi
+    member inline this.Bind(spec: RestApiSpec, [<InlineIfLambda>] cont: IRestApi -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.RestApi with
+                | Some api ->
+                    let contCfg = cont api
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"RestApi '{spec.ApiName}' was not created. Make sure to create the RestApi first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Route53 Hosted Zone
+    member inline this.Bind
+        (
+            spec: Route53HostedZoneSpec,
+            [<InlineIfLambda>] cont: IHostedZone -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.HostedZone with
+                | Some hz ->
+                    let contCfg = cont hz
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"HostedZone '{spec.ZoneName}' was not created. Make sure to create the Hosted Zone first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Network Load Balancer
+    member inline this.Bind
+        (
+            spec: NetworkLoadBalancerSpec,
+            [<InlineIfLambda>] cont: INetworkLoadBalancer -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.LoadBalancer with
+                | Some nlb ->
+                    let contCfg = cont nlb
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith
+                        $"NetworkLoadBalancer '{spec.LoadBalancerName}' was not created. Make sure to create the Load Balancer first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for Cognito User Pool
+    member inline this.Bind(spec: UserPoolSpec, [<InlineIfLambda>] cont: IUserPool -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.UserPool with
+                | Some up ->
+                    let contCfg = cont up
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"UserPool '{spec.UserPoolName}' was not created. Make sure to create the User Pool first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+    /// Bind for EKS Cluster
+    member inline this.Bind
+        (
+            spec: EKSClusterSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.EKS.ICluster -> StackConfig
+        ) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Cluster with
+                | Some cluster ->
+                    let contCfg = cont cluster
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None ->
+                    failwith $"EKS Cluster '{spec.ClusterName}' was not created. Make sure to create the Cluster first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
 
     member _.Yield(trailSpec: CloudTrailSpec) : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1660,11 +2177,27 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ CloudTrailOp trailSpec ] }
+          Operations = [ opToFunc (CloudTrailOp trailSpec) ] }
+
+    member _.Yield(trailSpec: EfsFileSystemSpec) : StackConfig =
+        { Name = name
+          Scope = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ opToFunc (EfsFileSystemOp trailSpec) ] }
 
     member _.Zero() : StackConfig =
         { Name = name
-          Construct = None
+          Scope = None
           Env = None
           Description = None
           Tags = None
@@ -1680,7 +2213,7 @@ type StackBuilder(name: string) =
 
     member _.Combine(state1: StackConfig, state2: StackConfig) : StackConfig =
         { Name = state1.Name
-          Construct = state1.Construct
+          Scope = state1.Scope
           Env = if state2.Env.IsSome then state2.Env else state1.Env
           Description = state1.Description |> Option.orElse state2.Description
           Tags =
@@ -1765,11 +2298,12 @@ type StackBuilder(name: string) =
 
         config.Synthesizer |> Option.iter (fun v -> props.Synthesizer <- v)
 
-        let app = config.Construct |> Option.defaultWith (fun () -> App())
-        let stack = Stack(app, name, props)
+        let app = config.Scope |> Option.defaultWith (fun () -> App(AppProps()))
+        let stack = Stack(app, config.Name, props)
 
+        // Execute all operations in order
         for op in config.Operations do
-            StackOperations.processOperation stack op
+            op stack
 
     /// Run delayed config
     member this.Run(f: unit -> StackConfig) = this.Run(f ())
@@ -1797,6 +2331,12 @@ type StackBuilder(name: string) =
     member _.Tags(config: StackConfig, tags: (string * string) seq) =
         { config with
             Tags = Some(tags |> Map.ofSeq) }
+
+    [<CustomOperation("scope")>]
+    member _.Scope(config: StackConfig, scope: Construct) = { config with Scope = Some scope }
+
+    [<CustomOperation("env")>]
+    member _.Env(config: StackConfig, env: IEnvironment) = { config with Env = Some env }
 
     /// <summary>Enables or disables termination protection for the stack.</summary>
     /// <param name="config">The current stack configuration.</param>

@@ -24,7 +24,7 @@ type FunctionUrlCorsOptionsConfig =
       MaxAge: Duration option }
 
 type FunctionUrlCorsOptionsBuilder() =
-    member _.Yield _ : FunctionUrlCorsOptionsConfig =
+    member _.Yield(_: unit) : FunctionUrlCorsOptionsConfig =
         { AllowCredentials = None
           AllowedHeaders = None
           AllowedMethods = None
@@ -138,7 +138,7 @@ type FunctionUrlOptionsConfig =
       InvokeMode: InvokeMode option }
 
 type FunctionUrlOptionsBuilder() =
-    member _.Yield _ : FunctionUrlOptionsConfig =
+    member _.Yield(_: unit) : FunctionUrlOptionsConfig =
         { AuthType = None
           Cors = None
           InvokeMode = None }

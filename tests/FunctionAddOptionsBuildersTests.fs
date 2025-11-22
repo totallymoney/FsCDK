@@ -15,7 +15,7 @@ let lambda_add_options_builders_tests =
               let app = App()
 
               stack "LambdaESMBuilder" {
-                  app
+                  scope app
 
                   lambda "fn-esm-b" {
                       handler "Program::Handler"
@@ -37,7 +37,7 @@ let lambda_add_options_builders_tests =
               let app = App()
 
               stack "LambdaPermBuilder" {
-                  app
+                  scope app
 
                   lambda "fn-perm-b" {
                       handler "Program::Handler"
@@ -57,10 +57,10 @@ let lambda_add_options_builders_tests =
           }
 
           test "app synth with configureAsyncInvoke via builder" {
-              let application = App()
+              let app = App()
 
               stack "LambdaAsyncBuilder" {
-                  application
+                  scope app
 
                   lambda "fn-async-b" {
                       handler "Program::Handler"
@@ -74,7 +74,7 @@ let lambda_add_options_builders_tests =
                   }
               }
 
-              let cloudAssembly = application.Synth()
+              let cloudAssembly = app.Synth()
               Expect.equal cloudAssembly.Stacks.Length 1 "App should synthesize one stack"
           } ]
     |> testSequenced

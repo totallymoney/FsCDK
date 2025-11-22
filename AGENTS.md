@@ -56,52 +56,63 @@ type ResourceBuilder(name: string) =
         { config with PropertyName = Some value }
 ```
 
-### 2. SpecRef Pattern (Cross-Resource References)
+### 2. Cross-Resource References (Bind Pattern)
 
-For resources that can be referenced by other resources:
+Use the monadic `let!` syntax for resource dependencies instead of creating ResourceRef types:
 
 ```fsharp
-type ResourceRef =
-    | ResourceInterface of IResource
-    | ResourceSpecRef of ResourceSpec
-
-module ResourceHelpers =
-    let resolveResourceRef (ref: ResourceRef) =
-        match ref with
-        | ResourceInterface ri -> ri
-        | ResourceSpecRef spec ->
-            match spec.Resource with
-            | Some r -> r
-            | None -> 
-                failwith $"Resource '{spec.ResourceName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+stack "MyStack" {
+    let! myVpc = vpc "MyVpc" { maxAzs 2 }
+    
+    securityGroup "MySG" {
+        vpc myVpc  // myVpc is IVpc, not VpcSpec
+        description "Security group"
+    }
+}
 ```
 
-**When to use SpecRef:**
-- The resource is commonly referenced by other resources
-- Examples: SecurityGroupRef, QueueRef, KMSKeyRef
-- Allows users to reference resources declaratively in their stack definition
+**Implementation in StackBuilder:**
+```fsharp
+member inline this.Bind(spec: VpcSpec, cont: IVpc -> StackConfig) =
+    // Create VPC operation
+    let createVpc = fun (stack: Stack) ->
+        let vpc = Vpc(stack, spec.ConstructId, spec.Props)
+        spec.Vpc <- Some vpc
+    
+    // Execute continuation with created VPC
+    let executeCont = fun (stack: Stack) ->
+        match spec.Vpc with
+        | Some vpc -> 
+            let contConfig = cont vpc
+            for op in contConfig.Operations do
+                op stack
+        | None -> failwith $"VPC not created"
+    
+    let baseCfg = this.Yield(spec)
+    { baseCfg with Operations = [createVpc; executeCont] }
+```
 
-**Where to resolve SpecRef:**
-- In the builder's `Run` method when converting Config to Spec
-- Use the helper module's `resolveXRef` function
-- Example: `QueueHelpers.resolveQueueRef dlq`
+**Note:** Keep existing SpecRef patterns (e.g., SecurityGroupRef) for backwards compatibility.
 
 ### 3. Stack Processing (Stack.fs)
 
-The Stack.fs file contains the `processOp` function that:
-1. Takes Spec records from builders
-2. Creates actual CDK resources using AWS CDK constructors
-3. Sets the mutable Resource field on the Spec
-4. Applies any post-creation configuration
+Unified resource creation:
 
 ```fsharp
-match op with
-| ResourceOp resourceSpec ->
-    let props = ResourceProps()
-    // ... configure props from spec
-    let resource = Resource(stack, resourceSpec.ConstructId, props)
-    resourceSpec.Resource <- Some resource
-    // ... post-creation actions
+// All operations are functions: (Stack -> unit)
+for op in config.Operations do
+    op stack  // Execute each operation in order
+```
+
+**Operations are now functions:**
+```fsharp
+type StackConfig = {
+    // ...
+    Operations: (Stack -> unit) list  // Unified list of functions
+}
+
+// Converting Operation to function:
+let opToFunc op = fun stack -> StackOperations.processOperation stack op
 ```
 
 ## File Organization
@@ -119,14 +130,11 @@ Files are ordered in `FsCDK.fsproj` based on dependencies. Key principles:
 
 Each resource file typically contains:
 1. `open` statements for AWS CDK namespaces
-2. Config record type
-3. Spec record type
-4. Ref discriminated union (if applicable)
-5. Helper module for resolving refs (if applicable)
-6. Builder class with:
-   - `Yield`, `Zero`, `Delay`, `Combine`, `For`, `Run` members
-   - Custom operations for each property
-   - XML documentation comments for each operation
+2. Config record type (immutable, for builder)
+3. Spec record type (with `mutable Resource: IResource option` if supporting `let!`)
+4. Builder class with standard members (`Yield`, `Zero`, `Delay`, `Combine`, `For`, `Run`)
+5. Custom operations with XML documentation
+6. Export function: `let resource name = ResourceBuilder(name)`
 
 ## Coding Conventions
 
@@ -285,33 +293,28 @@ These are implemented with `autoCreateDLQ` and `autoAddPowertools` flags (defaul
 
 ## Adding New Resources
 
-When adding a new AWS resource, follow this checklist:
+Checklist for new AWS resources:
 
-1. **Create resource file** (e.g., `NewResource.fs`)
-   - [ ] Define `NewResourceConfig` record (all options)
-   - [ ] Define `NewResourceSpec` record (resolved + mutable Resource field)
-   - [ ] If cross-referenced: Define `NewResourceRef` union
-   - [ ] If cross-referenced: Create `NewResourceHelpers` module
-   - [ ] Define `NewResourceBuilder` class
-   - [ ] Add all required custom operations with XML docs
-   - [ ] Export builder function: `let newResource name = NewResourceBuilder(name)`
+1. **Create `NewResource.fs`**
+   - [ ] Config record (all options)
+   - [ ] Spec record (add `mutable Resource: IResource option` for `let!` support)
+   - [ ] Builder class with custom operations
+   - [ ] Export: `let newResource name = NewResourceBuilder(name)`
 
 2. **Update Stack.fs**
-   - [ ] Add case to `StackOp` union
-   - [ ] Add case to `processOp` function
-   - [ ] Create CDK resource from spec
-   - [ ] Set `spec.Resource <- Some resource`
+   - [ ] Add to `Operation` union
+   - [ ] Add to `processOperation` (set `spec.Resource <- Some resource`)
+   - [ ] Add `Yield` method in StackBuilder
+   - [ ] Add `Bind` method if supporting `let!`:
+     ```fsharp
+     member this.Bind(spec: NewResourceSpec, cont: INewResource -> StackConfig) = ...
+     ```
 
-3. **Update FsCDK.fsproj**
-   - [ ] Add `<Compile Include="NewResource.fs" />` in correct order
+3. **Update FsCDK.fsproj** - Add file in dependency order
 
-4. **Create tests**
-   - [ ] Add unit tests in `tests/NewResourceTests.fs`
-   - [ ] Add snapshot tests if applicable
+4. **Add tests** in `tests/NewResourceTests.fs`
 
-5. **Create documentation**
-   - [ ] Add `docs/new-resource.fsx` with examples
-   - [ ] Update `docs/feature-reference.fsx`
+5. **Add docs** in `docs/new-resource.fsx`
 
 ## Common CDK Patterns in FsCDK
 

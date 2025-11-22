@@ -34,11 +34,11 @@ open Amazon.CDK.AWS.EC2
 type BastionHostConfig =
     { BastionName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       InstanceType: InstanceType option
       MachineImage: IMachineImage option
       SubnetSelection: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       InstanceName: string option
       RequireImdsv2: bool option }
 
@@ -57,7 +57,7 @@ type BastionHostSpec =
                 $"BastionHost '{this.BastionName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type BastionHostBuilder(name: string) =
-    member _.Yield _ : BastionHostConfig =
+    member _.Yield(_: unit) : BastionHostConfig =
         { BastionName = name
           ConstructId = None
           Vpc = None
@@ -112,9 +112,9 @@ type BastionHostBuilder(name: string) =
             | Some _ -> a.SubnetSelection
             | None -> b.SubnetSelection
           SecurityGroup =
-            match a.SecurityGroup with
-            | Some _ -> a.SecurityGroup
-            | None -> b.SecurityGroup
+            (match a.SecurityGroup with
+             | Some _ -> a.SecurityGroup
+             | None -> b.SecurityGroup)
           InstanceName =
             match a.InstanceName with
             | Some _ -> a.InstanceName
@@ -130,10 +130,10 @@ type BastionHostBuilder(name: string) =
 
         // VPC is required
         match config.Vpc with
-        | Some vpcRef -> props.Vpc <- VpcHelpers.resolveVpcRef vpcRef
+        | Some vpcRef -> props.Vpc <- vpcRef
         | None -> printfn "Warning: VPC is required for Network Load Balancer"
 
-        // AWS Best Practice: Use minimal instance type for cost optimization
+        // AWS Best Practice: Use a minimal instance type for cost optimization
         props.InstanceType <-
             config.InstanceType
             |> Option.defaultValue (InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.NANO))
@@ -148,8 +148,7 @@ type BastionHostBuilder(name: string) =
 
         config.SubnetSelection |> Option.iter (fun s -> props.SubnetSelection <- s)
 
-        config.SecurityGroup
-        |> Option.iter (fun sg -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef sg)
+        config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
 
         config.InstanceName |> Option.iter (fun n -> props.InstanceName <- n)
 
@@ -164,15 +163,7 @@ type BastionHostBuilder(name: string) =
 
     /// <summary>Sets the VPC for the Bastion Host.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: BastionHostConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(VpcInterface vpc) }
-
-    /// <summary>Sets the VPC for the Bastion Host from a VpcSpec.</summary>
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: BastionHostConfig, vpcSpec: VpcSpec) =
-        { config with
-            Vpc = Some(VpcSpecRef vpcSpec) }
+    member _.Vpc(config: BastionHostConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     /// <summary>Sets the instance type.</summary>
     [<CustomOperation("instanceType")>]
@@ -194,15 +185,7 @@ type BastionHostBuilder(name: string) =
 
     /// <summary>Sets the security group.</summary>
     [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: BastionHostConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupInterface sg) }
-
-    /// <summary>Sets the security group from a SecurityGroupSpec.</summary>
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: BastionHostConfig, sgSpec: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupSpecRef sgSpec) }
+    member _.SecurityGroup(config: BastionHostConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     /// <summary>Sets the instance name.</summary>
     [<CustomOperation("instanceName")>]

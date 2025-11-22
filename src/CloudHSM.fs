@@ -1,8 +1,8 @@
-// This is template for future support for CloudHSM.
+// This is a template for future support for CloudHSM.
 // HSM is Hardware Security Module
-// E.g. a chip & pin machine in cloud, for digital bank signatures
+// E.g., a chip & pin machine in the cloud, for digital bank signatures
 
-// As this is expensive and non-commonly used service,
+// As this is an expensive and non-commonly used service,
 // this template is just a startup point
 // if someone ever needs to implement it.
 
@@ -47,7 +47,7 @@ type CloudHSMClusterSpec =
       Props: CfnClusterProps }
 
 type CloudHSMClusterBuilder(name: string) =
-    member _.Yield _ : CloudHSMClusterConfig =
+    member _.Yield (_: unit) : CloudHSMClusterConfig =
         { ClusterName = name
           ConstructId = None
           Vpc = None
@@ -61,14 +61,14 @@ type CloudHSMClusterBuilder(name: string) =
           HsmType = Some "hsm1.medium"
           SubnetIds = [] }
 
-    member inline _.Delay([<InlineIfLambda>] f: unit -> CloudHSMClusterConfig) : CloudHSMClusterConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> CloudHSMClusterConfig): CloudHSMClusterConfig = f ()
 
-    member _.Combine(state1: CloudHSMClusterConfig, state2: CloudHSMClusterConfig) : CloudHSMClusterConfig =
+    member _.Combine(state1: CloudHSMClusterConfig, state2: CloudHSMClusterConfig): CloudHSMClusterConfig =
         { ClusterName = state1.ClusterName
           ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
           Vpc = state2.Vpc |> Option.orElse state1.Vpc
           HsmType = state2.HsmType |> Option.orElse state1.HsmType
-          SubnetIds = 
+          SubnetIds =
             if state2.SubnetIds.IsEmpty then state1.SubnetIds
             else state2.SubnetIds }
 
@@ -96,22 +96,22 @@ type CloudHSMClusterBuilder(name: string) =
 
     /// <summary>Sets the construct ID for the CloudHSM cluster.</summary>
     [<CustomOperation("constructId")>]
-    member _.ConstructId(config: CloudHSMClusterConfig, id: string) = 
+    member _.ConstructId(config: CloudHSMClusterConfig, id: string) =
         { config with ConstructId = Some id }
 
     /// <summary>Sets the VPC for the CloudHSM cluster.</summary>
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: CloudHSMClusterConfig, vpc: VpcRef) = 
+    member _.Vpc(config: CloudHSMClusterConfig, vpc: VpcRef) =
         { config with Vpc = Some vpc }
 
     /// <summary>Sets the HSM type (hsm1.medium is default and most common).</summary>
     [<CustomOperation("hsmType")>]
-    member _.HsmType(config: CloudHSMClusterConfig, hsmType: string) = 
+    member _.HsmType(config: CloudHSMClusterConfig, hsmType: string) =
         { config with HsmType = Some hsmType }
 
     /// <summary>Sets the subnet IDs for HSM instances (use private subnets across multiple AZs).</summary>
     [<CustomOperation("subnetIds")>]
-    member _.SubnetIds(config: CloudHSMClusterConfig, subnetIds: string list) = 
+    member _.SubnetIds(config: CloudHSMClusterConfig, subnetIds: string list) =
         { config with SubnetIds = subnetIds }
 
 // ============================================================================

@@ -52,7 +52,7 @@ type Route53RecordSetResource =
     }
 
 type Route53RecordSetBuilder(name: string) =
-    member _.Yield _ : Route53RecordSetConfig =
+    member _.Yield(_: unit) : Route53RecordSetConfig =
         { RecordSetName = name
           ConstructId = None
           HostedZoneId = None

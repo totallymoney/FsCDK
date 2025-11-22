@@ -39,7 +39,7 @@ type ManagedPolicyConfig =
       Path: string option
       Groups: IGroup list
       Users: IUser list
-      Roles: RoleRef list }
+      Roles: IRole list }
 
 type ManagedPolicySpec =
     { PolicyName: string
@@ -47,39 +47,8 @@ type ManagedPolicySpec =
       Props: ManagedPolicyProps
       mutable Policy: IManagedPolicy option }
 
-    /// Gets the underlying IManagedPolicy resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Policy with
-        | Some policy -> policy
-        | None ->
-            failwith
-                $"ManagedPolicy '{this.PolicyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-    /// Gets the managed policy ARN
-    member this.Arn =
-        match this.Policy with
-        | Some policy -> policy.ManagedPolicyArn
-        | None ->
-            failwith
-                $"ManagedPolicy '{this.PolicyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
-type ManagedPolicyRef =
-    | ManagedPolicyInterface of IManagedPolicy
-    | ManagedPolicySpecRef of ManagedPolicySpec
-
-module ManagedPolicyHelpers =
-    let resolveManagedPolicyRef (ref: ManagedPolicyRef) =
-        match ref with
-        | ManagedPolicyInterface policy -> policy
-        | ManagedPolicySpecRef spec ->
-            match spec.Policy with
-            | Some policy -> policy
-            | None ->
-                failwith
-                    $"ManagedPolicy '{spec.PolicyName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
-
 type ManagedPolicyBuilder(name: string) =
-    member _.Yield _ : ManagedPolicyConfig =
+    member _.Yield(_: unit) : ManagedPolicyConfig =
         { PolicyName = name
           ConstructId = None
           ManagedPolicyName = None
@@ -171,7 +140,7 @@ type ManagedPolicyBuilder(name: string) =
             props.Users <- config.Users |> List.toArray
 
         if not (List.isEmpty config.Roles) then
-            props.Roles <- config.Roles |> List.map RoleHelpers.resolveRoleRef |> List.toArray
+            props.Roles <- config.Roles |> List.toArray
 
         { PolicyName = config.PolicyName
           ConstructId = constructId
@@ -222,13 +191,7 @@ type ManagedPolicyBuilder(name: string) =
     [<CustomOperation("attachToRole")>]
     member _.AttachToRole(config: ManagedPolicyConfig, role: IRole) =
         { config with
-            Roles = (RoleRef.RoleInterface role) :: config.Roles }
-
-    /// <summary>Attaches the policy to a role using a LambdaRoleSpec.</summary>
-    [<CustomOperation("attachToRole")>]
-    member _.AttachToRoleSpec(config: ManagedPolicyConfig, roleSpec: LambdaRoleSpec) =
-        { config with
-            Roles = (RoleRef.RoleSpecRef roleSpec) :: config.Roles }
+            Roles = role :: config.Roles }
 
     /// <summary>Adds a statement allowing specific actions on specific resources.</summary>
     [<CustomOperation("allow")>]

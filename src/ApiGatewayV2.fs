@@ -36,7 +36,7 @@ type HttpApiResource =
     }
 
 type HttpApiBuilder(name: string) =
-    member _.Yield _ : HttpApiConfig =
+    member _.Yield(_: unit) : HttpApiConfig =
         { ApiName = name
           ConstructId = None
           Description = None

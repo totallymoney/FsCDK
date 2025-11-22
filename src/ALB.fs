@@ -26,10 +26,10 @@ open Amazon.CDK.AWS.EC2
 type ALBConfig =
     { LoadBalancerName: string
       ConstructId: string option
-      Vpc: VpcRef option
+      Vpc: IVpc option
       InternetFacing: bool option
       VpcSubnets: SubnetSelection option
-      SecurityGroup: SecurityGroupRef option
+      SecurityGroup: ISecurityGroup option
       DeletionProtection: bool option
       Http2Enabled: bool option
       DropInvalidHeaderFields: bool option }
@@ -41,7 +41,7 @@ type ALBSpec =
       Props: ApplicationLoadBalancerProps }
 
 type ALBBuilder(name: string) =
-    member _.Yield _ : ALBConfig =
+    member _.Yield(_: unit) : ALBConfig =
         { LoadBalancerName = name
           ConstructId = None
           Vpc = None
@@ -85,14 +85,12 @@ type ALBBuilder(name: string) =
         let props = ApplicationLoadBalancerProps()
         props.LoadBalancerName <- loadBalancerName
 
-        config.Vpc
-        |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
 
         config.InternetFacing |> Option.iter (fun v -> props.InternetFacing <- v)
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
-        config.SecurityGroup
-        |> Option.iter (fun v -> props.SecurityGroup <- VpcHelpers.resolveSecurityGroupRef v)
+        config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
 
         config.DeletionProtection
         |> Option.iter (fun v -> props.DeletionProtection <- v)
@@ -111,14 +109,7 @@ type ALBBuilder(name: string) =
     member _.ConstructId(config: ALBConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ALBConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: ALBConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: ALBConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     [<CustomOperation("internetFacing")>]
     member _.InternetFacing(config: ALBConfig, internetFacing: bool) =
@@ -131,14 +122,7 @@ type ALBBuilder(name: string) =
             VpcSubnets = Some subnets }
 
     [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: ALBConfig, sg: ISecurityGroup) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupInterface sg) }
-
-    [<CustomOperation("securityGroup")>]
-    member _.SecurityGroup(config: ALBConfig, sg: SecurityGroupSpec) =
-        { config with
-            SecurityGroup = Some(SecurityGroupRef.SecurityGroupSpecRef sg) }
+    member _.SecurityGroup(config: ALBConfig, sg: ISecurityGroup) = { config with SecurityGroup = Some sg }
 
     [<CustomOperation("deletionProtection")>]
     member _.DeletionProtection(config: ALBConfig, enabled: bool) =
@@ -173,7 +157,7 @@ type ALBBuilder(name: string) =
 type ALBTargetGroupConfig =
     { TargetGroupName: string
       ConstructId: string option
-      Vpc: FsCDK.VpcRef option
+      Vpc: IVpc option
       Port: int voption
       Protocol: ApplicationProtocol voption
       TargetType: TargetType voption
@@ -193,7 +177,7 @@ type ALBTargetGroupResource =
     }
 
 type ALBTargetGroupBuilder(name: string) =
-    member _.Yield _ : ALBTargetGroupConfig =
+    member _.Yield(_: unit) : ALBTargetGroupConfig =
         { TargetGroupName = name
           ConstructId = None
           Vpc = None
@@ -252,8 +236,7 @@ type ALBTargetGroupBuilder(name: string) =
         let props = ApplicationTargetGroupProps()
         props.TargetGroupName <- targetGroupName
 
-        config.Vpc
-        |> Option.iter (fun v -> props.Vpc <- FsCDK.VpcHelpers.resolveVpcRef v)
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
 
         config.Port
         |> ValueOption.iter (fun v -> props.Port <- System.Nullable<float>(float v))
@@ -286,14 +269,7 @@ type ALBTargetGroupBuilder(name: string) =
     member _.ConstructId(config: ALBTargetGroupConfig, id: string) = { config with ConstructId = Some id }
 
     [<CustomOperation("vpc")>]
-    member _.Vpc(config: ALBTargetGroupConfig, vpc: IVpc) =
-        { config with
-            Vpc = Some(FsCDK.VpcInterface vpc) }
-
-    [<CustomOperation("vpc")>]
-    member _.Vpc(config: ALBTargetGroupConfig, vpcSpec: FsCDK.VpcSpec) =
-        { config with
-            Vpc = Some(FsCDK.VpcSpecRef vpcSpec) }
+    member _.Vpc(config: ALBTargetGroupConfig, vpc: IVpc) = { config with Vpc = Some(vpc) }
 
     [<CustomOperation("port")>]
     member _.Port(config: ALBTargetGroupConfig, port: int) = { config with Port = ValueSome port }
@@ -367,7 +343,7 @@ type ALBListenerResource =
     }
 
 type ALBListenerBuilder(loadBalancer: IApplicationLoadBalancer) =
-    member _.Yield _ : ALBListenerConfig =
+    member _.Yield(_: unit) : ALBListenerConfig =
         { ConstructId = None
           LoadBalancer = Some loadBalancer
           Port = ValueSome 80

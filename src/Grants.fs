@@ -27,7 +27,7 @@ type GrantSpec =
       Access: GrantAccessType }
 
 type GrantBuilder() =
-    member _.Yield _ : GrantConfig =
+    member _.Yield(_: unit) : GrantConfig =
         { TableConstructId = None
           LambdaConstructId = None
           Access = None }

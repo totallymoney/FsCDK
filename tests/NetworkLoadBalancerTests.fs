@@ -6,8 +6,7 @@ open FsCDK
 
 [<Tests>]
 let network_load_balancer_tests =
-    testSequenced
-    <| testList
+    testList
         "Network Load Balancer DSL"
         [ test "requires VPC configuration" {
               let stack = Amazon.CDK.Stack(Amazon.CDK.App(), "Test")
@@ -106,7 +105,6 @@ let network_load_balancer_tests =
 
               let nlbSpec =
                   networkLoadBalancer "MyNLB" {
-                      stack
                       vpc ivpc
                       loadBalancerName "production-nlb"
                   }
@@ -124,3 +122,4 @@ let network_load_balancer_tests =
 
               Expect.equal nlbSpec.Props.IpAddressType.Value IpAddressType.IPV4 "Should default to IPv4"
           } ]
+    |> testSequenced

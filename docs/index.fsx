@@ -41,7 +41,7 @@ let prodEnv =
 
 // 2) A Dev stack you can actually work with
 stack "Dev" {
-    devEnv
+    env devEnv
     description "Developer stack for feature work"
     tags [ "service", "users"; "env", "dev" ]
 
@@ -85,7 +85,7 @@ stack "Dev" {
 }
 
 stack "Prod" {
-    prodEnv
+    env prodEnv
     terminationProtection true
     tags [ "service", "users"; "env", "prod" ]
 

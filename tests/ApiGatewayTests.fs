@@ -133,3 +133,4 @@ let vpcLink_tests =
                   (Some "custom-vpc-link-name")
                   "Custom VPC link name should be set"
           } ]
+    |> testSequenced
