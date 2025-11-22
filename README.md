@@ -37,31 +37,26 @@ open FsCDK
 let config = Config.get () // e.g., reads AWS account and region from env
 
 stack "MyFirstStack" {
-    app {
-        context "environment" "production"
-        context "feature-flag" true
-        context "version" "1.2.3"
-    }
+    description "My first FsCDK stack"
 
-    environment {
+    scope(app {
+        context [ ("environment", "production"); ("feature-flag", true); ("version", "1.2.3") ]
+    })
+
+    env(environment {
         account config.Account
         region config.Region
-    }
-
-    stackProps {
-        stackEnv
-        description "My first FsCDK stack"
-    }
+    })
 
     // S3 bucket
-    bucket "MyBucket" {
+    bucket "my-bucket" {
         versioned true
         encryption BucketEncryption.S3_MANAGED
         blockPublicAccess BlockPublicAccess.BLOCK_ALL
     }
 
     // Lambda function
-    lambda "HelloFunction" {
+    lambda "my-hello-lambda" {
         runtime Runtime.DOTNET_8
         handler "Playground::Playground.Handlers::sayHello"
         code "../Playground/bin/Release/net8.0/publish"

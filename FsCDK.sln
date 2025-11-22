@@ -17,6 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Solution Items", "_Solutio
 		.github\workflows\build.yml = .github\workflows\build.yml
 		.github\workflows\pull_request.yml = .github\workflows\pull_request.yml
 		Directory.Build.props = Directory.Build.props
+		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsCdk.Tests", "tests\FsCdk.Tests.fsproj", "{1B14065B-D1A4-4A08-9E41-A4B5D2365A1D}"
