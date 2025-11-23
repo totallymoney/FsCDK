@@ -610,36 +610,97 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("description")>]
     member _.Description(config: FunctionConfig, desc: string) = { config with Description = Some desc }
 
+    /// <summary>Adds a list of event sources to the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="eventSource">List of event sources.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     events [ s3Event; sqsEvent ]
+    /// }
+    /// </code>
     [<CustomOperation("events")>]
     member _.Events(config: FunctionConfig, eventSource: IEventSource list) =
         { config with
             Events = eventSource @ config.Events }
 
+    /// <summary>Adds a single event source to the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="eventSource">Event source.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     event (S3EventSource myBucket)
+    /// }
+    /// </code>
     [<CustomOperation("event")>]
     member _.Event(config: FunctionConfig, eventSource: IEventSource) =
         { config with
             Events = eventSource :: config.Events }
 
+    /// <summary>Sets the function URL options list (replaces any previously set options).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="options">List of function URL options.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addUrlOptions [ myUrlOptions ]
+    /// }
+    /// </code>
     [<CustomOperation("addUrlOptions")>]
     member _.AddUrlOptions(config: FunctionConfig, options: IFunctionUrlOptions list) =
         { config with
             FunctionUrlOptions = options }
 
+    /// <summary>Adds a single function URL options item to the options list.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="options">Function URL options.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addUrlOption myUrlOptions
+    /// }
+    /// </code>
     [<CustomOperation("addUrlOption")>]
     member _.AddUrlOption(config: FunctionConfig, options: IFunctionUrlOptions) =
         { config with
             FunctionUrlOptions = options :: config.FunctionUrlOptions }
 
+    /// <summary>Sets the event source mappings list (used internally) to the provided list.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="eventSource">List of event sources.</param>
+    /// <remarks>
+    /// This internal list is separate from the public <c>events</c> list used by CDK <c>FunctionProps.Events</c>.
+    /// Prefer using <c>events</c>/<c>event</c> unless you need explicit control here.
+    /// </remarks>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addEventSources [ myEventSource ]
+    /// }
+    /// </code>
     [<CustomOperation("addEventSources")>]
     member _.AddEventSources(config: FunctionConfig, eventSource: IEventSource list) =
         { config with
             EventSource = eventSource }
 
+    /// <summary>Adds a single event source to the internal event sources list.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="eventSource">Event source.</param>
+    /// <remarks>Prefer using <c>event</c> unless you need to target the internal list directly.</remarks>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addEventSource myEventSource
+    /// }
+    /// </code>
     [<CustomOperation("addEventSource")>]
     member _.AddEventSource(config: FunctionConfig, eventSource: IEventSource) =
         { config with
             EventSource = eventSource :: config.EventSource }
 
+    /// <summary>Sets the event source mappings list to the provided list.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="eventSourceMapping">List of tuples of construct id and mapping options.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addEventSourceMappings [ "MyMapping", mappingOpts ]
+    /// }
+    /// </code>
     [<CustomOperation("addEventSourceMappings")>]
     member _.AddEventSourceMappings
         (
@@ -649,101 +710,268 @@ type FunctionBuilder(name: string) =
         { config with
             EventSourceMappings = eventSourceMapping }
 
+    /// <summary>Adds a single event source mapping.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="eventSourceMapping">Tuple of construct id and mapping options.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addEventSourceMapping ("MyMapping", mappingOpts)
+    /// }
+    /// </code>
     [<CustomOperation("addEventSourceMapping")>]
     member _.AddEventSourceMapping(config: FunctionConfig, eventSourceMapping: string * IEventSourceMappingOptions) =
         { config with
             EventSourceMappings = eventSourceMapping :: config.EventSourceMappings }
 
+    /// <summary>Sets the permissions list to the provided list (replaces existing).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="permissions">List of permissions.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addPermissions [ perm1; perm2 ]
+    /// }
+    /// </code>
     [<CustomOperation("addPermissions")>]
     member _.AddPermissions(config: FunctionConfig, permissions: IPermission list) =
         { config with
             Permissions = permissions }
 
+    /// <summary>Adds a single permission to the permissions list.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="permissions">Permission to add.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addPermission myPermission
+    /// }
+    /// </code>
     [<CustomOperation("addPermission")>]
     member _.AddPermission(config: FunctionConfig, permissions: IPermission) =
         { config with
             Permissions = permissions :: config.Permissions }
 
+    /// <summary>Sets the role policy statements list to the provided list (replaces existing).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="statements">List of policy statements.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addRolePolicyStatements [ stmt1; stmt2 ]
+    /// }
+    /// </code>
     [<CustomOperation("addRolePolicyStatements")>]
     member _.AddRolePolicyStatements(config: FunctionConfig, statements: PolicyStatement list) =
         { config with
             RolePolicyStatements = statements }
 
+    /// <summary>Adds a single role policy statement.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="statements">Policy statement.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     addRolePolicyStatement stmt
+    /// }
+    /// </code>
     [<CustomOperation("addRolePolicyStatement")>]
     member _.AddRolePolicyStatement(config: FunctionConfig, statements: PolicyStatement) =
         { config with
             RolePolicyStatements = statements :: config.RolePolicyStatements }
 
+    /// <summary>Sets the asynchronous invocation options list (replaces existing).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="options">List of async invoke configuration options.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     asyncInvokeOptions [ opts1; opts2 ]
+    /// }
+    /// </code>
     [<CustomOperation("asyncInvokeOptions")>]
     member _.AsyncInvokeOptions(config: FunctionConfig, options: IEventInvokeConfigOptions list) =
         { config with
             AsyncInvokeOptions = options }
 
+    /// <summary>Adds a single asynchronous invocation option.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="options">Async invoke option.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     asyncInvokeOption myOpts
+    /// }
+    /// </code>
     [<CustomOperation("asyncInvokeOption")>]
     member _.AsyncInvokeOption(config: FunctionConfig, options: IEventInvokeConfigOptions) =
         { config with
             AsyncInvokeOptions = options :: config.AsyncInvokeOptions }
 
+    /// <summary>Attaches a file system configuration (e.g., EFS) to the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="fileSystem">The file system configuration.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     fileSystem (FileSystem.FromEfsAccessPoint ap "/mnt/efs")
+    /// }
+    /// </code>
     [<CustomOperation("fileSystem")>]
     member _.FileSystem(config: FunctionConfig, fileSystem: FileSystem) =
         { config with
             FileSystem = Some fileSystem }
 
+    /// <summary>Sets reserved concurrent executions for the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="value">Reserved concurrency value.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     reservedConcurrentExecutions 50
+    /// }
+    /// </code>
     [<CustomOperation("reservedConcurrentExecutions")>]
     member _.ReservedConcurrentExecutions(config: FunctionConfig, value: int) =
         { config with
             ReservedConcurrentExecutions = Some value }
 
+    /// <summary>Sets the Lambda Insights version to enable enhanced monitoring.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="version">Insights layer version.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     insightsVersion LambdaInsightsVersion.VERSION_1_0_135_0
+    /// }
+    /// </code>
     [<CustomOperation("insightsVersion")>]
     member _.InsightsVersion(config: FunctionConfig, version: LambdaInsightsVersion) =
         { config with
             InsightsVersion = Some version }
 
+    /// <summary>Adds a single Lambda layer to the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="layer">Layer version to add.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     layer myLayer
+    /// }
+    /// </code>
     [<CustomOperation("layer")>]
     member _.Layer(config: FunctionConfig, layer: ILayerVersion) =
         { config with
             Layers = layer :: config.Layers }
 
+    /// <summary>Adds multiple Lambda layers to the function in one call.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="layers">List of layer versions.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     layers [ layerA; layerB ]
+    /// }
+    /// </code>
     [<CustomOperation("layers")>]
     member _.Layers(config: FunctionConfig, layers: ILayerVersion list) =
         { config with
             Layers = layers @ config.Layers }
 
+    /// <summary>Sets the CPU architecture for the function (e.g., x86_64 or arm64).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="arch">CPU architecture.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     architecture Architecture.ARM_64
+    /// }
+    /// </code>
     [<CustomOperation("architecture")>]
     member _.Architecture(config: FunctionConfig, arch: Architecture) =
         { config with Architecture = Some arch }
 
+    /// <summary>Sets the tracing mode for AWS X-Ray.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="tracing">Tracing mode (e.g., ACTIVE, PASS_THROUGH).</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     tracing Tracing.ACTIVE
+    /// }
+    /// </code>
     [<CustomOperation("tracing")>]
     member _.Tracing(config: FunctionConfig, tracing: Tracing) = { config with Tracing = Some tracing }
 
-    /// Add groups to securityGroups
+    /// <summary>Adds one or more security groups to the function's network configuration.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="sgs">List of security groups.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     securityGroups [ sgA; sgB ]
+    /// }
+    /// </code>
     [<CustomOperation("securityGroups")>]
     member _.SecurityGroups(config: FunctionConfig, sgs: ISecurityGroup list) =
         { config with
             SecurityGroups = sgs @ config.SecurityGroups }
 
+    /// <summary>Sets an SQS dead-letter queue for asynchronous invocation failures.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="queue">Dead-letter queue.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     deadLetterQueue myDlq
+    /// }
+    /// </code>
     [<CustomOperation("deadLetterQueue")>]
     member _.DeadLetterQueue(config: FunctionConfig, queue: IQueue) =
         { config with
             DeadLetterQueue = Some queue }
 
+    /// <summary>Sets the logging format for CloudWatch Logs (JSON or TEXT).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="format">Logging format.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     loggingFormat LoggingFormat.JSON
+    /// }
+    /// </code>
     [<CustomOperation("loggingFormat")>]
     member _.LoggingFormat(config: FunctionConfig, format: LoggingFormat) =
         { config with
             LoggingFormat = Some format }
 
+    /// <summary>Provides a pre-created CloudWatch Log Group to the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="logGroup">Log group to use.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     logGroup myLogGroup
+    /// }
+    /// </code>
     [<CustomOperation("logGroup")>]
     member _.LogGroup(config: FunctionConfig, logGroup: ILogGroup) =
         { config with LogGroup = Some logGroup }
 
+    /// <summary>Sets the maximum event age for asynchronous invocations.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="age">Maximum event age as a duration.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     maxEventAge (Duration.Minutes 2.0)
+    /// }
+    /// </code>
     [<CustomOperation("maxEventAge")>]
     member _.MaxEventAge(config: FunctionConfig, age: Duration) = { config with MaxEventAge = Some age }
 
+    /// <summary>Sets the number of retry attempts for asynchronous invocations.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="value">Number of retries.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     retryAttempts 2
+    /// }
+    /// </code>
     [<CustomOperation("retryAttempts")>]
     member _.RetryAttempts(config: FunctionConfig, value: int) =
         { config with
             RetryAttempts = Some value }
 
+    /// <summary>Enables or disables use of the configured dead-letter queue.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="value">True to enable the DLQ, false to disable.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     deadLetterQueueEnabled true
+    /// }
+    /// </code>
     [<CustomOperation("deadLetterQueueEnabled")>]
     member _.DeadLetterQueueEnabled(config: FunctionConfig, value: bool) =
         { config with
@@ -753,6 +981,13 @@ type FunctionBuilder(name: string) =
     /// Controls automatic DLQ creation. Default: true (Yan Cui recommendation).
     /// Set to false to disable auto-DLQ creation.
     /// </summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="value">True to enable, false to disable automatic DLQ creation.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     autoCreateDLQ true
+    /// }
+    /// </code>
     [<CustomOperation("autoCreateDLQ")>]
     member _.AutoCreateDLQ(config: FunctionConfig, value: bool) =
         { config with
@@ -762,11 +997,26 @@ type FunctionBuilder(name: string) =
     /// Controls automatic Lambda Powertools layer addition. Default: true (Yan Cui recommendation).
     /// Set to false to disable Powertools auto-addition.
     /// </summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="value">True to auto-add Powertools, false to skip.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     autoAddPowertools true
+    /// }
+    /// </code>
     [<CustomOperation("autoAddPowertools")>]
     member _.AutoAddPowertools(config: FunctionConfig, value: bool) =
         { config with
             AutoAddPowertools = Some value }
 
+    /// <summary>Sets a KMS key to encrypt environment variables.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="key">KMS key for environment encryption.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     environmentEncryption myKmsKey
+    /// }
+    /// </code>
     [<CustomOperation("environmentEncryption")>]
     member _.EnvironmentEncryption(config: FunctionConfig, key: IKey) =
         { config with
@@ -777,6 +1027,7 @@ type FunctionBuilder(name: string) =
     /// Default: 512 MB (free tier). Valid range: 512-10240 MB.
     /// Cost optimization: Only increase if needed for /tmp storage.
     /// </summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="sizeInMB">Storage size in megabytes (512-10240).</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -788,23 +1039,335 @@ type FunctionBuilder(name: string) =
         { config with
             EphemeralStorageSize = Some sizeInMB }
 
+    /// <summary>Convenience operation to enable AWS X-Ray tracing (equivalent to <c>tracing Tracing.ACTIVE</c>).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     xrayEnabled
+    /// }
+    /// </code>
     [<CustomOperation("xrayEnabled")>]
     member _.XRayEnabled(config: FunctionConfig) =
         { config with
             Tracing = Some Tracing.ACTIVE }
 
+    /// <summary>Sets the IAM role to be used by the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="role">Execution role.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     role myExecutionRole
+    /// }
+    /// </code>
     [<CustomOperation("role")>]
     member _.Role(config: FunctionConfig, role: IRole) = { config with Role = Some role }
 
+    /// <summary>Specifies which subnets in the VPC the function should use.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="subnets">Subnet selection.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     vpcSubnets (SubnetSelection.SubnetType SubnetType.PRIVATE_WITH_EGRESS)
+    /// }
+    /// </code>
     [<CustomOperation("vpcSubnets")>]
     member _.VpcSubnets(config: FunctionConfig, subnets: ISubnetSelection) =
         { config with
             VpcSubnets = Some subnets }
 
+    /// <summary>Configures options for the current version of the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="options">Version options.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     currentVersionOptions myVersionOptions
+    /// }
+    /// </code>
     [<CustomOperation("currentVersionOptions")>]
     member _.CurrentVersionOptions(config: FunctionConfig, options: IVersionOptions) =
         { config with
             CurrentVersionOptions = Some options }
+
+    /// <summary>Enables AWS Distro for OpenTelemetry (ADOT) instrumentation for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="adot">ADOT instrumentation configuration.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     adotInstrumentation (AdotLambdaExecWrapper.fromRuntime Runtime.NODEJS_18_X)
+    /// }
+    /// </code>
+    [<CustomOperation("adotInstrumentation")>]
+    member _.AdotInstrumentation(config: FunctionConfig, adot: IAdotInstrumentationConfig) =
+        { config with
+            AdotInstrumentation = Some adot }
+
+    /// <summary>Allows the Lambda function to make outbound network calls.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="allow">True to allow all outbound traffic.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     allowAllOutbound true
+    /// }
+    /// </code>
+    [<CustomOperation("allowAllOutbound")>]
+    member _.AllowAllOutbound(config: FunctionConfig, allow: bool) =
+        { config with
+            AllowAllOutbound = Some allow }
+
+    /// <summary>Allows all outbound IPv6 traffic for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="allow">True to allow all IPv6 outbound traffic.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     allowAllIpv6Outbound true
+    /// }
+    /// </code>
+    [<CustomOperation("allowAllIpv6Outbound")>]
+    member _.AllowAllIpv6Outbound(config: FunctionConfig, allow: bool) =
+        { config with
+            AllowAllIpv6Outbound = Some allow }
+
+    /// <summary>Allows the Lambda function to be placed in public subnets.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="allow">True to allow placement in public subnets.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     allowPublicSubnet true
+    /// }
+    /// </code>
+    [<CustomOperation("allowPublicSubnet")>]
+    member _.AllowPublicSubnet(config: FunctionConfig, allow: bool) =
+        { config with
+            AllowPublicSubnet = Some allow }
+
+    /// <summary>Sets the application log level for the function (CloudWatch Logs V2).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="level">Application log level.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     applicationLogLevelV2 ApplicationLogLevel.ERROR
+    /// }
+    /// </code>
+    [<CustomOperation("applicationLogLevelV2")>]
+    member _.ApplicationLogLevelV2(config: FunctionConfig, level: ApplicationLogLevel) =
+        { config with
+            ApplicationLogLevelV2 = Some level }
+
+    /// <summary>Attaches a code signing configuration to the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="csc">Code signing configuration.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     codeSigningConfig myCodeSigningConfig
+    /// }
+    /// </code>
+    [<CustomOperation("codeSigningConfig")>]
+    member _.CodeSigningConfig(config: FunctionConfig, csc: ICodeSigningConfig) =
+        { config with
+            CodeSigningConfig = Some csc }
+
+    /// <summary>Allows IPv6 for dual-stack networking.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="allow">True to allow IPv6 for dual-stack.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     ipv6AllowedForDualStack true
+    /// }
+    /// </code>
+    [<CustomOperation("ipv6AllowedForDualStack")>]
+    member _.Ipv6AllowedForDualStack(config: FunctionConfig, allow: bool) =
+        { config with
+            Ipv6AllowedForDualStack = Some allow }
+
+    /// <summary>Configures the Parameters and Secrets extension layer.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="ps">Params and Secrets layer version.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     paramsAndSecrets myParamsAndSecrets
+    /// }
+    /// </code>
+    [<CustomOperation("paramsAndSecrets")>]
+    member _.ParamsAndSecrets(config: FunctionConfig, ps: ParamsAndSecretsLayerVersion) =
+        { config with
+            ParamsAndSecrets = Some ps }
+
+    /// <summary>Enables or disables CodeGuru Profiler profiling.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="enabled">True to enable profiling.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     profiling true
+    /// }
+    /// </code>
+    [<CustomOperation("profiling")>]
+    member _.Profiling(config: FunctionConfig, enabled: bool) =
+        { config with Profiling = Some enabled }
+
+    /// <summary>Associates a CodeGuru Profiler profiling group with the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="group">The profiling group.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     profilingGroup myProfilingGroup
+    /// }
+    /// </code>
+    [<CustomOperation("profilingGroup")>]
+    member _.ProfilingGroup(config: FunctionConfig, group: IProfilingGroup) =
+        { config with
+            ProfilingGroup = Some group }
+
+    /// <summary>Configures the function's recursive loop behavior.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="loop">Recursive loop configuration.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     recursiveLoop RecursiveLoop.ALLOW
+    /// }
+    /// </code>
+    [<CustomOperation("recursiveLoop")>]
+    member _.RecursiveLoop(config: FunctionConfig, loop: RecursiveLoop) =
+        { config with
+            RecursiveLoop = Some loop }
+
+    /// <summary>Sets an asynchronous failure destination (EventInvokeConfig).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="destination">Failure destination.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     onFailure myFailureDestination
+    /// }
+    /// </code>
+    [<CustomOperation("onFailure")>]
+    member _.OnFailure(config: FunctionConfig, destination: IDestination) =
+        { config with
+            OnFailure = Some destination }
+
+    /// <summary>Sets an asynchronous success destination (EventInvokeConfig).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="destination">Success destination.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     onSuccess mySuccessDestination
+    /// }
+    /// </code>
+    [<CustomOperation("onSuccess")>]
+    member _.OnSuccess(config: FunctionConfig, destination: IDestination) =
+        { config with
+            OnSuccess = Some destination }
+
+    /// <summary>Configures the runtime management mode for the function.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="mode">Runtime management mode.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     runtimeManagementMode RuntimeManagementMode.AUTO
+    /// }
+    /// </code>
+    [<CustomOperation("runtimeManagementMode")>]
+    member _.RuntimeManagementMode(config: FunctionConfig, mode: RuntimeManagementMode) =
+        { config with
+            RuntimeManagementMode = Some mode }
+
+    /// <summary>Associates the function with a VPC.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="vpc">VPC to associate with.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     vpc myVpc
+    /// }
+    /// </code>
+    [<CustomOperation("vpc")>]
+    member _.Vpc(config: FunctionConfig, vpc: IVpc) = { config with Vpc = Some vpc }
+
+    /// <summary>Enables SnapStart for the function (cold start optimization).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="snap">SnapStart configuration.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     snapStart SnapStartConf.ApplyOnPublishedVersions
+    /// }
+    /// </code>
+    [<CustomOperation("snapStart")>]
+    member _.SnapStart(config: FunctionConfig, snap: SnapStartConf) = { config with SnapStart = Some snap }
+
+    /// <summary>Sets the system log level for the function (CloudWatch Logs V2).</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="level">System log level.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     systemLogLevelV2 SystemLogLevel.ERROR
+    /// }
+    /// </code>
+    [<CustomOperation("systemLogLevelV2")>]
+    member _.SystemLogLevelV2(config: FunctionConfig, level: SystemLogLevel) =
+        { config with
+            SystemLogLevelV2 = Some level }
+
+    /// <summary>Sets a dead-letter SNS topic for asynchronous invocation failures.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="topic">SNS topic.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     deadLetterTopic myTopic
+    /// }
+    /// </code>
+    [<CustomOperation("deadLetterTopic")>]
+    member _.DeadLetterTopic(config: FunctionConfig, topic: ITopic) =
+        { config with
+            DeadLetterTopic = Some topic }
+
+    /// <summary>Configures retry options for CloudWatch Log retention.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="opts">Log retention retry options.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     logRetentionRetryOptions myRetryOptions
+    /// }
+    /// </code>
+    [<CustomOperation("logRetentionRetryOptions")>]
+    member _.LogRetentionRetryOptions(config: FunctionConfig, opts: Amazon.CDK.AWS.Lambda.ILogRetentionRetryOptions) =
+        { config with
+            LogRetentionRetryOptions = Some opts }
+
+    /// <summary>Sets the IAM role for the log retention custom resource.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="role">IAM role used by the log retention resource.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     logRetentionRole myRole
+    /// }
+    /// </code>
+    [<CustomOperation("logRetentionRole")>]
+    member _.LogRetentionRole(config: FunctionConfig, role: IRole) =
+        { config with
+            LogRetentionRole = Some role }
+
+    /// <summary>Sets initial IAM policy statements to attach to the execution role.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="statements">List of policy statements.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     initialPolicy [ stmt1; stmt2 ]
+    /// }
+    /// </code>
+    [<CustomOperation("initialPolicy")>]
+    member _.InitialPolicy(config: FunctionConfig, statements: PolicyStatement list) =
+        { config with
+            InitialPolicy = statements @ config.InitialPolicy }
+
+    /// <summary>Adds a single IAM policy statement to the execution role.</summary>
+    /// <param name="config">The function configuration.</param>
+    /// <param name="statement">Policy statement.</param>
+    /// <code lang="fsharp">
+    /// lambda "MyFunction" {
+    ///     initialPolicyStatement stmt
+    /// }
+    /// </code>
+    [<CustomOperation("initialPolicyStatement")>]
+    member _.InitialPolicyStatement(config: FunctionConfig, statement: PolicyStatement) =
+        { config with
+            InitialPolicy = statement :: config.InitialPolicy }
 
 // ============================================================================
 // Builders
