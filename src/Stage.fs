@@ -11,8 +11,8 @@ type StageConfig =
     { Env: IEnvironment option
       Outdir: string option
       PermissionsBoundary: PermissionsBoundary option
-      PolicyValidationBeta1: IPolicyValidationPluginBeta1 seq option
-      PropertyInjectors: IPropertyInjector seq option
+      PolicyValidationBeta1: IPolicyValidationPluginBeta1 list option
+      PropertyInjectors: IPropertyInjector list option
       Name: string
       Construct: Construct option }
 
@@ -109,7 +109,7 @@ type StageBuilder(name: string) =
     /// }
     /// </code>
     [<CustomOperation("policyValidationBeta1")>]
-    member _.PolicyValidationBeta1(config: StageConfig, plugins: IPolicyValidationPluginBeta1 seq) =
+    member _.PolicyValidationBeta1(config: StageConfig, plugins: IPolicyValidationPluginBeta1 list) =
         { config with
             PolicyValidationBeta1 = Some plugins }
 
@@ -122,7 +122,7 @@ type StageBuilder(name: string) =
     /// }
     /// </code>
     [<CustomOperation("propertyInjectors")>]
-    member _.PropertyInjectors(config: StageConfig, injectors: IPropertyInjector seq) =
+    member _.PropertyInjectors(config: StageConfig, injectors: IPropertyInjector list) =
         { config with
             PropertyInjectors = Some injectors }
 

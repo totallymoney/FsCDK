@@ -6,7 +6,7 @@ open Amazon.CDK.AWS.S3
 type BucketMetricsConfig =
     { Id: string option
       Prefix: string option
-      TagFilters: (string * obj) seq }
+      TagFilters: (string * obj) list }
 
 type BucketMetricsBuilder() =
     member _.Yield(_: unit) : BucketMetricsConfig =
@@ -59,7 +59,8 @@ type BucketMetricsBuilder() =
     member _.Prefix(config: BucketMetricsConfig, prefix: string) = { config with Prefix = Some prefix }
 
     [<CustomOperation("tagFilters")>]
-    member _.TagFilters(config: BucketMetricsConfig, filters: (string * obj) seq) = { config with TagFilters = filters }
+    member _.TagFilters(config: BucketMetricsConfig, filters: (string * obj) list) =
+        { config with TagFilters = filters }
 
 // ============================================================================
 // Builders

@@ -68,7 +68,7 @@ type Operation =
     | HostedZoneOp of Route53HostedZoneSpec
     | OriginAccessIdentityOp of OriginAccessIdentitySpec
     //| CloudHSMClusterOp of CloudHSMClusterSpec
-    | LambdaRoleOp of LambdaRoleSpec
+    | RoleOp of RoleSpec
     | CloudWatchAlarmOp of CloudWatchAlarmSpec
     | KMSKeyOp of KMSKeySpec
     | EC2InstanceOp of EC2InstanceSpec
@@ -101,6 +101,8 @@ type Operation =
     | CloudTrailOp of CloudTrailSpec
     | AccessPointOp of AccessPointSpec
     | EfsFileSystemOp of EfsFileSystemSpec
+    | PolicyOp of PolicySpec
+    | UserOp of UserSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -355,10 +357,10 @@ module StackOperations =
         //| CloudHSMClusterOp hsmSpec ->
         //    CfnCluster(stack, hsmSpec.ConstructId, hsmSpec.Props) |> ignore
 
-        | LambdaRoleOp _ ->
-            // Role is already created in the builder, just store reference if needed
-            // The role is available in roleSpec.Role
-            ()
+        | RoleOp roleSpec ->
+            let role = Role(stack, roleSpec.ConstructId, roleSpec.Props)
+
+            roleSpec.Role <- Some role
 
         | EC2InstanceOp ec2Spec ->
             let instance = Instance_(stack, ec2Spec.ConstructId, ec2Spec.Props)
@@ -577,6 +579,13 @@ module StackOperations =
                 Amazon.CDK.AWS.EFS.FileSystem(stack, fileSystemSpec.ConstructId, fileSystemSpec.Props)
 
             fileSystemSpec.FileSystem <- Some fileSystem
+        | PolicyOp policySpec ->
+            let policy = Policy(stack, policySpec.ConstructId, policySpec.Props)
+
+            policySpec.Policy <- Some policy
+        | UserOp userSpec ->
+            let user = User(stack, userSpec.ConstructId, userSpec.Props)
+            userSpec.User <- Some user
 
 
 // ============================================================================
@@ -593,7 +602,7 @@ type StackConfig =
       AnalyticsReporting: bool option
       CrossRegionReferences: bool option
       SuppressTemplateIndentation: bool option
-      NotificationArns: string seq option
+      NotificationArns: string list option
       PermissionsBoundary: Amazon.CDK.PermissionsBoundary option
       PropertyInjectors: IPropertyInjector list option
       Synthesizer: IStackSynthesizer option
@@ -782,6 +791,37 @@ type StackBuilder(name: string) =
           Synthesizer = None
           Operations = [ opToFunc (GrantOp grantSpec) ] }
 
+    member _.Yield(grantSpec: PolicySpec) : StackConfig =
+        { Name = name
+          Scope = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ opToFunc (PolicyOp grantSpec) ] }
+
+    member _.Yield(grantSpec: UserSpec) : StackConfig =
+        { Name = name
+          Scope = None
+          Env = None
+          Description = None
+          Tags = None
+          TerminationProtection = None
+          AnalyticsReporting = None
+          CrossRegionReferences = None
+          SuppressTemplateIndentation = None
+          NotificationArns = None
+          PermissionsBoundary = None
+          PropertyInjectors = None
+          Synthesizer = None
+          Operations = [ opToFunc (UserOp grantSpec) ] }
 
     member _.Yield(grantSpec: AccessPointSpec) : StackConfig =
         { Name = name
@@ -1253,7 +1293,7 @@ type StackBuilder(name: string) =
     //      Props = None
     //      Operations = [ opToFunc (CloudHSMClusterOp hsmSpec) ] }
 
-    member _.Yield(roleSpec: LambdaRoleSpec) : StackConfig =
+    member _.Yield(roleSpec: RoleSpec) : StackConfig =
         { Name = name
           Scope = None
           Env = None
@@ -1267,7 +1307,7 @@ type StackBuilder(name: string) =
           PermissionsBoundary = None
           PropertyInjectors = None
           Synthesizer = None
-          Operations = [ opToFunc (LambdaRoleOp roleSpec) ] }
+          Operations = [ opToFunc (RoleOp roleSpec) ] }
 
     member _.Yield(alarmSpec: CloudWatchAlarmSpec) : StackConfig =
         { Name = name
@@ -2021,7 +2061,7 @@ type StackBuilder(name: string) =
             Operations = baseCfg.Operations @ [ executeContinuation ] }
 
     /// Bind for IAM Lambda Role
-    member inline this.Bind(spec: LambdaRoleSpec, [<InlineIfLambda>] cont: IRole -> StackConfig) : StackConfig =
+    member inline this.Bind(spec: RoleSpec, [<InlineIfLambda>] cont: IRole -> StackConfig) : StackConfig =
         let baseCfg = this.Yield(spec)
 
         let executeContinuation =
@@ -2139,6 +2179,39 @@ type StackBuilder(name: string) =
         { baseCfg with
             Operations = baseCfg.Operations @ [ executeContinuation ] }
 
+    member inline this.Bind(spec: PolicySpec, [<InlineIfLambda>] cont: IPolicy -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.Policy with
+                | Some policy ->
+                    let contCfg = cont policy
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"Policy '{spec.PolicyName}' was not created. Make sure to create the Policy first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
+
+    member inline this.Bind(spec: UserSpec, [<InlineIfLambda>] cont: IUser -> StackConfig) : StackConfig =
+        let baseCfg = this.Yield(spec)
+
+        let executeContinuation =
+            fun (stack: Stack) ->
+                match spec.User with
+                | Some policy ->
+                    let contCfg = cont policy
+
+                    for op in contCfg.Operations do
+                        op stack
+                | None -> failwith $"User '{spec.ConstructId}' was not created. Make sure to create the User first."
+
+        { baseCfg with
+            Operations = baseCfg.Operations @ [ executeContinuation ] }
+
     member _.Yield(trailSpec: CloudTrailSpec) : StackConfig =
         { Name = name
           Scope = None
@@ -2231,7 +2304,7 @@ type StackBuilder(name: string) =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member this.For(sequence: seq<'T>, body: 'T -> StackConfig) =
+    member this.For(sequence: list<'T>, body: 'T -> StackConfig) =
         let mutable state = this.Zero()
 
         for item in sequence do
@@ -2304,7 +2377,7 @@ type StackBuilder(name: string) =
     /// }
     /// </code>
     [<CustomOperation("tags")>]
-    member _.Tags(config: StackConfig, tags: (string * string) seq) =
+    member _.Tags(config: StackConfig, tags: (string * string) list) =
         { config with
             Tags = Some(tags |> Map.ofSeq) }
 
@@ -2375,7 +2448,7 @@ type StackBuilder(name: string) =
     /// }
     /// </code>
     [<CustomOperation("notificationArns")>]
-    member _.NotificationArns(config: StackConfig, arns: string seq) =
+    member _.NotificationArns(config: StackConfig, arns: string list) =
         { config with
             NotificationArns = Some arns }
 

@@ -16,7 +16,7 @@ type DockerImageFunctionConfig =
     { FunctionName: string
       ConstructId: string option // Optional custom construct ID
       Code: string option
-      Environment: (string * string) seq
+      Environment: (string * string) list
       Timeout: float option
       Memory: int option
       Description: string option }
@@ -134,7 +134,7 @@ type DockerImageFunctionBuilder(name: string) =
     /// }
     /// </code>
     [<CustomOperation("environment")>]
-    member _.Environment(config: DockerImageFunctionConfig, vars: (string * string) seq) =
+    member _.Environment(config: DockerImageFunctionConfig, vars: (string * string) list) =
         { config with Environment = vars }
 
     /// <summary>Sets the timeout for the Docker Lambda function.</summary>

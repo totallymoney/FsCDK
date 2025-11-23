@@ -29,7 +29,7 @@ type FunctionConfig =
       Ipv6AllowedForDualStack: bool option
       Runtime: Runtime option
       CodePath: Code option
-      Environment: (string * string) seq
+      Environment: (string * string) list
       Timeout: float option
       MemorySize: int option
       ParamsAndSecrets: ParamsAndSecretsLayerVersion option
@@ -181,7 +181,7 @@ type FunctionBuilder(name: string) =
                 state1.CodePath
             else
                 state2.CodePath
-          Environment = Seq.append state1.Environment state2.Environment
+          Environment = List.append state1.Environment state2.Environment
           Timeout =
             if state1.Timeout.IsSome then
                 state1.Timeout
@@ -314,6 +314,30 @@ type FunctionBuilder(name: string) =
           OnFailure = state1.OnFailure |> Option.orElse state2.OnFailure
           OnSuccess = state1.OnSuccess |> Option.orElse state2.OnSuccess
           EventSource = state1.EventSource @ state2.EventSource }
+
+    member _.Yield(spec: IEventInvokeConfigOptions) : FunctionConfig =
+        { defaultConfig () with
+            AsyncInvokeOptions = spec :: defaultConfig().AsyncInvokeOptions }
+
+    member _.Yield(spec: IFunctionUrlOptions) : FunctionConfig =
+        { defaultConfig () with
+            FunctionUrlOptions = spec :: defaultConfig().FunctionUrlOptions }
+
+    member _.Yield(stmt: PolicyStatement) : FunctionConfig =
+        { defaultConfig () with
+            RolePolicyStatements = stmt :: defaultConfig().RolePolicyStatements }
+
+    member _.Yield(event: IEventSource) : FunctionConfig =
+        { defaultConfig () with
+            EventSources = event :: defaultConfig().EventSources }
+
+    member _.Yield(spec: IPermission) : FunctionConfig =
+        { defaultConfig () with
+            Permissions = spec :: defaultConfig().Permissions }
+
+    member _.Yield(spec: string * IEventSourceMappingOptions) : FunctionConfig =
+        { defaultConfig () with
+            EventSourceMappings = spec :: defaultConfig().EventSourceMappings }
 
 
     member _.Run(config: FunctionConfig) : FunctionSpec =
@@ -575,7 +599,7 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("envVar")>]
     member _.EnvVar(config: FunctionConfig, key: string, value: string) =
         { config with
-            Environment = Seq.append config.Environment [ (key, value) ] }
+            Environment = List.append config.Environment [ (key, value) ] }
 
     /// <summary>Sets the timeout for the Lambda function.</summary>
     /// <param name="config">The function configuration.</param>
