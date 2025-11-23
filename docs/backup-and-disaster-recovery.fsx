@@ -418,7 +418,7 @@ stack "WarmStandby" {
         runtime Runtime.DOTNET_8
         handler "Handler::process"
         code "./publish"
-        memory 512
+        memorySize 512
         reservedConcurrentExecutions 5 // Minimal capacity
     }
 }
@@ -456,7 +456,7 @@ stack "HotStandbyPrimary" {
         runtime Runtime.DOTNET_8
         handler "Handler::process"
         code "./publish"
-        memory 1024
+        memorySize 1024
         reservedConcurrentExecutions 100
     }
 }
@@ -480,7 +480,7 @@ stack "HotStandbySecondary" {
         runtime Runtime.DOTNET_8
         handler "Handler::process"
         code "./publish"
-        memory 1024
+        memorySize 1024
         reservedConcurrentExecutions 100
     }
 }

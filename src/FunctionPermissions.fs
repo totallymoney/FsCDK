@@ -4,12 +4,6 @@ open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.IAM
 
 // ============================================================================
-// Lambda Function Permissions Types
-// ============================================================================
-
-type PermissionSpec = { Id: string; Permission: IPermission }
-
-// ============================================================================
 // Lambda Function Permissions Builder DSL
 // ============================================================================
 
@@ -40,7 +34,7 @@ type PermissionBuilder(id: string) =
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> PermissionConfig) : PermissionConfig = f ()
 
-    member _.Run(config: PermissionConfig) : PermissionSpec =
+    member _.Run(config: PermissionConfig) =
         let p = Permission()
 
         let principal =
@@ -54,7 +48,7 @@ type PermissionBuilder(id: string) =
         config.SourceAccount |> Option.iter (fun acc -> p.SourceAccount <- acc)
         config.EventSourceToken |> Option.iter (fun t -> p.EventSourceToken <- t)
 
-        { Id = config.Id; Permission = p }
+        p
 
     [<CustomOperation("principal")>]
     member _.Principal(config: PermissionConfig, principal: IPrincipal) : PermissionConfig =

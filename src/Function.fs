@@ -1,11 +1,13 @@
 namespace FsCDK
 
 open Amazon.CDK
+open Amazon.CDK.AWS.CodeGuruProfiler
 open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.S3.Assets
 open Amazon.CDK.AWS.Logs
 open Amazon.CDK.AWS.EC2
+open Amazon.CDK.AWS.SNS
 open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.KMS
 open System.Collections.Generic
@@ -14,118 +16,138 @@ open System.Collections.Generic
 // Lambda Function Configuration DSL
 // ============================================================================
 
-// Lambda configuration DSL
 type FunctionConfig =
     { FunctionName: string
-      ConstructId: string option // Optional custom construct ID
+      ConstructId: string option
       Handler: string option
+      AdotInstrumentation: IAdotInstrumentationConfig option
+      AllowAllOutbound: bool option
+      AllowAllIpv6Outbound: bool option
+      AllowPublicSubnet: bool option
+      ApplicationLogLevelV2: ApplicationLogLevel option
+      CodeSigningConfig: ICodeSigningConfig option
+      Ipv6AllowedForDualStack: bool option
       Runtime: Runtime option
       CodePath: Code option
       Environment: (string * string) seq
       Timeout: float option
-      Memory: int option
+      MemorySize: int option
+      ParamsAndSecrets: ParamsAndSecretsLayerVersion option
+      Profiling: bool option
+      ProfilingGroup: IProfilingGroup option
+      RecursiveLoop: RecursiveLoop option
       Description: string option
       EventSources: IEventSource list
       EventSourceMappings: (string * IEventSourceMappingOptions) list
-      FunctionUrlOptions: IFunctionUrlOptions option
-      Permissions: (string * IPermission) list
+      FunctionUrlOptions: IFunctionUrlOptions list
+      EventSource: IEventSource list
+      Permissions: IPermission list
       RolePolicyStatements: PolicyStatement list
-      AsyncInvokeOptions: IEventInvokeConfigOptions option
+      AsyncInvokeOptions: IEventInvokeConfigOptions list
       ReservedConcurrentExecutions: int option
       LogGroup: ILogGroup option
       Role: IRole option
+      OnFailure: IDestination option
+      OnSuccess: IDestination option
+      RuntimeManagementMode: RuntimeManagementMode option
       InsightsVersion: LambdaInsightsVersion option
       CurrentVersionOptions: IVersionOptions option
       Layers: ILayerVersion list
       Architecture: Architecture option
       Tracing: Tracing option
+      Vpc: IVpc option
       VpcSubnets: ISubnetSelection option
       SecurityGroups: ISecurityGroup list
+      SnapStart: SnapStartConf option
+      SystemLogLevelV2: SystemLogLevel option
+      Events: IEventSource list
       FileSystem: FileSystem option
       DeadLetterQueue: IQueue option
       DeadLetterQueueEnabled: bool option
-      AutoCreateDLQ: bool option // Auto-create SQS DLQ if not provided (Yan Cui recommendation)
+      DeadLetterTopic: ITopic option
+      AutoCreateDLQ: bool option
       LoggingFormat: LoggingFormat option
+      LogRetentionRetryOptions: Amazon.CDK.AWS.Lambda.ILogRetentionRetryOptions option
+      LogRetentionRole: IRole option
+      InitialPolicy: PolicyStatement list
       MaxEventAge: Duration option
       RetryAttempts: int option
       EnvironmentEncryption: IKey option
-      AutoAddPowertools: bool option // Auto-add Lambda Powertools layer (Yan Cui recommendation)
-      PowertoolsLayerArn: string option // Stores the Powertools layer ARN to create later in Stack.fs
-      EphemeralStorageSize: int option } // Ephemeral storage in MB (default 512MB, max 10240MB) - Cost optimization
+      AutoAddPowertools: bool option
+      EphemeralStorageSize: int option }
 
 type FunctionSpec =
     { FunctionName: string
-      ConstructId: string // Construct ID for CDK
+      ConstructId: string
       Props: FunctionProps
-      Actions: (Function -> unit) list
-      EventSources: ResizeArray<IEventSource>
-      PowertoolsLayerArn: string option // ARN for auto-added Powertools layer
+      FunctionUrlOptions: IFunctionUrlOptions list
+      EventSources: IEventSource list
+      Permissions: IPermission list
+      RolePolicyStatements: PolicyStatement list
+      EventSourceMappings: (string * IEventSourceMappingOptions) list
+      AsyncInvokeOptions: IEventInvokeConfigOptions list
       mutable Function: IFunction option }
 
 type FunctionBuilder(name: string) =
-    // Yan Cui's production-safe defaults
     let defaultConfig () : FunctionConfig =
         { FunctionName = name
+          AdotInstrumentation = None
+          AllowAllIpv6Outbound = None
+          AllowAllOutbound = None
           ConstructId = None
           Handler = None
           Runtime = None
           CodePath = None
           Environment = []
           Timeout = None
-          Memory = None
+          MemorySize = None
           Description = None
           EventSources = []
           EventSourceMappings = []
-          FunctionUrlOptions = None
+          FunctionUrlOptions = []
           Permissions = []
           RolePolicyStatements = []
-          AsyncInvokeOptions = None
-          ReservedConcurrentExecutions = Some 10 // Yan Cui: Prevent unbounded scaling
+          AsyncInvokeOptions = []
+          ReservedConcurrentExecutions = Some 10
           LogGroup = None
           Role = None
           InsightsVersion = None
           CurrentVersionOptions = None
           Layers = []
           Architecture = None
-          Tracing = Some Tracing.ACTIVE // Yan Cui: Always enable X-Ray
+          Tracing = Some Tracing.ACTIVE
           VpcSubnets = None
           SecurityGroups = []
           FileSystem = None
           DeadLetterQueue = None
           DeadLetterQueueEnabled = None
-          AutoCreateDLQ = Some true // Yan Cui: Never lose failed events
-          LoggingFormat = Some LoggingFormat.JSON // Yan Cui: Structured logging
-          MaxEventAge = None // Will be set to 6 hours in Run() if not overridden
-          RetryAttempts = Some 2 // Yan Cui: Limit retries
+          AutoCreateDLQ = Some true
+          LoggingFormat = Some LoggingFormat.JSON
+          MaxEventAge = None
+          RetryAttempts = Some 2
           EnvironmentEncryption = None
-          AutoAddPowertools = Some true // Yan Cui: Production observability
-          PowertoolsLayerArn = None // Will be determined in Run() based on runtime
-          EphemeralStorageSize = None // Default 512MB is free, charges apply above that
-        }
-
-    member _.Yield(spec: EventInvokeConfigSpec) : FunctionConfig =
-        { defaultConfig () with
-            AsyncInvokeOptions = Some spec.Options }
-
-    member _.Yield(spec: FunctionUrlSpec) : FunctionConfig =
-        { defaultConfig () with
-            FunctionUrlOptions = Some spec.Options }
-
-    member _.Yield(stmt: PolicyStatement) : FunctionConfig =
-        { defaultConfig () with
-            RolePolicyStatements = [ stmt ] }
-
-    member _.Yield(event: IEventSource) : FunctionConfig =
-        { defaultConfig () with
-            EventSources = [ event ] }
-
-    member _.Yield(spec: PermissionSpec) : FunctionConfig =
-        { defaultConfig () with
-            Permissions = [ (spec.Id, spec.Permission) ] }
-
-    member _.Yield(spec: EventSourceMappingSpec) : FunctionConfig =
-        { defaultConfig () with
-            EventSourceMappings = [ (spec.Id, spec.Options) ] }
+          AutoAddPowertools = Some true
+          EphemeralStorageSize = None
+          AllowPublicSubnet = None
+          ApplicationLogLevelV2 = None
+          CodeSigningConfig = None
+          DeadLetterTopic = None
+          Events = []
+          InitialPolicy = []
+          Ipv6AllowedForDualStack = None
+          LogRetentionRetryOptions = None
+          LogRetentionRole = None
+          ParamsAndSecrets = None
+          Profiling = None
+          ProfilingGroup = None
+          RecursiveLoop = None
+          RuntimeManagementMode = None
+          SnapStart = None
+          SystemLogLevelV2 = None
+          Vpc = None
+          OnFailure = None
+          OnSuccess = None
+          EventSource = [] }
 
     member _.Yield(_: unit) : FunctionConfig = defaultConfig ()
 
@@ -165,11 +187,11 @@ type FunctionBuilder(name: string) =
                 state1.Timeout
             else
                 state2.Timeout
-          Memory =
-            if state1.Memory.IsSome then
-                state1.Memory
+          MemorySize =
+            if state1.MemorySize.IsSome then
+                state1.MemorySize
             else
-                state2.Memory
+                state2.MemorySize
           Description =
             if state1.Description.IsSome then
                 state1.Description
@@ -177,18 +199,10 @@ type FunctionBuilder(name: string) =
                 state2.Description
           EventSources = state1.EventSources @ state2.EventSources
           EventSourceMappings = state1.EventSourceMappings @ state2.EventSourceMappings
-          FunctionUrlOptions =
-            if state1.FunctionUrlOptions.IsSome then
-                state1.FunctionUrlOptions
-            else
-                state2.FunctionUrlOptions
+          FunctionUrlOptions = state1.FunctionUrlOptions @ state2.FunctionUrlOptions
           Permissions = state1.Permissions @ state2.Permissions
           RolePolicyStatements = state1.RolePolicyStatements @ state2.RolePolicyStatements
-          AsyncInvokeOptions =
-            if state1.AsyncInvokeOptions.IsSome then
-                state1.AsyncInvokeOptions
-            else
-                state2.AsyncInvokeOptions
+          AsyncInvokeOptions = state1.AsyncInvokeOptions @ state2.AsyncInvokeOptions
           ReservedConcurrentExecutions =
             if state1.ReservedConcurrentExecutions.IsSome then
                 state1.ReservedConcurrentExecutions
@@ -272,26 +286,46 @@ type FunctionBuilder(name: string) =
                 state1.AutoAddPowertools
             else
                 state2.AutoAddPowertools
-          PowertoolsLayerArn =
-            if state1.PowertoolsLayerArn.IsSome then
-                state1.PowertoolsLayerArn
-            else
-                state2.PowertoolsLayerArn
           EphemeralStorageSize =
             if state1.EphemeralStorageSize.IsSome then
                 state1.EphemeralStorageSize
             else
-                state2.EphemeralStorageSize }
-
+                state2.EphemeralStorageSize
+          AdotInstrumentation = state1.AdotInstrumentation |> Option.orElse state2.AdotInstrumentation
+          AllowAllIpv6Outbound = state1.AllowAllIpv6Outbound |> Option.orElse state2.AllowAllIpv6Outbound
+          AllowAllOutbound = state1.AllowAllOutbound |> Option.orElse state2.AllowAllOutbound
+          AllowPublicSubnet = state1.AllowPublicSubnet |> Option.orElse state2.AllowPublicSubnet
+          ApplicationLogLevelV2 = state1.ApplicationLogLevelV2 |> Option.orElse state2.ApplicationLogLevelV2
+          CodeSigningConfig = state1.CodeSigningConfig |> Option.orElse state2.CodeSigningConfig
+          DeadLetterTopic = state1.DeadLetterTopic |> Option.orElse state2.DeadLetterTopic
+          Events = state1.Events @ state2.Events
+          InitialPolicy = state1.InitialPolicy @ state2.InitialPolicy
+          Ipv6AllowedForDualStack = state1.Ipv6AllowedForDualStack |> Option.orElse state2.Ipv6AllowedForDualStack
+          LogRetentionRetryOptions = state1.LogRetentionRetryOptions |> Option.orElse state2.LogRetentionRetryOptions
+          LogRetentionRole = state1.LogRetentionRole |> Option.orElse state2.LogRetentionRole
+          ParamsAndSecrets = state1.ParamsAndSecrets |> Option.orElse state2.ParamsAndSecrets
+          Profiling = state1.Profiling |> Option.orElse state2.Profiling
+          ProfilingGroup = state1.ProfilingGroup |> Option.orElse state2.ProfilingGroup
+          RecursiveLoop = state1.RecursiveLoop |> Option.orElse state2.RecursiveLoop
+          RuntimeManagementMode = state1.RuntimeManagementMode |> Option.orElse state2.RuntimeManagementMode
+          SnapStart = state1.SnapStart |> Option.orElse state2.SnapStart
+          SystemLogLevelV2 = state1.SystemLogLevelV2 |> Option.orElse state2.SystemLogLevelV2
+          Vpc = state1.Vpc |> Option.orElse state2.Vpc
+          OnFailure = state1.OnFailure |> Option.orElse state2.OnFailure
+          OnSuccess = state1.OnSuccess |> Option.orElse state2.OnSuccess
+          EventSource = state1.EventSource @ state2.EventSource }
 
 
     member _.Run(config: FunctionConfig) : FunctionSpec =
         let props = FunctionProps()
 
-        // Determine the construct ID
         let constructId = config.ConstructId |> Option.defaultValue config.FunctionName
 
-        // Required properties - fail fast if missing
+        props.Code <-
+            match config.CodePath with
+            | Some c -> c
+            | None -> failwith "Lambda code path is required"
+
         props.Handler <-
             match config.Handler with
             | Some h -> h
@@ -302,12 +336,50 @@ type FunctionBuilder(name: string) =
             | Some r -> r
             | None -> failwith "Lambda runtime is required"
 
-        props.Code <-
-            match config.CodePath with
-            | Some c -> c
-            | None -> failwith "Lambda code path is required"
+        config.AdotInstrumentation
+        |> Option.iter (fun a -> props.AdotInstrumentation <- a)
 
-        // Optional properties
+        config.AllowAllIpv6Outbound
+        |> Option.iter (fun a -> props.AllowAllIpv6Outbound <- a)
+
+        config.AllowAllOutbound |> Option.iter (fun a -> props.AllowAllOutbound <- a)
+
+        config.AllowPublicSubnet |> Option.iter (fun a -> props.AllowPublicSubnet <- a)
+
+        config.ApplicationLogLevelV2
+        |> Option.iter (fun a -> props.ApplicationLogLevelV2 <- a)
+
+        config.CodeSigningConfig |> Option.iter (fun c -> props.CodeSigningConfig <- c)
+
+        config.Ipv6AllowedForDualStack
+        |> Option.iter (fun a -> props.Ipv6AllowedForDualStack <- a)
+
+        config.LogRetentionRetryOptions
+        |> Option.iter (fun l -> props.LogRetentionRetryOptions <- l)
+
+        config.LogRetentionRole |> Option.iter (fun l -> props.LogRetentionRole <- l)
+
+        config.ParamsAndSecrets |> Option.iter (fun p -> props.ParamsAndSecrets <- p)
+
+        config.Profiling |> Option.iter (fun p -> props.Profiling <- p)
+
+        config.ProfilingGroup |> Option.iter (fun p -> props.ProfilingGroup <- p)
+
+        config.RecursiveLoop |> Option.iter (fun r -> props.RecursiveLoop <- r)
+
+        config.RuntimeManagementMode
+        |> Option.iter (fun r -> props.RuntimeManagementMode <- r)
+
+        config.SnapStart |> Option.iter (fun s -> props.SnapStart <- s)
+
+        config.SystemLogLevelV2 |> Option.iter (fun s -> props.SystemLogLevelV2 <- s)
+
+        config.Vpc |> Option.iter (fun v -> props.Vpc <- v)
+
+        config.OnFailure |> Option.iter (fun f -> props.OnFailure <- f)
+
+        config.OnSuccess |> Option.iter (fun s -> props.OnSuccess <- s)
+
         if not (Seq.isEmpty config.Environment) then
             let envDict = Dictionary<string, string>()
 
@@ -317,13 +389,12 @@ type FunctionBuilder(name: string) =
             props.Environment <- envDict
 
         config.Timeout |> Option.iter (fun t -> props.Timeout <- Duration.Seconds(t))
-        config.Memory |> Option.iter (fun m -> props.MemorySize <- m)
+        config.MemorySize |> Option.iter (fun m -> props.MemorySize <- m)
         config.Description |> Option.iter (fun d -> props.Description <- d)
 
         config.ReservedConcurrentExecutions
         |> Option.iter (fun r -> props.ReservedConcurrentExecutions <- r)
 
-        // Log group from direct ILogGroup or from a spec (must be created earlier)
         config.LogGroup |> Option.iter (fun lg -> props.LogGroup <- lg)
 
         config.Role |> Option.iter (fun r -> props.Role <- r)
@@ -332,19 +403,21 @@ type FunctionBuilder(name: string) =
         config.CurrentVersionOptions
         |> Option.iter (fun v -> props.CurrentVersionOptions <- v)
 
-        // Note: Layers are handled later after Powertools auto-addition
-
         config.Architecture |> Option.iter (fun a -> props.Architecture <- a)
         config.Tracing |> Option.iter (fun t -> props.Tracing <- t)
         config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
 
-        // Security groups as interfaces only
+        config.Events
+        |> List.iter (fun e -> props.Events <- Array.append props.Events [| e |])
+
+        config.InitialPolicy
+        |> List.iter (fun p -> props.InitialPolicy <- Array.append props.InitialPolicy [| p |])
+
         if not (List.isEmpty config.SecurityGroups) then
             props.SecurityGroups <- config.SecurityGroups |> List.toArray
 
         config.FileSystem |> Option.iter (fun fs -> props.Filesystem <- fs)
 
-        // DLQ from IQueue only
         config.DeadLetterQueue |> Option.iter (fun q -> props.DeadLetterQueue <- q)
 
         config.DeadLetterQueueEnabled
@@ -352,100 +425,31 @@ type FunctionBuilder(name: string) =
 
         config.LoggingFormat |> Option.iter (fun f -> props.LoggingFormat <- f)
 
-        // Yan Cui: Apply default MaxEventAge and RetryAttempts
-        // IMPORTANT: Only set these if AsyncInvokeOptions is NOT configured
-        // Setting both creates a conflict in CDK (two EventInvokeConfigs)
-        match config.AsyncInvokeOptions with
-        | None ->
-            // No AsyncInvokeOptions, safe to set defaults on props
-            match config.MaxEventAge with
-            | Some age -> props.MaxEventAge <- age
-            | None -> props.MaxEventAge <- Duration.Hours(6.0)
-
-            config.RetryAttempts |> Option.iter (fun r -> props.RetryAttempts <- r)
-        | Some _ ->
-            // AsyncInvokeOptions is configured, don't set on props
-            // The values will be in the EventInvokeConfig instead
-            ()
-
         config.EnvironmentEncryption
         |> Option.iter (fun k -> props.EnvironmentEncryption <- k)
 
-        // Yan Cui Production Best Practice #1: Auto-create DLQ if enabled and not provided
-        // This ensures failed events are never lost - critical for production debugging
-        let shouldAutoCreateDLQ = config.AutoCreateDLQ |> Option.defaultValue true
+        config.DeadLetterTopic |> Option.iter (fun t -> props.DeadLetterTopic <- t)
 
-        match (if config.DeadLetterQueue.IsSome then Some() else None), shouldAutoCreateDLQ with
-        | None, true ->
-            // DLQ will be created in Stack.fs after we have a scope
-            // Mark that we need one by setting DeadLetterQueueEnabled
-            props.DeadLetterQueueEnabled <- true
-        | Some _, _ -> ()
-        | None, false -> ()
-
-        // Yan Cui Production Best Practice #4: Determine Powertools layer ARN
-        // Provides structured logging, metrics, and tracing with zero cold-start impact
-        // The layer will be created in Stack.fs where we have a scope
-        let shouldAddPowertools = config.AutoAddPowertools |> Option.defaultValue true
-        let runtime = props.Runtime
-
-        let powertoolsLayerArn =
-            if shouldAddPowertools && (not (isNull runtime)) then
-                LambdaPowertoolsHelpers.getPowertoolsLayerArn runtime
-            else
-                None
-
-        // Apply existing layers (Powertools layer will be added in Stack.fs)
         if not (List.isEmpty config.Layers) then
             props.Layers <- config.Layers |> List.toArray
 
-        // Ephemeral storage size configuration (Cost optimization)
         config.EphemeralStorageSize
-        |> Option.iter (fun size ->
-            if size < 512 || size > 10240 then
-                failwith "Ephemeral storage size must be between 512 MB and 10240 MB"
-
-            props.EphemeralStorageSize <- Size.Mebibytes(float size))
-
-        // Actions to perform on the Function after creation
-        let actions =
-            [
-              // Add event sources
-              for source in config.EventSources do
-                  fun (fn: Function) -> fn.AddEventSource(source)
-
-              // Add event source mappings
-              for id, options in config.EventSourceMappings do
-                  fun (fn: Function) -> fn.AddEventSourceMapping(id, options) |> ignore
-
-              // Add function URL if configured
-              match config.FunctionUrlOptions with
-              | Some opts -> fun (fn: Function) -> fn.AddFunctionUrl(opts) |> ignore
-              | None -> fun _ -> ()
-
-              // Add permissions
-              for id, permission in config.Permissions do
-                  fun (fn: Function) -> fn.AddPermission(id, permission)
-
-              // Add policy statements to the role
-              for stmt in config.RolePolicyStatements do
-                  fun (fn: Function) -> fn.AddToRolePolicy(stmt)
-
-              // Configure async invoke if specified
-              match config.AsyncInvokeOptions with
-              | Some opts -> fun (fn: Function) -> fn.ConfigureAsyncInvoke(opts)
-              | None -> fun _ -> () ]
+        |> Option.iter (fun size -> props.EphemeralStorageSize <- Size.Mebibytes(size))
 
         { FunctionName = config.FunctionName
           ConstructId = constructId
           Props = props
-          Actions = actions
-          EventSources = ResizeArray()
-          PowertoolsLayerArn = powertoolsLayerArn
+          FunctionUrlOptions = config.FunctionUrlOptions
+          EventSources = config.EventSource
+          EventSourceMappings = config.EventSourceMappings
+          Permissions = config.Permissions
+          RolePolicyStatements = config.RolePolicyStatements
+          AsyncInvokeOptions = config.AsyncInvokeOptions
           Function = None }
 
     // Custom operations for primitive values
     /// <summary>Sets the construct ID for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="id">The construct ID.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -456,6 +460,7 @@ type FunctionBuilder(name: string) =
     member _.ConstructId(config: FunctionConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the handler for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="handler">The handler name (e.g., "index.handler").</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -466,6 +471,7 @@ type FunctionBuilder(name: string) =
     member _.Handler(config: FunctionConfig, handler: string) = { config with Handler = Some handler }
 
     /// <summary>Sets the runtime for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="runtime">The Lambda runtime.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -476,6 +482,7 @@ type FunctionBuilder(name: string) =
     member _.Runtime(config: FunctionConfig, runtime: Runtime) = { config with Runtime = Some runtime }
 
     /// <summary>Sets the code source from a local asset.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="path">The path to the code asset.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -488,6 +495,7 @@ type FunctionBuilder(name: string) =
             CodePath = Some(Code.FromAsset(path)) }
 
     /// <summary>Sets the code source from a local asset with options.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="path">The path to the code asset.</param>
     /// <param name="options">Asset options.</param>
     /// <code lang="fsharp">
@@ -501,6 +509,7 @@ type FunctionBuilder(name: string) =
             CodePath = Some(Code.FromAsset(path, options)) }
 
     /// <summary>Sets the code source from a Code object.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="path">The Code object.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -511,6 +520,7 @@ type FunctionBuilder(name: string) =
     member _.Code(config: FunctionConfig, path: Code) = { config with CodePath = Some path }
 
     /// <summary>Sets the code source from a Docker image.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="directory">The directory containing the Dockerfile.</param>
     /// <param name="cmd">Optional CMD for the Docker image.</param>
     /// <param name="entrypoint">Optional ENTRYPOINT for the Docker image.</param>
@@ -529,6 +539,7 @@ type FunctionBuilder(name: string) =
             CodePath = Some(Code.FromAssetImage(directory, props)) }
 
     /// <summary>Sets inline code for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="code">The inline code string.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -541,6 +552,7 @@ type FunctionBuilder(name: string) =
             CodePath = Some(Code.FromInline(code)) }
 
     /// <summary>Sets environment variables for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="env">List of key-value pairs for environment variables.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -551,6 +563,7 @@ type FunctionBuilder(name: string) =
     member _.Environment(config: FunctionConfig, env: (string * string) list) = { config with Environment = env }
 
     /// <summary>Adds a single environment variable.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="key">The environment variable key.</param>
     /// <param name="value">The environment variable value.</param>
     /// <code lang="fsharp">
@@ -565,6 +578,7 @@ type FunctionBuilder(name: string) =
             Environment = Seq.append config.Environment [ (key, value) ] }
 
     /// <summary>Sets the timeout for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="seconds">The timeout in seconds.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -575,16 +589,18 @@ type FunctionBuilder(name: string) =
     member _.Timeout(config: FunctionConfig, seconds: float) = { config with Timeout = Some seconds }
 
     /// <summary>Sets the memory allocation for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="mb">The memory size in megabytes.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
     ///     memory 512
     /// }
     /// </code>
-    [<CustomOperation("memory")>]
-    member _.Memory(config: FunctionConfig, mb: int) = { config with Memory = Some mb }
+    [<CustomOperation("memorySize")>]
+    member _.MemorySize(config: FunctionConfig, mb: int) = { config with MemorySize = Some mb }
 
     /// <summary>Sets the description for the Lambda function.</summary>
+    /// <param name="config">The function configuration.</param>
     /// <param name="desc">The function description.</param>
     /// <code lang="fsharp">
     /// lambda "MyFunction" {
@@ -594,8 +610,82 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("description")>]
     member _.Description(config: FunctionConfig, desc: string) = { config with Description = Some desc }
 
+    [<CustomOperation("events")>]
+    member _.Events(config: FunctionConfig, eventSource: IEventSource list) =
+        { config with
+            Events = eventSource @ config.Events }
+
+    [<CustomOperation("event")>]
+    member _.Event(config: FunctionConfig, eventSource: IEventSource) =
+        { config with
+            Events = eventSource :: config.Events }
+
+    [<CustomOperation("addUrlOptions")>]
+    member _.AddUrlOptions(config: FunctionConfig, options: IFunctionUrlOptions list) =
+        { config with
+            FunctionUrlOptions = options }
+
+    [<CustomOperation("addUrlOption")>]
+    member _.AddUrlOption(config: FunctionConfig, options: IFunctionUrlOptions) =
+        { config with
+            FunctionUrlOptions = options :: config.FunctionUrlOptions }
+
+    [<CustomOperation("addEventSources")>]
+    member _.AddEventSources(config: FunctionConfig, eventSource: IEventSource list) =
+        { config with
+            EventSource = eventSource }
+
+    [<CustomOperation("addEventSource")>]
+    member _.AddEventSource(config: FunctionConfig, eventSource: IEventSource) =
+        { config with
+            EventSource = eventSource :: config.EventSource }
+
+    [<CustomOperation("addEventSourceMappings")>]
+    member _.AddEventSourceMappings
+        (
+            config: FunctionConfig,
+            eventSourceMapping: (string * IEventSourceMappingOptions) list
+        ) =
+        { config with
+            EventSourceMappings = eventSourceMapping }
+
+    [<CustomOperation("addEventSourceMapping")>]
+    member _.AddEventSourceMapping(config: FunctionConfig, eventSourceMapping: string * IEventSourceMappingOptions) =
+        { config with
+            EventSourceMappings = eventSourceMapping :: config.EventSourceMappings }
+
+    [<CustomOperation("addPermissions")>]
+    member _.AddPermissions(config: FunctionConfig, permissions: IPermission list) =
+        { config with
+            Permissions = permissions }
+
+    [<CustomOperation("addPermission")>]
+    member _.AddPermission(config: FunctionConfig, permissions: IPermission) =
+        { config with
+            Permissions = permissions :: config.Permissions }
+
+    [<CustomOperation("addRolePolicyStatements")>]
+    member _.AddRolePolicyStatements(config: FunctionConfig, statements: PolicyStatement list) =
+        { config with
+            RolePolicyStatements = statements }
+
+    [<CustomOperation("addRolePolicyStatement")>]
+    member _.AddRolePolicyStatement(config: FunctionConfig, statements: PolicyStatement) =
+        { config with
+            RolePolicyStatements = statements :: config.RolePolicyStatements }
+
+    [<CustomOperation("asyncInvokeOptions")>]
+    member _.AsyncInvokeOptions(config: FunctionConfig, options: IEventInvokeConfigOptions list) =
+        { config with
+            AsyncInvokeOptions = options }
+
+    [<CustomOperation("asyncInvokeOption")>]
+    member _.AsyncInvokeOption(config: FunctionConfig, options: IEventInvokeConfigOptions) =
+        { config with
+            AsyncInvokeOptions = options :: config.AsyncInvokeOptions }
+
     [<CustomOperation("fileSystem")>]
-    member _.FileSystem(config: FunctionConfig, fileSystem: Amazon.CDK.AWS.Lambda.FileSystem) =
+    member _.FileSystem(config: FunctionConfig, fileSystem: FileSystem) =
         { config with
             FileSystem = Some fileSystem }
 

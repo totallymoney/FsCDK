@@ -155,44 +155,24 @@ module StackOperations =
             tableSpec.Table <- Some t
 
         | FunctionOp lambdaSpec ->
-            // Check if DeadLetterQueueEnabled is set but no queue provided
-            let propsToUse =
-                if
-                    lambdaSpec.Props.DeadLetterQueueEnabled.HasValue
-                    && lambdaSpec.Props.DeadLetterQueueEnabled.Value
-                    && isNull lambdaSpec.Props.DeadLetterQueue
-                then
-                    // Auto-create SQS DLQ
-                    let dlqName = $"{lambdaSpec.FunctionName}-dlq"
-                    let dlqProps = QueueProps()
-                    dlqProps.QueueName <- dlqName
-                    dlqProps.RetentionPeriod <- Duration.Days(14.0) // Keep failed events for 14 days
-                    let dlq = Queue(stack, $"{lambdaSpec.ConstructId}-DLQ", dlqProps)
+            let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)
 
-                    // Update props with the DLQ
-                    lambdaSpec.Props.DeadLetterQueue <- dlq
-                    lambdaSpec.Props
-                else
-                    lambdaSpec.Props
+            lambdaSpec.FunctionUrlOptions
+            |> List.iter (fun url -> fn.AddFunctionUrl(url) |> ignore)
 
-            // Yan Cui Production Best Practice: Auto-add Powertools layer if ARN is provided
-            match lambdaSpec.PowertoolsLayerArn with
-            | Some arn ->
-                let powertoolsLayer =
-                    LayerVersion.FromLayerVersionArn(stack, $"{lambdaSpec.ConstructId}-PowertoolsLayer", arn)
+            lambdaSpec.EventSources |> List.iter fn.AddEventSource
 
-                let existingLayers = if isNull propsToUse.Layers then [||] else propsToUse.Layers
-                propsToUse.Layers <- Array.append existingLayers [| powertoolsLayer |]
-            | None -> ()
+            lambdaSpec.EventSourceMappings
+            |> List.iter (fun (id, opts) -> fn.AddEventSourceMapping(id, opts) |> ignore)
 
-            let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, propsToUse)
+            lambdaSpec.Permissions
+            |> List.iter (fun perm -> fn.AddPermission(lambdaSpec.ConstructId, perm))
 
-            let _ = lambdaSpec.EventSources |> Seq.map fn.AddEventSource |> Seq.toList
+            lambdaSpec.RolePolicyStatements |> List.iter fn.AddToRolePolicy
+
+            lambdaSpec.AsyncInvokeOptions |> List.iter fn.ConfigureAsyncInvoke
 
             lambdaSpec.Function <- Some fn
-
-            for action in lambdaSpec.Actions do
-                action fn
 
         | DockerImageFunctionOp imageLambdaSpec ->
             DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
@@ -229,14 +209,12 @@ module StackOperations =
             if vpcSpec.EnableFlowLogs then
                 let flowLogGroupProps = LogGroupProps()
 
-                flowLogGroupProps.Retention <-
-                    vpcSpec.FlowLogRetention
-                    |> Option.defaultValue Amazon.CDK.AWS.Logs.RetentionDays.ONE_WEEK
+                flowLogGroupProps.Retention <- vpcSpec.FlowLogRetention |> Option.defaultValue RetentionDays.ONE_WEEK
 
                 let flowLogGroup =
                     LogGroup(stack, $"{vpcSpec.ConstructId}-FlowLogs", flowLogGroupProps)
 
-                let flowLog =
+                let _ =
                     FlowLog(
                         stack,
                         $"{vpcSpec.ConstructId}-FlowLog",
@@ -571,14 +549,13 @@ module StackOperations =
             subscriptionResource.SubscriptionFilter <- Some subscriptionFilter
 
         | CloudTrailOp trailSpec ->
-            // Create CloudWatch Log Group if CloudWatch logging is enabled
+            // Create a CloudWatch Log Group if CloudWatch logging is enabled
             let trail =
                 if trailSpec.SendToCloudWatchLogs then
                     let logGroupProps = LogGroupProps()
 
                     logGroupProps.Retention <-
-                        trailSpec.CloudWatchLogsRetention
-                        |> Option.defaultValue Amazon.CDK.AWS.Logs.RetentionDays.ONE_MONTH
+                        trailSpec.CloudWatchLogsRetention |> Option.defaultValue RetentionDays.ONE_MONTH
 
                     let logGroup = LogGroup(stack, $"{trailSpec.ConstructId}-Logs", logGroupProps)
 
@@ -600,7 +577,6 @@ module StackOperations =
                 Amazon.CDK.AWS.EFS.FileSystem(stack, fileSystemSpec.ConstructId, fileSystemSpec.Props)
 
             fileSystemSpec.FileSystem <- Some fileSystem
-
 
 
 // ============================================================================

@@ -56,7 +56,7 @@ stack "Dev" {
         handler "Users::Handler::FunctionHandler"
         runtime Runtime.DOTNET_8
         code "./examples/lambdas/users"
-        memory 512
+        memorySize 512
         timeout 10.0
         description "CRUD over the users table"
     }
@@ -100,7 +100,7 @@ stack "Prod" {
         handler "Users::Handler::FunctionHandler"
         runtime Runtime.DOTNET_8
         code "./examples/lambdas/users"
-        memory 1024
+        memorySize 1024
         timeout 15.0
         description "CRUD over the users table"
     }

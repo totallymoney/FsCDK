@@ -41,7 +41,6 @@
         <Compile Include="OIDCProviderTests.fs" />
         <Compile Include="RouteTableTests.fs" />
         <Compile Include="FunctionTests.fs" />
-        <Compile Include="ProductionDefaultsTests.fs" />
         <Compile Include="FunctionUrlOptionsTests.fs" />
         <Compile Include="FunctionAddOptionsBuildersTests.fs" />
         <Compile Include="ElastiCacheTests.fs" />

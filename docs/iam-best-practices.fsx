@@ -98,17 +98,18 @@ lambda "MyFunction" {
     code "./publish"
 
     // Grant only specific permissions needed
-    policyStatement {
-        effect Effect.ALLOW
-        actions [ "dynamodb:GetItem"; "dynamodb:PutItem" ]
-        resources [ "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable" ]
-    }
+    addRolePolicyStatements
+        [ policyStatement {
+              effect Effect.ALLOW
+              actions [ "dynamodb:GetItem"; "dynamodb:PutItem" ]
+              resources [ "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable" ]
+          }
 
-    policyStatement {
-        effect Effect.ALLOW
-        actions [ "s3:GetObject" ]
-        resources [ "arn:aws:s3:::my-bucket/*" ]
-    }
+          policyStatement {
+              effect Effect.ALLOW
+              actions [ "s3:GetObject" ]
+              resources [ "arn:aws:s3:::my-bucket/*" ]
+          } ]
 }
 
 (**
@@ -340,17 +341,19 @@ lambda "ReadOnlyFunction" {
     handler "MyApp::Handler"
     code "./publish"
 
-    policyStatement {
-        effect Effect.ALLOW
+    addRolePolicyStatement (
+        policyStatement {
+            effect Effect.ALLOW
 
-        actions
-            [ "dynamodb:GetItem"
-              "dynamodb:Query"
-              "dynamodb:Scan"
-              "dynamodb:BatchGetItem" ]
+            actions
+                [ "dynamodb:GetItem"
+                  "dynamodb:Query"
+                  "dynamodb:Scan"
+                  "dynamodb:BatchGetItem" ]
 
-        resources [ "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable" ]
-    }
+            resources [ "arn:aws:dynamodb:us-east-1:123456789012:table/MyTable" ]
+        }
+    )
 }
 
 (**
@@ -362,11 +365,13 @@ lambda "S3Writer" {
     handler "MyApp::Handler"
     code "./publish"
 
-    policyStatement {
-        effect Effect.ALLOW
-        actions [ "s3:PutObject"; "s3:PutObjectAcl" ]
-        resources [ "arn:aws:s3:::my-bucket/*" ]
-    }
+    addRolePolicyStatement (
+        policyStatement {
+            effect Effect.ALLOW
+            actions [ "s3:PutObject"; "s3:PutObjectAcl" ]
+            resources [ "arn:aws:s3:::my-bucket/*" ]
+        }
+    )
 }
 
 (**
@@ -380,11 +385,13 @@ lambda "QueueProcessor" {
     handler "MyApp::Handler"
     code "./publish"
 
-    policyStatement {
-        effect Effect.ALLOW
-        actions [ "sqs:ReceiveMessage"; "sqs:DeleteMessage"; "sqs:GetQueueAttributes" ]
-        resources [ "arn:aws:sqs:us-east-1:123456789012:my-queue" ]
-    }
+    addRolePolicyStatement (
+        policyStatement {
+            effect Effect.ALLOW
+            actions [ "sqs:ReceiveMessage"; "sqs:DeleteMessage"; "sqs:GetQueueAttributes" ]
+            resources [ "arn:aws:sqs:us-east-1:123456789012:my-queue" ]
+        }
+    )
 }
 
 (**
@@ -398,11 +405,13 @@ lambda "NotificationSender" {
     handler "MyApp::Handler"
     code "./publish"
 
-    policyStatement {
-        effect Effect.ALLOW
-        actions [ "sns:Publish" ]
-        resources [ "arn:aws:sns:us-east-1:123456789012:my-topic" ]
-    }
+    addRolePolicyStatement (
+        policyStatement {
+            effect Effect.ALLOW
+            actions [ "sns:Publish" ]
+            resources [ "arn:aws:sns:us-east-1:123456789012:my-topic" ]
+        }
+    )
 }
 
 (**
@@ -525,11 +534,13 @@ stack "DatabaseStack" {
         environment [ "DB_SECRET_ARN", "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-secret" ]
 
         // Grant permission to read secret
-        policyStatement {
-            effect Effect.ALLOW
-            actions [ "secretsmanager:GetSecretValue" ]
-            resources [ "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-secret" ]
-        }
+        addRolePolicyStatement (
+            policyStatement {
+                effect Effect.ALLOW
+                actions [ "secretsmanager:GetSecretValue" ]
+                resources [ "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-secret" ]
+            }
+        )
     }
 
     let! myVpc =

@@ -62,21 +62,18 @@ stack "KinesisStack" {
             encryption StreamEncryption.KMS
         }
 
-    // Lambda function to process stream records
-    let processor =
-        lambda "stream-processor" {
-            handler "index.handler"
-            runtime Runtime.NODEJS_18_X
-            code "./lambda-code"
-            memory 512
-            timeout 60.0
+    lambda "stream-processor" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./lambda-code"
+        memorySize 512
+        timeout 60.0
 
-            environment [ "STREAM_NAME", stream.StreamName ]
+        environment [ "STREAM_NAME", stream.StreamName ]
 
-            description "Processes records from Kinesis stream"
-        }
+        description "Processes records from Kinesis stream"
+    }
 
-    ()
 }
 
 (**
@@ -97,15 +94,12 @@ For unpredictable workloads, use on-demand capacity mode. The stream automatical
 stack "OnDemandKinesisStack" {
     description "Kinesis stream with on-demand capacity"
 
-    let onDemandStream =
-        kinesisStream "OnDemandStream" {
-            streamName "on-demand-stream"
-            streamMode StreamMode.ON_DEMAND
-            retentionPeriod (Duration.Hours 168.) // 7 days
-            encryption StreamEncryption.KMS
-        }
-
-    ()
+    kinesisStream "OnDemandStream" {
+        streamName "on-demand-stream"
+        streamMode StreamMode.ON_DEMAND
+        retentionPeriod (Duration.Hours 168.) // 7 days
+        encryption StreamEncryption.KMS
+    }
 }
 
 (**
@@ -124,15 +118,12 @@ For predictable, high-volume data ingestion with multiple shards.
 stack "HighThroughputKinesisStack" {
     description "High-throughput Kinesis stream with multiple shards"
 
-    let highThroughputStream =
-        kinesisStream "HighThroughputStream" {
-            streamName "high-throughput-stream"
-            shardCount 10
-            retentionPeriod (Duration.Hours 168.) // 7 days
-            encryption StreamEncryption.KMS
-        }
-
-    ()
+    kinesisStream "HighThroughputStream" {
+        streamName "high-throughput-stream"
+        shardCount 10
+        retentionPeriod (Duration.Hours 168.) // 7 days
+        encryption StreamEncryption.KMS
+    }
 }
 
 (**
@@ -156,12 +147,12 @@ stack "AnalyticsPipelineStack" {
         }
 
     // Lambda processes events in real-time
-    let analyticsProcessor =
+    let! analyticsProcessor =
         lambda "analytics-processor" {
             handler "analytics.handler"
             runtime Runtime.PYTHON_3_11
             code "./analytics-code"
-            memory 1024
+            memorySize 1024
             timeout 60.0
 
             environment
@@ -172,9 +163,9 @@ stack "AnalyticsPipelineStack" {
         }
 
     // This value-cross-linking would need some nicer API.
-    clickstream.GrantReads.Add(analyticsProcessor.Function.Value.Role) |> ignore
+    clickstream.GrantReads.Add(analyticsProcessor.Role)
 
-    analyticsProcessor.EventSources.Add(
+    analyticsProcessor.AddEventSource(
         KinesisEventSource(
             clickstream.Stream.Value,
             KinesisEventSourceProps(
@@ -185,9 +176,6 @@ stack "AnalyticsPipelineStack" {
             )
         )
     )
-    |> ignore
-
-    ()
 }
 
 (**
@@ -209,48 +197,44 @@ stack "EventStreamingStack" {
         }
 
     // Consumer 1: Event archiver
-    let archiver =
+    let! archiver =
         lambda "event-archiver" {
             handler "archiver.handler"
             runtime Runtime.PYTHON_3_11
             code "./archiver-code"
-            memory 512
+            memorySize 512
             timeout 120.0
             description "Archives events to S3"
         }
 
-    eventStream.GrantReads.Add(archiver.Function.Value.Role) |> ignore
+    eventStream.GrantReads.Add(archiver.Role)
 
-    archiver.EventSources.Add(
+    archiver.AddEventSource(
         KinesisEventSource(
             eventStream.Stream.Value,
             KinesisEventSourceProps(StartingPosition = StartingPosition.TRIM_HORIZON, BatchSize = 100.)
         )
     )
-    |> ignore
 
     // Consumer 2: Metrics aggregator
-    let metricsAggregator =
+    let! metricsAggregator =
         lambda "metrics-aggregator" {
             handler "metrics.handler"
             runtime Runtime.NODEJS_18_X
             code "./metrics-code"
-            memory 512
+            memorySize 512
             timeout 60.0
             description "Aggregates metrics from events"
         }
 
-    eventStream.GrantReads.Add(metricsAggregator.Function.Value.Role) |> ignore
+    eventStream.GrantReads.Add(metricsAggregator.Role)
 
-    metricsAggregator.EventSources.Add(
+    metricsAggregator.AddEventSource(
         KinesisEventSource(
             eventStream.Stream.Value,
             KinesisEventSourceProps(StartingPosition = StartingPosition.LATEST, BatchSize = 200.)
         )
     )
-    |> ignore
-
-    ()
 }
 
 (**
@@ -272,12 +256,12 @@ stack "LogAggregationStack" {
         }
 
     // Log processor
-    let logProcessor =
+    let! logProcessor =
         lambda "log-processor" {
             handler "logs.handler"
             runtime Runtime.PYTHON_3_11
             code "./log-processor-code"
-            memory 1024
+            memorySize 1024
             timeout 120.0
 
             environment [ "LOG_GROUP", "/aws/kinesis/logs" ]
@@ -285,9 +269,9 @@ stack "LogAggregationStack" {
             description "Processes and filters log data"
         }
 
-    logStream.GrantReads.Add(logProcessor.Function.Value.Role) |> ignore
+    logStream.GrantReads.Add(logProcessor.Role)
 
-    logProcessor.EventSources.Add(
+    logProcessor.AddEventSource(
         KinesisEventSource(
             logStream.Stream.Value,
             KinesisEventSourceProps(
@@ -297,9 +281,6 @@ stack "LogAggregationStack" {
             )
         )
     )
-    |> ignore
-
-    ()
 }
 
 (**
@@ -431,21 +412,21 @@ stack "OptimizedProcessingStack" {
             shardCount 5
         }
 
-    let optimizedConsumer =
+    let! optimizedConsumer =
         lambda "optimized-consumer" {
             handler "optimized.handler"
             runtime Runtime.PYTHON_3_11
             code "./optimized-code"
-            memory 1024
+            memorySize 1024
             timeout 300.0
             reservedConcurrentExecutions 10
             description "Optimized batch processor"
         }
 
-    stream.GrantReads.Add(optimizedConsumer.Function.Value.Role) |> ignore
+    stream.GrantReads.Add(optimizedConsumer.Role)
 
     // Optimized event source mapping
-    optimizedConsumer.EventSources.Add(
+    optimizedConsumer.AddEventSource(
         KinesisEventSource(
             stream.Stream.Value,
             KinesisEventSourceProps(
@@ -460,9 +441,6 @@ stack "OptimizedProcessingStack" {
             )
         )
     )
-    |> ignore
-
-    ()
 }
 
 (**
@@ -495,23 +473,21 @@ stack "ProductionKinesisStack" {
             handler "producer.handler"
             runtime Runtime.PYTHON_3_11
             code "./producer-code"
-            memory 512
+            memorySize 512
             timeout 60.0
-
             environment [ "STREAM_NAME", prodStream.StreamName; "BATCH_SIZE", "500" ]
-
             description "Produces events to Kinesis stream"
         }
 
-    prodStream.GrantWrites.Add(producer.Function.Value.Role) |> ignore
+    prodStream.GrantWrites.Add(producer.Function.Value.Role)
 
     // Consumer Lambda with optimal settings
-    let consumer =
+    let! consumer =
         lambda "data-consumer" {
             handler "consumer.handler"
             runtime Runtime.PYTHON_3_11
             code "./consumer-code"
-            memory 2048
+            memorySize 2048
             timeout 300.0
             reservedConcurrentExecutions 50
 
@@ -520,9 +496,9 @@ stack "ProductionKinesisStack" {
             description "Consumes and processes events from Kinesis"
         }
 
-    prodStream.GrantReads.Add(consumer.Function.Value.Role) |> ignore
+    prodStream.GrantReads.Add(consumer.Role)
 
-    consumer.EventSources.Add(
+    consumer.AddEventSource(
         KinesisEventSource(
             prodStream.Stream.Value,
             KinesisEventSourceProps(
@@ -536,7 +512,6 @@ stack "ProductionKinesisStack" {
             )
         )
     )
-    |> ignore
 
     // CloudWatch alarm for monitoring
     cloudwatchAlarm "production-stream-lag" {
@@ -549,8 +524,6 @@ stack "ProductionKinesisStack" {
         evaluationPeriods 2
         period (Duration.Minutes(5.0))
     }
-
-    ()
 }
 
 (**

@@ -446,10 +446,13 @@ lambda "CustomAsyncFunction" {
     code "./src"
 
     // Custom async configuration
-    configureAsyncInvoke {
-        maxEventAge (Duration.Minutes(30.0)) // Process within 30 min
-        retryAttempts 1 // Only retry once
-    }
+
+    asyncInvokeOption (
+        eventInvokeConfigOptions {
+            maxEventAge (Duration.Minutes(30.0)) // Process within 30 min
+            retryAttempts 1 // Only retry once
+        }
+    )
 }
 // Note: When using configureAsyncInvoke, MaxEventAge/RetryAttempts
 // are NOT set on the function props to avoid conflicts
@@ -487,7 +490,7 @@ stack "ProductionOrderService" {
         handler "process_order.handler"
         runtime Runtime.PYTHON_3_11
         code "./services/order-processor"
-        memory 512
+        memorySize 512
         timeout 30.0
 
         // Environment variables for Powertools
@@ -507,10 +510,12 @@ stack "ProductionOrderService" {
         // Retry attempts = 2
 
         // Grant DynamoDB permissions
-        policyStatement {
-            actions [ "dynamodb:PutItem"; "dynamodb:UpdateItem" ]
-            resources [ ordersTable.Table.Value.TableArn ]
-        }
+        addRolePolicyStatement (
+            policyStatement {
+                actions [ "dynamodb:PutItem"; "dynamodb:UpdateItem" ]
+                resources [ ordersTable.Table.Value.TableArn ]
+            }
+        )
     }
 
     // High-volume notification sender (custom concurrency)
@@ -518,7 +523,7 @@ stack "ProductionOrderService" {
         handler "send_notification.handler"
         runtime Runtime.NODEJS_20_X
         code "./services/notification-sender"
-        memory 256
+        memorySize 256
         timeout 10.0
 
         // Override concurrency for high volume

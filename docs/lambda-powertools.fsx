@@ -108,7 +108,7 @@ lambda "PythonOrderProcessor" {
     handler "app.lambda_handler"
     runtime Runtime.PYTHON_3_11
     code "./python-service"
-    memory 512
+    memorySize 512
     timeout 30.0
 
     environment
@@ -145,26 +145,26 @@ def lambda_handler(event: dict, context: LambdaContext) -> dict:
     """
     Process order events with full observability
     """
-    
+
     # Structured logging with correlation IDs (automatic)
     logger.info("Processing order", extra={
         "order_id": event.get("orderId"),
         "customer_id": event.get("customerId"),
         "amount": event.get("amount")
     })
-    
+
     try:
         # Your business logic
         order_id = process_order(event)
-        
+
         # Add custom metrics (no CloudWatch API calls!)
         metrics.add_metric(name="OrderProcessed", unit=MetricUnit.Count, value=1)
         metrics.add_metric(name="OrderAmount", unit=MetricUnit.None, value=event.get("amount", 0))
-        
+
         logger.info("Order processed successfully", extra={"order_id": order_id})
-        
+
         return {"statusCode": 200, "orderId": order_id}
-        
+
     except Exception as e:
         logger.exception("Failed to process order")
         metrics.add_metric(name="OrderFailed", unit=MetricUnit.Count, value=1)
@@ -177,15 +177,15 @@ def process_order(event: dict) -> str:
     """
     # This method automatically creates an X-Ray subsegment
     order_id = event["orderId"]
-    
+
     # Add annotations for X-Ray filtering
     tracer.put_annotation(key="OrderId", value=order_id)
     tracer.put_metadata(key="order_details", value=event)
-    
+
     # Your order processing logic here
     validate_order(event)
     save_to_database(order_id)
-    
+
     return order_id
 
 @tracer.capture_method
@@ -232,7 +232,7 @@ lambda "NodeOrderProcessor" {
     handler "index.handler"
     runtime Runtime.NODEJS_20_X
     code "./nodejs-service"
-    memory 512
+    memorySize 512
     timeout 30.0
 
     environment
@@ -272,26 +272,26 @@ const metrics = new Metrics();
 export const handler = async (event: any, context: Context) => {
     // Add context information
     logger.addContext(context);
-    
+
     // Structured logging with correlation IDs
-    logger.info('Processing order', { 
+    logger.info('Processing order', {
         orderId: event.orderId,
         customerId: event.customerId,
-        amount: event.amount 
+        amount: event.amount
     });
-    
+
     try {
         // Your business logic
         const orderId = await processOrder(event);
-        
+
         // Add custom metrics
         metrics.addMetric('OrderProcessed', MetricUnits.Count, 1);
         metrics.addMetric('OrderAmount', MetricUnits.None, event.amount);
-        
+
         logger.info('Order processed successfully', { orderId });
-        
+
         return { statusCode: 200, orderId };
-        
+
     } catch (error) {
         logger.error('Failed to process order', error as Error);
         metrics.addMetric('OrderFailed', MetricUnits.Count, 1);
@@ -303,21 +303,21 @@ async function processOrder(event: any): Promise<string> {
     // Create manual segment for detailed tracing
     const segment = tracer.getSegment();
     const subsegment = segment?.addNewSubsegment('processOrder');
-    
+
     try {
         const orderId = event.orderId;
-        
+
         // Add annotations for X-Ray
         subsegment?.addAnnotation('OrderId', orderId);
         subsegment?.addMetadata('order_details', event);
-        
+
         // Your order processing logic
         await validateOrder(event);
         await saveToDatabase(orderId);
-        
+
         subsegment?.close();
         return orderId;
-        
+
     } catch (error) {
         subsegment?.close(error as Error);
         throw error;
@@ -347,7 +347,7 @@ lambda "JavaOrderProcessor" {
     handler "com.example.OrderHandler::handleRequest"
     runtime Runtime.JAVA_17
     code "./java-service/target/order-service.jar"
-    memory 1024
+    memorySize 1024
     timeout 60.0
 
     environment
@@ -394,35 +394,35 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class OrderHandler implements RequestHandler<OrderEvent, OrderResponse> {
-    
+
     private static final Logger logger = LogManager.getLogger(OrderHandler.class);
-    
+
     @Override
     @Logging(logEvent = true)
     @Metrics(namespace = "ECommerceApp", service = "order-processor")
     @Tracing
     public OrderResponse handleRequest(OrderEvent event, Context context) {
-        
+
         logger.info("Processing order: " + event.getOrderId());
-        
+
         try {
             String orderId = processOrder(event);
-            
+
             // Metrics are automatically published
             MetricsUtils.putMetric("OrderProcessed", 1, Unit.COUNT);
             MetricsUtils.putMetric("OrderAmount", event.getAmount(), Unit.NONE);
-            
+
             logger.info("Order processed successfully: " + orderId);
-            
+
             return new OrderResponse(200, orderId);
-            
+
         } catch (Exception e) {
             logger.error("Failed to process order", e);
             MetricsUtils.putMetric("OrderFailed", 1, Unit.COUNT);
             throw e;
         }
     }
-    
+
     @Tracing
     private String processOrder(OrderEvent event) {
         // Automatically creates X-Ray subsegment
@@ -430,11 +430,11 @@ public class OrderHandler implements RequestHandler<OrderEvent, OrderResponse> {
         saveToDatabase(event.getOrderId());
         return event.getOrderId();
     }
-    
+
     private void validateOrder(OrderEvent event) {
         logger.debug("Validating order: " + event);
     }
-    
+
     private void saveToDatabase(String orderId) {
         logger.info("Saving order to database: " + orderId);
     }
@@ -698,12 +698,12 @@ def lambda_handler(event, context):
 
 FsCDK's Lambda Powertools integration provides:
 
-**Zero-configuration** - Layers added automatically  
-**Multi-runtime support** - Python, Node.js, Java, .NET  
-**Production-grade observability** - Logging, metrics, tracing  
-**Zero cold-start impact** - Layers don't increase startup time  
-**Cost-effective metrics** - No CloudWatch API calls  
-**Easy to override** - Use `autoAddPowertools false` if needed  
+**Zero-configuration** - Layers added automatically
+**Multi-runtime support** - Python, Node.js, Java, .NET
+**Production-grade observability** - Logging, metrics, tracing
+**Zero cold-start impact** - Layers don't increase startup time
+**Cost-effective metrics** - No CloudWatch API calls
+**Easy to override** - Use `autoAddPowertools false` if needed
 
 **Get production-ready observability with zero extra code!**
 

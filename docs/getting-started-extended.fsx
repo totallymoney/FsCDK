@@ -210,7 +210,7 @@ stack "ProductionApp" {
         handler "MyApp.Api::Handler::handle"
         code "../MyApp.Api/bin/Release/net8.0/publish"
         timeout 30.0
-        memory 512
+        memorySize 512
 
         environment [ "DATABASE_HOST", "dbEndpoint"; "DATABASE_NAME", "myapp" ]
     }
@@ -302,7 +302,7 @@ stack "DataPipeline" {
         handler "Processor::Handler"
         code "./publish"
         timeout 300.0 // 5 minutes for data processing
-        memory 1024 // More memory for processing
+        memorySize 1024 // More memory for processing
     }
 
     bucket "DataLake" {

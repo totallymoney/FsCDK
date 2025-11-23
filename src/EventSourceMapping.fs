@@ -7,12 +7,6 @@ open Amazon.CDK.AWS.Lambda
 // Lambda Event Source Mapping Types
 // ============================================================================
 
-type EventSourceMappingSpec =
-    { Id: string
-      Options: IEventSourceMappingOptions }
-
-type EventSourcesSpec = { Sources: IEventSource list }
-
 // ============================================================================
 // Lambda Event Source Mapping Options Builder DSL
 // ============================================================================
@@ -25,7 +19,7 @@ type EventSourceMappingOptionsConfig =
       MaxBatchingWindow: Duration option
       ParallelizationFactor: int option }
 
-type EventSourceMappingOptionsBuilder(id: string) =
+type EventSourceMappingOptionsBuilder() =
     member _.Yield(_: unit) : EventSourceMappingOptionsConfig =
         { EventSourceArn = None
           BatchSize = None
@@ -91,7 +85,7 @@ type EventSourceMappingOptionsBuilder(id: string) =
             else
                 state2.ParallelizationFactor }
 
-    member _.Run(config: EventSourceMappingOptionsConfig) : EventSourceMappingSpec =
+    member _.Run(config: EventSourceMappingOptionsConfig) =
         let opts = EventSourceMappingOptions()
 
         let arn =
@@ -108,7 +102,7 @@ type EventSourceMappingOptionsBuilder(id: string) =
         config.ParallelizationFactor
         |> Option.iter (fun v -> opts.ParallelizationFactor <- v)
 
-        { Id = id; Options = opts }
+        opts
 
     [<CustomOperation("eventSourceArn")>]
     member _.EventSourceArn(config: EventSourceMappingOptionsConfig, arn: string) =
@@ -142,4 +136,4 @@ type EventSourceMappingOptionsBuilder(id: string) =
 
 [<AutoOpen>]
 module EventSourceMappingBuilders =
-    let eventSourceMapping id = EventSourceMappingOptionsBuilder(id)
+    let eventSourceMapping = EventSourceMappingOptionsBuilder()

@@ -34,7 +34,7 @@ let lambda_snapshot_tests =
                       handler "index.handler"
                       runtime Runtime.PYTHON_3_11
                       code "./dummy"
-                      memory 1024
+                      memorySize 1024
                       timeout 60.0
                   }
 
