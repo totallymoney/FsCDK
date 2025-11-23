@@ -125,11 +125,13 @@ stack "DualAuthAPI" {
         environment [ "USER_POOL_ID", "us-east-1_XXXXX"; "REGION", "us-east-1" ]
 
         // IAM permissions for Cognito
-        policyStatement {
-            effect Effect.ALLOW
-            actions [ "cognito-idp:DescribeUserPool" ]
-            resources [ "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*" ]
-        }
+        addRolePolicyStatement (
+            policyStatement {
+                effect Effect.ALLOW
+                actions [ "cognito-idp:DescribeUserPool" ]
+                resources [ "arn:aws:cognito-idp:us-east-1:123456789012:userpool/*" ]
+            }
+        )
     }
 }
 
@@ -147,10 +149,10 @@ from typing import Dict, Any
 
 def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
     token = extract_token(event)
-    
+
     # Decode without verification to check token type
     unverified = jwt.decode(token, options={"verify_signature": False})
-    
+
     if unverified.get('token_use') == 'access':
         # M2M access token flow
         claims = validate_access_token(token)
@@ -161,14 +163,14 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
         context = extract_user_context(claims)
     else:
         raise Exception('Unknown token type')
-    
+
     return generate_policy(context)
 
 def extract_m2m_context(claims):
     """Extract tenant and permissions from M2M token"""
     client_id = claims['client_id']
     scopes = claims.get('scope', '').split()
-    
+
     # Map scopes to application roles
     roles = []
     if 'api/admin' in scopes:
@@ -177,7 +179,7 @@ def extract_m2m_context(claims):
         roles.append('write')
     if 'api/read' in scopes:
         roles.append('read')
-    
+
     return {
         'clientId': client_id,
         'roles': ','.join(roles),
@@ -233,7 +235,7 @@ def validate_access_token(token):
     # Download Cognito JWKS
     jwks_url = f'https://cognito-idp.{REGION}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json'
     jwks = requests.get(jwks_url).json()
-    
+
     # Validate signature, issuer, expiration
     claims = jwt.decode(
         token,
@@ -241,15 +243,15 @@ def validate_access_token(token):
         algorithms=['RS256'],
         issuer=f'https://cognito-idp.{REGION}.amazonaws.com/{USER_POOL_ID}'
     )
-    
+
     # Verify token_use
     if claims.get('token_use') != 'access':
         raise Exception('Invalid token type')
-    
+
     # Verify not expired
     if claims['exp'] < time.time():
         raise Exception('Token expired')
-    
+
     return claims
 ```
 

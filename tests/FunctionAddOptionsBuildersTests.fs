@@ -22,10 +22,13 @@ let lambda_add_options_builders_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      eventSourceMapping "SqsMapping" {
-                          eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
-                          batchSize 5
-                      }
+                      addEventSourceMapping (
+                          "SqsMapping",
+                          eventSourceMapping {
+                              eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
+                              batchSize 5
+                          }
+                      )
                   }
               }
 
@@ -44,11 +47,14 @@ let lambda_add_options_builders_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      permission "ApiGwInvoke" {
-                          principal (ServicePrincipal("apigateway.amazonaws.com"))
-                          action "lambda:InvokeFunction"
-                          sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
-                      }
+
+                      addPermission (
+                          permission "ApiGwInvoke" {
+                              principal (ServicePrincipal("apigateway.amazonaws.com"))
+                              action "lambda:InvokeFunction"
+                              sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
+                          }
+                      )
                   }
               }
 
@@ -67,10 +73,12 @@ let lambda_add_options_builders_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      configureAsyncInvoke {
-                          maxEventAge (Duration.Minutes(1.0))
-                          retryAttempts 1
-                      }
+                      asyncInvokeOption (
+                          eventInvokeConfigOptions {
+                              maxEventAge (Duration.Minutes(1.0))
+                              retryAttempts 1
+                          }
+                      )
                   }
               }
 

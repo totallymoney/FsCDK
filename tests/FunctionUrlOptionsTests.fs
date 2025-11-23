@@ -20,7 +20,7 @@ let function_url_options_builder_tests =
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      functionUrl { authType FunctionUrlAuthType.NONE }
+                      addUrlOption (functionUrl { authType FunctionUrlAuthType.NONE })
                   }
               }
 
@@ -39,17 +39,21 @@ let function_url_options_builder_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      functionUrl {
-                          authType FunctionUrlAuthType.NONE
+                      addUrlOption (
+                          functionUrl {
+                              authType FunctionUrlAuthType.NONE
 
-                          cors {
-                              allowedOrigins [ "https://example.com" ]
-                              allowedMethods [ HttpMethod.GET; HttpMethod.OPTIONS ]
-                              allowedHeaders [ "*" ]
-                              allowCredentials true
-                              maxAge (Duration.Seconds(60.0))
+                              corsOptions (
+                                  cors {
+                                      allowedOrigins [ "https://example.com" ]
+                                      allowedMethods [ HttpMethod.GET; HttpMethod.OPTIONS ]
+                                      allowedHeaders [ "*" ]
+                                      allowCredentials true
+                                      maxAge (Duration.Seconds(60.0))
+                                  }
+                              )
                           }
-                      }
+                      )
                   }
               }
 

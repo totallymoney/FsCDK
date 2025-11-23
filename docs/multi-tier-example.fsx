@@ -225,7 +225,7 @@ stack "MultiTierApp" {
         code "../MyApp.Api/bin/Release/net8.0/publish"
 
         timeout 30.0
-        memory 512
+        memorySize 512
         description "API handler for the web application"
 
         // VPC configuration for database access

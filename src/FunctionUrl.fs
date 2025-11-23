@@ -4,14 +4,6 @@ open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
 
 // ============================================================================
-// Lambda Function URL Types
-// ============================================================================
-
-type FunctionUrlSpec = { Options: IFunctionUrlOptions }
-
-type FunctionUrlCorsSpec = { Options: IFunctionUrlCorsOptions }
-
-// ============================================================================
 // Lambda Function URL CORS Options Builder DSL
 // ============================================================================
 
@@ -81,24 +73,27 @@ type FunctionUrlCorsOptionsBuilder() =
             else
                 state2.MaxAge }
 
-    member _.Run(config: FunctionUrlCorsOptionsConfig) : FunctionUrlCorsSpec =
-        let o = FunctionUrlCorsOptions()
-        config.AllowCredentials |> Option.iter (fun v -> o.AllowCredentials <- v)
+    member _.Run(config: FunctionUrlCorsOptionsConfig) =
+        let corsOptions = FunctionUrlCorsOptions()
+
+        config.AllowCredentials
+        |> Option.iter (fun v -> corsOptions.AllowCredentials <- v)
 
         config.AllowedHeaders
-        |> Option.iter (fun v -> o.AllowedHeaders <- (v |> List.toArray))
+        |> Option.iter (fun v -> corsOptions.AllowedHeaders <- (v |> List.toArray))
 
         config.AllowedMethods
-        |> Option.iter (fun v -> o.AllowedMethods <- (v |> List.toArray))
+        |> Option.iter (fun v -> corsOptions.AllowedMethods <- (v |> List.toArray))
 
         config.AllowedOrigins
-        |> Option.iter (fun v -> o.AllowedOrigins <- (v |> List.toArray))
+        |> Option.iter (fun v -> corsOptions.AllowedOrigins <- (v |> List.toArray))
 
         config.ExposeHeaders
-        |> Option.iter (fun v -> o.ExposedHeaders <- (v |> List.toArray))
+        |> Option.iter (fun v -> corsOptions.ExposedHeaders <- (v |> List.toArray))
 
-        config.MaxAge |> Option.iter (fun d -> o.MaxAge <- d)
-        { Options = o :> IFunctionUrlCorsOptions }
+        config.MaxAge |> Option.iter (fun d -> corsOptions.MaxAge <- d)
+
+        corsOptions
 
     [<CustomOperation("allowCredentials")>]
     member _.AllowCredentials(config: FunctionUrlCorsOptionsConfig, value: bool) =
@@ -148,12 +143,13 @@ type FunctionUrlOptionsBuilder() =
           Cors = None
           InvokeMode = None }
 
-    member _.Run(config: FunctionUrlOptionsConfig) : FunctionUrlSpec =
+    member _.Run(config: FunctionUrlOptionsConfig) =
         let opts = FunctionUrlOptions()
         config.AuthType |> Option.iter (fun a -> opts.AuthType <- a)
         config.Cors |> Option.iter (fun c -> opts.Cors <- c)
         config.InvokeMode |> Option.iter (fun m -> opts.InvokeMode <- m)
-        { Options = opts :> IFunctionUrlOptions }
+        opts
+
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> FunctionUrlOptionsConfig) : FunctionUrlOptionsConfig = f ()
 
@@ -185,10 +181,8 @@ type FunctionUrlOptionsBuilder() =
     [<CustomOperation("invokeMode")>]
     member _.InvokeMode(config: FunctionUrlOptionsConfig, mode: InvokeMode) = { config with InvokeMode = Some mode }
 
-    member _.Yield(spec: FunctionUrlCorsSpec) : FunctionUrlOptionsConfig =
-        { AuthType = None
-          Cors = Some spec.Options
-          InvokeMode = None }
+    [<CustomOperation("corsOptions")>]
+    member _.Cors(config: FunctionUrlOptionsConfig, cors: IFunctionUrlCorsOptions) = { config with Cors = Some cors }
 
 // ============================================================================
 // Builders

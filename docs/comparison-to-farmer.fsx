@@ -188,7 +188,7 @@ let myLambdaFunction =
         handler "MyApp::MyApp.Handler::FunctionHandler"
         runtime Runtime.DOTNET_8
         code "./publish"
-        memory 512
+        memorySize 512
         timeout 30.0
         environment [ "KEY", "value" ]
     }

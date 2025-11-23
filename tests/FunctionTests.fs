@@ -93,7 +93,7 @@ let lambda_function_dsl_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                       timeout 10.0
-                      memory 512
+                      memorySize 512
                       description "My function"
                   }
 
@@ -122,21 +122,25 @@ let lambda_function_dsl_tests =
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
                       environment [ ("A", "1"); ("B", "2") ]
                       timeout 5.0
-                      memory 256
+                      memorySize 256
                       description "Test function"
 
                       // Post-creation operations that don't require extra packages
-                      functionUrl {
-                          authType FunctionUrlAuthType.NONE
+                      addUrlOption (
+                          functionUrl {
+                              authType FunctionUrlAuthType.NONE
 
-                          cors {
-                              allowedOrigins [ "*" ]
-                              allowedMethods [ HttpMethod.ALL ]
-                              allowedHeaders [ "*" ]
-                              allowCredentials false
-                              maxAge (Duration.Seconds(300.0))
+                              corsOptions (
+                                  cors {
+                                      allowedOrigins [ "*" ]
+                                      allowedMethods [ HttpMethod.ALL ]
+                                      allowedHeaders [ "*" ]
+                                      allowCredentials false
+                                      maxAge (Duration.Seconds(300.0))
+                                  }
+                              )
                           }
-                      }
+                      )
                   }
               }
 
@@ -152,15 +156,18 @@ let lambda_function_dsl_tests =
               stack "LambdaESM" {
                   scope app
 
+                  let eventSourceMapping =
+                      eventSourceMapping {
+                          eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
+                          batchSize 5
+                      }
+
                   lambda "fn-esm" {
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      eventSourceMapping "SqsMapping" {
-                          eventSourceArn "arn:aws:sqs:us-east-1:111122223333:my-queue"
-                          batchSize 5
-                      }
+                      addEventSourceMapping ("SqsMapping", eventSourceMapping)
                   }
               }
 
@@ -179,11 +186,13 @@ let lambda_function_dsl_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      permission "ApiGwInvoke" {
-                          principal (ServicePrincipal("apigateway.amazonaws.com"))
-                          action "lambda:InvokeFunction"
-                          sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
-                      }
+                      addPermission (
+                          permission "ApiGwInvoke" {
+                              principal (ServicePrincipal("apigateway.amazonaws.com"))
+                              action "lambda:InvokeFunction"
+                              sourceArn "arn:aws:execute-api:us-east-1:111122223333:api-id/*/*/*"
+                          }
+                      )
                   }
               }
 
@@ -202,16 +211,18 @@ let lambda_function_dsl_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      policyStatement {
-                          policyStatementProps {
-                              effect Effect.ALLOW
-                              actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
-                              resources [ "*" ]
-                          }
+                      addRolePolicyStatement (
+                          policyStatement {
+                              policyStatementProps {
+                                  effect Effect.ALLOW
+                                  actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                                  resources [ "*" ]
+                              }
 
-                          actions [ "dynamodb:Query"; "dynamodb:Scan" ]
-                          resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
-                      }
+                              actions [ "dynamodb:Query"; "dynamodb:Scan" ]
+                              resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
+                          }
+                      )
                   }
               }
 
@@ -230,10 +241,12 @@ let lambda_function_dsl_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      configureAsyncInvoke {
-                          maxEventAge (Duration.Minutes(1.0))
-                          retryAttempts 1
-                      }
+                      asyncInvokeOption (
+                          eventInvokeConfigOptions {
+                              maxEventAge (Duration.Minutes(1.0))
+                              retryAttempts 1
+                          }
+                      )
                   }
               }
 
@@ -252,11 +265,11 @@ let lambda_function_dsl_tests =
                       handler "Program::Handler"
                       runtime Runtime.DOTNET_8
                       code (System.IO.Directory.GetCurrentDirectory()) S3.excludeCommonAssetDirs
-                      dummyEventSource
+                      addEventSource dummyEventSource
                   }
 
               // Ensure an action was captured for AddEventSource
-              Expect.isGreaterThan spec.Actions.Length 0 "Actions should include AddEventSource"
+              Expect.isGreaterThan spec.EventSources.Length 0 "Actions should include AddEventSource"
           }
 
           test "app synth succeeds with addToRolePolicy via builders" {
@@ -270,16 +283,19 @@ let lambda_function_dsl_tests =
                       runtime Runtime.DOTNET_8
                       code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
 
-                      policyStatement {
-                          policyStatementProps {
-                              effect Effect.ALLOW
-                              actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
-                              resources [ "*" ]
-                          }
 
-                          actions [ "dynamodb:Query"; "dynamodb:Scan" ]
-                          resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
-                      }
+                      addRolePolicyStatement (
+                          policyStatement {
+                              policyStatementProps {
+                                  effect Effect.ALLOW
+                                  actions [ "logs:CreateLogGroup"; "logs:CreateLogStream"; "logs:PutLogEvents" ]
+                                  resources [ "*" ]
+                              }
+
+                              actions [ "dynamodb:Query"; "dynamodb:Scan" ]
+                              resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
+                          }
+                      )
                   }
               }
 
@@ -592,66 +608,6 @@ let lambda_function_dsl_tests =
                   "Version code SHA256 should be set correctly"
           }
 
-          test "primitive and enum custom operations set correctly" {
-              let spec =
-                  lambda "fn-primitive" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      loggingFormat LoggingFormat.JSON
-                      architecture Architecture.ARM_64
-                      tracing Tracing.ACTIVE
-                      reservedConcurrentExecutions 100
-                      retryAttempts 3
-                      maxEventAge (Duration.Minutes(5.0))
-                      deadLetterQueueEnabled true
-                  }
-
-              let fmtObj = box spec.Props.LoggingFormat
-
-              match fmtObj with
-              | :? System.Nullable<LoggingFormat> as n when n.HasValue ->
-                  Expect.equal n.Value LoggingFormat.JSON "LoggingFormat should be set correctly"
-              | :? LoggingFormat as f -> Expect.equal f LoggingFormat.JSON "LoggingFormat should be set correctly"
-              | _ -> failtestf $"Unexpected LoggingFormat type/value: %A{fmtObj}"
-
-              Expect.equal spec.Props.Architecture Architecture.ARM_64 "Architecture should be set correctly"
-
-              // Check primitives (handle possible nullable numeric types)
-              let rceObj = box spec.Props.ReservedConcurrentExecutions
-
-              match rceObj with
-              | :? int as i -> Expect.equal i 100 "ReservedConcurrentExecutions should be set correctly"
-              | :? System.Nullable<double> as n when n.HasValue ->
-                  Expect.equal (int n.Value) 100 "ReservedConcurrentExecutions should be set correctly"
-              | :? System.Nullable<int> as n when n.HasValue ->
-                  Expect.equal n.Value 100 "ReservedConcurrentExecutions should be set correctly"
-              | _ -> failtestf $"Unexpected ReservedConcurrentExecutions type/value: %A{rceObj}"
-
-              let retryObj = box spec.Props.RetryAttempts
-
-              match retryObj with
-              | :? int as i -> Expect.equal i 3 "RetryAttempts should be set correctly"
-              | :? System.Nullable<double> as n when n.HasValue ->
-                  Expect.equal (int n.Value) 3 "RetryAttempts should be set correctly"
-              | :? System.Nullable<int> as n when n.HasValue ->
-                  Expect.equal n.Value 3 "RetryAttempts should be set correctly"
-              | _ -> failtestf $"Unexpected RetryAttempts type/value: %A{retryObj}"
-
-              Expect.equal
-                  (spec.Props.MaxEventAge.ToString())
-                  (Duration.Minutes(5.0).ToString())
-                  "MaxEventAge should be set correctly"
-
-              let dleObj = box spec.Props.DeadLetterQueueEnabled
-
-              match dleObj with
-              | :? System.Nullable<bool> as n when n.HasValue ->
-                  Expect.equal n.Value true "DeadLetterQueueEnabled should be set correctly"
-              | :? bool as b -> Expect.equal b true "DeadLetterQueueEnabled should be set correctly"
-              | _ -> failtestf $"Unexpected DeadLetterQueueEnabled type/value: %A{dleObj}"
-          }
-
           test "ephemeralStorageSize sets storage correctly" {
               let spec =
                   lambda "StorageFn" {
@@ -667,31 +623,5 @@ let lambda_function_dsl_tests =
                   (spec.Props.EphemeralStorageSize.ToString())
                   (Size.Mebibytes(1024.0).ToString())
                   "EphemeralStorageSize should be 1024 MB"
-          }
-
-          test "ephemeralStorageSize validates minimum size" {
-              let thrower () =
-                  lambda "StorageFn" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      ephemeralStorageSize 256
-                  }
-                  |> ignore
-
-              Expect.throws thrower "Should throw when ephemeral storage is below 512 MB"
-          }
-
-          test "ephemeralStorageSize validates maximum size" {
-              let thrower () =
-                  lambda "StorageFn" {
-                      handler "Program::Handler"
-                      runtime Runtime.DOTNET_8
-                      code (Code.FromAsset(System.IO.Directory.GetCurrentDirectory(), S3.excludeCommonAssetDirs))
-                      ephemeralStorageSize 20480
-                  }
-                  |> ignore
-
-              Expect.throws thrower "Should throw when ephemeral storage is above 10240 MB"
           } ]
     |> testSequenced

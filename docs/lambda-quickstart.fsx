@@ -96,7 +96,7 @@ lambda "heavy-function" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
     code "./lambda-code"
-    memory 1024
+    memorySize 1024
     timeout 120.0
 }
 
@@ -200,7 +200,7 @@ stack "LambdaQuickstartStack" {
         handler "process.handler"
         runtime Runtime.PYTHON_3_11
         code "./dummy-code"
-        memory 2048
+        memorySize 2048
         timeout 300.0
         description "Compute-intensive function with higher memory and timeout"
     }
@@ -490,7 +490,7 @@ let computeFunc =
         handler "process.handler"
         runtime Runtime.PYTHON_3_11
         code "./dummy-code"
-        memory 2048
+        memorySize 2048
         timeout 300.0
         description "Compute-intensive function with higher memory and timeout"
     }
