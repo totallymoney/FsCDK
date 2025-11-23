@@ -407,11 +407,11 @@ type FunctionBuilder(name: string) =
         config.Tracing |> Option.iter (fun t -> props.Tracing <- t)
         config.VpcSubnets |> Option.iter (fun s -> props.VpcSubnets <- s)
 
-        config.Events
-        |> List.iter (fun e -> props.Events <- Array.append props.Events [| e |])
+        if not (List.isEmpty config.Events) then
+            props.Events <- config.Events |> List.toArray
 
-        config.InitialPolicy
-        |> List.iter (fun p -> props.InitialPolicy <- Array.append props.InitialPolicy [| p |])
+        if not (List.isEmpty config.InitialPolicy) then
+            props.InitialPolicy <- config.InitialPolicy |> List.toArray
 
         if not (List.isEmpty config.SecurityGroups) then
             props.SecurityGroups <- config.SecurityGroups |> List.toArray
