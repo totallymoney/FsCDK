@@ -297,7 +297,7 @@ let lambda_function_dsl_tests =
                                     "dynamodb:Query"
                                     "dynamodb:Scan" ]
 
-                              resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table"; "*" ]
+                              resources [ "arn:aws:dynamodb:us-east-1:111122223333:table/my-table" ]
                           }
                       )
                   }
