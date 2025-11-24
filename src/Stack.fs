@@ -839,13 +839,7 @@ type StackBuilder(name: string) =
             cont
 
     member inline this.Bind(spec: BucketSpec, [<InlineIfLambda>] cont: IBucket -> StackConfig) : StackConfig =
-        this.BindViaYield
-            BucketOp
-            (fun s -> s.Bucket |> Option.map (fun b -> b))
-            "Bucket"
-            (fun s -> s.BucketName)
-            spec
-            cont
+        this.BindViaYield BucketOp (fun s -> s.Bucket) "Bucket" (fun s -> s.BucketName) spec cont
 
     member inline this.Bind(spec: KinesisStreamSpec, [<InlineIfLambda>] cont: IStream -> StackConfig) : StackConfig =
         this.BindViaYield KinesisStreamOp (fun s -> s.Stream) "Kinesis Stream" (fun s -> s.StreamName) spec cont
@@ -975,13 +969,7 @@ type StackBuilder(name: string) =
             spec: CloudWatchLogGroupSpec,
             [<InlineIfLambda>] cont: ILogGroup -> StackConfig
         ) : StackConfig =
-        this.BindViaYield
-            CloudWatchLogGroupOp
-            (fun s -> s.LogGroup |> Option.map (fun lg -> lg))
-            "LogGroup"
-            (fun s -> s.LogGroupName)
-            spec
-            cont
+        this.BindViaYield CloudWatchLogGroupOp (fun s -> s.LogGroup) "LogGroup" (fun s -> s.LogGroupName) spec cont
 
     member inline this.Bind(spec: RoleSpec, [<InlineIfLambda>] cont: IRole -> StackConfig) : StackConfig =
         this.BindViaYield RoleOp (fun s -> s.Role) "Role" (fun s -> s.RoleName) spec cont

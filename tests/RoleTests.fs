@@ -39,7 +39,6 @@ let roleTests =
                                   resources [ "*" ]
                               }
                           }
-
                       }
 
                   let role =
