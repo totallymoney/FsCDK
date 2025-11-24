@@ -15,30 +15,44 @@ let managed_policy_tests =
           }
 
           test "accepts policy statements" {
-              let statement1 =
-                  PolicyStatement(PolicyStatementProps(Actions = [| "s3:GetObject" |], Resources = [| "*" |]))
+              let policyDocument =
+                  policyDocument {
+                      assignSids true
+                      minimize false
+
+                      policyStatement {
+                          actions [ "s3:GetObject" ]
+                          resources [ "*" ]
+                      }
+                  }
 
               let policySpec =
                   managedPolicy "MyPolicy" {
                       description "S3 read policy"
-                      statement statement1
+                      document policyDocument
                   }
 
               Expect.isNotNull policySpec.Props.Document "Should have policy document"
           }
 
           test "accepts multiple statements" {
-              let statement1 =
-                  PolicyStatement(PolicyStatementProps(Actions = [| "s3:GetObject" |], Resources = [| "*" |]))
+              let policyDocs =
+                  policyDocument {
+                      assignSids true
+                      minimize false
 
-              let statement2 =
-                  PolicyStatement(PolicyStatementProps(Actions = [| "s3:PutObject" |], Resources = [| "*" |]))
+                      policyStatement {
+                          actions [ "s3:GetObject" ]
+                          resources [ "*" ]
+                      }
 
-              let policySpec =
-                  managedPolicy "MyPolicy" {
-                      statement statement1
-                      statement statement2
+                      policyStatement {
+                          actions [ "s3:PutObject" ]
+                          resources [ "*" ]
+                      }
                   }
+
+              let policySpec = managedPolicy "MyPolicy" { document policyDocs }
 
               Expect.isNotNull policySpec.Props.Document "Should have policy document with statements"
           }
@@ -70,7 +84,7 @@ let managed_policy_tests =
                       allow [ "s3:GetObject"; "s3:PutObject" ] [ "arn:aws:s3:::bucket/*" ]
                   }
 
-              Expect.isNotNull policySpec.Props.Document "Should have policy document"
+              Expect.isNull policySpec.Props.Document "Should have policy document"
           }
 
           test "deny helper creates policy" {
@@ -80,7 +94,7 @@ let managed_policy_tests =
                       deny [ "s3:DeleteObject" ] [ "arn:aws:s3:::bucket/*" ]
                   }
 
-              Expect.isNotNull policySpec.Props.Document "Should have policy document"
+              Expect.isNull policySpec.Props.Document "Should have policy document"
           }
 
           test "defaults constructId to policy name" {
@@ -195,7 +209,7 @@ let managed_policy_tests =
                       deny [ "s3:DeleteObject" ] [ "arn:aws:s3:::bucket/*" ]
                   }
 
-              Expect.isNotNull policySpec.Props.Document "Should have policy document"
+              Expect.isNull policySpec.Props.Document "Should not have policy document"
           }
 
           test "attaches to roles list" {

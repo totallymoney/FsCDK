@@ -8,9 +8,9 @@ type AppConfig =
       Context: Map<string, obj>
       DefaultStackSynthesizer: IReusableStackSynthesizer option
       OutputDirectory: string option
-      PolicyValidationBeta1: IPolicyValidationPluginBeta1 seq option
+      PolicyValidationBeta1: IPolicyValidationPluginBeta1 list option
       PostCliContext: Map<string, obj> option
-      PropertyInjectors: IPropertyInjector seq option
+      PropertyInjectors: IPropertyInjector list option
       StackTraces: bool option
       TreeMetadata: bool option }
 
@@ -22,9 +22,9 @@ type AppBuilder() =
           AnalyticsReporting = Some false
           AutoSynth = Some false
           OutputDirectory = Some "cdk.out"
-          PolicyValidationBeta1 = Some Seq.empty
+          PolicyValidationBeta1 = Some []
           PostCliContext = Some Map.empty
-          PropertyInjectors = Some Seq.empty
+          PropertyInjectors = Some []
           TreeMetadata = Some false }
 
     member this.Yield _ : AppConfig =
@@ -34,9 +34,9 @@ type AppBuilder() =
           AnalyticsReporting = Some false
           AutoSynth = Some false
           OutputDirectory = Some "cdk.out"
-          PolicyValidationBeta1 = Some Seq.empty
+          PolicyValidationBeta1 = Some []
           PostCliContext = Some Map.empty
-          PropertyInjectors = Some Seq.empty
+          PropertyInjectors = Some []
           TreeMetadata = Some false }
 
     member _.Combine(config1: AppConfig, config2: AppConfig) =
@@ -57,7 +57,7 @@ type AppBuilder() =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member this.For(sequence: seq<'T>, body: 'T -> AppConfig) =
+    member this.For(sequence: list<'T>, body: 'T -> AppConfig) =
         let mutable state = this.Zero()
 
         for item in sequence do
@@ -76,7 +76,7 @@ type AppBuilder() =
     /// }
     /// </code>
     [<CustomOperation("context")>]
-    member _.Context(config: AppConfig, keys: (string * obj) seq) : AppConfig =
+    member _.Context(config: AppConfig, keys: (string * obj) list) : AppConfig =
         { config with
             Context = keys |> Seq.fold (fun ctx (k, v) -> Map.add k v ctx) config.Context }
 
@@ -155,7 +155,7 @@ type AppBuilder() =
     /// }
     /// </code>
     [<CustomOperation("policyValidationBeta1")>]
-    member _.PolicyValidationBeta1(config: AppConfig, plugins: IPolicyValidationPluginBeta1 seq) : AppConfig =
+    member _.PolicyValidationBeta1(config: AppConfig, plugins: IPolicyValidationPluginBeta1 list) : AppConfig =
         { config with
             PolicyValidationBeta1 = Some plugins }
 
@@ -170,7 +170,7 @@ type AppBuilder() =
     /// }
     /// </code>
     [<CustomOperation("postCliContext")>]
-    member _.PostCliContext(config: AppConfig, context: (string * obj) seq) : AppConfig =
+    member _.PostCliContext(config: AppConfig, context: (string * obj) list) : AppConfig =
         { config with
             PostCliContext = Some(context |> Seq.fold (fun ctx (k, v) -> Map.add k v ctx) Map.empty) }
 
@@ -183,7 +183,7 @@ type AppBuilder() =
     /// }
     /// </code>
     [<CustomOperation("propertyInjectors")>]
-    member _.PropertyInjectors(config: AppConfig, injectors: IPropertyInjector seq) : AppConfig =
+    member _.PropertyInjectors(config: AppConfig, injectors: IPropertyInjector list) : AppConfig =
         { config with
             PropertyInjectors = Some injectors }
 

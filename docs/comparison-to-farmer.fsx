@@ -346,7 +346,7 @@ open FsCDK
 // Create execution role for Lambda
 let role = IAM.createLambdaExecutionRole "my-function" true
 
-// Or create custom role
+// Or create a custom role 
 let customRole = IAM.createRole "lambda.amazonaws.com" "my-custom-role"
 ```
 

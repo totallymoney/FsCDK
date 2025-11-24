@@ -185,8 +185,7 @@ type BucketBuilder(name: string) =
         config.EnforceSSL |> Option.iter (fun v -> props.EnforceSSL <- v)
         config.Versioned |> Option.iter (fun v -> props.Versioned <- v)
 
-        config.RemovalPolicy
-        |> Option.iter (fun v -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(v))
+        config.RemovalPolicy |> Option.iter (fun v -> props.RemovalPolicy <- v)
 
         config.ServerAccessLogsBucket
         |> Option.iter (fun v -> props.ServerAccessLogsBucket <- v)
@@ -251,6 +250,7 @@ type BucketBuilder(name: string) =
     /// **Default:** false (opt-in for cost optimization)
     /// </summary>
     /// <param name="value">True to enable versioning, false to disable.</param>
+    /// <param name="config">The current bucket configuration.</param>
     /// <code lang="fsharp">
     /// bucket "production-data" {
     ///     versioned true // Enable for production

@@ -308,24 +308,44 @@ You can add encryptionKey as parameter to builder.
 Grant least-privilege access to streams.
 *)
 
+open Amazon.CDK.AWS.IAM
+
 // Producer permissions
-let producerRole = IAM.createRole "lambda.amazonaws.com" "stream-producer-role"
 
-let producerStmt =
-    IAM.allow [ "kinesis:PutRecord"; "kinesis:PutRecords" ] [ "arn:aws:kinesis:*:*:stream/my-stream" ]
-//producerRole.AddToPolicy producerStmt |> ignore
+stack "LeastPrivilegeKinesisStack" {
+    let producerStmt =
+        policyStatement {
+            effect Effect.ALLOW
+            actions [ "kinesis:PutRecord"; "kinesis:PutRecords" ]
+            resources [ "arn:aws:kinesis:*:*:stream/my-stream" ]
+        }
 
-// Consumer permissions
-let consumerRole = IAM.createRole "lambda.amazonaws.com" "stream-consumer-role"
+    role "stream-producer-role" {
+        constructId "ExecutionRole"
+        assumedBy (ServicePrincipal("lambda.amazonaws.com"))
+        addToPolicy producerStmt
+    }
 
-let consumerStmt =
-    IAM.allow
-        [ "kinesis:GetRecords"
-          "kinesis:GetShardIterator"
-          "kinesis:DescribeStream"
-          "kinesis:ListShards" ]
-        [ "arn:aws:kinesis:*:*:stream/my-stream" ]
-//consumerRole.AddToPolicy consumerStmt |> ignore
+    let consumerStmt =
+        policyStatement {
+            effect Effect.ALLOW
+
+            actions
+                [ "kinesis:GetRecords"
+                  "kinesis:GetShardIterator"
+                  "kinesis:DescribeStream"
+                  "kinesis:ListShards" ]
+
+            resources [ "arn:aws:kinesis:*:*:stream/my-stream" ]
+        }
+
+    // Consumer permissions
+    role "stream-consumer-role" {
+        assumedBy (ServicePrincipal("lambda.amazonaws.com"))
+        description "Role for Kinesis stream consumer"
+        addToPolicy consumerStmt
+    }
+}
 
 (**
 ## Monitoring and Observability

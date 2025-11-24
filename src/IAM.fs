@@ -1,333 +1,317 @@
 namespace FsCDK
 
+open Amazon.CDK
 open Amazon.CDK.AWS.IAM
-open System.Text.RegularExpressions
 
-// Forward declaration - LambdaRoleSpec is defined below
-type LambdaRoleSpec =
+// ============================================================================
+// Role Builder DSL
+// ============================================================================
+
+type RoleConfig =
+    { RoleName: string
+      ConstructId: string option
+      AssumedBy: IPrincipal option
+      Description: string option
+      PolicyStatements: PolicyStatement list
+      ExternalIds: string list option
+      InlinePolicies: Map<string, PolicyDocument> option
+      ManagedPolicies: IManagedPolicy list
+      MaxSessionDuration: Duration option
+      Path: string option
+      PermissionsBoundary: IManagedPolicy option }
+
+type RoleSpec =
     { RoleName: string
       ConstructId: string
+      Props: RoleProps
+      PolicyStatements: PolicyStatement list
       mutable Role: IRole option }
 
-    /// Gets the underlying Role resource. Must be called after the stack is built.
-    member this.Resource =
-        match this.Role with
-        | Some role -> role
-        | None ->
-            failwith
-                $"Role '{this.RoleName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
+type RoleBuilder(name: string) =
+    member _.Yield(_: unit) : RoleConfig =
+        { RoleName = name
+          ConstructId = None
+          AssumedBy = None
+          Description = None
+          PolicyStatements = []
+          ExternalIds = None
+          InlinePolicies = None
+          ManagedPolicies = []
+          MaxSessionDuration = None
+          Path = None
+          PermissionsBoundary = None }
 
-/// <summary>
-/// IAM helpers for creating roles and policies following least-privilege principles.
-///
-/// **Rationale:**
-/// - Least-privilege access reduces blast radius of compromised credentials
-/// - AWS managed policies provide maintained, secure defaults
-/// - Role-based access control simplifies permission management
-/// - Service-specific roles limit cross-service access
-///
-/// **Best Practices:**
-/// - Always start with minimum required permissions
-/// - Use AWS managed policies when appropriate
-/// - Create custom policies for specific application needs
-/// - Avoid wildcards (*) in production
-/// - Review and audit IAM policies regularly
-/// </summary>
-module IAM =
+    member _.Yield(principal: IPrincipal) : RoleConfig =
+        { RoleName = name
+          ConstructId = None
+          AssumedBy = Some principal
+          Description = None
+          PolicyStatements = []
+          ExternalIds = None
+          InlinePolicies = None
+          ManagedPolicies = []
+          MaxSessionDuration = None
+          Path = None
+          PermissionsBoundary = None }
 
-    let private regName = Regex "[^a-zA-Z0-9-_]"
-    /// <summary>
-    /// Sanitizes a name for IAM resource naming (removes invalid characters)
-    /// IAM names can contain alphanumeric characters, hyphens, and underscores
-    /// </summary>
-    let sanitizeName (name: string) = regName.Replace(name, "-")
+    member _.Yield(policyStatement: PolicyStatement) : RoleConfig =
+        { RoleName = name
+          ConstructId = None
+          AssumedBy = None
+          Description = None
+          PolicyStatements = [ policyStatement ]
+          ExternalIds = None
+          InlinePolicies = None
+          ManagedPolicies = []
+          MaxSessionDuration = None
+          Path = None
+          PermissionsBoundary = None }
 
-    /// <summary>
-    /// Creates a basic IAM role with a trust policy for the specified service principal
-    /// </summary>
-    let createRole (servicePrincipal: string) (roleName: string) =
-        let props = RoleProps()
-        props.RoleName <- sanitizeName roleName
-        props.AssumedBy <- ServicePrincipal(servicePrincipal)
-        props
+    member _.Yield(managedPolicy: IManagedPolicy) : RoleConfig =
+        { RoleName = name
+          ConstructId = None
+          AssumedBy = None
+          Description = None
+          PolicyStatements = []
+          ExternalIds = None
+          InlinePolicies = None
+          ManagedPolicies = [ managedPolicy ]
+          MaxSessionDuration = None
+          Path = None
+          PermissionsBoundary = None }
 
-    /// <summary>
-    /// Creates an IAM policy statement with specified actions and resources
-    /// </summary>
-    let createPolicyStatement (actions: string list) (resources: string list) (effect: Effect) =
-        let props = PolicyStatementProps()
-        props.Effect <- effect
-        props.Actions <- (actions |> List.toArray)
-        props.Resources <- (resources |> List.toArray)
-        PolicyStatement(props)
+    member _.Zero() : RoleConfig =
+        { RoleName = name
+          ConstructId = None
+          AssumedBy = None
+          Description = None
+          PolicyStatements = []
+          ExternalIds = None
+          InlinePolicies = None
+          ManagedPolicies = []
+          MaxSessionDuration = None
+          Path = None
+          PermissionsBoundary = None }
 
-    /// <summary>
-    /// Creates a policy statement allowing specified actions on resources
-    /// </summary>
-    let allow (actions: string list) (resources: string list) =
-        createPolicyStatement actions resources Effect.ALLOW
+    member inline _.Delay([<InlineIfLambda>] f: unit -> RoleConfig) : RoleConfig = f ()
 
-    /// <summary>
-    /// Creates a policy statement denying specified actions on resources
-    /// </summary>
-    let deny (actions: string list) (resources: string list) =
-        createPolicyStatement actions resources Effect.DENY
+    member _.Combine(state1: RoleConfig, state2: RoleConfig) : RoleConfig =
+        { RoleName = state1.RoleName
+          ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
+          AssumedBy = state2.AssumedBy |> Option.orElse state1.AssumedBy
+          Description = state2.Description |> Option.orElse state1.Description
+          PolicyStatements = List.append state1.PolicyStatements state2.PolicyStatements
+          ExternalIds = state2.ExternalIds |> Option.orElse state1.ExternalIds
+          InlinePolicies =
+            match state1.InlinePolicies, state2.InlinePolicies with
+            | Some p1, Some p2 -> Some(Map.fold (fun acc k v -> Map.add k v acc) p1 p2)
+            | Some p, None -> Some p
+            | None, Some p -> Some p
+            | None, None -> None
+          ManagedPolicies = List.append state1.ManagedPolicies state2.ManagedPolicies
+          MaxSessionDuration = state2.MaxSessionDuration |> Option.orElse state1.MaxSessionDuration
+          Path = state2.Path |> Option.orElse state1.Path
+          PermissionsBoundary = state2.PermissionsBoundary |> Option.orElse state1.PermissionsBoundary }
 
-    /// <summary>
-    /// Attaches an AWS managed policy to a role by its name
-    /// Common managed policies:
-    /// - AWSLambdaBasicExecutionRole: CloudWatch Logs write
-    /// - AWSLambdaVPCAccessExecutionRole: VPC network interfaces
-    /// - AmazonS3ReadOnlyAccess: Read S3 objects
-    /// - AmazonDynamoDBReadOnlyAccess: Read DynamoDB tables
-    /// </summary>
-    let attachManagedPolicy (role: IRole) (managedPolicyName: string) =
-        role.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName(managedPolicyName))
+    member inline x.For(config: RoleConfig, [<InlineIfLambda>] f: unit -> RoleConfig) : RoleConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
 
-    /// <summary>
-    /// Creates a Lambda execution role with minimal permissions:
-    /// - CloudWatch Logs write (basic execution)
-    /// - Optional: KMS decrypt for encrypted environment variables
-    /// </summary>
-    let createLambdaExecutionRole (functionName: string) (includeKmsDecrypt: bool) =
-        let roleProps =
-            createRole "lambda.amazonaws.com" (sprintf "%s-execution-role" functionName)
+    member _.Run(config: RoleConfig) : RoleSpec =
 
-        // Attach basic execution role for CloudWatch Logs
-        let role = Role(null, sanitizeName (sprintf "%s-Role" functionName), roleProps)
-        attachManagedPolicy role "service-role/AWSLambdaBasicExecutionRole"
+        let roleProps = RoleProps()
+        roleProps.RoleName <- config.RoleName
 
-        // Optionally add KMS decrypt for environment variables
-        if includeKmsDecrypt then
-            let kmsStmt = allow [ "kms:Decrypt" ] [ "arn:aws:kms:*:*:key/*" ]
-            role.AddToPolicy kmsStmt |> ignore
+        config.AssumedBy
+        |> Option.iter (fun principal -> roleProps.AssumedBy <- principal)
 
-        role
+        config.Description |> Option.iter (fun desc -> roleProps.Description <- desc)
 
-    /// <summary>
-    /// Creates a role for S3 bucket access with specific permissions
-    /// </summary>
-    let createS3AccessRole (roleName: string) (bucketArn: string) (readOnly: bool) =
-        let roleProps = createRole "lambda.amazonaws.com" roleName
-        let role = Role(null, sanitizeName roleName, roleProps)
+        config.ExternalIds
+        |> Option.iter (fun ids -> roleProps.ExternalIds <- ids |> Seq.toArray)
 
-        let actions =
-            if readOnly then
-                [ "s3:GetObject"; "s3:ListBucket" ]
-            else
-                [ "s3:GetObject"; "s3:PutObject"; "s3:DeleteObject"; "s3:ListBucket" ]
+        config.InlinePolicies
+        |> Option.iter (fun policies -> roleProps.InlinePolicies <- policies)
 
-        let stmt = allow actions [ bucketArn; sprintf "%s/*" bucketArn ]
-        role.AddToPolicy stmt |> ignore
+        roleProps.ManagedPolicies <- config.ManagedPolicies |> Seq.toArray
 
-        role
+        config.MaxSessionDuration
+        |> Option.iter (fun duration -> roleProps.MaxSessionDuration <- duration)
 
-    /// <summary>
-    /// Creates a role for DynamoDB table access
-    /// </summary>
-    let createDynamoDBAccessRole (roleName: string) (tableArn: string) (readOnly: bool) =
-        let roleProps = createRole "lambda.amazonaws.com" roleName
-        let role = Role(null, sanitizeName roleName, roleProps)
+        config.Path |> Option.iter (fun path -> roleProps.Path <- path)
 
-        let actions =
-            if readOnly then
-                [ "dynamodb:GetItem"
-                  "dynamodb:Query"
-                  "dynamodb:Scan"
-                  "dynamodb:BatchGetItem" ]
-            else
-                [ "dynamodb:GetItem"
-                  "dynamodb:PutItem"
-                  "dynamodb:UpdateItem"
-                  "dynamodb:DeleteItem"
-                  "dynamodb:Query"
-                  "dynamodb:Scan"
-                  "dynamodb:BatchGetItem"
-                  "dynamodb:BatchWriteItem" ]
+        config.PermissionsBoundary
+        |> Option.iter (fun boundary -> roleProps.PermissionsBoundary <- boundary)
 
-        let stmt = allow actions [ tableArn; sprintf "%s/*" tableArn ]
-        role.AddToPolicy(stmt) |> ignore
+        { RoleName = config.RoleName
+          ConstructId = config.RoleName
+          PolicyStatements = config.PolicyStatements
+          Props = roleProps
+          Role = None }
 
-        role
+    /// <summary>Sets the construct ID for the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="id">The construct ID.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     constructId "CustomLambdaRoleId"
+    /// }
+    /// </code>
+    [<CustomOperation("constructId")>]
+    member _.ConstructId(config: RoleConfig, id: string) = { config with ConstructId = Some id }
 
-    // ============================================================================
-    // Lambda Role Builder DSL
-    // ============================================================================
+    /// <summary>Sets the principal that can assume the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="principal">The IAM principal.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     assumedBy (ServicePrincipal("lambda.amazonaws.com"))
+    /// }
+    /// </code>
+    [<CustomOperation("assumedBy")>]
+    member _.AssumedBy(config: RoleConfig, principal: IPrincipal) =
+        { config with
+            AssumedBy = Some principal }
 
-    /// <summary>
-    /// High-level Lambda Role builder with common permission patterns.
-    /// Follows least-privilege principle with opt-in permissions.
-    /// </summary>
-    type LambdaRoleConfig =
-        { RoleName: string
-          ConstructId: string option
-          AssumeRolePrincipal: string option
-          ManagedPolicies: string list
-          InlinePolicies: PolicyStatement list
-          IncludeBasicExecution: bool option
-          IncludeVpcExecution: bool option
-          IncludeKmsDecrypt: bool option
-          IncludeXRay: bool option }
+    /// <summary>Sets the description for the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="description">The role description.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     description "Role for my Lambda function"
+    /// }
+    /// </code>
+    [<CustomOperation("description")>]
+    member _.Description(config: RoleConfig, description: string) =
+        { config with
+            Description = Some description }
 
-    type LambdaRoleBuilder(name: string) =
-        member _.Yield(_: unit) : LambdaRoleConfig =
-            { RoleName = name
-              ConstructId = None
-              AssumeRolePrincipal = Some "lambda.amazonaws.com"
-              ManagedPolicies = []
-              InlinePolicies = []
-              IncludeBasicExecution = Some true
-              IncludeVpcExecution = None
-              IncludeKmsDecrypt = None
-              IncludeXRay = None }
+    /// <summary>Adds external IDs for the role trust policy.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="externalIds">The sequence of external IDs.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     externalIds [ "external-id-1"; "external-id-2" ]
+    /// }
+    /// </code>
+    [<CustomOperation("externalIds")>]
+    member _.ExternalIds(config: RoleConfig, externalIds: string list) =
+        { config with
+            ExternalIds = Some externalIds }
 
-        member _.Zero() : LambdaRoleConfig =
-            { RoleName = name
-              ConstructId = None
-              AssumeRolePrincipal = Some "lambda.amazonaws.com"
-              ManagedPolicies = []
-              InlinePolicies = []
-              IncludeBasicExecution = Some true
-              IncludeVpcExecution = None
-              IncludeKmsDecrypt = None
-              IncludeXRay = None }
+    /// <summary>Adds an inline policy to the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="policies">A tuple of policy name and policy document.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     inlinePolicies [ ("MyPolicy", myPolicyDocument) ]
+    /// }
+    /// </code>
+    [<CustomOperation("inlinePolicies")>]
+    member _.InlinePolicy(config: RoleConfig, policies: (string * PolicyDocument) list) =
+        let policyMap =
+            policies |> Seq.fold (fun acc (name, doc) -> Map.add name doc acc) Map.empty
 
-        member inline _.Delay([<InlineIfLambda>] f: unit -> LambdaRoleConfig) : LambdaRoleConfig = f ()
+        let updatedPolicies =
+            match config.InlinePolicies with
+            | Some existingPolicies -> Some(Map.fold (fun acc k v -> Map.add k v acc) existingPolicies policyMap)
+            | None -> Some policyMap
 
-        member _.Combine(state1: LambdaRoleConfig, state2: LambdaRoleConfig) : LambdaRoleConfig =
-            { RoleName = state1.RoleName
-              ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
-              AssumeRolePrincipal = state2.AssumeRolePrincipal |> Option.orElse state1.AssumeRolePrincipal
-              ManagedPolicies = state1.ManagedPolicies @ state2.ManagedPolicies
-              InlinePolicies = state1.InlinePolicies @ state2.InlinePolicies
-              IncludeBasicExecution = state2.IncludeBasicExecution |> Option.orElse state1.IncludeBasicExecution
-              IncludeVpcExecution = state2.IncludeVpcExecution |> Option.orElse state1.IncludeVpcExecution
-              IncludeKmsDecrypt = state2.IncludeKmsDecrypt |> Option.orElse state1.IncludeKmsDecrypt
-              IncludeXRay = state2.IncludeXRay |> Option.orElse state1.IncludeXRay }
+        { config with
+            InlinePolicies = updatedPolicies }
 
-        member inline x.For
-            (
-                config: LambdaRoleConfig,
-                [<InlineIfLambda>] f: unit -> LambdaRoleConfig
-            ) : LambdaRoleConfig =
-            let newConfig = f ()
-            x.Combine(config, newConfig)
 
-        member _.Run(config: LambdaRoleConfig) : LambdaRoleSpec =
-            let constructId = config.ConstructId |> Option.defaultValue config.RoleName
+    /// <summary>Adds managed policies to the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="managedPolicies">The sequence of managed policies.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     managedPolicies [ myManagedPolicy1; myManagedPolicy2 ]
+    /// }
+    /// </code>
+    [<CustomOperation("managedPolicies")>]
+    member _.ManagedPolicies(config: RoleConfig, managedPolicies: IManagedPolicy list) =
+        { config with
+            ManagedPolicies = List.append config.ManagedPolicies managedPolicies }
 
-            let principal =
-                config.AssumeRolePrincipal |> Option.defaultValue "lambda.amazonaws.com"
+    /// <summary>Adds managed policies to the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="managedPolicy">The managed policy.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     managedPolicy myManagedPolicy
+    /// }
+    /// </code>
+    [<CustomOperation("managedPolicy")>]
+    member _.ManagedPolicy(config: RoleConfig, managedPolicy: IManagedPolicy) =
+        { config with
+            ManagedPolicies = managedPolicy :: config.ManagedPolicies }
 
-            let roleProps = RoleProps()
-            roleProps.RoleName <- sanitizeName config.RoleName
-            roleProps.AssumedBy <- ServicePrincipal(principal)
 
-            let role = Role(null, sanitizeName constructId, roleProps)
+    /// <summary>Sets the maximum session duration for the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="duration">The maximum session duration.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     maxSessionDuration (Duration.hours 2)
+    /// }
+    /// </code>
+    [<CustomOperation("maxSessionDuration")>]
+    member _.MaxSessionDuration(config: RoleConfig, duration: Duration) =
+        { config with
+            MaxSessionDuration = Some duration }
 
-            // Add basic execution role (CloudWatch Logs)
-            if config.IncludeBasicExecution |> Option.defaultValue true then
-                attachManagedPolicy role "service-role/AWSLambdaBasicExecutionRole"
 
-            // Add VPC execution role (ENI management)
-            if config.IncludeVpcExecution |> Option.defaultValue false then
-                attachManagedPolicy role "service-role/AWSLambdaVPCAccessExecutionRole"
+    /// <summary>Sets the path for the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="path">The role path.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     path "/service/lambda/"
+    /// }
+    /// </code>
+    [<CustomOperation("path")>]
+    member _.Path(config: RoleConfig, path: string) = { config with Path = Some path }
 
-            // Add KMS decrypt for environment variables
-            if config.IncludeKmsDecrypt |> Option.defaultValue false then
-                let kmsStmt = allow [ "kms:Decrypt" ] [ "arn:aws:kms:*:*:key/*" ]
-                role.AddToPolicy kmsStmt |> ignore
+    /// <summary>Adds statements to the role's policy.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="statements">The sequence of statements to add.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///  addToPolicies [ myPolicyStatement1; myPolicyStatement2 ]
+    /// }
+    /// </code>
+    [<CustomOperation("addToPolicies")>]
+    member _.AddToPolicies(config: RoleConfig, statements: PolicyStatement list) =
+        { config with
+            PolicyStatements = List.append config.PolicyStatements statements }
 
-            // Add X-Ray tracing
-            if config.IncludeXRay |> Option.defaultValue false then
-                attachManagedPolicy role "AWSXRayDaemonWriteAccess"
+    /// <summary>Adds a statement to the role's policy.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="statement">The statement to add.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///  addToPolicy myPolicyStatement
+    /// }
+    /// </code>
+    [<CustomOperation("addToPolicy")>]
+    member _.AddToPolicy(config: RoleConfig, statement: PolicyStatement) =
+        { config with
+            PolicyStatements = statement :: config.PolicyStatements }
 
-            // Add managed policies
-            for policy in config.ManagedPolicies do
-                attachManagedPolicy role policy
+    /// <summary>Sets the permissions boundary for the role.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="boundary">The managed policy to use as the permissions boundary.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///     permissionsBoundary myPermissionsBoundaryPolicy
+    /// }
+    /// </code>
+    [<CustomOperation("permissionsBoundary")>]
+    member _.PermissionsBoundary(config: RoleConfig, boundary: IManagedPolicy) =
+        { config with
+            PermissionsBoundary = Some boundary }
 
-            // Add inline policies
-            for statement in config.InlinePolicies do
-                role.AddToPolicy statement |> ignore
-
-            { RoleName = config.RoleName
-              ConstructId = constructId
-              Role = Some role }
-
-        /// <summary>Sets the construct ID for the role.</summary>
-        [<CustomOperation("constructId")>]
-        member _.ConstructId(config: LambdaRoleConfig, id: string) = { config with ConstructId = Some id }
-
-        /// <summary>Sets the service principal (default: lambda.amazonaws.com).</summary>
-        [<CustomOperation("assumeRolePrincipal")>]
-        member _.AssumeRolePrincipal(config: LambdaRoleConfig, principal: string) =
-            { config with
-                AssumeRolePrincipal = Some principal }
-
-        /// <summary>Adds an AWS managed policy by name.</summary>
-        [<CustomOperation("managedPolicy")>]
-        member _.ManagedPolicy(config: LambdaRoleConfig, policyName: string) =
-            { config with
-                ManagedPolicies = config.ManagedPolicies @ [ policyName ] }
-
-        /// <summary>Adds an inline policy statement.</summary>
-        [<CustomOperation("inlinePolicy")>]
-        member _.InlinePolicy(config: LambdaRoleConfig, statement: PolicyStatement) =
-            { config with
-                InlinePolicies = config.InlinePolicies @ [ statement ] }
-
-        /// <summary>Includes basic execution role for CloudWatch Logs (default: true).</summary>
-        [<CustomOperation("basicExecution")>]
-        member _.BasicExecution(config: LambdaRoleConfig) =
-            { config with
-                IncludeBasicExecution = Some true }
-
-        /// <summary>Includes VPC execution role for ENI management.</summary>
-        [<CustomOperation("vpcExecution")>]
-        member _.VpcExecution(config: LambdaRoleConfig) =
-            { config with
-                IncludeVpcExecution = Some true }
-
-        /// <summary>Includes KMS decrypt permission for encrypted environment variables.</summary>
-        [<CustomOperation("kmsDecrypt")>]
-        member _.KmsDecrypt(config: LambdaRoleConfig) =
-            { config with
-                IncludeKmsDecrypt = Some true }
-
-        /// <summary>Includes X-Ray tracing permissions.</summary>
-        [<CustomOperation("xrayTracing")>]
-        member _.XrayTracing(config: LambdaRoleConfig) = { config with IncludeXRay = Some true }
-
-/// <summary>
-/// Policy statement builder for creating inline IAM policies (high-level API)
-/// </summary>
-type IAMPolicyStatementBuilderState =
-    { Actions: string list
-      Resources: string list
-      Effect: Effect }
-
-/// <summary>
-/// Policy statement builder for creating inline IAM policies (high-level API) using immutable state
-/// </summary>
-type IAMPolicyStatementBuilder(state: IAMPolicyStatementBuilderState) =
-    new() =
-        IAMPolicyStatementBuilder(
-            { Actions = []
-              Resources = []
-              Effect = Effect.ALLOW }
-        )
-
-    member _.Actions(acts: string list) =
-        IAMPolicyStatementBuilder({ state with Actions = acts })
-
-    member _.Resources(res: string list) =
-        IAMPolicyStatementBuilder({ state with Resources = res })
-
-    member _.Effect(eff: Effect) =
-        IAMPolicyStatementBuilder({ state with Effect = eff })
-
-    member _.Build() =
-        IAM.createPolicyStatement state.Actions state.Resources state.Effect
 
 // ============================================================================
 // Builders
@@ -335,12 +319,15 @@ type IAMPolicyStatementBuilder(state: IAMPolicyStatementBuilderState) =
 
 [<AutoOpen>]
 module IAMBuilders =
-    /// <summary>
-    /// Lambda role builder for creating inline IAM policies (high-level API) using immutable state
-    /// </summary>
-    let lambdaRole = IAM.LambdaRoleBuilder
 
-    /// <summary>
-    /// Policy statement builder for creating inline IAM policies (high-level API) using immutable state
-    /// </summary>
-    let policyStatement = IAMPolicyStatementBuilder
+    /// <summary>Creates an IAM Role using the RoleBuilder DSL.</summary>
+    /// <param name="name">The name of the IAM Role.</param>
+    /// <code lang="fsharp">
+    /// let myRole =
+    ///     role "MyLambdaRole" {
+    ///         assumedBy (ServicePrincipal("lambda.amazonaws.com"))
+    ///         description "Role for my Lambda function"
+    ///         managedPolicies [ ManagedPolicy.FromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole") ]
+    ///     }
+    /// </code>
+    let role name = RoleBuilder(name)

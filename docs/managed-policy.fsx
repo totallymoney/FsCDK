@@ -31,19 +31,15 @@ Create a managed policy with explicit permissions.
 *)
 
 stack "BasicManagedPolicy" {
-    let readOnlyStatement =
-        PolicyStatement(
-            PolicyStatementProps(
-                Effect = Effect.ALLOW,
-                Actions = [| "s3:GetObject"; "s3:ListBucket" |],
-                Resources = [| "arn:aws:s3:::my-bucket"; "arn:aws:s3:::my-bucket/*" |]
-            )
-        )
-
     managedPolicy "S3ReadPolicy" {
         description "Read-only access to S3 bucket"
         managedPolicyName "S3ReadOnlyPolicy"
-        statement readOnlyStatement
+
+        policyStatement {
+            effect Effect.ALLOW
+            actions [ "s3:GetObject"; "s3:ListBucket" ]
+            resources [ "arn:aws:s3:::my-bucket"; "arn:aws:s3:::my-bucket/*" ]
+        }
     }
 }
 
@@ -76,8 +72,7 @@ stack "MultiStatementPolicy" {
 
     managedPolicy "DataAccessPolicy" {
         description "Access to S3 and DynamoDB"
-        statement s3Statement
-        statement dynamoStatement
+        statements [ s3Statement; dynamoStatement ]
     }
 }
 
@@ -107,9 +102,11 @@ stack "PreBuiltStatements" {
 
     managedPolicy "ApplicationPolicy" {
         description "Standard application permissions"
-        statement (ManagedPolicyStatements.s3ReadOnly bucketArn)
-        statement (ManagedPolicyStatements.dynamoDBFullAccess tableArn)
-        statement (ManagedPolicyStatements.cloudWatchLogsWrite "/aws/lambda/my-function")
+
+        statements
+            [ (ManagedPolicyStatements.s3ReadOnly bucketArn)
+              (ManagedPolicyStatements.dynamoDBFullAccess tableArn)
+              (ManagedPolicyStatements.cloudWatchLogsWrite "/aws/lambda/my-function") ]
     }
 }
 
@@ -146,20 +143,15 @@ Grant permissions for cross-account access.
 *)
 
 stack "CrossAccountPolicy" {
-    let crossAccountStatement =
-        PolicyStatement(
-            PolicyStatementProps(
-                Sid = "CrossAccountS3Access",
-                Effect = Effect.ALLOW,
-                Actions = [| "s3:GetObject"; "s3:ListBucket" |],
-                Resources = [| "arn:aws:s3:::shared-bucket"; "arn:aws:s3:::shared-bucket/*" |],
-                Principals = [| AccountPrincipal("123456789012") :> IPrincipal |]
-            )
-        )
-
     managedPolicy "CrossAccountPolicy" {
         description "Allow access from partner account"
-        statement crossAccountStatement
+
+        policyStatement {
+            sid "CrossAccountS3Access"
+            effect Effect.ALLOW
+            actions [ "s3:GetObject"; "s3:ListBucket" ]
+            resources [ "arn:aws:s3:::shared-bucket"; "arn:aws:s3:::shared-bucket/*" ]
+        }
     }
 }
 
@@ -170,23 +162,19 @@ Use conditions to restrict permissions based on context.
 *)
 
 stack "ConditionalPolicy" {
-    let conditions = System.Collections.Generic.Dictionary<string, obj>()
-    conditions.Add("aws:SourceIp", [| "203.0.113.0/24" |] :> obj)
-
-    let conditionalStatement =
-        PolicyStatement(
-            PolicyStatementProps(
-                Sid = "IPRestrictedAccess",
-                Effect = Effect.ALLOW,
-                Actions = [| "s3:*" |],
-                Resources = [| "arn:aws:s3:::secure-bucket/*" |],
-                Conditions = dict [ "IpAddress", conditions ]
-            )
-        )
+    let conds = System.Collections.Generic.Dictionary<string, obj>()
+    conds.Add("aws:SourceIp", [| "203.0.113.0/24" |] :> obj)
 
     managedPolicy "IPRestrictedPolicy" {
         description "S3 access only from specific IP range"
-        statement conditionalStatement
+
+        policyStatement {
+            sid "IPRestrictedAccess"
+            effect Effect.ALLOW
+            actions [ "s3:*" ]
+            resources [ "arn:aws:s3:::secure-bucket/*" ]
+            conditions [ "IpAddress", conds ]
+        }
     }
 }
 
@@ -202,7 +190,7 @@ stack "SecretsPolicy" {
 
     managedPolicy "SecretsAccessPolicy" {
         description "Access to application secrets"
-        statement (ManagedPolicyStatements.secretsManagerRead secretArn)
+        ManagedPolicyStatements.secretsManagerRead secretArn
     }
 }
 
@@ -218,7 +206,7 @@ stack "KMSPolicy" {
 
     managedPolicy "KMSAccessPolicy" {
         description "KMS key usage for encryption"
-        statement (ManagedPolicyStatements.kmsDecrypt kmsKeyArn)
+        ManagedPolicyStatements.kmsDecrypt kmsKeyArn
     }
 }
 
@@ -236,9 +224,11 @@ stack "LambdaExecutionPolicy" {
 
     managedPolicy "LambdaFullAccessPolicy" {
         description "Complete Lambda execution permissions"
-        statement (ManagedPolicyStatements.cloudWatchLogsWrite logGroupArn)
-        statement (ManagedPolicyStatements.s3FullAccess bucketArn)
-        statement (ManagedPolicyStatements.dynamoDBFullAccess tableArn)
+
+        statements
+            [ ManagedPolicyStatements.cloudWatchLogsWrite logGroupArn
+              ManagedPolicyStatements.s3FullAccess bucketArn
+              ManagedPolicyStatements.dynamoDBFullAccess tableArn ]
     }
 }
 
@@ -251,9 +241,9 @@ Create a read-only policy for auditors or monitoring.
 stack "ReadOnlyPolicy" {
     managedPolicy "AuditorPolicy" {
         description "Read-only access for auditing"
-        statement (ManagedPolicyStatements.ec2Describe ())
-        statement (ManagedPolicyStatements.s3ReadOnly "arn:aws:s3:::audit-logs")
-        statement (ManagedPolicyStatements.dynamoDBReadOnly "arn:aws:dynamodb:us-east-1:123456789012:table/*")
+        ManagedPolicyStatements.ec2Describe ()
+        ManagedPolicyStatements.s3ReadOnly "arn:aws:s3:::audit-logs"
+        ManagedPolicyStatements.dynamoDBReadOnly "arn:aws:dynamodb:us-east-1:123456789012:table/*"
     }
 }
 
@@ -286,8 +276,7 @@ stack "DenyOverridePolicy" {
 
     managedPolicy "SafeS3Policy" {
         description "S3 access without delete permissions"
-        statement allowStatement
-        statement denyStatement
+        statements [ allowStatement; denyStatement ]
     }
 }
 

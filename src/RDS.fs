@@ -493,6 +493,7 @@ type DatabaseInstanceBuilder(name: string) =
     ///
     /// **Default:** None (opt-in for cost considerations)
     /// </summary>
+    /// <param name="config">The current RDS database instance configuration.</param>
     /// <param name="logTypes">List of log types to export (engine-specific).</param>
     /// <code lang="fsharp">
     /// rdsInstance "ProductionDB" {
