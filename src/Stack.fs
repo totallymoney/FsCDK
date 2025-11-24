@@ -841,7 +841,7 @@ type StackBuilder(name: string) =
     member inline this.Bind(spec: BucketSpec, [<InlineIfLambda>] cont: IBucket -> StackConfig) : StackConfig =
         this.BindViaYield
             BucketOp
-            (fun s -> s.Bucket |> Option.map (fun b -> b :> IBucket))
+            (fun s -> s.Bucket |> Option.map (fun b -> b))
             "Bucket"
             (fun s -> s.BucketName)
             spec
@@ -857,11 +857,7 @@ type StackBuilder(name: string) =
         ) : StackConfig =
         this.BindViaYield
             SecretsManagerOp
-            (fun s ->
-                if isNull (box s.Secret) then
-                    None
-                else
-                    Some(s.Secret :> Amazon.CDK.AWS.SecretsManager.ISecret))
+            (fun s -> if isNull (box s.Secret) then None else Some(s.Secret))
             "Secret"
             (fun s -> s.SecretName)
             spec
@@ -883,7 +879,7 @@ type StackBuilder(name: string) =
     member inline this.Bind(spec: CloudWatchAlarmSpec, [<InlineIfLambda>] cont: IAlarm -> StackConfig) : StackConfig =
         this.BindViaYield
             CloudWatchAlarmOp
-            (fun s -> s.Alarm |> Option.map (fun a -> a :> IAlarm))
+            (fun s -> s.Alarm |> Option.map (fun a -> a))
             "CloudWatch Alarm"
             (fun s -> s.AlarmName)
             spec
@@ -981,7 +977,7 @@ type StackBuilder(name: string) =
         ) : StackConfig =
         this.BindViaYield
             CloudWatchLogGroupOp
-            (fun s -> s.LogGroup |> Option.map (fun lg -> lg :> ILogGroup))
+            (fun s -> s.LogGroup |> Option.map (fun lg -> lg))
             "LogGroup"
             (fun s -> s.LogGroupName)
             spec
