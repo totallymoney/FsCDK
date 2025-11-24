@@ -669,23 +669,10 @@ type ManagedPolicyBuilder(name: string) =
 
         config.Description |> Option.iter (fun d -> props.Description <- d)
 
-        match config.Document with
-        | Some policyDoc ->
-            // If a document is provided explicitly, use it
-            if not (List.isEmpty config.Statements) then
-                for statement in config.Statements |> List.rev do
-                    policyDoc.AddStatements(statement)
+        config.Document |> Option.iter (fun doc -> props.Document <- doc)
 
-            props.Document <- policyDoc
-        | None when not (List.isEmpty config.Statements) ->
-            // Otherwise, build a document from statements if present
-            let policyDoc = PolicyDocument()
-
-            for statement in config.Statements |> List.rev do
-                policyDoc.AddStatements(statement)
-
-            props.Document <- policyDoc
-        | _ -> ()
+        if not (Seq.isEmpty config.Statements) then
+            props.Statements <- config.Statements |> Seq.toArray
 
         if not (Seq.isEmpty config.Groups) then
             props.Groups <- config.Groups |> Seq.toArray

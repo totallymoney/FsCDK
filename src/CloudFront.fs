@@ -1,6 +1,5 @@
 namespace FsCDK
 
-open Amazon.CDK
 open Amazon.CDK.AWS.CloudFront
 open Amazon.CDK.AWS.CloudFront.Origins
 open Amazon.CDK.AWS.S3
@@ -262,7 +261,7 @@ type DistributionBuilder(name: string) =
 
         behavior.Origin <- origin
         behavior.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
-        behavior.CachePolicy <- defaultArg cachePolicy (CachePolicy.CACHING_OPTIMIZED)
+        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_OPTIMIZED
         behavior.OriginRequestPolicy <- defaultArg originRequestPolicy OriginRequestPolicy.CORS_S3_ORIGIN
 
         responseHeadersPolicy

@@ -75,6 +75,7 @@ The FsCDK Lambda builder mirrors the defaults promoted in **Production-Ready Ser
 #r "../src/bin/Release/net8.0/publish/System.Text.Json.dll"
 #r "../src/bin/Release/net8.0/publish/FsCDK.dll"
 
+open Amazon.CDK.AWS.IAM
 open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.Lambda
@@ -266,13 +267,26 @@ The builder automatically creates an IAM execution role with:
 For advanced scenarios, bring your own execution role—handy when integrating with existing IAM governance models.
 *)
 
-let customRole = IAM.createLambdaExecutionRole "my-function" true
+stack "LambdaQuickstartStack" {
+    let! customRole =
+        role "MyCustomLambdaRole" {
+            assumedBy (ServicePrincipal("lambda.amazonaws.com"))
 
-lambda "my-function" {
-    handler "index.handler"
-    runtime Runtime.NODEJS_18_X
-    code "./code"
-    role customRole
+            managedPolicies [ ManagedPolicy.FromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole") ]
+
+            policyStatement {
+                effect Effect.ALLOW
+                actions [ "kms:Decrypt" ]
+                resources [ "arn:aws:kms:*:*:key/*" ]
+            }
+        }
+
+    lambda "my-function" {
+        handler "index.handler"
+        runtime Runtime.NODEJS_18_X
+        code "./code"
+        role customRole
+    }
 }
 
 (**
@@ -436,12 +450,6 @@ All resources below are curated for quality (4.5★+ ratings or repeated recomme
 
 Continue practising by wiring these Lambdas into S3, DynamoDB, and EventBridge using the other FsCDK notebooks in this portal.
 *)
-
-
-open Amazon.CDK
-open Amazon.CDK.AWS.Lambda
-open Amazon.CDK.AWS.Logs
-open FsCDK
 
 let app = App()
 

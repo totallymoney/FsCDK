@@ -360,6 +360,9 @@ module StackOperations =
         | RoleOp roleSpec ->
             let role = Role(stack, roleSpec.ConstructId, roleSpec.Props)
 
+            for statement in roleSpec.PolicyStatements do
+                role.AddToPolicy statement |> ignore
+
             roleSpec.Role <- Some role
 
         | EC2InstanceOp ec2Spec ->

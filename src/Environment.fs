@@ -36,6 +36,7 @@ type EnvironmentBuilder() =
         env
 
     /// <summary>Sets the AWS account ID for the environment.</summary>
+    /// <param name="config">The current configuration.</param>
     /// <param name="accountId">The AWS account ID.</param>
     /// <code lang="fsharp">
     /// environment {
@@ -47,6 +48,7 @@ type EnvironmentBuilder() =
         { config with Account = Some accountId }
 
     /// <summary>Sets the AWS region for the environment.</summary>
+    /// <param name="config">The current configuration.</param>
     /// <param name="regionName">The AWS region name.</param>
     /// <code lang="fsharp">
     /// environment {

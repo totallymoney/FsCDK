@@ -84,7 +84,7 @@ let managed_policy_tests =
                       allow [ "s3:GetObject"; "s3:PutObject" ] [ "arn:aws:s3:::bucket/*" ]
                   }
 
-              Expect.isNotNull policySpec.Props.Document "Should have policy document"
+              Expect.isNull policySpec.Props.Document "Should have policy document"
           }
 
           test "deny helper creates policy" {
@@ -94,7 +94,7 @@ let managed_policy_tests =
                       deny [ "s3:DeleteObject" ] [ "arn:aws:s3:::bucket/*" ]
                   }
 
-              Expect.isNotNull policySpec.Props.Document "Should have policy document"
+              Expect.isNull policySpec.Props.Document "Should have policy document"
           }
 
           test "defaults constructId to policy name" {
@@ -209,7 +209,7 @@ let managed_policy_tests =
                       deny [ "s3:DeleteObject" ] [ "arn:aws:s3:::bucket/*" ]
                   }
 
-              Expect.isNotNull policySpec.Props.Document "Should have policy document"
+              Expect.isNull policySpec.Props.Document "Should not have policy document"
           }
 
           test "attaches to roles list" {

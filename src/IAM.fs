@@ -1,95 +1,7 @@
 namespace FsCDK
 
-open System.Text.RegularExpressions
 open Amazon.CDK
 open Amazon.CDK.AWS.IAM
-
-[<RequireQualifiedAccess>]
-module IAM =
-    let regName = Regex "[^a-zA-Z0-9-_]"
-    /// <summary>
-    /// Sanitizes a name for IAM resource naming (removes invalid characters)
-    /// IAM names can contain alphanumeric characters, hyphens, and underscores
-    /// </summary>
-    let sanitizeName (name: string) = regName.Replace(name, "-")
-
-    /// <summary>
-    /// Creates a basic IAM role with a trust policy for the specified service principal
-    /// </summary>
-    let createRole (servicePrincipal: string) (roleName: string) =
-        let props = RoleProps()
-        props.RoleName <- sanitizeName roleName
-        props.AssumedBy <- ServicePrincipal(servicePrincipal)
-        props
-
-    /// <summary>
-    /// Creates an IAM policy statement with specified actions and resources
-    /// </summary>
-    let createPolicyStatement (actions: string list) (resources: string list) (effect: Effect) =
-        let props = PolicyStatementProps()
-        props.Effect <- effect
-        props.Actions <- (actions |> List.toArray)
-        props.Resources <- (resources |> List.toArray)
-        PolicyStatement(props)
-
-    /// <summary>
-    /// Creates a policy statement allowing specified actions on resources
-    /// </summary>
-    let allow (actions: string list) (resources: string list) =
-        createPolicyStatement actions resources Effect.ALLOW
-
-    /// <summary>
-    /// Creates a policy statement denying specified actions on resources
-    /// </summary>
-    let deny (actions: string list) (resources: string list) =
-        createPolicyStatement actions resources Effect.DENY
-
-    /// <summary>
-    /// Attaches an AWS managed policy to a role by its name
-    /// Common managed policies:
-    /// - AWSLambdaBasicExecutionRole: CloudWatch Logs write
-    /// - AWSLambdaVPCAccessExecutionRole: VPC network interfaces
-    /// - AmazonS3ReadOnlyAccess: Read S3 objects
-    /// - AmazonDynamoDBReadOnlyAccess: Read DynamoDB tables
-    /// </summary>
-    let attachManagedPolicy (role: IRole) (managedPolicyName: string) =
-        role.AddManagedPolicy(ManagedPolicy.FromAwsManagedPolicyName(managedPolicyName))
-
-    /// <summary>
-    /// Creates a Lambda execution role with minimal permissions:
-    /// - CloudWatch Logs write (basic execution)
-    /// - Optional: KMS decrypt for encrypted environment variables
-    /// </summary>
-    let createLambdaExecutionRole (functionName: string) (includeKmsDecrypt: bool) =
-        let roleProps =
-            createRole "lambda.amazonaws.com" (sprintf "%s-execution-role" functionName)
-
-        // Attach basic execution role for CloudWatch Logs
-        let role = Role(null, sanitizeName (sprintf "%s-Role" functionName), roleProps)
-        attachManagedPolicy role "service-role/AWSLambdaBasicExecutionRole"
-
-        // Optionally add KMS decrypt for environment variables
-        if includeKmsDecrypt then
-            let kmsStmt = allow [ "kms:Decrypt" ] [ "arn:aws:kms:*:*:key/*" ]
-            role.AddToPolicy kmsStmt |> ignore
-
-        role
-
-    /// <summary>
-    /// Creates a role for S3 bucket access with specific permissions
-    /// </summary>
-    let createS3AccessRole (roleName: string) (bucketArn: string) (readOnly: bool) =
-        let roleProps = createRole "lambda.amazonaws.com" roleName
-        let role = Role(null, sanitizeName roleName, roleProps)
-
-        let actions =
-            if readOnly then
-                [ "s3:GetObject"; "s3:ListBucket" ]
-            else
-                [ "s3:GetObject"; "s3:PutObject"; "s3:DeleteObject"; "s3:ListBucket" ]
-
-        let stmt = allow actions [ bucketArn; sprintf "%s/*" bucketArn ]
-        role.AddToPolicy stmt |> ignore
 
 // ============================================================================
 // Role Builder DSL
@@ -100,6 +12,7 @@ type RoleConfig =
       ConstructId: string option
       AssumedBy: IPrincipal option
       Description: string option
+      PolicyStatements: PolicyStatement list
       ExternalIds: string list option
       InlinePolicies: Map<string, PolicyDocument> option
       ManagedPolicies: IManagedPolicy list
@@ -111,6 +24,7 @@ type RoleSpec =
     { RoleName: string
       ConstructId: string
       Props: RoleProps
+      PolicyStatements: PolicyStatement list
       mutable Role: IRole option }
 
 type RoleBuilder(name: string) =
@@ -119,6 +33,7 @@ type RoleBuilder(name: string) =
           ConstructId = None
           AssumedBy = None
           Description = None
+          PolicyStatements = []
           ExternalIds = None
           InlinePolicies = None
           ManagedPolicies = []
@@ -131,6 +46,20 @@ type RoleBuilder(name: string) =
           ConstructId = None
           AssumedBy = Some principal
           Description = None
+          PolicyStatements = []
+          ExternalIds = None
+          InlinePolicies = None
+          ManagedPolicies = []
+          MaxSessionDuration = None
+          Path = None
+          PermissionsBoundary = None }
+
+    member _.Yield(policyStatement: PolicyStatement) : RoleConfig =
+        { RoleName = name
+          ConstructId = None
+          AssumedBy = None
+          Description = None
+          PolicyStatements = [ policyStatement ]
           ExternalIds = None
           InlinePolicies = None
           ManagedPolicies = []
@@ -143,6 +72,7 @@ type RoleBuilder(name: string) =
           ConstructId = None
           AssumedBy = None
           Description = None
+          PolicyStatements = []
           ExternalIds = None
           InlinePolicies = None
           ManagedPolicies = [ managedPolicy ]
@@ -155,6 +85,7 @@ type RoleBuilder(name: string) =
           ConstructId = None
           AssumedBy = None
           Description = None
+          PolicyStatements = []
           ExternalIds = None
           InlinePolicies = None
           ManagedPolicies = []
@@ -169,6 +100,7 @@ type RoleBuilder(name: string) =
           ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
           AssumedBy = state2.AssumedBy |> Option.orElse state1.AssumedBy
           Description = state2.Description |> Option.orElse state1.Description
+          PolicyStatements = List.append state1.PolicyStatements state2.PolicyStatements
           ExternalIds = state2.ExternalIds |> Option.orElse state1.ExternalIds
           InlinePolicies =
             match state1.InlinePolicies, state2.InlinePolicies with
@@ -213,6 +145,7 @@ type RoleBuilder(name: string) =
 
         { RoleName = config.RoleName
           ConstructId = config.RoleName
+          PolicyStatements = config.PolicyStatements
           Props = roleProps
           Role = None }
 
@@ -239,7 +172,6 @@ type RoleBuilder(name: string) =
     member _.AssumedBy(config: RoleConfig, principal: IPrincipal) =
         { config with
             AssumedBy = Some principal }
-
 
     /// <summary>Sets the description for the role.</summary>
     /// <param name="config">The current role configuration.</param>
@@ -341,6 +273,31 @@ type RoleBuilder(name: string) =
     [<CustomOperation("path")>]
     member _.Path(config: RoleConfig, path: string) = { config with Path = Some path }
 
+    /// <summary>Adds statements to the role's policy.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="statements">The sequence of statements to add.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///  addToPolicies [ myPolicyStatement1; myPolicyStatement2 ]
+    /// }
+    /// </code>
+    [<CustomOperation("addToPolicies")>]
+    member _.AddToPolicies(config: RoleConfig, statements: PolicyStatement list) =
+        { config with
+            PolicyStatements = List.append config.PolicyStatements statements }
+
+    /// <summary>Adds a statement to the role's policy.</summary>
+    /// <param name="config">The current role configuration.</param>
+    /// <param name="statement">The statement to add.</param>
+    /// <code lang="fsharp">
+    /// role "MyLambdaRole" {
+    ///  addToPolicy myPolicyStatement
+    /// }
+    /// </code>
+    [<CustomOperation("addToPolicy")>]
+    member _.AddToPolicy(config: RoleConfig, statement: PolicyStatement) =
+        { config with
+            PolicyStatements = statement :: config.PolicyStatements }
 
     /// <summary>Sets the permissions boundary for the role.</summary>
     /// <param name="config">The current role configuration.</param>

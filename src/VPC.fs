@@ -272,6 +272,7 @@ type VpcBuilder(name: string) =
     /// **Security Best Practice:** Flow logs are enabled by default for security monitoring and compliance.
     /// Flow logs capture information about IP traffic going to and from network interfaces in your VPC.
     /// </summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="enabled">Whether to enable flow logs (default: true).</param>
     /// <code lang="fsharp">
     /// vpc "MyVpc" {
@@ -287,6 +288,7 @@ type VpcBuilder(name: string) =
     /// <summary>
     /// Sets the retention period for VPC Flow Logs in CloudWatch.
     /// </summary>
+    /// <param name="config">The current VPC configuration.</param>
     /// <param name="retention">The retention period (default: ONE_WEEK for cost optimization).</param>
     /// <code lang="fsharp">
     /// vpc "MyVpc" {

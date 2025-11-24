@@ -52,6 +52,7 @@ let roleTests =
                   let! expectRole = role
 
                   Expect.isNotNull expectRole "Role should be created successfully"
+
                   Expect.equal role.Props.AssumedBy fn.GrantPrincipal "Role should have correct assumedBy principal"
 
                   Expect.equal
