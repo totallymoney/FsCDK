@@ -1,14 +1,14 @@
 (**
 ---
-title: CloudWatch Monitoring and Dashboards
+title: CloudWatch Dashboard
 category: Resources
-categoryindex: 6
+index: 5
 ---
 
-# ![CloudWatch](img/icons/Arch_Amazon-CloudWatch_48.png) CloudWatch Monitoring and Dashboards
+# CloudWatch Dashboard
 
-CloudWatch provides comprehensive monitoring for your AWS resources with dashboards, log groups, 
-metric filters, and subscription filters. Monitor metrics, logs, and alarms in a customizable (and visual) interface.
+CloudWatch Dashboards provide at-a-glance views of your AWS resources and applications.
+Monitor metrics, logs, and alarms in a customizable visual interface.
 
 ## Quick Start
 
@@ -33,22 +33,25 @@ Create a simple dashboard to monitor Lambda functions.
 
 
 stack "BasicDashboard" {
-    let myFunction =
+    let! myFunction =
         lambda "MyFunction" {
             runtime Runtime.DOTNET_8
             handler "App::Handler"
             code "./lambda"
         }
 
-    let invocationsMetric = myFunction.Function.Value.MetricInvocations()
-    let errorsMetric = myFunction.Function.Value.MetricErrors()
+    let invocationsMetric = myFunction.MetricInvocations()
+    let errorsMetric = myFunction.MetricErrors()
 
-    dashboard "LambdaDashboard" {
-        dashboardName "lambda-monitoring"
+    dashboard "lambda-monitoring" {
 
-        widgetRow
-            [ DashboardWidgets.metricWidget "Invocations" [ invocationsMetric ]
-              DashboardWidgets.metricWidget "Errors" [ errorsMetric ] ]
+        widgets
+            [ graphWidget "Invocations" { left [ invocationsMetric ] }
+              graphWidget "Errors" { left [ errorsMetric ] } ]
+
+    // widgets
+    //     [ DashboardWidgets.metricWidget "Invocations" [ invocationsMetric ]
+    //       DashboardWidgets.metricWidget "Errors" [ errorsMetric ] ]
     }
 }
 
@@ -61,37 +64,40 @@ Monitor multiple services in one dashboard.
 
 
 stack "MultiResourceDashboard" {
-    let apiFunction =
+    let! apiFunction =
         lambda "API" {
             runtime Runtime.DOTNET_8
             handler "App::API"
             code "./lambda"
         }
 
-    let dataTable =
+    let! dataTable =
         table "Data" {
             partitionKey "id" AttributeType.STRING
             billingMode BillingMode.PAY_PER_REQUEST
         }
 
-    let apiMetric = apiFunction.Function.Value.MetricInvocations()
-    let apiDuration = apiFunction.Function.Value.MetricDuration()
-    let tableReads = dataTable.Table.Value.MetricConsumedReadCapacityUnits()
-    let tableWrites = dataTable.Table.Value.MetricConsumedWriteCapacityUnits()
+    let apiMetric = apiFunction.MetricInvocations()
+    let apiDuration = apiFunction.MetricDuration()
+    let tableReads = dataTable.MetricConsumedReadCapacityUnits()
+    let tableWrites = dataTable.MetricConsumedWriteCapacityUnits()
 
-    dashboard "ApplicationDashboard" {
-        dashboardName "application-monitoring"
+    dashboard "application-monitoring" {
         defaultInterval (Duration.Minutes(5.0))
 
-        // First row: Lambda metrics
-        widgetRow
-            [ DashboardWidgets.metricWidget "API Invocations" [ apiMetric ]
-              DashboardWidgets.metricWidget "API Duration" [ apiDuration ] ]
+        widgets
+            [
+              // First row: Lambda metrics
+              graphWidget "API Invocations and Duration" {
+                  left [ apiMetric ]
+                  right [ apiDuration ]
+              }
 
-        // Second row: DynamoDB metrics
-        widgetRow
-            [ DashboardWidgets.metricWidget "Table Reads" [ tableReads ]
-              DashboardWidgets.metricWidget "Table Writes" [ tableWrites ] ]
+              //Second row: DynamoDB metrics
+              graphWidget "DynamoDB Read/Write Capacity" {
+                  left [ tableReads ]
+                  right [ tableWrites ]
+              } ]
     }
 }
 
@@ -113,7 +119,7 @@ stack "DashboardWithAlarms" {
 
     let errorMetric = webFunction.MetricErrors()
 
-    let errorAlarm =
+    let! errorAlarm =
         // CloudWatch Alarm for Lambda errors
         cloudwatchAlarm "lambda-error-alarm" {
             description "Alert when error rate is high"
@@ -125,12 +131,11 @@ stack "DashboardWithAlarms" {
             period (Duration.Minutes 5.0)
         }
 
-    dashboard "AlertingDashboard" {
-        dashboardName "web-app-alerts"
+    dashboard "web-app-alerts" {
 
-        widgetRow [ DashboardWidgets.metricWidget "Errors" [ errorMetric ] ]
-
-        widget (DashboardWidgets.alarmWidgetSpec errorAlarm)
+        widgets
+            [ graphWidget "Lambda Errors" { left [ errorMetric ] }
+              alarmWidget "Lambda Errors Alarm" { alarm errorAlarm } ]
     }
 }
 
@@ -141,15 +146,17 @@ Add explanatory text and documentation.
 *)
 
 stack "DocumentedDashboard" {
-    dashboard "ProductionDashboard" {
-        dashboardName "production-overview"
+    let mainText =
+        "# Production System Overview\n\nThis dashboard monitors critical production metrics.\n\n**Contact:**"
 
-        widget (
-            DashboardWidgets.textWidget
-                "# Production System Overview\n\nThis dashboard monitors critical production metrics.\n\n**Contact:** ops-team@example.com"
-        )
-
-    // Add metric widgets here
+    dashboard "production-overview" {
+        widgets
+            [ textWidget {
+                  markdown mainText
+                  width 24
+                  height 4
+                  background TextWidgetBackground.SOLID
+              } ]
     }
 }
 
@@ -160,74 +167,10 @@ Set specific time ranges for the dashboard.
 *)
 
 stack "CustomTimeRange" {
-    dashboard "HistoricalDashboard" {
-        dashboardName "last-7-days"
+    dashboard "HistoricalDashboard last-7-days" {
         defaultInterval (Duration.Days(7.0))
         startTime "-P7D" // ISO 8601 duration: 7 days ago
         endTime "PT0H" // Now
-    }
-}
-
-(**
-## CloudWatch Log Groups
-
-Create and configure log groups for your applications.
-*)
-
-stack "LogGroupsStack" {
-    // Lambda function log group with custom retention
-    logGroup "/aws/lambda/my-function" {
-        retention Amazon.CDK.AWS.Logs.RetentionDays.ONE_MONTH
-        removalPolicy RemovalPolicy.DESTROY
-    }
-
-    // ECS service log group
-    logGroup (CloudWatchLogsHelpers.ecsLogGroup "my-service" "production") {
-        retention CloudWatchLogsHelpers.RetentionPeriods.production
-    }
-
-    // API Gateway log group
-    logGroup (CloudWatchLogsHelpers.apiGatewayLogGroup "my-api" "prod") {
-        retention CloudWatchLogsHelpers.RetentionPeriods.audit
-        constructId "ApiGatewayLogs"
-    }
-}
-
-(**
-## Metric Filters
-
-Extract custom metrics from log data for monitoring and alerting.
-*)
-
-stack "MetricFiltersStack" {
-    let appLogGroup =
-        logGroup "/aws/application/logs" { retention Amazon.CDK.AWS.Logs.RetentionDays.TWO_WEEKS }
-
-    // Count error occurrences
-    metricFilter "ErrorCount" {
-        logGroup appLogGroup
-        filterPattern (FilterPatterns.errorLogs ())
-        metricName "ErrorCount"
-        metricNamespace "MyApp"
-        metricValue "1"
-    }
-
-    // Count HTTP 5xx errors
-    metricFilter "ServerErrors" {
-        logGroup appLogGroup
-        filterPattern (FilterPatterns.http5xxErrors ())
-        metricName "ServerErrorCount"
-        metricNamespace "MyApp"
-    }
-
-    // Extract custom metric value from logs
-    metricFilter "ResponseTime" {
-        logGroup appLogGroup
-        filterPattern (FilterPatterns.matchText "response_time")
-        metricName "ResponseTime"
-        metricNamespace "MyApp"
-        metricValue "$responseTime"
-        unit Unit.MILLISECONDS
     }
 }
 
@@ -240,17 +183,19 @@ Query and visualize CloudWatch Logs.
 
 stack "LogsDashboard" {
     let logWidget =
-        DashboardWidgets.logQueryWidget
-            "Error Logs"
-            [ "/aws/lambda/my-function" ]
-            "fields @timestamp, @message | filter @message like /ERROR/ | sort @timestamp desc | limit 20"
-            (Some 12)
-            (Some 6)
+        logQueryWidget "Error Logs" {
+            queryLines
+                [ "fields @timestamp, @message"
+                  " | filter @message like /ERROR/"
+                  " | sort @timestamp desc"
+                  " | limit 20" ]
 
-    dashboard "LogsDashboard" {
-        dashboardName "application-logs"
-        widget logWidget
-    }
+            logGroupNames [ "/aws/lambda/my-function" ]
+            width 12
+            height 6
+        }
+
+    dashboard "LogsDashboard application-logs" { widgets [ logWidget ] }
 }
 
 
@@ -268,74 +213,43 @@ stack "SingleValueDashboard" {
     let currentRequests =
         Metric(MetricProps(Namespace = "MyApp", MetricName = "CurrentRequests"))
 
-    dashboard "CurrentStatsDashboard" {
-        dashboardName "current-stats"
-
-        widgetRow
-            [ DashboardWidgets.singleValueWidget "Active Users" [ activeUsers ]
-              DashboardWidgets.singleValueWidget "Current Requests" [ currentRequests ] ]
+    dashboard "CurrentStatsDashboard current-stats" {
+        widgets
+            [ singleValueWidget "Active Users" { metrics [ activeUsers ] }
+              singleValueWidget "Current Requests" { metrics [ currentRequests ] } ]
     }
 }
 
-
-(**
-## CloudWatch Helpers
-
-FsCDK provides helper functions for common CloudWatch patterns.
-*)
-
-// Common retention periods
-let devRetention = CloudWatchLogsHelpers.RetentionPeriods.dev // 3 days
-let prodRetention = CloudWatchLogsHelpers.RetentionPeriods.production // 30 days
-let auditRetention = CloudWatchLogsHelpers.RetentionPeriods.audit // 5 years
-
-// Standard log group naming
-let lambdaLogGroup = CloudWatchLogsHelpers.lambdaLogGroup "my-function"
-let ecsLogGroup = CloudWatchLogsHelpers.ecsLogGroup "my-service" "production"
-let apiGatewayLogGroup = CloudWatchLogsHelpers.apiGatewayLogGroup "my-api" "prod"
-
-// Common filter patterns
-let allEvents = FilterPatterns.allEvents ()
-let errorLogs = FilterPatterns.errorLogs ()
-let warningLogs = FilterPatterns.warningLogs ()
-let http5xxErrors = FilterPatterns.http5xxErrors ()
-let http4xxErrors = FilterPatterns.http4xxErrors ()
 
 (**
 ## Best Practices
 
 ### Design
 
-- Organize related metrics together
-- Use consistent time ranges across widgets
-- Add text widgets for context and documentation
-- Use colors to highlight critical metrics
+- ✅ Organize related metrics together
+- ✅ Use consistent time ranges across widgets
+- ✅ Add text widgets for context and documentation
+- ✅ Use colors to highlight critical metrics
 
 ### Operational Excellence
 
-- Create separate dashboards for different teams
-- Include both system and business metrics
-- Set appropriate Y-axis ranges for readability
-- Use anomaly detection for baseline comparison
-- Use metric filters to extract custom metrics from logs
-- Set appropriate log retention periods (dev: 3 days, prod: 30 days, audit: 5 years)
+- ✅ Create separate dashboards for different teams
+- ✅ Include both system and business metrics
+- ✅ Set appropriate Y-axis ranges for readability
+- ✅ Use anomaly detection for baseline comparison
 
 ### Cost Optimization
 
-- Use 5-minute intervals for most metrics (default)
-- Limit the number of custom metrics
-- Delete unused dashboards
-- Use metric math to reduce API calls
-- Set shorter retention for development logs (3-7 days)
-- Use filter patterns to reduce unnecessary log processing
+- ✅ Use 5-minute intervals for most metrics (default)
+- ✅ Limit the number of custom metrics
+- ✅ Delete unused dashboards
+- ✅ Use metric math to reduce API calls
 
 ### Security
 
-- Control dashboard access via IAM
-- Don't expose sensitive data in dashboards
-- Use CloudFormation for dashboard as code
-- Version control dashboard configurations
-- Enable encryption for sensitive log data
-- Use DESTROY removal policy for dev/test log groups
+- ✅ Control dashboard access via IAM
+- ✅ Don't expose sensitive data in dashboards
+- ✅ Use CloudFormation for dashboard as code
+- ✅ Version control dashboard configurations
 
 *)
