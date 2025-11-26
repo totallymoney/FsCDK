@@ -339,9 +339,6 @@ type GraphWidgetBuilder(title: string) =
         if not (Seq.isEmpty config.RightAnnotations) then
             props.RightAnnotations <- config.RightAnnotations |> Seq.toArray
 
-        if not (Seq.isEmpty config.Right) then
-            props.Right <- config.Right |> Seq.toArray
-
         config.RightYAxis |> Option.iter (fun y -> props.RightYAxis <- y)
 
         config.SetPeriodToTimeRange
