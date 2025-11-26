@@ -1,7 +1,6 @@
 module FsCDK.Tests.CloudWatchDashboardTests
 
 open Amazon.CDK
-open Amazon.CDK.AWS.CloudWatch
 open Expecto
 open FsCDK
 
