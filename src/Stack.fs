@@ -829,7 +829,7 @@ type StackBuilder(name: string) =
         this.BindViaYield VpcOp (fun s -> s.Vpc) "VPC" (fun s -> s.VpcName) spec cont
 
     member inline this.Bind(spec: TableSpec, [<InlineIfLambda>] cont: ITable -> StackConfig) : StackConfig =
-        this.BindViaYield TableOp (fun s -> s.Table) "VPC" (fun s -> s.TableName) spec cont
+        this.BindViaYield TableOp (fun s -> s.Table) "Table" (fun s -> s.TableName) spec cont
 
     member inline this.Bind
         (
