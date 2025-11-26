@@ -156,7 +156,7 @@ type DashboardBuilder(name: string) =
 
     /// <summary>Sets the start time for the dashboard.</summary>
     [<CustomOperation("startTime")>]
-    member _.StartTime(config: DashboardConfig, endTime: string) = { config with Start = Some endTime }
+    member _.StartTime(config: DashboardConfig, startTime: string) = { config with Start = Some startTime }
 
     /// <summary>Sets the end time for the dashboard.</summary>
     [<CustomOperation("endTime")>]
