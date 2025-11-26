@@ -49,9 +49,6 @@ stack "BasicDashboard" {
             [ graphWidget "Invocations" { left [ invocationsMetric ] }
               graphWidget "Errors" { left [ errorsMetric ] } ]
 
-    // widgets
-    //     [ DashboardWidgets.metricWidget "Invocations" [ invocationsMetric ]
-    //       DashboardWidgets.metricWidget "Errors" [ errorsMetric ] ]
     }
 }
 
