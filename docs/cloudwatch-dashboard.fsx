@@ -93,7 +93,7 @@ stack "MultiResourceDashboard" {
                   right [ apiDuration ]
               }
 
-              //Second row: DynamoDB metrics
+              // Second row: DynamoDB metrics
               graphWidget "DynamoDB Read/Write Capacity" {
                   left [ tableReads ]
                   right [ tableWrites ]
