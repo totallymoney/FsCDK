@@ -898,12 +898,12 @@ type LogQueryWidgetBuilder(title) =
         else
             failwith "At least one Log Group Name is required for LogQueryWidget"
 
+        // Allow either QueryString or QueryLines, but require at least one
+        if config.QueryString.IsNone && Seq.isEmpty config.QueryLines then
+            failwith "Either QueryString or QueryLines must be provided for LogQueryWidget"
         config.QueryString |> Option.iter (fun qs -> props.QueryString <- qs)
-
         if not (Seq.isEmpty config.QueryLines) then
             props.QueryLines <- config.QueryLines |> Seq.toArray
-        else
-            failwith "At least one Query Line is required for LogQueryWidget"
 
         config.Width |> Option.iter (fun w -> props.Width <- w)
 
