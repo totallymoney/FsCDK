@@ -147,7 +147,7 @@ Add explanatory text and documentation.
 
 stack "DocumentedDashboard" {
     let mainText =
-        "# Production System Overview\n\nThis dashboard monitors critical production metrics.\n\n**Contact:**"
+        "# Production System Overview\n\nThis dashboard monitors critical production metrics.\n\n**Contact:** ops@example.com"
 
     dashboard "production-overview" {
         widgets
