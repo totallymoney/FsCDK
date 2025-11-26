@@ -1,7 +1,6 @@
 module FsCDK.Tests.CloudWatchDashboardTests
 
 open Amazon.CDK
-open Amazon.CDK.AWS.CloudWatch
 open Expecto
 open FsCDK
 
@@ -16,9 +15,11 @@ let cloudwatch_dashboard_tests =
           }
 
           test "accepts custom dashboard name" {
-              let dashboardSpec = dashboard "MyDashboard" { dashboardName "production-dashboard" }
+              stack "DashboardStack" {
+                  let dashboardSpec = dashboard "production-dashboard" { () }
 
-              Expect.equal dashboardSpec.Props.DashboardName "production-dashboard" "Should use custom name"
+                  Expect.equal dashboardSpec.DashboardName "production-dashboard" "Should use custom name"
+              }
           }
 
           test "defaults to 5 minute interval" {
