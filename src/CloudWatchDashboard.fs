@@ -902,7 +902,9 @@ type LogQueryWidgetBuilder(title) =
         // Allow either QueryString or QueryLines, but require at least one
         if config.QueryString.IsNone && Seq.isEmpty config.QueryLines then
             failwith "Either QueryString or QueryLines must be provided for LogQueryWidget"
+
         config.QueryString |> Option.iter (fun qs -> props.QueryString <- qs)
+
         if not (Seq.isEmpty config.QueryLines) then
             props.QueryLines <- config.QueryLines |> Seq.toArray
 

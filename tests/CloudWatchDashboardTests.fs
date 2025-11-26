@@ -25,7 +25,7 @@ let cloudwatch_dashboard_tests =
 
           test "defaults to 5 minute interval" {
               let interval = Duration.Minutes 5.0
-              let dashboardSpec = dashboard "MyDashboard" { defaultInterval interval }
+              let dashboardSpec = dashboard "MyDashboard" { () }
 
               Expect.equal
                   (dashboardSpec.Props.DefaultInterval.ToString())
