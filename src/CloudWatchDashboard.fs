@@ -361,6 +361,7 @@ type GraphWidgetBuilder(title: string) =
 
         config.Region |> Option.iter (fun r -> props.Region <- r)
 
+        config.Width |> Option.iter (fun w -> props.Width <- w)
         GraphWidget(props)
 
 
