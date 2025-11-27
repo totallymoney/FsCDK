@@ -5,6 +5,7 @@ open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
 open Amazon.CDK.AWS.S3
+open Amazon.CDK.AWS.IAM
 
 [<Tests>]
 let dynamo_table_dsl_tests =
@@ -293,5 +294,178 @@ let dynamo_table_dsl_tests =
 
               Expect.isNotNull (box spec.Props.ContributorInsightsSpecification) "Contributor insights should be set"
               Expect.isTrue spec.Props.ContributorInsightsSpecification.Enabled "Contributor insights should be enabled"
+          }
+
+          // Grant support tests
+          test "grantReadData sets GrantReadData on spec" {
+              let app = App()
+
+              stack "GrantReadDataStack" {
+                  scope app
+
+                  let! role = role "ReaderRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let table =
+                      table "GrantReadDataTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grantReadData role
+                      }
+
+                  match table.Grant with
+                  | Some(GrantReadData grantee) -> Expect.equal grantee role "Grantee should match the provided role"
+                  | _ -> failtest "Expected GrantReadData to be set"
+              }
+
+          }
+
+          test "grantFullAccess sets GrantFullAccess on spec" {
+              let app = App()
+
+              stack "GrantFullAccessStack" {
+                  scope app
+
+                  let! role = role "FullAccessRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let table =
+                      table "GrantFullAccessTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grantFullAccess role
+
+                      }
+
+                  match table.Grant with
+                  | Some(GrantFullAccess grantee) -> Expect.equal grantee role "Grantee should match the provided role"
+                  | _ -> failtest "Expected GrantFullAccess to be set"
+              }
+          }
+
+          test "grantReadWriteData sets GrantReadWriteData on spec" {
+              let app = App()
+
+              stack "GrantReadWriteStack" {
+                  scope app
+
+                  let! role = role "ReadWriteRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let table =
+                      table "GrantReadWriteTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grantReadWriteData role
+                      }
+
+                  match table.Grant with
+                  | Some(GrantReadWriteData grantee) ->
+                      Expect.equal grantee role "Grantee should match the provided role"
+                  | _ -> failtest "Expected GrantReadWriteData to be set"
+
+              }
+          }
+
+          test "grantWriteData sets GrantWriteData on spec" {
+              let app = App()
+
+              stack "GrantWriteStack" {
+                  scope app
+
+                  let! role = role "WriterRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let table =
+                      table "GrantWriteTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grantWriteData role
+
+                      }
+
+                  match table.Grant with
+                  | Some(GrantWriteData grantee) -> Expect.equal grantee role "Grantee should match the provided role"
+                  | _ -> failtest "Expected GrantWriteData to be set"
+              }
+          }
+
+          test "grantStreamRead sets GrantStreamRead on spec" {
+              let app = App()
+              let stack = Stack(app, "GrantStreamReadStack")
+
+              let role =
+                  Role(stack, "StreamReaderRole", RoleProps(AssumedBy = ServicePrincipal("lambda.amazonaws.com")))
+
+              let spec =
+                  table "GrantStreamReadTable" {
+                      partitionKey "pk" AttributeType.STRING
+                      stream StreamViewType.NEW_AND_OLD_IMAGES
+                      grantStreamRead role
+                  }
+
+              match spec.Grant with
+              | Some(GrantStreamRead grantee) -> Expect.equal grantee role "Grantee should match the provided role"
+              | _ -> failtest "Expected GrantStreamRead to be set"
+          }
+
+          test "grantStream sets GrantStream with actions on spec" {
+              let app = App()
+              let stack = Stack(app, "GrantStreamStack")
+
+              let role =
+                  Role(stack, "StreamRole", RoleProps(AssumedBy = ServicePrincipal("lambda.amazonaws.com")))
+
+              let actions = [ "dynamodb:DescribeStream"; "dynamodb:GetRecords" ]
+
+              let spec =
+                  table "GrantStreamTable" {
+                      partitionKey "pk" AttributeType.STRING
+                      stream StreamViewType.NEW_IMAGE
+                      grantStream role actions
+                  }
+
+              match spec.Grant with
+              | Some(GrantStream(grantee, acts)) ->
+                  Expect.equal grantee role "Grantee should match the provided role"
+                  Expect.sequenceEqual acts actions "Actions should be preserved"
+              | _ -> failtest "Expected GrantStream to be set"
+          }
+
+          test "grantTableListStreams sets GrantTableListStreams on spec" {
+              let app = App()
+              let stack = Stack(app, "GrantTableListStreamsStack")
+
+              let role =
+                  Role(stack, "ListStreamsRole", RoleProps(AssumedBy = ServicePrincipal("lambda.amazonaws.com")))
+
+              let spec =
+                  table "GrantTableListStreamsTable" {
+                      partitionKey "pk" AttributeType.STRING
+                      grantTableListStreams role
+                  }
+
+              match spec.Grant with
+              | Some(GrantTableListStreams grantee) ->
+                  Expect.equal grantee role "Grantee should match the provided role"
+              | _ -> failtest "Expected GrantTableListStreams to be set"
+          }
+
+          test "grant sets custom actions on spec" {
+              let app = App()
+
+              stack "GrantCustomStack" {
+                  scope app
+
+                  let! role = role "CustomRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let spec =
+                      table "GrantCustomTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grant role [ "dynamodb:BatchGetItem"; "dynamodb:Scan" ]
+                      }
+
+                  match spec.Grant with
+                  | Some(Grant(grantee, acts)) ->
+                      Expect.equal grantee role "Grantee should match the provided role"
+
+                      Expect.sequenceEqual
+                          acts
+                          [ "dynamodb:BatchGetItem"; "dynamodb:Scan" ]
+                          "Actions should be preserved"
+                  | _ -> failtest "Expected Grant with custom actions to be set"
+              }
           } ]
     |> testSequenced

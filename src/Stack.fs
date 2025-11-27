@@ -113,7 +113,7 @@ module StackOperations =
     let processOperation (stack: Stack) (operation: Operation) : unit =
         match operation with
         | TableOp tableSpec ->
-            let t = Table(stack, tableSpec.ConstructId, tableSpec.Props)
+            let table = Table(stack, tableSpec.ConstructId, tableSpec.Props)
 
             // Add Global Secondary Indexes
             for gsi in tableSpec.GlobalSecondaryIndexes do
@@ -136,7 +136,7 @@ module StackOperations =
 
                 gsi.WriteCapacity |> Option.iter (fun wc -> gsiProps.WriteCapacity <- wc)
 
-                t.AddGlobalSecondaryIndex(gsiProps)
+                table.AddGlobalSecondaryIndex(gsiProps)
 
             // Add Local Secondary Indexes
             for lsi in tableSpec.LocalSecondaryIndexes do
@@ -152,9 +152,21 @@ module StackOperations =
                     if not (List.isEmpty attrs) then
                         lsiProps.NonKeyAttributes <- Array.ofList attrs)
 
-                t.AddLocalSecondaryIndex(lsiProps)
+                table.AddLocalSecondaryIndex(lsiProps)
 
-            tableSpec.Table <- Some t
+            tableSpec.Table <- Some table
+
+            tableSpec.Grant
+            |> Option.iter (fun grants ->
+                match grants with
+                | GrantReadData fn -> table.GrantReadData(fn) |> ignore
+                | GrantFullAccess grantable -> table.GrantFullAccess(grantable) |> ignore
+                | GrantReadWriteData grantable -> table.GrantReadWriteData(grantable) |> ignore
+                | GrantWriteData grantable -> table.GrantWriteData(grantable) |> ignore
+                | GrantStreamRead grantable -> table.GrantStreamRead(grantable) |> ignore
+                | GrantStream(grantable, actions) -> table.GrantStream(grantable, List.toArray actions) |> ignore
+                | GrantTableListStreams grantable -> table.GrantTableListStreams(grantable) |> ignore
+                | Grant(grantable, actions) -> table.Grant(grantable, List.toArray actions) |> ignore)
 
         | FunctionOp lambdaSpec ->
             let fn = AWS.Lambda.Function(stack, lambdaSpec.ConstructId, lambdaSpec.Props)

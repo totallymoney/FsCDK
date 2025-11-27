@@ -2,18 +2,13 @@ namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
+open Amazon.CDK.AWS.IAM
 open Amazon.CDK.AWS.Kinesis
 open Amazon.CDK.AWS.S3
 
 // ============================================================================
-// DynamoDB Table Configuration DSL
-// ============================================================================
-
-// ============================================================================
 // ImportSourceSpecification Builder DSL
 // ============================================================================
-
-type ImportSourceSpec = { Source: IImportSourceSpecification }
 
 type ImportSourceConfig =
     { Bucket: IBucket option
@@ -75,7 +70,7 @@ type ImportSourceBuilder() =
         config.CompressionType |> Option.iter (fun c -> spec.CompressionType <- c)
         config.KeyPrefix |> Option.iter (fun k -> spec.KeyPrefix <- k)
 
-        spec :> IImportSourceSpecification
+        spec
 
     /// <summary>Sets the S3 bucket for the import source.</summary>
     /// <param name="config">The current import source configuration.</param>
@@ -152,6 +147,21 @@ type LocalSecondaryIndexConfig =
       ProjectionType: ProjectionType option
       NonKeyAttributes: string list option }
 
+
+// ============================================================================
+// DynamoDB Table Configuration DSL
+// ============================================================================
+
+type TableGrantAccessType =
+    | GrantReadData of IGrantable
+    | GrantFullAccess of IGrantable
+    | GrantReadWriteData of IGrantable
+    | GrantWriteData of IGrantable
+    | GrantStreamRead of IGrantable
+    | GrantStream of (IGrantable * string list)
+    | GrantTableListStreams of IGrantable
+    | Grant of (IGrantable * string list)
+
 type TableConfig =
     { TableName: string
       ConstructId: string option
@@ -169,7 +179,8 @@ type TableConfig =
       Stream: StreamViewType option
       KinesisStream: IStream option
       Encryption: TableEncryption option
-      EncryptionKey: IKey option }
+      EncryptionKey: IKey option
+      Grant: TableGrantAccessType option }
 
 type TableSpec =
     { TableName: string
@@ -177,6 +188,7 @@ type TableSpec =
       Props: TableProps
       GlobalSecondaryIndexes: GlobalSecondaryIndexConfig list
       LocalSecondaryIndexes: LocalSecondaryIndexConfig list
+      Grant: TableGrantAccessType option
       mutable Table: ITable option }
 
 type TableBuilder(name: string) =
@@ -197,9 +209,10 @@ type TableBuilder(name: string) =
           Stream = None
           KinesisStream = None
           Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
-          EncryptionKey = None }
+          EncryptionKey = None
+          Grant = None }
 
-    member _.Yield(spec: ImportSourceSpec) : TableConfig =
+    member _.Yield(spec: IImportSourceSpecification) : TableConfig =
         { TableName = name
           ConstructId = None
           PartitionKey = None
@@ -212,11 +225,12 @@ type TableBuilder(name: string) =
           LocalSecondaryIndexes = []
           TableClass = None
           ContributorInsightsEnabled = None
-          ImportSource = Some spec.Source
+          ImportSource = Some spec
           Stream = None
           KinesisStream = None
           Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
-          EncryptionKey = None }
+          EncryptionKey = None
+          Grant = None }
 
     member _.Zero() : TableConfig =
         { TableName = name
@@ -235,7 +249,8 @@ type TableBuilder(name: string) =
           Stream = None
           KinesisStream = None
           Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
-          EncryptionKey = None }
+          EncryptionKey = None
+          Grant = None }
 
     member _.Combine(config1: TableConfig, config2: TableConfig) : TableConfig =
         { config1 with
@@ -319,9 +334,11 @@ type TableBuilder(name: string) =
           Props = props
           GlobalSecondaryIndexes = config.GlobalSecondaryIndexes
           LocalSecondaryIndexes = config.LocalSecondaryIndexes
+          Grant = config.Grant
           Table = None }
 
     /// <summary>Sets the construct ID for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="id">The construct ID.</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -332,6 +349,7 @@ type TableBuilder(name: string) =
     member _.ConstructId(config: TableConfig, id: string) = { config with ConstructId = Some id }
 
     /// <summary>Sets the partition key for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="name">The attribute name for the partition key.</param>
     /// <param name="attrType">The attribute type (STRING, NUMBER, or BINARY).</param>
     /// <code lang="fsharp">
@@ -345,6 +363,7 @@ type TableBuilder(name: string) =
             PartitionKey = Some(name, attrType) }
 
     /// <summary>Sets the sort key for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="name">The attribute name for the sort key.</param>
     /// <param name="attrType">The attribute type (STRING, NUMBER, or BINARY).</param>
     /// <code lang="fsharp">
@@ -359,6 +378,7 @@ type TableBuilder(name: string) =
             SortKey = Some(name, attrType) }
 
     /// <summary>Sets the billing mode for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="mode">The billing mode (PAY_PER_REQUEST or PROVISIONED).</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -369,6 +389,7 @@ type TableBuilder(name: string) =
     member _.BillingMode(config: TableConfig, mode: BillingMode) = { config with BillingMode = Some mode }
 
     /// <summary>Sets the removal policy for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="policy">The removal policy (DESTROY, RETAIN, or SNAPSHOT).</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -381,6 +402,7 @@ type TableBuilder(name: string) =
             RemovalPolicy = Some policy }
 
     /// <summary>Enables or disables point-in-time recovery.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="enabled">Whether point-in-time recovery is enabled.</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -392,26 +414,8 @@ type TableBuilder(name: string) =
         { config with
             PointInTimeRecovery = Some enabled }
 
-    member _.Yield(spec: IImportSourceSpecification) : TableConfig =
-        { TableName = name
-          ConstructId = None
-          PartitionKey = None
-          SortKey = None
-          BillingMode = None
-          RemovalPolicy = None
-          PointInTimeRecovery = None
-          TimeToLiveAttribute = None
-          GlobalSecondaryIndexes = []
-          LocalSecondaryIndexes = []
-          TableClass = None
-          ContributorInsightsEnabled = None
-          ImportSource = Some spec
-          Stream = None
-          KinesisStream = None
-          Encryption = None
-          EncryptionKey = None }
-
     /// <summary>Enables DynamoDB Streams for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="streamType">The stream view type (KEYS_ONLY, NEW_IMAGE, OLD_IMAGE, or NEW_AND_OLD_IMAGES).</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -423,6 +427,7 @@ type TableBuilder(name: string) =
         { config with Stream = Some streamType }
 
     /// <summary>Sets a Kinesis stream for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="stream">The Kinesis stream to use.</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -435,6 +440,7 @@ type TableBuilder(name: string) =
             KinesisStream = Some stream }
 
     /// <summary>Sets the encryption type for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="encryption">The encryption type (AWS_MANAGED, CUSTOMER_MANAGED, or DEFAULT).</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -448,6 +454,7 @@ type TableBuilder(name: string) =
             Encryption = Some encryption }
 
     /// <summary>Sets the KMS encryption key for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="key">The KMS key.</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -461,6 +468,7 @@ type TableBuilder(name: string) =
         { config with EncryptionKey = Some key }
 
     /// <summary>Sets the Time-to-Live attribute for automatic item expiration.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="attributeName">The attribute name that stores the TTL timestamp (Unix epoch seconds).</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -474,6 +482,7 @@ type TableBuilder(name: string) =
             TimeToLiveAttribute = Some attributeName }
 
     /// <summary>Adds a Global Secondary Index (GSI) to the table. Essential for Alex DeBrie's single-table design.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="indexName">The name of the GSI.</param>
     /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
     /// <code lang="fsharp">
@@ -498,6 +507,7 @@ type TableBuilder(name: string) =
             GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
 
     /// <summary>Adds a Global Secondary Index with a sort key.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="indexName">The name of the GSI.</param>
     /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
     /// <param name="sortKey">The GSI sort key (attribute name and type).</param>
@@ -529,6 +539,7 @@ type TableBuilder(name: string) =
             GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
 
     /// <summary>Adds a Global Secondary Index with custom projection.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="indexName">The name of the GSI.</param>
     /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
     /// <param name="sortKey">The GSI sort key (optional).</param>
@@ -567,6 +578,7 @@ type TableBuilder(name: string) =
             GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
 
     /// <summary>Adds a Local Secondary Index (LSI) to the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="indexName">The name of the LSI.</param>
     /// <param name="sortKey">The LSI sort key (attribute name and type).</param>
     /// <code lang="fsharp">
@@ -588,6 +600,7 @@ type TableBuilder(name: string) =
             LocalSecondaryIndexes = config.LocalSecondaryIndexes @ [ lsi ] }
 
     /// <summary>Adds a Local Secondary Index with custom projection.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="indexName">The name of the LSI.</param>
     /// <param name="sortKey">The LSI sort key (attribute name and type).</param>
     /// <param name="projectionType">The projection type (ALL, KEYS_ONLY, or INCLUDE).</param>
@@ -621,6 +634,7 @@ type TableBuilder(name: string) =
             LocalSecondaryIndexes = config.LocalSecondaryIndexes @ [ lsi ] }
 
     /// <summary>Sets the table class for cost optimization.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="tableClass">The table class (STANDARD or STANDARD_INFREQUENT_ACCESS).</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -634,6 +648,7 @@ type TableBuilder(name: string) =
             TableClass = Some tableClass }
 
     /// <summary>Enables or disables CloudWatch Contributor Insights for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
     /// <param name="enabled">Whether to enable contributor insights.</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
@@ -645,6 +660,112 @@ type TableBuilder(name: string) =
     member _.ContributorInsights(config: TableConfig, enabled: bool) =
         { config with
             ContributorInsightsEnabled = Some enabled }
+
+    /// <summary>Grants read data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive read data permissions.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     grantReadData lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantReadData")>]
+    member _.GrantReadData(config: TableConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantReadData(grantee)) }
+
+    /// <summary>Grants full access permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive full access permissions.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     grantFullAccess lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantFullAccess")>]
+    member _.GrantFullAccess(config: TableConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantFullAccess(grantee)) }
+
+    /// <summary>Grants read and write data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive read and write data permissions.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     grantReadWriteData lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantReadWriteData")>]
+    member _.GrantReadWriteData(config: TableConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantReadWriteData(grantee)) }
+
+    /// <summary>Grants write data permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive write data permissions.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     grantWriteData lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantWriteData")>]
+    member _.GrantWriteData(config: TableConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantWriteData(grantee)) }
+
+    /// <summary>Grants stream read permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive stream read permissions.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     grantStreamRead lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantStreamRead")>]
+    member _.GrantStreamRead(config: TableConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantStreamRead(grantee)) }
+
+    /// <summary>Grants stream permissions to the specified grantee with specific actions.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive stream permissions.</param>
+    /// <param name="actions">The list of actions to grant.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     grantStream lambdaFunction [ "dynamodb:DescribeStream"; "dynamodb:GetRecords" ]
+    /// }
+    /// </code>
+    [<CustomOperation("grantStream")>]
+    member _.GrantStream(config: TableConfig, grantee: IGrantable, actions: string list) =
+        { config with
+            Grant = Some(GrantStream(grantee, actions)) }
+
+    /// <summary>Grants table list streams permissions to the specified grantee.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive table list streams permissions.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     grantTableListStreams lambdaFunction
+    /// }
+    /// </code>
+    [<CustomOperation("grantTableListStreams")>]
+    member _.GrantTableListStreams(config: TableConfig, grantee: IGrantable) =
+        { config with
+            Grant = Some(GrantTableListStreams(grantee)) }
+
+    /// <summary>Grants custom permissions to the specified grantee with specific actions.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="grantee">The grantee to receive custom permissions.</param>
+    /// <param name="actions">The list of actions to grant.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     grant lambdaFunction [ "dynamodb:CustomAction1"; "dynamodb:CustomAction2" ]
+    /// }
+    /// </code>
+    [<CustomOperation("grant")>]
+    member _.Grant(config: TableConfig, grantee: IGrantable, actions: string list) =
+        { config with
+            Grant = Some(Grant(grantee, actions)) }
 
 // ============================================================================
 // Builders
