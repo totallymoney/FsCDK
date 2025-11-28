@@ -278,7 +278,7 @@ let dynamo_table_dsl_tests =
               let spec =
                   table "WithInsights" {
                       partitionKey "pk" AttributeType.STRING
-                      contributorInsights true
+                      contributorInsightsEnabled true
                   }
 
               Expect.isNotNull (box spec.Props.ContributorInsightsSpecification) "Contributor insights should be set"

@@ -156,7 +156,7 @@ Enable CloudWatch Contributor Insights to identify hot partition keys (Rick Houl
 stack "MonitoredTable" {
     table "HighTrafficData" {
         partitionKey "id" AttributeType.STRING
-        contributorInsights true
+        contributorInsightsEnabled true
     }
 }
 
@@ -191,7 +191,7 @@ stack "ProductionTable" {
             sortKey "gsi2sk" AttributeType.NUMBER
         }
 
-        globalSecondaryIndex "GSI2" {
+        globalSecondaryIndex "GSI3" {
             partitionKey "gsi2pk" AttributeType.STRING
             sortKey "gsi2sk" AttributeType.NUMBER
         }
@@ -200,15 +200,10 @@ stack "ProductionTable" {
         timeToLive "ttl"
 
         // Operational excellence
-        contributorInsights true
+        contributorInsightsEnabled true
         stream StreamViewType.NEW_AND_OLD_IMAGES
 
-        // Production safety
         removalPolicy RemovalPolicy.RETAIN
-
-    // Defaults automatically applied:
-    // - billingMode = PAY_PER_REQUEST
-    // - pointInTimeRecovery = true
     }
 }
 

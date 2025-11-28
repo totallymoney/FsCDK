@@ -295,6 +295,20 @@ type GlobalSecondaryIndexBuilder(indexName: string) =
         { config with
             ContributorInsightsSpecification = Some(ContributorInsightsSpecification(Enabled = enabled, Mode = mode)) }
 
+    /// <summary>Configures CloudWatch Contributor Insights for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="enabled">Whether to enable contributor insights.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "id" AttributeType.STRING
+    ///     contributorInsightsEnabled true
+    /// }
+    /// </code>
+    [<CustomOperation("contributorInsightsEnabled")>]
+    member _.ContributorInsightsEnabled(config: GlobalSecondaryIndexConfig, enabled: bool) =
+        { config with
+            ContributorInsightsSpecification = Some(ContributorInsightsSpecification(Enabled = enabled)) }
+
 
 type ImportSourceConfig =
     { Bucket: IBucket option
@@ -906,6 +920,20 @@ type TableBuilder(name: string) =
         { config with
             ContributorInsightsSpecification = Some(ContributorInsightsSpecification(Enabled = enabled, Mode = mode)) }
 
+    /// <summary>Configures CloudWatch Contributor Insights for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="enabled">Whether to enable contributor insights.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "id" AttributeType.STRING
+    ///     contributorInsightsEnabled true
+    /// }
+    /// </code>
+    [<CustomOperation("contributorInsightsEnabled")>]
+    member _.ContributorInsightsEnabled(config: TableConfig, enabled: bool) =
+        { config with
+            ContributorInsightsSpecification = Some(ContributorInsightsSpecification(Enabled = enabled)) }
+
     /// <summary>Adds a global secondary index to the table.</summary>
     /// <param name="config">The current table configuration.</param>
     /// <param name="indexes">The global secondary index specification.</param>
@@ -1078,12 +1106,10 @@ module DynamoDBBuilders =
     /// </code>
     let globalSecondaryIndex name = GlobalSecondaryIndexBuilder(name)
 
-
     /// <summary>Creates local secondary indexes for a DynamoDB table.</summary>
     /// <param name="name">The index name.</param>
     /// <code lang="fsharp">
     /// localSecondaryIndex "my-index" {
-    ///     partitionKey "lsiPk" AttributeType.STRING
     ///     sortKey "lsiSk" AttributeType.NUMBER
     ///     projectionType ProjectionType.ALL
     ///     nonKeyAttributes [ "lsiNonKey1"; "lsiNonKey2" ]
