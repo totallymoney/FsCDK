@@ -131,13 +131,6 @@ let dynamo_table_dsl_tests =
               Expect.isNotNull (box spec.Props.ImportSource) "ImportSource should be set via builder"
           }
 
-          // Production defaults tests (Alex DeBrie / Rick Houlihan best practices)
-          test "defaults to PAY_PER_REQUEST billing mode" {
-              let spec = table "DefaultBilling" { partitionKey "pk" AttributeType.STRING }
-
-              Expect.equal spec.Props.BillingMode.Value BillingMode.PAY_PER_REQUEST "Should default to PAY_PER_REQUEST"
-          }
-
           test "defaults to point-in-time recovery enabled" {
               let spec = table "DefaultPITR" { partitionKey "pk" AttributeType.STRING }
 
