@@ -202,7 +202,7 @@ type GlobalSecondaryIndexBuilder(indexName: string) =
     /// }
     /// </code>
     [<CustomOperation("maxReadRequestUnits")>]
-    member _.MaxReadRequestUnits(config: GlobalSecondaryIndexConfig, max: int) =
+    member _.MaxReadRequestUnits(config: GlobalSecondaryIndexConfig, max: float) =
         { config with
             MaxReadRequestUnits = Some max }
 
@@ -215,7 +215,7 @@ type GlobalSecondaryIndexBuilder(indexName: string) =
     /// }
     /// </code>
     [<CustomOperation("maxWriteRequestUnits")>]
-    member _.MaxWriteRequestUnits(config: GlobalSecondaryIndexConfig, max: int) =
+    member _.MaxWriteRequestUnits(config: GlobalSecondaryIndexConfig, max: float) =
         { config with
             MaxWriteRequestUnits = Some max }
 
@@ -229,7 +229,7 @@ type GlobalSecondaryIndexBuilder(indexName: string) =
     /// }
     /// </code>
     [<CustomOperation("readCapacity")>]
-    member _.ReadCapacity(config: GlobalSecondaryIndexConfig, read: int) =
+    member _.ReadCapacity(config: GlobalSecondaryIndexConfig, read: float) =
         { config with ReadCapacity = Some read }
 
     /// <summary>Sets warm throughput settings for the GSI in on-demand mode.</summary>
@@ -255,7 +255,7 @@ type GlobalSecondaryIndexBuilder(indexName: string) =
     /// }
     /// </code>
     [<CustomOperation("writeCapacity")>]
-    member _.WriteCapacity(config: GlobalSecondaryIndexConfig, write: int) =
+    member _.WriteCapacity(config: GlobalSecondaryIndexConfig, write: float) =
         { config with
             WriteCapacity = Some write }
 
@@ -518,7 +518,7 @@ type TableConfig =
       GlobalSecondaryIndexes: GlobalSecondaryIndexProps list
       LocalSecondaryIndexes: LocalSecondaryIndexProps list
       TableClass: TableClass option
-      ContributorInsightsEnabled: bool option
+      ContributorInsightsSpecification: ContributorInsightsSpecification option
       ImportSource: IImportSourceSpecification option
       Stream: StreamViewType option
       KinesisStream: IStream option
@@ -543,16 +543,16 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = Some true // Security: Enable point-in-time recovery for data protection
+          PointInTimeRecovery = Some true
           TimeToLiveAttribute = None
           GlobalSecondaryIndexes = []
           LocalSecondaryIndexes = []
           TableClass = None
-          ContributorInsightsEnabled = None
+          ContributorInsightsSpecification = None
           ImportSource = None
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
+          Encryption = Some TableEncryption.AWS_MANAGED
           EncryptionKey = None
           Grant = None }
 
@@ -563,16 +563,16 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = Some true // Security: Enable point-in-time recovery for data protection
+          PointInTimeRecovery = Some true
           TimeToLiveAttribute = None
           GlobalSecondaryIndexes = []
           LocalSecondaryIndexes = []
           TableClass = None
-          ContributorInsightsEnabled = None
+          ContributorInsightsSpecification = None
           ImportSource = Some spec
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
+          Encryption = Some TableEncryption.AWS_MANAGED
           EncryptionKey = None
           Grant = None }
 
@@ -588,11 +588,11 @@ type TableBuilder(name: string) =
           GlobalSecondaryIndexes = [ gsi ]
           LocalSecondaryIndexes = []
           TableClass = None
-          ContributorInsightsEnabled = None
+          ContributorInsightsSpecification = None
           ImportSource = None
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
+          Encryption = Some TableEncryption.AWS_MANAGED
           EncryptionKey = None
           Grant = None }
 
@@ -608,11 +608,11 @@ type TableBuilder(name: string) =
           GlobalSecondaryIndexes = []
           LocalSecondaryIndexes = [ lsi ]
           TableClass = None
-          ContributorInsightsEnabled = None
+          ContributorInsightsSpecification = None
           ImportSource = None
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
+          Encryption = Some TableEncryption.AWS_MANAGED
           EncryptionKey = None
           Grant = None }
 
@@ -623,16 +623,16 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = Some true // Security: Enable point-in-time recovery for data protection
+          PointInTimeRecovery = Some true
           TimeToLiveAttribute = None
           GlobalSecondaryIndexes = []
           LocalSecondaryIndexes = []
           TableClass = None
-          ContributorInsightsEnabled = None
+          ContributorInsightsSpecification = None
           ImportSource = None
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
+          Encryption = Some TableEncryption.AWS_MANAGED
           EncryptionKey = None
           Grant = None }
 
@@ -648,9 +648,9 @@ type TableBuilder(name: string) =
             GlobalSecondaryIndexes = config1.GlobalSecondaryIndexes @ config2.GlobalSecondaryIndexes
             LocalSecondaryIndexes = config1.LocalSecondaryIndexes @ config2.LocalSecondaryIndexes
             TableClass = config2.TableClass |> Option.orElse config1.TableClass
-            ContributorInsightsEnabled =
-                config2.ContributorInsightsEnabled
-                |> Option.orElse config1.ContributorInsightsEnabled
+            ContributorInsightsSpecification =
+                config2.ContributorInsightsSpecification
+                |> Option.orElse config1.ContributorInsightsSpecification
             ImportSource = config2.ImportSource |> Option.orElse config1.ImportSource
             Stream = config2.Stream |> Option.orElse config1.Stream
             KinesisStream = config2.KinesisStream |> Option.orElse config1.KinesisStream
@@ -680,7 +680,7 @@ type TableBuilder(name: string) =
         config.BillingMode |> Option.iter (fun mode -> props.BillingMode <- mode)
 
         config.RemovalPolicy
-        |> Option.iter (fun policy -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(policy))
+        |> Option.iter (fun policy -> props.RemovalPolicy <- policy)
 
         let pitrEnabled = config.PointInTimeRecovery |> Option.defaultValue true
 
@@ -693,9 +693,8 @@ type TableBuilder(name: string) =
 
         config.TableClass |> Option.iter (fun tc -> props.TableClass <- tc)
 
-        config.ContributorInsightsEnabled
-        |> Option.iter (fun enabled ->
-            props.ContributorInsightsSpecification <- ContributorInsightsSpecification(Enabled = enabled))
+        config.ContributorInsightsSpecification
+        |> Option.iter (fun spec -> props.ContributorInsightsSpecification <- spec)
 
         config.ImportSource |> Option.iter (fun spec -> props.ImportSource <- spec)
 
@@ -874,19 +873,66 @@ type TableBuilder(name: string) =
         { config with
             TableClass = Some tableClass }
 
-    /// <summary>Enables or disables CloudWatch Contributor Insights for the table.</summary>
+    /// <summary>Configures CloudWatch Contributor Insights for the table.</summary>
     /// <param name="config">The current table configuration.</param>
-    /// <param name="enabled">Whether to enable contributor insights.</param>
+    /// <param name="contributorInsights">Whether to enable contributor insights.</param>
     /// <code lang="fsharp">
     /// table "MyTable" {
     ///     partitionKey "id" AttributeType.STRING
-    ///     contributorInsights true
+    ///     contributorInsightsSpecification (ContributorInsightsSpecification(Enabled = true))
     /// }
     /// </code>
-    [<CustomOperation("contributorInsights")>]
-    member _.ContributorInsights(config: TableConfig, enabled: bool) =
+    [<CustomOperation("contributorInsightsSpecification")>]
+    member _.ContributorInsightsSpecification
+        (
+            config: TableConfig,
+            contributorInsights: ContributorInsightsSpecification
+        ) =
         { config with
-            ContributorInsightsEnabled = Some enabled }
+            ContributorInsightsSpecification = Some contributorInsights }
+
+    /// <summary>Configures CloudWatch Contributor Insights for the table.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="enabled">Whether to enable contributor insights.</param>
+    /// <param name="mode">The contributor insights mode.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///     partitionKey "id" AttributeType.STRING
+    ///     contributorInsightsSpecification true ContributorInsightsMode.CONTRIBUTOR_INSIGHTS
+    /// }
+    /// </code>
+    [<CustomOperation("contributorInsightsSpecification")>]
+    member _.ContributorInsightsSpecification(config: TableConfig, enabled: bool, mode: ContributorInsightsMode) =
+        { config with
+            ContributorInsightsSpecification = Some(ContributorInsightsSpecification(Enabled = enabled, Mode = mode)) }
+
+    /// <summary>Adds a global secondary index to the table.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="indexes">The global secondary index specification.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///    partitionKey "id" AttributeType.STRING
+    ///    globalSecondaryIndexes [ myGsi1; myGsi2 ]
+    /// }
+    /// </code>
+    [<CustomOperation("globalSecondaryIndexes")>]
+    member _.GlobalSecondaryIndexes(config: TableConfig, indexes: GlobalSecondaryIndexProps list) =
+        { config with
+            GlobalSecondaryIndexes = indexes }
+
+    /// <summary>Adds a local secondary index to the table.</summary>
+    /// <param name="config">The current table configuration.</param>
+    /// <param name="indexes">The local secondary index specification.</param>
+    /// <code lang="fsharp">
+    /// table "MyTable" {
+    ///    partitionKey "id" AttributeType.STRING
+    ///    localSecondaryIndexes [ myLsi1; myLsi2 ]
+    /// }
+    /// </code>
+    [<CustomOperation("localSecondaryIndexes")>]
+    member _.LocalSecondaryIndexes(config: TableConfig, indexes: LocalSecondaryIndexProps list) =
+        { config with
+            LocalSecondaryIndexes = indexes }
 
     /// <summary>Grants read data permissions to the specified grantee.</summary>
     /// <param name="config">The current table configuration.</param>
