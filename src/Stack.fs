@@ -126,7 +126,7 @@ module StackOperations =
             tableSpec.Grant
             |> Option.iter (fun grants ->
                 match grants with
-                | GrantReadData fn -> table.GrantReadData(fn) |> ignore
+                | GrantReadData grantable -> table.GrantReadData(grantable) |> ignore
                 | GrantFullAccess grantable -> table.GrantFullAccess(grantable) |> ignore
                 | GrantReadWriteData grantable -> table.GrantReadWriteData(grantable) |> ignore
                 | GrantWriteData grantable -> table.GrantWriteData(grantable) |> ignore
