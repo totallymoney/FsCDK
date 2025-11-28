@@ -44,7 +44,10 @@ stack "TenantRegistry" {
         pointInTimeRecovery true
 
         // Global Secondary Index for querying by status
-        globalSecondaryIndexWithSort "status-index" ("status", AttributeType.STRING) ("createdAt", AttributeType.STRING)
+        globalSecondaryIndex "status-index" {
+            partitionKey "status" AttributeType.STRING
+            sortKey "createdAt" AttributeType.STRING
+        }
     }
 
     // Tenant configuration data
