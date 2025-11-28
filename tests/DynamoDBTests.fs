@@ -180,13 +180,13 @@ let dynamo_table_dsl_tests =
                   table "WithGSI" {
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
-                      globalSecondaryIndex "GSI1" ("gsi1pk", AttributeType.STRING)
+                      globalSecondaryIndex "GSI1" { partitionKey "gsi1pk" AttributeType.STRING }
                   }
 
               Expect.equal spec.GlobalSecondaryIndexes.Length 1 "Should have 1 GSI"
               Expect.equal spec.GlobalSecondaryIndexes.[0].IndexName "GSI1" "GSI name should match"
-              let pkName, _ = spec.GlobalSecondaryIndexes.[0].PartitionKey
-              Expect.equal pkName "gsi1pk" "GSI partition key should match"
+              let pkName = spec.GlobalSecondaryIndexes.[0].PartitionKey
+              Expect.equal pkName.Name "gsi1pk" "GSI partition key should match"
           }
 
           test "adds global secondary index with sort key" {
@@ -195,18 +195,16 @@ let dynamo_table_dsl_tests =
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
 
-                      globalSecondaryIndexWithSort
-                          "GSI1"
-                          ("gsi1pk", AttributeType.STRING)
-                          ("gsi1sk", AttributeType.NUMBER)
+                      globalSecondaryIndex "GSI1" {
+                          partitionKey "gsi1pk" AttributeType.STRING
+                          sortKey "gsi1sk" AttributeType.NUMBER
+                      }
                   }
 
               Expect.equal spec.GlobalSecondaryIndexes.Length 1 "Should have 1 GSI"
               let sortKey = spec.GlobalSecondaryIndexes.[0].SortKey
-              Expect.isSome sortKey "GSI should have a sort key"
-              let skName, skType = sortKey.Value
-              Expect.equal skName "gsi1sk" "GSI sort key should match"
-              Expect.equal skType AttributeType.NUMBER "GSI sort key type should match"
+              Expect.equal sortKey.Name "gsi1sk" "GSI sort key should match"
+              Expect.equal sortKey.Type AttributeType.NUMBER "GSI sort key type should match"
           }
 
           test "adds multiple global secondary indexes" {
@@ -214,13 +212,13 @@ let dynamo_table_dsl_tests =
                   table "WithMultipleGSI" {
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
-                      globalSecondaryIndex "GSI1" ("gsi1pk", AttributeType.STRING)
-                      globalSecondaryIndex "GSI2" ("gsi2pk", AttributeType.STRING)
+                      globalSecondaryIndex "GSI1" { partitionKey "gsi1pk" AttributeType.STRING }
+                      globalSecondaryIndex "GSI2" { partitionKey "gsi2pk" AttributeType.STRING }
 
-                      globalSecondaryIndexWithSort
-                          "GSI3"
-                          ("gsi3pk", AttributeType.STRING)
-                          ("gsi3sk", AttributeType.NUMBER)
+                      globalSecondaryIndex "GSI3" {
+                          partitionKey "gsi3pk" AttributeType.STRING
+                          sortKey "gsi3sk" AttributeType.NUMBER
+                      }
                   }
 
               Expect.equal spec.GlobalSecondaryIndexes.Length 3 "Should have 3 GSIs"
@@ -232,18 +230,16 @@ let dynamo_table_dsl_tests =
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
 
-                      globalSecondaryIndexWithProjection
-                          "GSI1"
-                          ("gsi1pk", AttributeType.STRING)
-                          None
-                          ProjectionType.KEYS_ONLY
-                          []
+                      globalSecondaryIndex "GSI1" {
+                          partitionKey "gsi1pk" AttributeType.STRING
+                          projectionType ProjectionType.KEYS_ONLY
+
+                      }
                   }
 
-              Expect.equal
-                  spec.GlobalSecondaryIndexes.[0].ProjectionType
-                  (Some ProjectionType.KEYS_ONLY)
-                  "GSI projection type should match"
+              let projectionType = spec.GlobalSecondaryIndexes.[0].ProjectionType
+
+              Expect.equal projectionType.Value ProjectionType.KEYS_ONLY "GSI projection type should match"
           }
 
           // LSI tests
@@ -252,13 +248,13 @@ let dynamo_table_dsl_tests =
                   table "WithLSI" {
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
-                      localSecondaryIndex "LSI1" ("lsi1sk", AttributeType.NUMBER)
+                      localSecondaryIndex "LSI1" { sortKey "lsi1sk" AttributeType.NUMBER }
                   }
 
               Expect.equal spec.LocalSecondaryIndexes.Length 1 "Should have 1 LSI"
               Expect.equal spec.LocalSecondaryIndexes.[0].IndexName "LSI1" "LSI name should match"
-              let skName, _ = spec.LocalSecondaryIndexes.[0].SortKey
-              Expect.equal skName "lsi1sk" "LSI sort key should match"
+              let sk = spec.LocalSecondaryIndexes.[0].SortKey
+              Expect.equal sk.Name "lsi1sk" "LSI sort key should match"
           }
 
           test "adds multiple local secondary indexes" {
@@ -266,8 +262,8 @@ let dynamo_table_dsl_tests =
                   table "WithMultipleLSI" {
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
-                      localSecondaryIndex "LSI1" ("lsi1sk", AttributeType.NUMBER)
-                      localSecondaryIndex "LSI2" ("lsi2sk", AttributeType.STRING)
+                      localSecondaryIndex "LSI1" { sortKey "lsi1sk" AttributeType.NUMBER }
+                      localSecondaryIndex "LSI2" { sortKey "lsi2sk" AttributeType.STRING }
                   }
 
               Expect.equal spec.LocalSecondaryIndexes.Length 2 "Should have 2 LSIs"

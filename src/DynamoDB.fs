@@ -7,8 +7,294 @@ open Amazon.CDK.AWS.Kinesis
 open Amazon.CDK.AWS.S3
 
 // ============================================================================
-// ImportSourceSpecification Builder DSL
+//  DynamoDB Configuration DSL
 // ============================================================================
+
+type GlobalSecondaryIndexConfig =
+    { IndexName: string
+      ContributorInsightsSpecification: IContributorInsightsSpecification option
+      MaxReadRequestUnits: float option
+      MaxWriteRequestUnits: float option
+      ReadCapacity: float option
+      WarmThroughput: IWarmThroughput option
+      WriteCapacity: float option
+      NonKeyAttributes: string list
+      ProjectionType: ProjectionType option
+      PartitionKey: IAttribute option
+      SortKey: IAttribute option }
+
+
+type GlobalSecondaryIndexBuilder(indexName: string) =
+
+    member _.Yield(_: unit) : GlobalSecondaryIndexConfig =
+        { IndexName = indexName
+          ContributorInsightsSpecification = None
+          MaxReadRequestUnits = None
+          MaxWriteRequestUnits = None
+          ReadCapacity = None
+          WarmThroughput = None
+          WriteCapacity = None
+          NonKeyAttributes = []
+          ProjectionType = None
+          PartitionKey = None
+          SortKey = None }
+
+    member _.Zero() : GlobalSecondaryIndexConfig =
+        { IndexName = indexName
+          ContributorInsightsSpecification = None
+          MaxReadRequestUnits = None
+          MaxWriteRequestUnits = None
+          ReadCapacity = None
+          WarmThroughput = None
+          WriteCapacity = None
+          NonKeyAttributes = []
+          ProjectionType = None
+          PartitionKey = None
+          SortKey = None }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> GlobalSecondaryIndexConfig) : GlobalSecondaryIndexConfig = f ()
+
+    member _.Combine
+        (
+            config1: GlobalSecondaryIndexConfig,
+            config2: GlobalSecondaryIndexConfig
+        ) : GlobalSecondaryIndexConfig =
+        { config1 with
+            ContributorInsightsSpecification =
+                config2.ContributorInsightsSpecification
+                |> Option.orElse config1.ContributorInsightsSpecification
+            MaxReadRequestUnits = config2.MaxReadRequestUnits |> Option.orElse config1.MaxReadRequestUnits
+            MaxWriteRequestUnits = config2.MaxWriteRequestUnits |> Option.orElse config1.MaxWriteRequestUnits
+            ReadCapacity = config2.ReadCapacity |> Option.orElse config1.ReadCapacity
+            WarmThroughput = config2.WarmThroughput |> Option.orElse config1.WarmThroughput
+            WriteCapacity = config2.WriteCapacity |> Option.orElse config1.WriteCapacity
+            NonKeyAttributes = config1.NonKeyAttributes @ config2.NonKeyAttributes
+            ProjectionType = config2.ProjectionType |> Option.orElse config1.ProjectionType
+            PartitionKey = config2.PartitionKey |> Option.orElse config1.PartitionKey
+            SortKey = config2.SortKey |> Option.orElse config1.SortKey }
+
+
+    member inline x.For
+        (
+            config: GlobalSecondaryIndexConfig,
+            [<InlineIfLambda>] f: unit -> GlobalSecondaryIndexConfig
+        ) : GlobalSecondaryIndexConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: GlobalSecondaryIndexConfig) : GlobalSecondaryIndexProps =
+        let indexName = config.IndexName
+
+        let props = GlobalSecondaryIndexProps()
+        props.IndexName <- indexName
+
+        config.ContributorInsightsSpecification
+        |> Option.iter (fun spec -> props.ContributorInsightsSpecification <- spec)
+
+        config.MaxReadRequestUnits
+        |> Option.iter (fun max -> props.MaxReadRequestUnits <- max)
+
+        config.MaxWriteRequestUnits
+        |> Option.iter (fun max -> props.MaxWriteRequestUnits <- max)
+
+        config.ReadCapacity |> Option.iter (fun read -> props.ReadCapacity <- read)
+
+        config.WarmThroughput |> Option.iter (fun warm -> props.WarmThroughput <- warm)
+
+        config.WriteCapacity |> Option.iter (fun write -> props.WriteCapacity <- write)
+
+        if not (List.isEmpty config.NonKeyAttributes) then
+            props.NonKeyAttributes <- List.toArray config.NonKeyAttributes
+
+        config.ProjectionType
+        |> Option.iter (fun projType -> props.ProjectionType <- projType)
+
+        config.PartitionKey |> Option.iter (fun attr -> props.PartitionKey <- attr)
+
+        config.SortKey |> Option.iter (fun attr -> props.SortKey <- attr)
+
+        props
+
+    /// <summary>Sets the partition key for the Global Secondary Index (GSI).</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="attr">The attribute definition to use as the partition key.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     partitionKey (Attribute(Name = "gsiPk", Type = AttributeType.STRING))
+    /// }
+    /// </code>
+    [<CustomOperation("partitionKey")>]
+    member _.PartitionKey(config: GlobalSecondaryIndexConfig, attr: Attribute) =
+        { config with PartitionKey = Some attr }
+
+    /// <summary>Sets the partition key for the Global Secondary Index (GSI).</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="attrName">The attribute name for the partition key.</param>
+    /// <param name="attrType">The attribute type (STRING, NUMBER, or BINARY).</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     partitionKey "gsiPk" AttributeType.STRING
+    /// }
+    /// </code>
+    [<CustomOperation("partitionKey")>]
+    member _.PartitionKey(config: GlobalSecondaryIndexConfig, attrName: string, attrType: AttributeType) =
+        { config with
+            PartitionKey = Some(Attribute(Name = attrName, Type = attrType)) }
+
+    /// <summary>Sets the sort key for the Global Secondary Index (GSI).</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="attr">The attribute definition to use as the sort key.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     sortKey (Attribute(Name = "gsiSk", Type = AttributeType.NUMBER))
+    /// }
+    /// </code>
+    [<CustomOperation("sortKey")>]
+    member _.SortKey(config: GlobalSecondaryIndexConfig, attr: Attribute) = { config with SortKey = Some attr }
+
+    /// <summary>Sets the sort key for the Global Secondary Index (GSI).</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="attrName">The attribute name for the sort key.</param>
+    /// <param name="attrType">The attribute type (STRING, NUMBER, or BINARY).</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     sortKey "gsiSk" AttributeType.NUMBER
+    /// }
+    /// </code>
+    [<CustomOperation("sortKey")>]
+    member _.SortKey(config: GlobalSecondaryIndexConfig, attrName: string, attrType: AttributeType) =
+        { config with
+            SortKey = Some(Attribute(Name = attrName, Type = attrType)) }
+
+    /// <summary>Sets the projection type for the GSI.</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="projType">The projection type (ALL, KEYS_ONLY, or INCLUDE).</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     projectionType ProjectionType.ALL
+    /// }
+    /// </code>
+    [<CustomOperation("projectionType")>]
+    member _.ProjectionType(config: GlobalSecondaryIndexConfig, projType: ProjectionType) =
+        { config with
+            ProjectionType = Some projType }
+
+    /// <summary>Specifies additional non-key attributes to include in the GSI projection.</summary>
+    /// <remarks>Only used when <c>projectionType</c> is <c>INCLUDE</c>.</remarks>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="attrs">The list of non-key attribute names to include.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     projectionType ProjectionType.INCLUDE
+    ///     nonKeyAttributes [ "status"; "createdAt" ]
+    /// }
+    /// </code>
+    [<CustomOperation("nonKeyAttributes")>]
+    member _.NonKeyAttributes(config: GlobalSecondaryIndexConfig, attrs: string list) =
+        { config with NonKeyAttributes = attrs }
+
+    /// <summary>Sets the maximum on-demand read request units for the GSI.</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="max">The maximum read request units.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     maxReadRequestUnits 40000
+    /// }
+    /// </code>
+    [<CustomOperation("maxReadRequestUnits")>]
+    member _.MaxReadRequestUnits(config: GlobalSecondaryIndexConfig, max: int) =
+        { config with
+            MaxReadRequestUnits = Some max }
+
+    /// <summary>Sets the maximum on-demand write request units for the GSI.</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="max">The maximum write request units.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     maxWriteRequestUnits 40000
+    /// }
+    /// </code>
+    [<CustomOperation("maxWriteRequestUnits")>]
+    member _.MaxWriteRequestUnits(config: GlobalSecondaryIndexConfig, max: int) =
+        { config with
+            MaxWriteRequestUnits = Some max }
+
+    /// <summary>Sets the provisioned read capacity for the GSI.</summary>
+    /// <remarks>Only applicable when using PROVISIONED capacity mode.</remarks>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="read">The provisioned read capacity units.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     readCapacity 10
+    /// }
+    /// </code>
+    [<CustomOperation("readCapacity")>]
+    member _.ReadCapacity(config: GlobalSecondaryIndexConfig, read: int) =
+        { config with ReadCapacity = Some read }
+
+    /// <summary>Sets warm throughput settings for the GSI in on-demand mode.</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="warm">The warm throughput configuration.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     warmThroughput (WarmThroughput.fixed 1000.)
+    /// }
+    /// </code>
+    [<CustomOperation("warmThroughput")>]
+    member _.WarmThroughput(config: GlobalSecondaryIndexConfig, warm: IWarmThroughput) =
+        { config with
+            WarmThroughput = Some warm }
+
+    /// <summary>Sets the provisioned write capacity for the GSI.</summary>
+    /// <remarks>Only applicable when using PROVISIONED capacity mode.</remarks>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="write">The provisioned write capacity units.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     writeCapacity 10
+    /// }
+    /// </code>
+    [<CustomOperation("writeCapacity")>]
+    member _.WriteCapacity(config: GlobalSecondaryIndexConfig, write: int) =
+        { config with
+            WriteCapacity = Some write }
+
+    /// <summary>Sets the CloudWatch Contributor Insights specification for the GSI.</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="spec">The contributor insights specification.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     contributorInsightsSpecification (ContributorInsightsSpecification(Enabled = true))
+    /// }
+    /// </code>
+    [<CustomOperation("contributorInsightsSpecification")>]
+    member _.ContributorInsightsSpecification
+        (
+            config: GlobalSecondaryIndexConfig,
+            spec: ContributorInsightsSpecification
+        ) =
+        { config with
+            ContributorInsightsSpecification = Some spec }
+
+    /// <summary>Configures CloudWatch Contributor Insights for the GSI.</summary>
+    /// <param name="config">The current global secondary index configuration.</param>
+    /// <param name="enabled">Whether contributor insights are enabled.</param>
+    /// <param name="mode">The contributor insights mode.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     contributorInsightsSpecification true ContributorInsightsMode.CONTRIBUTOR_INSIGHTS
+    /// }
+    /// </code>
+    [<CustomOperation("contributorInsightsSpecification")>]
+    member _.ContributorInsightsSpecification
+        (
+            config: GlobalSecondaryIndexConfig,
+            enabled: bool,
+            mode: ContributorInsightsMode
+        ) =
+        { config with
+            ContributorInsightsSpecification = Some(ContributorInsightsSpecification(Enabled = enabled, Mode = mode)) }
+
 
 type ImportSourceConfig =
     { Bucket: IBucket option
@@ -132,25 +418,83 @@ type ImportSourceBuilder() =
 
 open Amazon.CDK.AWS.KMS
 
-type GlobalSecondaryIndexConfig =
-    { IndexName: string
-      PartitionKey: string * AttributeType
-      SortKey: (string * AttributeType) option
-      ProjectionType: ProjectionType option
-      NonKeyAttributes: string list option
-      ReadCapacity: float option
-      WriteCapacity: float option }
-
 type LocalSecondaryIndexConfig =
     { IndexName: string
-      SortKey: string * AttributeType
+      SortKey: IAttribute option
       ProjectionType: ProjectionType option
-      NonKeyAttributes: string list option }
+      NonKeyAttributes: string list }
 
+type LocalSecondaryIndexBuilder(indexName: string) =
 
-// ============================================================================
-// DynamoDB Table Configuration DSL
-// ============================================================================
+    member _.Yield(_: unit) : LocalSecondaryIndexConfig =
+        { IndexName = indexName
+          SortKey = None
+          ProjectionType = None
+          NonKeyAttributes = [] }
+
+    member _.Zero() : LocalSecondaryIndexConfig =
+        { IndexName = indexName
+          SortKey = None
+          ProjectionType = None
+          NonKeyAttributes = [] }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> LocalSecondaryIndexConfig) : LocalSecondaryIndexConfig = f ()
+
+    member _.Combine(c1: LocalSecondaryIndexConfig, c2: LocalSecondaryIndexConfig) : LocalSecondaryIndexConfig =
+        { c1 with
+            SortKey = c2.SortKey |> Option.orElse c1.SortKey
+            ProjectionType = c2.ProjectionType |> Option.orElse c1.ProjectionType
+            NonKeyAttributes = c1.NonKeyAttributes @ c2.NonKeyAttributes }
+
+    member inline x.For
+        (
+            cfg: LocalSecondaryIndexConfig,
+            [<InlineIfLambda>] f: unit -> LocalSecondaryIndexConfig
+        ) : LocalSecondaryIndexConfig =
+        let n = f ()
+        x.Combine(cfg, n)
+
+    member _.Run(cfg: LocalSecondaryIndexConfig) : LocalSecondaryIndexProps =
+        let props = LocalSecondaryIndexProps()
+        props.IndexName <- cfg.IndexName
+        cfg.SortKey |> Option.iter (fun sk -> props.SortKey <- sk)
+        cfg.ProjectionType |> Option.iter (fun pt -> props.ProjectionType <- pt)
+
+        if not (List.isEmpty cfg.NonKeyAttributes) then
+            props.NonKeyAttributes <- List.toArray cfg.NonKeyAttributes
+
+        props
+
+    /// <summary>Sets the sort key for the Local Secondary Index (LSI).</summary>
+    /// <param name="config">The current local secondary index configuration.</param>
+    /// <param name="attr">The attribute definition to use as the sort key.</param>
+    [<CustomOperation("sortKey")>]
+    member _.SortKey(config: LocalSecondaryIndexConfig, attr: Attribute) = { config with SortKey = Some attr }
+
+    /// <summary>Sets the sort key for the Local Secondary Index (LSI).</summary>
+    /// <param name="config">The current local secondary index configuration.</param>
+    /// <param name="attrName">The attribute name for the sort key.</param>
+    /// <param name="attrType">The attribute type (STRING, NUMBER, or BINARY).</param>
+    [<CustomOperation("sortKey")>]
+    member _.SortKey(config: LocalSecondaryIndexConfig, attrName: string, attrType: AttributeType) =
+        { config with
+            SortKey = Some(Attribute(Name = attrName, Type = attrType)) }
+
+    /// <summary>Sets the projection type for the LSI.</summary>
+    /// <param name="config">The current local secondary index configuration.</param>
+    /// <param name="projType">The projection type (ALL, KEYS_ONLY, or INCLUDE).</param>
+    [<CustomOperation("projectionType")>]
+    member _.ProjectionType(config: LocalSecondaryIndexConfig, projType: ProjectionType) =
+        { config with
+            ProjectionType = Some projType }
+
+    /// <summary>Specifies additional non-key attributes to include in the LSI projection.</summary>
+    /// <remarks>Only used when <c>projectionType</c> is <c>INCLUDE</c>.</remarks>
+    /// <param name="config">The current local secondary index configuration.</param>
+    /// <param name="attrs">The list of non-key attribute names to include.</param>
+    [<CustomOperation("nonKeyAttributes")>]
+    member _.NonKeyAttributes(config: LocalSecondaryIndexConfig, attrs: string list) =
+        { config with NonKeyAttributes = attrs }
 
 type TableGrantAccessType =
     | GrantReadData of IGrantable
@@ -171,8 +515,8 @@ type TableConfig =
       RemovalPolicy: RemovalPolicy option
       PointInTimeRecovery: bool option
       TimeToLiveAttribute: string option
-      GlobalSecondaryIndexes: GlobalSecondaryIndexConfig list
-      LocalSecondaryIndexes: LocalSecondaryIndexConfig list
+      GlobalSecondaryIndexes: GlobalSecondaryIndexProps list
+      LocalSecondaryIndexes: LocalSecondaryIndexProps list
       TableClass: TableClass option
       ContributorInsightsEnabled: bool option
       ImportSource: IImportSourceSpecification option
@@ -186,8 +530,8 @@ type TableSpec =
     { TableName: string
       ConstructId: string
       Props: TableProps
-      GlobalSecondaryIndexes: GlobalSecondaryIndexConfig list
-      LocalSecondaryIndexes: LocalSecondaryIndexConfig list
+      GlobalSecondaryIndexes: GlobalSecondaryIndexProps list
+      LocalSecondaryIndexes: LocalSecondaryIndexProps list
       Grant: TableGrantAccessType option
       mutable Table: ITable option }
 
@@ -226,6 +570,46 @@ type TableBuilder(name: string) =
           TableClass = None
           ContributorInsightsEnabled = None
           ImportSource = Some spec
+          Stream = None
+          KinesisStream = None
+          Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
+          EncryptionKey = None
+          Grant = None }
+
+    member _.Yield(gsi: GlobalSecondaryIndexProps) : TableConfig =
+        { TableName = name
+          ConstructId = None
+          PartitionKey = None
+          SortKey = None
+          BillingMode = None
+          RemovalPolicy = None
+          PointInTimeRecovery = Some true
+          TimeToLiveAttribute = None
+          GlobalSecondaryIndexes = [ gsi ]
+          LocalSecondaryIndexes = []
+          TableClass = None
+          ContributorInsightsEnabled = None
+          ImportSource = None
+          Stream = None
+          KinesisStream = None
+          Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
+          EncryptionKey = None
+          Grant = None }
+
+    member _.Yield(lsi: LocalSecondaryIndexProps) : TableConfig =
+        { TableName = name
+          ConstructId = None
+          PartitionKey = None
+          SortKey = None
+          BillingMode = None
+          RemovalPolicy = None
+          PointInTimeRecovery = Some true
+          TimeToLiveAttribute = None
+          GlobalSecondaryIndexes = []
+          LocalSecondaryIndexes = [ lsi ]
+          TableClass = None
+          ContributorInsightsEnabled = None
+          ImportSource = None
           Stream = None
           KinesisStream = None
           Encryption = Some TableEncryption.AWS_MANAGED // Security: Always encrypt at rest
@@ -293,27 +677,22 @@ type TableBuilder(name: string) =
         config.SortKey
         |> Option.iter (fun (name, attrType) -> props.SortKey <- Attribute(Name = name, Type = attrType))
 
-        // Production defaults: PAY_PER_REQUEST billing mode (Alex DeBrie / Rick Houlihan best practice)
-        props.BillingMode <- config.BillingMode |> Option.defaultValue BillingMode.PAY_PER_REQUEST
+        config.BillingMode |> Option.iter (fun mode -> props.BillingMode <- mode)
 
         config.RemovalPolicy
         |> Option.iter (fun policy -> props.RemovalPolicy <- System.Nullable<RemovalPolicy>(policy))
 
-        // Production defaults: Point-in-time recovery enabled (Alex DeBrie / Rick Houlihan best practice)
         let pitrEnabled = config.PointInTimeRecovery |> Option.defaultValue true
 
         if pitrEnabled then
             props.PointInTimeRecoverySpecification <-
                 PointInTimeRecoverySpecification(PointInTimeRecoveryEnabled = true)
 
-        // Time-to-live attribute (use TimeToLiveAttribute property)
         config.TimeToLiveAttribute
         |> Option.iter (fun attr -> props.TimeToLiveAttribute <- attr)
 
-        // Table class
         config.TableClass |> Option.iter (fun tc -> props.TableClass <- tc)
 
-        // Contributor insights
         config.ContributorInsightsEnabled
         |> Option.iter (fun enabled ->
             props.ContributorInsightsSpecification <- ContributorInsightsSpecification(Enabled = enabled))
@@ -481,158 +860,6 @@ type TableBuilder(name: string) =
         { config with
             TimeToLiveAttribute = Some attributeName }
 
-    /// <summary>Adds a Global Secondary Index (GSI) to the table. Essential for Alex DeBrie's single-table design.</summary>
-    /// <param name="config">The current table configuration.</param>
-    /// <param name="indexName">The name of the GSI.</param>
-    /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
-    /// <code lang="fsharp">
-    /// table "MyTable" {
-    ///     partitionKey "pk" AttributeType.STRING
-    ///     sortKey "sk" AttributeType.STRING
-    ///     globalSecondaryIndex "GSI1" ("gsi1pk", AttributeType.STRING)
-    /// }
-    /// </code>
-    [<CustomOperation("globalSecondaryIndex")>]
-    member _.GlobalSecondaryIndex(config: TableConfig, indexName: string, partitionKey: string * AttributeType) =
-        let gsi =
-            { IndexName = indexName
-              PartitionKey = partitionKey
-              SortKey = None
-              ProjectionType = None
-              NonKeyAttributes = None
-              ReadCapacity = None
-              WriteCapacity = None }
-
-        { config with
-            GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
-
-    /// <summary>Adds a Global Secondary Index with a sort key.</summary>
-    /// <param name="config">The current table configuration.</param>
-    /// <param name="indexName">The name of the GSI.</param>
-    /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
-    /// <param name="sortKey">The GSI sort key (attribute name and type).</param>
-    /// <code lang="fsharp">
-    /// table "MyTable" {
-    ///     partitionKey "pk" AttributeType.STRING
-    ///     sortKey "sk" AttributeType.STRING
-    ///     globalSecondaryIndexWithSort "GSI1" ("gsi1pk", AttributeType.STRING) ("gsi1sk", AttributeType.STRING)
-    /// }
-    /// </code>
-    [<CustomOperation("globalSecondaryIndexWithSort")>]
-    member _.GlobalSecondaryIndexWithSort
-        (
-            config: TableConfig,
-            indexName: string,
-            partitionKey: string * AttributeType,
-            sortKey: string * AttributeType
-        ) =
-        let gsi =
-            { IndexName = indexName
-              PartitionKey = partitionKey
-              SortKey = Some sortKey
-              ProjectionType = None
-              NonKeyAttributes = None
-              ReadCapacity = None
-              WriteCapacity = None }
-
-        { config with
-            GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
-
-    /// <summary>Adds a Global Secondary Index with custom projection.</summary>
-    /// <param name="config">The current table configuration.</param>
-    /// <param name="indexName">The name of the GSI.</param>
-    /// <param name="partitionKey">The GSI partition key (attribute name and type).</param>
-    /// <param name="sortKey">The GSI sort key (optional).</param>
-    /// <param name="projectionType">The projection type (ALL, KEYS_ONLY, or INCLUDE).</param>
-    /// <param name="nonKeyAttributes">Additional attributes to include (for INCLUDE projection).</param>
-    /// <code lang="fsharp">
-    /// table "MyTable" {
-    ///     partitionKey "pk" AttributeType.STRING
-    ///     globalSecondaryIndexWithProjection "GSI1" ("gsi1pk", AttributeType.STRING) None ProjectionType.KEYS_ONLY []
-    /// }
-    /// </code>
-    [<CustomOperation("globalSecondaryIndexWithProjection")>]
-    member _.GlobalSecondaryIndexWithProjection
-        (
-            config: TableConfig,
-            indexName: string,
-            partitionKey: string * AttributeType,
-            sortKey: (string * AttributeType) option,
-            projectionType: ProjectionType,
-            nonKeyAttributes: string list
-        ) =
-        let gsi =
-            { IndexName = indexName
-              PartitionKey = partitionKey
-              SortKey = sortKey
-              ProjectionType = Some projectionType
-              NonKeyAttributes =
-                if List.isEmpty nonKeyAttributes then
-                    None
-                else
-                    Some nonKeyAttributes
-              ReadCapacity = None
-              WriteCapacity = None }
-
-        { config with
-            GlobalSecondaryIndexes = config.GlobalSecondaryIndexes @ [ gsi ] }
-
-    /// <summary>Adds a Local Secondary Index (LSI) to the table.</summary>
-    /// <param name="config">The current table configuration.</param>
-    /// <param name="indexName">The name of the LSI.</param>
-    /// <param name="sortKey">The LSI sort key (attribute name and type).</param>
-    /// <code lang="fsharp">
-    /// table "MyTable" {
-    ///     partitionKey "pk" AttributeType.STRING
-    ///     sortKey "sk" AttributeType.STRING
-    ///     localSecondaryIndex "LSI1" ("lsi1sk", AttributeType.NUMBER)
-    /// }
-    /// </code>
-    [<CustomOperation("localSecondaryIndex")>]
-    member _.LocalSecondaryIndex(config: TableConfig, indexName: string, sortKey: string * AttributeType) =
-        let lsi =
-            { IndexName = indexName
-              SortKey = sortKey
-              ProjectionType = None
-              NonKeyAttributes = None }
-
-        { config with
-            LocalSecondaryIndexes = config.LocalSecondaryIndexes @ [ lsi ] }
-
-    /// <summary>Adds a Local Secondary Index with custom projection.</summary>
-    /// <param name="config">The current table configuration.</param>
-    /// <param name="indexName">The name of the LSI.</param>
-    /// <param name="sortKey">The LSI sort key (attribute name and type).</param>
-    /// <param name="projectionType">The projection type (ALL, KEYS_ONLY, or INCLUDE).</param>
-    /// <param name="nonKeyAttributes">Additional attributes to include (for INCLUDE projection).</param>
-    /// <code lang="fsharp">
-    /// table "MyTable" {
-    ///     partitionKey "pk" AttributeType.STRING
-    ///     localSecondaryIndexWithProjection "LSI1" ("lsi1sk", AttributeType.NUMBER) ProjectionType.ALL []
-    /// }
-    /// </code>
-    [<CustomOperation("localSecondaryIndexWithProjection")>]
-    member _.LocalSecondaryIndexWithProjection
-        (
-            config: TableConfig,
-            indexName: string,
-            sortKey: string * AttributeType,
-            projectionType: ProjectionType,
-            nonKeyAttributes: string list
-        ) =
-        let lsi =
-            { IndexName = indexName
-              SortKey = sortKey
-              ProjectionType = Some projectionType
-              NonKeyAttributes =
-                if List.isEmpty nonKeyAttributes then
-                    None
-                else
-                    Some nonKeyAttributes }
-
-        { config with
-            LocalSecondaryIndexes = config.LocalSecondaryIndexes @ [ lsi ] }
-
     /// <summary>Sets the table class for cost optimization.</summary>
     /// <param name="config">The current table configuration.</param>
     /// <param name="tableClass">The table class (STANDARD or STANDARD_INFREQUENT_ACCESS).</param>
@@ -792,3 +1019,28 @@ module DynamoDBBuilders =
     /// }
     /// </code>
     let importSource = ImportSourceBuilder()
+
+
+    /// <summary>Creates global secondary indexes for a DynamoDB table.</summary>
+    /// <param name="name">The index name.</param>
+    /// <code lang="fsharp">
+    /// globalSecondaryIndex "my-index" {
+    ///     partitionKey "gsiPk" AttributeType.STRING
+    ///     sortKey "gsiSk" AttributeType.NUMBER
+    ///     projectionType ProjectionType.ALL
+    /// }
+    /// </code>
+    let globalSecondaryIndex name = GlobalSecondaryIndexBuilder(name)
+
+
+    /// <summary>Creates local secondary indexes for a DynamoDB table.</summary>
+    /// <param name="name">The index name.</param>
+    /// <code lang="fsharp">
+    /// localSecondaryIndex "my-index" {
+    ///     partitionKey "lsiPk" AttributeType.STRING
+    ///     sortKey "lsiSk" AttributeType.NUMBER
+    ///     projectionType ProjectionType.ALL
+    ///     nonKeyAttributes [ "lsiNonKey1"; "lsiNonKey2" ]
+    /// }
+    /// </code>
+    let localSecondaryIndex name = LocalSecondaryIndexBuilder(name)
