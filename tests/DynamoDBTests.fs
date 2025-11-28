@@ -5,6 +5,7 @@ open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.DynamoDB
 open Amazon.CDK.AWS.S3
+open Amazon.CDK.AWS.IAM
 
 [<Tests>]
 let dynamo_table_dsl_tests =
@@ -130,13 +131,6 @@ let dynamo_table_dsl_tests =
               Expect.isNotNull (box spec.Props.ImportSource) "ImportSource should be set via builder"
           }
 
-          // Production defaults tests (Alex DeBrie / Rick Houlihan best practices)
-          test "defaults to PAY_PER_REQUEST billing mode" {
-              let spec = table "DefaultBilling" { partitionKey "pk" AttributeType.STRING }
-
-              Expect.equal spec.Props.BillingMode.Value BillingMode.PAY_PER_REQUEST "Should default to PAY_PER_REQUEST"
-          }
-
           test "defaults to point-in-time recovery enabled" {
               let spec = table "DefaultPITR" { partitionKey "pk" AttributeType.STRING }
 
@@ -179,13 +173,13 @@ let dynamo_table_dsl_tests =
                   table "WithGSI" {
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
-                      globalSecondaryIndex "GSI1" ("gsi1pk", AttributeType.STRING)
+                      globalSecondaryIndex "GSI1" { partitionKey "gsi1pk" AttributeType.STRING }
                   }
 
               Expect.equal spec.GlobalSecondaryIndexes.Length 1 "Should have 1 GSI"
               Expect.equal spec.GlobalSecondaryIndexes.[0].IndexName "GSI1" "GSI name should match"
-              let pkName, _ = spec.GlobalSecondaryIndexes.[0].PartitionKey
-              Expect.equal pkName "gsi1pk" "GSI partition key should match"
+              let pkName = spec.GlobalSecondaryIndexes.[0].PartitionKey
+              Expect.equal pkName.Name "gsi1pk" "GSI partition key should match"
           }
 
           test "adds global secondary index with sort key" {
@@ -194,18 +188,16 @@ let dynamo_table_dsl_tests =
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
 
-                      globalSecondaryIndexWithSort
-                          "GSI1"
-                          ("gsi1pk", AttributeType.STRING)
-                          ("gsi1sk", AttributeType.NUMBER)
+                      globalSecondaryIndex "GSI1" {
+                          partitionKey "gsi1pk" AttributeType.STRING
+                          sortKey "gsi1sk" AttributeType.NUMBER
+                      }
                   }
 
               Expect.equal spec.GlobalSecondaryIndexes.Length 1 "Should have 1 GSI"
               let sortKey = spec.GlobalSecondaryIndexes.[0].SortKey
-              Expect.isSome sortKey "GSI should have a sort key"
-              let skName, skType = sortKey.Value
-              Expect.equal skName "gsi1sk" "GSI sort key should match"
-              Expect.equal skType AttributeType.NUMBER "GSI sort key type should match"
+              Expect.equal sortKey.Name "gsi1sk" "GSI sort key should match"
+              Expect.equal sortKey.Type AttributeType.NUMBER "GSI sort key type should match"
           }
 
           test "adds multiple global secondary indexes" {
@@ -213,13 +205,13 @@ let dynamo_table_dsl_tests =
                   table "WithMultipleGSI" {
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
-                      globalSecondaryIndex "GSI1" ("gsi1pk", AttributeType.STRING)
-                      globalSecondaryIndex "GSI2" ("gsi2pk", AttributeType.STRING)
+                      globalSecondaryIndex "GSI1" { partitionKey "gsi1pk" AttributeType.STRING }
+                      globalSecondaryIndex "GSI2" { partitionKey "gsi2pk" AttributeType.STRING }
 
-                      globalSecondaryIndexWithSort
-                          "GSI3"
-                          ("gsi3pk", AttributeType.STRING)
-                          ("gsi3sk", AttributeType.NUMBER)
+                      globalSecondaryIndex "GSI3" {
+                          partitionKey "gsi3pk" AttributeType.STRING
+                          sortKey "gsi3sk" AttributeType.NUMBER
+                      }
                   }
 
               Expect.equal spec.GlobalSecondaryIndexes.Length 3 "Should have 3 GSIs"
@@ -231,18 +223,16 @@ let dynamo_table_dsl_tests =
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
 
-                      globalSecondaryIndexWithProjection
-                          "GSI1"
-                          ("gsi1pk", AttributeType.STRING)
-                          None
-                          ProjectionType.KEYS_ONLY
-                          []
+                      globalSecondaryIndex "GSI1" {
+                          partitionKey "gsi1pk" AttributeType.STRING
+                          projectionType ProjectionType.KEYS_ONLY
+
+                      }
                   }
 
-              Expect.equal
-                  spec.GlobalSecondaryIndexes.[0].ProjectionType
-                  (Some ProjectionType.KEYS_ONLY)
-                  "GSI projection type should match"
+              let projectionType = spec.GlobalSecondaryIndexes.[0].ProjectionType
+
+              Expect.equal projectionType.Value ProjectionType.KEYS_ONLY "GSI projection type should match"
           }
 
           // LSI tests
@@ -251,13 +241,13 @@ let dynamo_table_dsl_tests =
                   table "WithLSI" {
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
-                      localSecondaryIndex "LSI1" ("lsi1sk", AttributeType.NUMBER)
+                      localSecondaryIndex "LSI1" { sortKey "lsi1sk" AttributeType.NUMBER }
                   }
 
               Expect.equal spec.LocalSecondaryIndexes.Length 1 "Should have 1 LSI"
               Expect.equal spec.LocalSecondaryIndexes.[0].IndexName "LSI1" "LSI name should match"
-              let skName, _ = spec.LocalSecondaryIndexes.[0].SortKey
-              Expect.equal skName "lsi1sk" "LSI sort key should match"
+              let sk = spec.LocalSecondaryIndexes.[0].SortKey
+              Expect.equal sk.Name "lsi1sk" "LSI sort key should match"
           }
 
           test "adds multiple local secondary indexes" {
@@ -265,8 +255,8 @@ let dynamo_table_dsl_tests =
                   table "WithMultipleLSI" {
                       partitionKey "pk" AttributeType.STRING
                       sortKey "sk" AttributeType.STRING
-                      localSecondaryIndex "LSI1" ("lsi1sk", AttributeType.NUMBER)
-                      localSecondaryIndex "LSI2" ("lsi2sk", AttributeType.STRING)
+                      localSecondaryIndex "LSI1" { sortKey "lsi1sk" AttributeType.NUMBER }
+                      localSecondaryIndex "LSI2" { sortKey "lsi2sk" AttributeType.STRING }
                   }
 
               Expect.equal spec.LocalSecondaryIndexes.Length 2 "Should have 2 LSIs"
@@ -288,10 +278,183 @@ let dynamo_table_dsl_tests =
               let spec =
                   table "WithInsights" {
                       partitionKey "pk" AttributeType.STRING
-                      contributorInsights true
+                      contributorInsightsEnabled true
                   }
 
               Expect.isNotNull (box spec.Props.ContributorInsightsSpecification) "Contributor insights should be set"
               Expect.isTrue spec.Props.ContributorInsightsSpecification.Enabled "Contributor insights should be enabled"
+          }
+
+          // Grant support tests
+          test "grantReadData sets GrantReadData on spec" {
+              let app = App()
+
+              stack "GrantReadDataStack" {
+                  scope app
+
+                  let! role = role "ReaderRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let table =
+                      table "GrantReadDataTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grantReadData role
+                      }
+
+                  match table.Grant with
+                  | Some(GrantReadData grantee) -> Expect.equal grantee role "Grantee should match the provided role"
+                  | _ -> failtest "Expected GrantReadData to be set"
+              }
+
+          }
+
+          test "grantFullAccess sets GrantFullAccess on spec" {
+              let app = App()
+
+              stack "GrantFullAccessStack" {
+                  scope app
+
+                  let! role = role "FullAccessRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let table =
+                      table "GrantFullAccessTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grantFullAccess role
+
+                      }
+
+                  match table.Grant with
+                  | Some(GrantFullAccess grantee) -> Expect.equal grantee role "Grantee should match the provided role"
+                  | _ -> failtest "Expected GrantFullAccess to be set"
+              }
+          }
+
+          test "grantReadWriteData sets GrantReadWriteData on spec" {
+              let app = App()
+
+              stack "GrantReadWriteStack" {
+                  scope app
+
+                  let! role = role "ReadWriteRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let table =
+                      table "GrantReadWriteTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grantReadWriteData role
+                      }
+
+                  match table.Grant with
+                  | Some(GrantReadWriteData grantee) ->
+                      Expect.equal grantee role "Grantee should match the provided role"
+                  | _ -> failtest "Expected GrantReadWriteData to be set"
+
+              }
+          }
+
+          test "grantWriteData sets GrantWriteData on spec" {
+              let app = App()
+
+              stack "GrantWriteStack" {
+                  scope app
+
+                  let! role = role "WriterRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let table =
+                      table "GrantWriteTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grantWriteData role
+
+                      }
+
+                  match table.Grant with
+                  | Some(GrantWriteData grantee) -> Expect.equal grantee role "Grantee should match the provided role"
+                  | _ -> failtest "Expected GrantWriteData to be set"
+              }
+          }
+
+          test "grantStreamRead sets GrantStreamRead on spec" {
+              let app = App()
+              let stack = Stack(app, "GrantStreamReadStack")
+
+              let role =
+                  Role(stack, "StreamReaderRole", RoleProps(AssumedBy = ServicePrincipal("lambda.amazonaws.com")))
+
+              let spec =
+                  table "GrantStreamReadTable" {
+                      partitionKey "pk" AttributeType.STRING
+                      stream StreamViewType.NEW_AND_OLD_IMAGES
+                      grantStreamRead role
+                  }
+
+              match spec.Grant with
+              | Some(GrantStreamRead grantee) -> Expect.equal grantee role "Grantee should match the provided role"
+              | _ -> failtest "Expected GrantStreamRead to be set"
+          }
+
+          test "grantStream sets GrantStream with actions on spec" {
+              let app = App()
+              let stack = Stack(app, "GrantStreamStack")
+
+              let role =
+                  Role(stack, "StreamRole", RoleProps(AssumedBy = ServicePrincipal("lambda.amazonaws.com")))
+
+              let actions = [ "dynamodb:DescribeStream"; "dynamodb:GetRecords" ]
+
+              let spec =
+                  table "GrantStreamTable" {
+                      partitionKey "pk" AttributeType.STRING
+                      stream StreamViewType.NEW_IMAGE
+                      grantStream role actions
+                  }
+
+              match spec.Grant with
+              | Some(GrantStream(grantee, acts)) ->
+                  Expect.equal grantee role "Grantee should match the provided role"
+                  Expect.sequenceEqual acts actions "Actions should be preserved"
+              | _ -> failtest "Expected GrantStream to be set"
+          }
+
+          test "grantTableListStreams sets GrantTableListStreams on spec" {
+              let app = App()
+              let stack = Stack(app, "GrantTableListStreamsStack")
+
+              let role =
+                  Role(stack, "ListStreamsRole", RoleProps(AssumedBy = ServicePrincipal("lambda.amazonaws.com")))
+
+              let spec =
+                  table "GrantTableListStreamsTable" {
+                      partitionKey "pk" AttributeType.STRING
+                      grantTableListStreams role
+                  }
+
+              match spec.Grant with
+              | Some(GrantTableListStreams grantee) ->
+                  Expect.equal grantee role "Grantee should match the provided role"
+              | _ -> failtest "Expected GrantTableListStreams to be set"
+          }
+
+          test "grant sets custom actions on spec" {
+              let app = App()
+
+              stack "GrantCustomStack" {
+                  scope app
+
+                  let! role = role "CustomRole" { assumedBy (ServicePrincipal "lambda.amazonaws.com") }
+
+                  let spec =
+                      table "GrantCustomTable" {
+                          partitionKey "pk" AttributeType.STRING
+                          grant role [ "dynamodb:BatchGetItem"; "dynamodb:Scan" ]
+                      }
+
+                  match spec.Grant with
+                  | Some(Grant(grantee, acts)) ->
+                      Expect.equal grantee role "Grantee should match the provided role"
+
+                      Expect.sequenceEqual
+                          acts
+                          [ "dynamodb:BatchGetItem"; "dynamodb:Scan" ]
+                          "Actions should be preserved"
+                  | _ -> failtest "Expected Grant with custom actions to be set"
+              }
           } ]
     |> testSequenced

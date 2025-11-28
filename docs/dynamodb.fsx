@@ -79,10 +79,13 @@ stack "SingleTableDesign" {
         sortKey "sk" AttributeType.STRING
 
         // GSI for querying by entity type and date
-        globalSecondaryIndexWithSort "GSI1" ("gsi1pk", AttributeType.STRING) ("gsi1sk", AttributeType.STRING)
+        globalSecondaryIndex "GSI1" {
+            partitionKey "gsi1pk" AttributeType.STRING
+            sortKey "gsi1sk" AttributeType.STRING
+        }
 
         // GSI for querying by status
-        globalSecondaryIndex "GSI2" ("gsi2pk", AttributeType.STRING)
+        globalSecondaryIndex "GSI2" { partitionKey "gsi2pk" AttributeType.STRING }
 
         // Enable TTL for automatic cleanup of expired items
         timeToLive "expiresAt"
@@ -101,10 +104,10 @@ stack "TableWithLSI" {
         sortKey "productId" AttributeType.STRING
 
         // Query products by price within a category
-        localSecondaryIndex "PriceIndex" ("price", AttributeType.NUMBER)
+        localSecondaryIndex "PriceIndex" { sortKey "price" AttributeType.NUMBER }
 
         // Query products by rating within a category
-        localSecondaryIndex "RatingIndex" ("rating", AttributeType.NUMBER)
+        localSecondaryIndex "RatingIndex" { sortKey "rating" AttributeType.NUMBER }
     }
 }
 
@@ -135,12 +138,12 @@ stack "OptimizedGSI" {
         sortKey "timestamp" AttributeType.NUMBER
 
         // Only include specific attributes in the GSI
-        globalSecondaryIndexWithProjection
-            "StatusIndex"
-            ("status", AttributeType.STRING)
-            (Some("updatedAt", AttributeType.NUMBER))
-            ProjectionType.INCLUDE
-            [ "customerId"; "totalAmount" ]
+        globalSecondaryIndex "StatusIndex" {
+            partitionKey "status" AttributeType.STRING
+            sortKey "updatedAt" AttributeType.NUMBER
+            projectionType ProjectionType.INCLUDE
+            nonKeyAttributes [ "customerId"; "totalAmount" ]
+        }
     }
 }
 
@@ -153,7 +156,7 @@ Enable CloudWatch Contributor Insights to identify hot partition keys (Rick Houl
 stack "MonitoredTable" {
     table "HighTrafficData" {
         partitionKey "id" AttributeType.STRING
-        contributorInsights true
+        contributorInsightsEnabled true
     }
 }
 
@@ -183,22 +186,24 @@ stack "ProductionTable" {
         sortKey "sk" AttributeType.STRING
 
         // Access pattern indexes
-        globalSecondaryIndexWithSort "GSI1" ("gsi1pk", AttributeType.STRING) ("gsi1sk", AttributeType.STRING)
-        globalSecondaryIndexWithSort "GSI2" ("gsi2pk", AttributeType.STRING) ("gsi2sk", AttributeType.NUMBER)
+        globalSecondaryIndex "GSI2" {
+            partitionKey "gsi2pk" AttributeType.STRING
+            sortKey "gsi2sk" AttributeType.NUMBER
+        }
+
+        globalSecondaryIndex "GSI3" {
+            partitionKey "gsi2pk" AttributeType.STRING
+            sortKey "gsi2sk" AttributeType.NUMBER
+        }
 
         // Data lifecycle management
         timeToLive "ttl"
 
         // Operational excellence
-        contributorInsights true
+        contributorInsightsEnabled true
         stream StreamViewType.NEW_AND_OLD_IMAGES
 
-        // Production safety
         removalPolicy RemovalPolicy.RETAIN
-
-    // Defaults automatically applied:
-    // - billingMode = PAY_PER_REQUEST
-    // - pointInTimeRecovery = true
     }
 }
 
@@ -490,99 +495,6 @@ Run this checklist for every new table or major schema change to align with expe
 - [AWS Data Pipeline](https://aws.amazon.com/datapipeline/) - Import/export data
 - [AWS Database Migration Service](https://aws.amazon.com/dms/) - Migrate from other databases
 - [PartiQL](https://partiql.org/) - SQL-compatible query language for DynamoDB
-
-### Recommended Learning Path
-
-**Week 1 - Fundamentals:**
-
-1. Read [DynamoDB Core Components](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/HowItWorks.CoreComponents.html)
-2. Watch [DynamoDB Fundamentals Video](https://www.youtube.com/watch?v=sI-zciHAh-4)
-3. Create your first table with FsCDK (examples above)
-4. Practice queries and scans with NoSQL Workbench
-
-**Week 2 - Data Modeling:**
-
-1. Read [Alex DeBrie's One-to-Many Relationships](https://www.alexdebrie.com/posts/dynamodb-one-to-many/)
-2. Study [Access Pattern Design](https://www.alexdebrie.com/posts/dynamodb-design-process/)
-3. Model your application's entities and access patterns
-4. Learn about [Secondary Indexes](https://www.alexdebrie.com/posts/dynamodb-secondary-indexes/)
-
-**Week 3 - Advanced Patterns:**
-
-*)
-
-(*** hide ***)
-// Embedded video for Week 3
-(**
-### 📺 MUST WATCH: Rick Houlihan's Advanced Design Patterns (re:Invent 2019)
-
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; margin: 20px 0;">
-  <iframe 
-    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-    src="https://www.youtube.com/embed/6yqfmXiZTlM" 
-    title="Advanced Design Patterns for Amazon DynamoDB - Rick Houlihan" 
-    frameborder="0" 
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-    allowfullscreen>
-  </iframe>
-</pre>**Rick Houlihan (AWS Principal Technologist) - 250k+ views, 4.8★ rating**
-
-This is **the definitive DynamoDB masterclass**. Houlihan covers:
-- Single-table design principles and patterns
-- Advanced composite key strategies
-- Sparse index optimization techniques
-- Real-world examples from AWS customers at scale
-- Performance tuning for millions of requests/second
-
-**Why this matters:** After watching this 1-hour session, developers report "DynamoDB finally clicked" and "completely changed how I think about data modeling." This is mandatory viewing before designing production DynamoDB schemas.
-
-**Next Steps After Watching:**
-
-*)
-
-(**
-1. Read [Single-Table Design](https://www.alexdebrie.com/posts/dynamodb-single-table/) to reinforce concepts
-2. Learn [DynamoDB Transactions](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transaction-apis.html) for ACID guarantees
-4. Explore [DynamoDB Streams](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Streams.html)
-
-**Ongoing - Mastery:**
-
-- Buy [The DynamoDB Book](https://www.dynamodbbook.com/) by Alex DeBrie
-- Follow [Alex DeBrie's Blog](https://www.alexdebrie.com/)
-- Join [AWS Data Hero Program](https://aws.amazon.com/developer/community/heroes/)
-- Practice with [DynamoDB Toolbox](https://github.com/jeremydaly/dynamodb-toolbox)
-
-### Common Pitfalls: Lessons from the Trenches
-
-Avoid these mistakes highlighted in DeBrie's book and Houlihan's talks to prevent performance issues and high costs.
-
-**❌ Common Errors:**
-
-1. Treating DynamoDB like SQL (normalizing data) → Leads to expensive joins; use denormalization instead.
-2. Poor key design causing hot partitions → Results in throttling; always test cardinality.
-3. Overusing Scans → Consumes capacity inefficiently; redesign for Query.
-4. Ignoring index costs → GSIs double write costs; monitor and prune.
-5. Forgetting backups → Data loss risk; keep PITR enabled.
-
-**✅ Pro Tips:**
-
-1. Prototype schemas in NoSQL Workbench before coding.
-2. Use PartiQL for SQL-like queries on complex data.
-3. Integrate with AppSync for GraphQL APIs.
-4. Scale globally with Global Tables for <100ms latency.
-
-### Experts to Follow for Ongoing Learning
-
-![AWS Heroes](img/awsheros.png)
-*DynamoDB experts and AWS Heroes who have shaped NoSQL best practices*
-
-- **Alex DeBrie** - DynamoDB expert, author of "The DynamoDB Book"
-  - [Twitter/X: @alexbdebrie](https://twitter.com/alexbdebrie)
-  - [Website: DynamoDBGuide.com](https://www.dynamodbguide.com/)
-- **Rick Houlihan** - AWS Principal Technologist, DynamoDB scaling expert
-  - [LinkedIn](https://www.linkedin.com/in/rick-houlihan/)
-- **Jeremy Daly** - Serverless Hero, DynamoDB tools creator
-  - [Twitter/X: @jeremy_daly](https://twitter.com/jeremy_daly)
 
 ### FsCDK Integration Highlights
 FsCDK makes best practices effortless with defaults like on-demand billing and PITR, while supporting advanced features like custom GSIs. See the examples above for production patterns.
