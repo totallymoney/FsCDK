@@ -314,7 +314,7 @@ type SSMDocumentBuilder(name: string) =
     /// <param name="id">The construct ID to set</param>
     /// <code lang="fsharp">
     /// ssmDocument "InstallSoftware" {
-    /// 	constructId "InstallSoftware"
+    ///     constructId "InstallSoftware"
     /// }
     /// </code>
     [<CustomOperation("constructId")>]
