@@ -29,6 +29,7 @@ open Amazon.CDK.AWS.AppSync
 open Amazon.CDK.AWS.APIGateway
 open Amazon.CDK.AWS.ECS
 open Amazon.CDK.AWS.CloudTrail
+open Amazon.CDK.AWS.SSM
 //open Amazon.CDK.AWS.CloudHSMV2
 
 // ============================================================================
@@ -103,6 +104,8 @@ type Operation =
     | EfsFileSystemOp of EfsFileSystemSpec
     | PolicyOp of PolicySpec
     | UserOp of UserSpec
+    | SSMParameterOp of SSMParameterSpec
+    | SSMDocumentOp of SSMDocumentSpec
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -568,6 +571,16 @@ module StackOperations =
         | UserOp userSpec ->
             let user = User(stack, userSpec.ConstructId, userSpec.Props)
             userSpec.User <- Some user
+        | SSMParameterOp ssmParameterSpec ->
+            let parameter =
+                StringParameter(stack, ssmParameterSpec.ConstructId, ssmParameterSpec.Props)
+
+            ssmParameterSpec.Parameter <- Some parameter
+        | SSMDocumentOp ssmDocumentSpec ->
+            let document =
+                CfnDocument(stack, ssmDocumentSpec.ConstructId, ssmDocumentSpec.Props)
+
+            ssmDocumentSpec.Document <- Some document
 
 
 // ============================================================================
@@ -655,6 +668,10 @@ type StackBuilder(name: string) =
           Operations = [] }
 
     member this.Yield(tableSpec: TableSpec) : StackConfig = this.Init(TableOp tableSpec)
+
+    member this.Yield(ssmParameter: SSMParameterSpec) : StackConfig = this.Init(SSMParameterOp ssmParameter)
+
+    member this.Yield(ssmDocument: SSMDocumentSpec) : StackConfig = this.Init(SSMDocumentOp ssmDocument)
 
     member this.Yield(tableSpec: EC2InstanceSpec) : StackConfig = this.Init(EC2InstanceOp tableSpec)
 
@@ -822,6 +839,16 @@ type StackBuilder(name: string) =
             (fun s -> s.SecurityGroupName)
             spec
             cont
+
+    member inline this.Bind
+        (
+            spec: SSMParameterSpec,
+            [<InlineIfLambda>] cont: StringParameter -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield SSMParameterOp (fun s -> s.Parameter) "SSM Parameter" (fun s -> s.ParameterName) spec cont
+
+    member inline this.Bind(spec: SSMDocumentSpec, [<InlineIfLambda>] cont: CfnDocument -> StackConfig) : StackConfig =
+        this.BindViaYield SSMDocumentOp (fun s -> s.Document) "SSM Document" (fun s -> s.DocumentName) spec cont
 
     member inline this.Bind(spec: BucketSpec, [<InlineIfLambda>] cont: IBucket -> StackConfig) : StackConfig =
         this.BindViaYield BucketOp (fun s -> s.Bucket) "Bucket" (fun s -> s.BucketName) spec cont
