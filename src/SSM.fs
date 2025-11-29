@@ -362,7 +362,7 @@ type SSMDocumentBuilder(name: string) =
     /// <param name="targetType">The target type to store</param>
     /// <code lang="fsharp">
     /// ssmDocument "InstallSoftware" {
-    /// 	targetType "/AWS::EC2::Instance"
+    ///     targetType "/AWS::EC2::Instance"
     /// }
     /// </code>
     [<CustomOperation("targetType")>]
