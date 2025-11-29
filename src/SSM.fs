@@ -437,7 +437,7 @@ type SSMDocumentBuilder(name: string) =
     /// <param name="versionName">The version name to set</param>
     /// <code lang="fsharp">
     /// ssmDocument "InstallSoftware" {
-    /// 	versionName "1.0"
+    ///         versionName "1.0"
     /// }
     /// </code>
     [<CustomOperation("versionName")>]
