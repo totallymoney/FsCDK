@@ -424,7 +424,7 @@ type SSMDocumentBuilder(name: string) =
     /// <param name="updateMethod">The update method to set</param>
     /// <code lang="fsharp">
     /// ssmDocument "InstallSoftware" {
-    /// 	updateMethod "CreateUpdate"
+    ///     updateMethod "CreateUpdate"
     /// }
     /// </code>
     [<CustomOperation("updateMethod")>]
