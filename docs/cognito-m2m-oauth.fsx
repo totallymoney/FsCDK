@@ -50,7 +50,7 @@ stack "M2MAuth" {
         }
 
     // Define OAuth resource server with custom scopes
-    resourceServer "ApiResourceServer" {
+    userPoolResourceServer "ApiResourceServer" {
         userPool myUserPool
         identifier "api"
         name "API Resource Server"
@@ -96,7 +96,7 @@ stack "CompleteM2MOAuth" {
         }
 
     // Resource server with granular scopes
-    resourceServer "ApiResourceServer" {
+    userPoolResourceServer "ApiResourceServer" {
         userPool myUserPool
         identifier "api"
         scope "read" "Read access to resources"

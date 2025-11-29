@@ -132,9 +132,9 @@ let tests =
                       userPool up
                       identifier "api"
                       name "API Resource Server"
-                      scope ("read", "Read access")
-                      scope ("write", "Write access")
-                      scope ("admin", "Admin access")
+                      scope "read" "Read access"
+                      scope "write" "Write access"
+                      scope "admin" "Admin access"
                   }
 
               Expect.equal spec.Props.Identifier "api" "Identifier should be 'api'"

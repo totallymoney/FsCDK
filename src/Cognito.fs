@@ -1614,18 +1614,18 @@ type UserPoolResourceServerBuilder(name: string) =
 
     /// <summary>Adds a single scope from a name/description tuple.</summary>
     /// <param name="config">The current resource server configuration.</param>
-    /// <param name="sName">The scope name.</param>
-    /// <param name="sDesc">The scope description.</param>
+    /// <param name="name">The scope name.</param>
+    /// <param name="description">The scope description.</param>
     /// <code lang="fsharp">
     /// userPoolResourceServer "ApiServer" {
-    ///     scope ("admin", "Admin access")
+    ///     scope "admin" "Admin access"
     /// }
     /// </code>
     [<CustomOperation("scope")>]
-    member _.Scope(config: UserPoolResourceServerConfig, (sName, sDesc): string * string) =
+    member _.Scope(config: UserPoolResourceServerConfig, name: string, description: string) =
         { config with
             Scopes =
-                ResourceServerScopeProps(ScopeName = sName, ScopeDescription = sDesc)
+                ResourceServerScopeProps(ScopeName = name, ScopeDescription = description)
                 :: config.Scopes }
 
 // ============================================================================
@@ -1727,7 +1727,7 @@ module CognitoBuilders =
     ///     userPool myUserPool
     ///     identifier "api"
     ///     name "API Resource Server"
-    ///     scope ("read", "Read access")
+    ///     scope "read" "Read access"
     /// }
     /// </code>
     let userPoolResourceServer name = UserPoolResourceServerBuilder(name)
