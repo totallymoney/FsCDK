@@ -325,7 +325,7 @@ type SSMDocumentBuilder(name: string) =
     /// <param name="content">The content to store</param>
     /// <code lang="fsharp">
     /// ssmDocument "InstallSoftware" {
-    /// 	content (powerShellRunCommand ["choco install nodejs"])
+    ///     content (powerShellRunCommand ["choco install nodejs"])
     /// }
     /// </code>
     [<CustomOperation("content")>]
