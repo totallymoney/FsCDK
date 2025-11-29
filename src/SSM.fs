@@ -102,7 +102,6 @@ type SSMParameterBuilder(name: string) =
         config.SimpleName |> Option.iter (fun v -> props.SimpleName <- v)
 
 
-
         { ParameterName = parameterName
           ConstructId = constructId
           Props = props
