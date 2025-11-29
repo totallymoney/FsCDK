@@ -349,7 +349,7 @@ type SSMDocumentBuilder(name: string) =
     /// <param name="format">The document format to store</param>
     /// <code lang="fsharp">
     /// ssmDocument "InstallSoftware" {
-    /// 	documentFormat "YAML"
+    ///     documentFormat "YAML"
     /// }
     /// </code>
     [<CustomOperation("documentFormat")>]
