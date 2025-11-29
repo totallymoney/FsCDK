@@ -375,7 +375,7 @@ type SSMDocumentBuilder(name: string) =
     /// <param name="tag">The tag to add</param>
     /// <code lang="fsharp">
     /// ssmDocument "InstallSoftware" {
-    /// 	tag (CfnTag(Key= "Environment", Value="Production"))
+    ///     tag (CfnTag(Key= "Environment", Value="Production"))
     /// }
     /// </code>
     [<CustomOperation("tag")>]
