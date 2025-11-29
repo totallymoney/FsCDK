@@ -388,7 +388,7 @@ type SSMDocumentBuilder(name: string) =
     /// <param name="tags">The tags to set</param>
     /// <code lang="fsharp">
     /// ssmDocument "InstallSoftware" {
-    /// 	tags [CfnTag(Key= "Environment", Value="Production")]
+    ///     tags [CfnTag(Key= "Environment", Value="Production")]
     /// }
     /// </code>
     [<CustomOperation("tags")>]
