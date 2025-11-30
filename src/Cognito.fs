@@ -1605,7 +1605,7 @@ type UserPoolResourceServerBuilder(name: string) =
     /// }
     /// </code>
     [<CustomOperation("scopes")>]
-    member _.Scope(config: UserPoolResourceServerConfig, scopes: (string * string) list) =
+    member _.Scopes(config: UserPoolResourceServerConfig, scopes: (string * string) list) =
         let scopes =
             scopes
             |> List.map (fun (sName, sDesc) -> ResourceServerScopeProps(ScopeName = sName, ScopeDescription = sDesc))
