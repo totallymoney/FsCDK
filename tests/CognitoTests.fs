@@ -107,7 +107,7 @@ let tests =
               let mutable ex: exn option = None
 
               try
-                  let _ = resourceServer "ApiServer" { () }
+                  let _ = userPoolResourceServer "ApiServer" { () }
                   ()
               with e ->
                   ex <- Some e
@@ -128,7 +128,7 @@ let tests =
               let up = new UserPool(stack, "UP")
 
               let spec =
-                  resourceServer "ApiServer" {
+                  userPoolResourceServer "ApiServer" {
                       userPool up
                       identifier "api"
                       name "API Resource Server"
@@ -138,7 +138,7 @@ let tests =
                   }
 
               Expect.equal spec.Props.Identifier "api" "Identifier should be 'api'"
-              Expect.equal spec.Props.Name "API Resource Server" "Name should be set"
+              Expect.equal spec.Props.UserPoolResourceServerName "API Resource Server" "Name should be set"
               Expect.isNotNull spec.Props.Scopes "Scopes should be set"
 
           } ]

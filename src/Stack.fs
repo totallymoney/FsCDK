@@ -227,7 +227,7 @@ module StackOperations =
         | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
 
         | UserPoolResourceServerOp uprsSpec ->
-            let rs = CfnUserPoolResourceServer(stack, uprsSpec.ConstructId, uprsSpec.Props)
+            let rs = UserPoolResourceServer(stack, uprsSpec.ConstructId, uprsSpec.Props)
             uprsSpec.ResourceServer <- Some rs
 
         | NetworkLoadBalancerOp nlbSpec ->
@@ -929,6 +929,19 @@ type StackBuilder(name: string) =
 
     member inline this.Bind(spec: VpcLinkSpec, [<InlineIfLambda>] cont: IVpcLink -> StackConfig) : StackConfig =
         this.BindViaYield VpcLinkOp (fun s -> s.VpcLink) "VpcLink" (fun s -> s.VpcLinkName) spec cont
+
+    member inline this.Bind
+        (
+            spec: UserPoolClientSpec,
+            [<InlineIfLambda>] cont: IUserPoolClient -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield
+            UserPoolClientOp
+            (fun s -> s.UserPoolClient)
+            "UserPoolClient"
+            (fun s -> s.ClientName)
+            spec
+            cont
 
     member inline this.Bind
         (
