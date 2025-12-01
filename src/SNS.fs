@@ -15,12 +15,20 @@ type TopicConfig =
       ConstructId: string option // Optional custom construct ID
       DisplayName: string option
       FifoTopic: bool option
-      ContentBasedDeduplication: bool option }
+      ContentBasedDeduplication: bool option
+      EnforceSSL: bool option
+      FifoThroughputScope: FifoThroughputScope option
+      LoggingConfigs: ILoggingConfig list
+      MasterKey: Amazon.CDK.AWS.KMS.IKey option
+      MessageRetentionPeriodInDays: float option
+      SignatureVersion: string option
+      TracingConfig: TracingConfig option }
 
 type TopicSpec =
     { TopicName: string
       ConstructId: string // Construct ID for CDK
-      Props: TopicProps }
+      Props: TopicProps
+      mutable Topic: ITopic option }
 
 type TopicBuilder(name: string) =
     member _.Yield(_: unit) : TopicConfig =
@@ -28,14 +36,28 @@ type TopicBuilder(name: string) =
           ConstructId = None
           DisplayName = None
           FifoTopic = None
-          ContentBasedDeduplication = None }
+          ContentBasedDeduplication = None
+          EnforceSSL = None
+          FifoThroughputScope = None
+          LoggingConfigs = []
+          MasterKey = None
+          MessageRetentionPeriodInDays = None
+          SignatureVersion = None
+          TracingConfig = None }
 
     member _.Zero() : TopicConfig =
         { TopicName = name
           ConstructId = None
           DisplayName = None
           FifoTopic = None
-          ContentBasedDeduplication = None }
+          ContentBasedDeduplication = None
+          EnforceSSL = None
+          FifoThroughputScope = None
+          LoggingConfigs = []
+          MasterKey = None
+          MessageRetentionPeriodInDays = None
+          SignatureVersion = None
+          TracingConfig = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> TopicConfig) : TopicConfig = f ()
 
@@ -46,35 +68,62 @@ type TopicBuilder(name: string) =
           FifoTopic = state2.FifoTopic |> Option.orElse state1.FifoTopic
           ContentBasedDeduplication =
             state2.ContentBasedDeduplication
-            |> Option.orElse state1.ContentBasedDeduplication }
+            |> Option.orElse state1.ContentBasedDeduplication
+          EnforceSSL = state2.EnforceSSL |> Option.orElse state1.EnforceSSL
+          FifoThroughputScope = state2.FifoThroughputScope |> Option.orElse state1.FifoThroughputScope
+          LoggingConfigs =
+            if state2.LoggingConfigs.IsEmpty then
+                state1.LoggingConfigs
+            else
+                state2.LoggingConfigs
+          MasterKey = state2.MasterKey |> Option.orElse state1.MasterKey
+          MessageRetentionPeriodInDays =
+            state2.MessageRetentionPeriodInDays
+            |> Option.orElse state1.MessageRetentionPeriodInDays
+          SignatureVersion = state2.SignatureVersion |> Option.orElse state1.SignatureVersion
+          TracingConfig = state2.TracingConfig |> Option.orElse state1.TracingConfig }
 
     member inline x.For(config: TopicConfig, [<InlineIfLambda>] f: unit -> TopicConfig) : TopicConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
     member _.Run(config: TopicConfig) : TopicSpec =
-        // Topic name is required
         let topicName = config.TopicName
-        // Construct ID defaults to topic name if not specified
         let constructId = config.ConstructId |> Option.defaultValue topicName
 
         let props = TopicProps()
 
-        // Set topic name
         props.TopicName <- topicName
 
-        // Set optional properties
         config.DisplayName |> Option.iter (fun d -> props.DisplayName <- d)
         config.FifoTopic |> Option.iter (fun f -> props.Fifo <- f)
 
         config.ContentBasedDeduplication
         |> Option.iter (fun c -> props.ContentBasedDeduplication <- c)
 
+        config.EnforceSSL |> Option.iter (fun e -> props.EnforceSSL <- e)
+
+        config.FifoThroughputScope
+        |> Option.iter (fun f -> props.FifoThroughputScope <- f)
+
+        if not config.LoggingConfigs.IsEmpty then
+            props.LoggingConfigs <- List.toArray config.LoggingConfigs
+
+        config.MasterKey |> Option.iter (fun k -> props.MasterKey <- k)
+
+        config.MessageRetentionPeriodInDays
+        |> Option.iter (fun d -> props.MessageRetentionPeriodInDays <- d)
+
+        config.SignatureVersion |> Option.iter (fun s -> props.SignatureVersion <- s)
+        config.TracingConfig |> Option.iter (fun t -> props.TracingConfig <- t)
+
         { TopicName = topicName
           ConstructId = constructId
-          Props = props }
+          Props = props
+          Topic = None }
 
     /// <summary>Sets the construct ID for the topic.</summary>
+    /// <param name="config">The topic configuration.</param>
     /// <param name="id">The construct ID.</param>
     /// <code lang="fsharp">
     /// topic "MyTopic" {
@@ -118,6 +167,96 @@ type TopicBuilder(name: string) =
     member _.ContentBasedDeduplication(config: TopicConfig, enabled: bool) =
         { config with
             ContentBasedDeduplication = Some enabled }
+
+    /// <summary>Enforces SSL/TLS for all topic communications.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="enforce">Whether to enforce SSL.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     enforceSSL true
+    /// }
+    /// </code>
+    [<CustomOperation("enforceSSL")>]
+    member _.EnforceSSL(config: TopicConfig, enforce: bool) =
+        { config with
+            EnforceSSL = Some enforce }
+
+    /// <summary>Sets the throughput scope for FIFO topics.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="scope">The FIFO throughput scope (PerTopic or PerMessageGroupId).</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic.fifo" {
+    ///     fifo true
+    ///     fifoThroughputScope FifoThroughputScope.PerMessageGroupId
+    /// }
+    /// </code>
+    [<CustomOperation("fifoThroughputScope")>]
+    member _.FifoThroughputScope(config: TopicConfig, scope: FifoThroughputScope) =
+        { config with
+            FifoThroughputScope = Some scope }
+
+    /// <summary>Configures logging for the topic.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="loggingConfigs">List of logging configurations.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     loggingConfigs [loggingConfig1; loggingConfig2]
+    /// }
+    /// </code>
+    [<CustomOperation("loggingConfigs")>]
+    member _.LoggingConfigs(config: TopicConfig, loggingConfigs: ILoggingConfig list) =
+        { config with
+            LoggingConfigs = loggingConfigs }
+
+    /// <summary>Sets the KMS master key for topic encryption.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="key">The KMS key to use for encryption.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     masterKey myKmsKey
+    /// }
+    /// </code>
+    [<CustomOperation("masterKey")>]
+    member _.MasterKey(config: TopicConfig, key: Amazon.CDK.AWS.KMS.IKey) = { config with MasterKey = Some key }
+
+    /// <summary>Sets the message retention period in days.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="days">Number of days to retain messages.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     messageRetentionPeriodInDays 7.0
+    /// }
+    /// </code>
+    [<CustomOperation("messageRetentionPeriodInDays")>]
+    member _.MessageRetentionPeriodInDays(config: TopicConfig, days: float) =
+        { config with
+            MessageRetentionPeriodInDays = Some days }
+
+    /// <summary>Sets the signature version for message signing.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="version">The signature version (e.g., "1" or "2").</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     signatureVersion "2"
+    /// }
+    /// </code>
+    [<CustomOperation("signatureVersion")>]
+    member _.SignatureVersion(config: TopicConfig, version: string) =
+        { config with
+            SignatureVersion = Some version }
+
+    /// <summary>Enables tracing configuration for the topic.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="tracingConfig">The tracing configuration (Active or PassThrough).</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     tracingConfig TracingConfig.ACTIVE
+    /// }
+    /// </code>
+    [<CustomOperation("tracingConfig")>]
+    member _.TracingConfig(config: TopicConfig, tracingConfig: TracingConfig) =
+        { config with
+            TracingConfig = Some tracingConfig }
 
 // SNS Subscription types
 type SubscriptionEndpointType =
