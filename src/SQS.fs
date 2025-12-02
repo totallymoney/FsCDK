@@ -14,7 +14,6 @@ type QueueConfig =
       ConstructId: string option
       VisibilityTimeout: float option
       RetentionPeriod: float option
-      FifoQueue: bool option
       ContentBasedDeduplication: bool option
       MaxReceiveCount: int option
       DeadLetterQueueName: string option
@@ -44,7 +43,6 @@ type QueueBuilder(name: string) =
           ConstructId = None
           VisibilityTimeout = None
           RetentionPeriod = None
-          FifoQueue = None
           ContentBasedDeduplication = None
           MaxReceiveCount = None
           DeadLetterQueueName = None
@@ -67,7 +65,6 @@ type QueueBuilder(name: string) =
           ConstructId = None
           VisibilityTimeout = None
           RetentionPeriod = None
-          FifoQueue = None
           ContentBasedDeduplication = None
           MaxReceiveCount = None
           DeadLetterQueueName = None
@@ -92,7 +89,6 @@ type QueueBuilder(name: string) =
           ConstructId = state2.ConstructId |> Option.orElse state1.ConstructId
           VisibilityTimeout = state2.VisibilityTimeout |> Option.orElse state1.VisibilityTimeout
           RetentionPeriod = state2.RetentionPeriod |> Option.orElse state1.RetentionPeriod
-          FifoQueue = state2.FifoQueue |> Option.orElse state1.FifoQueue
           ContentBasedDeduplication =
             state2.ContentBasedDeduplication
             |> Option.orElse state1.ContentBasedDeduplication
@@ -131,8 +127,6 @@ type QueueBuilder(name: string) =
 
         config.RetentionPeriod
         |> Option.iter (fun r -> props.RetentionPeriod <- Duration.Seconds(r))
-
-        config.FifoQueue |> Option.iter (fun f -> props.Fifo <- f)
 
         config.ContentBasedDeduplication
         |> Option.iter (fun c -> props.ContentBasedDeduplication <- c)
@@ -201,11 +195,11 @@ type QueueBuilder(name: string) =
     /// <param name="seconds">The retention period in seconds.</param>
     /// <code lang="fsharp">
     /// queue "MyQueue" {
-    ///     messageRetention 345600.0 // 4 days
+    ///     retentionPeriod 345600.0 // 4 days
     /// }
     /// </code>
-    [<CustomOperation("messageRetention")>]
-    member _.MessageRetention(config: QueueConfig, seconds: float) =
+    [<CustomOperation("retentionPeriod")>]
+    member _.RetentionPeriod(config: QueueConfig, seconds: float) =
         { config with
             RetentionPeriod = Some seconds }
 
@@ -218,7 +212,7 @@ type QueueBuilder(name: string) =
     /// }
     /// </code>
     [<CustomOperation("fifo")>]
-    member _.Fifo(config: QueueConfig, isFifo: bool) = { config with FifoQueue = Some isFifo }
+    member _.Fifo(config: QueueConfig, isFifo: bool) = { config with Fifo = Some isFifo }
 
     /// <summary>Enables content-based deduplication for FIFO queues.</summary>
     /// <param name="config">The queue configuration.</param>
@@ -254,11 +248,11 @@ type QueueBuilder(name: string) =
     /// <param name="delay">The delay duration.</param>
     /// <code lang="fsharp">
     /// queue "MyQueue" {
-    ///     delaySeconds (Duration.Seconds(15.0))
+    ///     deliveryDelay (Duration.Seconds(15.0))
     /// }
     /// </code>
-    [<CustomOperation("delaySeconds")>]
-    member _.DelaySeconds(config: QueueConfig, delay: Duration) =
+    [<CustomOperation("deliveryDelay")>]
+    member _.DeliveryDelay(config: QueueConfig, delay: Duration) =
         { config with
             DeliveryDelay = Some delay }
 
