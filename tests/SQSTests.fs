@@ -148,4 +148,41 @@ let sqs_queue_dsl_tests =
                   "MaxMessageSizeBytes should be null when not configured"
 
               Expect.isNull (box spec.Props.RemovalPolicy) "RemovalPolicy should be null when not configured"
+          }
+
+          test "applies retention period" {
+              let spec = queue "MyQueue" { retentionPeriod 345600.0 }
+
+              Expect.isNotNull (box spec.Props.RetentionPeriod) "RetentionPeriod should be set"
+          }
+
+          test "applies visibility timeout" {
+              let spec = queue "MyQueue" { visibilityTimeout 30.0 }
+
+              Expect.isNotNull (box spec.Props.VisibilityTimeout) "VisibilityTimeout should be set"
+          }
+
+          test "applies delivery delay" {
+              let spec = queue "MyQueue" { deliveryDelay (Duration.Seconds(15.0)) }
+
+              Expect.isNotNull (box spec.Props.DeliveryDelay) "DeliveryDelay should be set"
+          }
+
+          test "applies data key reuse" {
+              let spec = queue "MyQueue" { dataKeyReuse (Duration.Hours(1.0)) }
+
+              Expect.isNotNull (box spec.Props.DataKeyReuse) "DataKeyReuse should be set"
+          }
+
+          test "applies receive message wait time" {
+              let spec = queue "MyQueue" { receiveMessageWaitTime (Duration.Seconds(20.0)) }
+
+              Expect.isNotNull (box spec.Props.ReceiveMessageWaitTime) "ReceiveMessageWaitTime should be set"
+          }
+
+          test "applies redrive allow policy" {
+              let policy = RedriveAllowPolicy(RedrivePermission = RedrivePermission.ALLOW_ALL)
+              let spec = queue "MyDLQ" { redriveAllowPolicy policy }
+
+              Expect.equal spec.Props.RedriveAllowPolicy policy "RedriveAllowPolicy should be set"
           } ]
