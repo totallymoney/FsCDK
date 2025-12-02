@@ -62,7 +62,7 @@ stack "Dev" {
     }
 
     queue "users-dlq" {
-        messageRetention (7.0 * 24.0 * 3600.0) // 7 days
+        retentionPeriod (7.0 * 24.0 * 3600.0) // 7 days
     }
 
     queue "users-queue" {
