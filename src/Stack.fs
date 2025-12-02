@@ -164,7 +164,10 @@ module StackOperations =
 
         | GrantOp grantSpec -> Grants.processGrant stack grantSpec
 
-        | TopicOp topicSpec -> Topic(stack, topicSpec.ConstructId, topicSpec.Props) |> ignore
+        | TopicOp topicSpec ->
+            let topic = Topic(stack, topicSpec.ConstructId, topicSpec.Props)
+
+            topicSpec.Topic <- Some topic
 
         | QueueOp queueSpec ->
             let queue = Queue(stack, queueSpec.ConstructId, queueSpec.Props)
@@ -906,6 +909,9 @@ type StackBuilder(name: string) =
             (fun s -> s.InstanceName)
             spec
             cont
+
+    member inline this.Bind(spec: TopicSpec, [<InlineIfLambda>] cont: ITopic -> StackConfig) : StackConfig =
+        this.BindViaYield TopicOp (fun s -> s.Topic) "Topic" (fun s -> s.TopicName) spec cont
 
     member inline this.Bind
         (
