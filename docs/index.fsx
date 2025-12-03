@@ -62,7 +62,7 @@ stack "Dev" {
     }
 
     queue "users-dlq" {
-        messageRetention (7.0 * 24.0 * 3600.0) // 7 days
+        retentionPeriod (7.0 * 24.0 * 3600.0) // 7 days
     }
 
     queue "users-queue" {
@@ -205,7 +205,7 @@ table th {
 | **KMS Key** | `kmsKey` | `admissionPrincipal`, `alias`, `constructId`, `description`, `disableKeyRotation`, `enableKeyRotation`, `enabled`, `keySpec`, `keyUsage`, `pendingWindow`, `policy`, `removalPolicy` |
 | **LambdaRole** | `lambdaRole` | `assumeRolePrincipal`, `basicExecution`, `constructId`, `inlinePolicy`, `kmsDecrypt`, `managedPolicy`, `vpcExecution`, `xrayTracing` |
 | **Origin Access Identity** | `originAccessIdentity` | `constructId`, `comment` |
-| **Queue** | `queue` | `constructId`, `contentBasedDeduplication`, `deadLetterQueue`, `delaySeconds`, `fifo`, `messageRetention`, `visibilityTimeout` |
+| **Queue** | `queue` | `constructId`, `contentBasedDeduplication`, `dataKeyReuse`, `deadLetterQueue`, `deduplicationScope`, `deliveryDelay`, `encryption`, `encryptionMasterKey`, `enforceSSL`, `fifo`, `fifoThroughputLimit`, `maxMessageSizeBytes`, `receiveMessageWaitTime`, `redriveAllowPolicy`, `removalPolicy`, `retentionPeriod`, `visibilityTimeout` |
 | **RDS Proxy** | `rdsProxy` | `constructId`, `debugLogging`, `iamAuth`, `idleClientTimeout`, `initQuery`, `maxConnectionsPercent`, `maxIdleConnectionsPercent`, `proxyTarget`, `requireTLS`, `secrets`, `sessionPinningFilters`, `vpc` |
 | **REST API (API Gateway V1)** | `restApi` | `binaryMediaTypes`, `cloneFrom`, `constructId`, `defaultCorsPreflightOptions`, `defaultIntegration`, `defaultMethodOptions`, `deployOptions`, `description`, `disableExecuteApiEndpoint`, `endpointTypes`, `failOnWarnings`, `parameters`, `policy`, `restApiName`, `retainDeployments` |
 | **Route53 ARecord** | `aRecord` | `comment`, `constructId`, `target`, `ttl`, `zone` |

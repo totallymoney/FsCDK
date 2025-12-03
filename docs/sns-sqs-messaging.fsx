@@ -60,7 +60,7 @@ Create a simple SQS queue for asynchronous message processing.
 stack "BasicSQS" {
     queue "OrderProcessing" {
         visibilityTimeout 30.0
-        messageRetention 345600.0 // 4 days
+        retentionPeriod 345600.0 // 4 days
     }
 }
 
@@ -88,7 +88,7 @@ stack "QueueWithDLQ" {
     // Create dead-letter queue first
     let dlq =
         queue "ProcessingDLQ" {
-            messageRetention 1209600.0 // 14 days
+            retentionPeriod 1209600.0 // 14 days
         }
 
     // Create main queue with DLQ

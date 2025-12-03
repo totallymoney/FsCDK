@@ -153,7 +153,7 @@ stack "CustomDLQStack" {
     // Create custom DLQ with specific settings
     let! customDlq =
         queue "critical-failures" {
-            messageRetention (30.0 * 24.0 * 3600.0) // 30 days in seconds
+            retentionPeriod (30.0 * 24.0 * 3600.0) // 30 days in seconds
             encryption QueueEncryption.KMS
         }
 
