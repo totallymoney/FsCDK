@@ -8,6 +8,61 @@ open Amazon.CDK
 open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.KMS
 
+type DeadLetterConfig =
+    { Queue: IQueue option
+      MaxReceiveCount: int option }
+
+type DeadLetterBuilder() =
+    member _.Yield(_: unit) : DeadLetterConfig =
+        { Queue = None; MaxReceiveCount = None }
+
+    member _.Zero() : DeadLetterConfig =
+        { Queue = None; MaxReceiveCount = None }
+
+    member _.Run(config: DeadLetterConfig) : IDeadLetterQueue =
+        let queue =
+            config.Queue
+            |> Option.defaultWith (fun () -> failwith "Queue must be specified using 'queue'")
+
+        let maxReceiveCount = config.MaxReceiveCount |> Option.defaultValue 3
+
+        DeadLetterQueue(Queue = queue, MaxReceiveCount = maxReceiveCount)
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> DeadLetterConfig) : DeadLetterConfig = f ()
+
+    member _.Combine(state1: DeadLetterConfig, state2: DeadLetterConfig) : DeadLetterConfig =
+        { Queue = state1.Queue |> Option.orElse state2.Queue
+          MaxReceiveCount = state1.MaxReceiveCount |> Option.orElse state2.MaxReceiveCount }
+
+    member inline x.For(config: DeadLetterConfig, [<InlineIfLambda>] f: unit -> DeadLetterConfig) : DeadLetterConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    /// <summary>Sets the queue that will receive dead letters.</summary>
+    /// <param name="config">The dead-letter queue configuration.</param>
+    /// <param name="queue">The queue to use as the dead-letter queue.</param>
+    /// <code lang="fsharp">
+    /// deadLetterQueue {
+    ///     queue myDeadLetterQueue
+    ///     maxReceiveCount 5
+    /// }
+    /// </code>
+    [<CustomOperation("queue")>]
+    member _.Queue(config: DeadLetterConfig, queue: IQueue) = { config with Queue = Some queue }
+
+    /// <summary>Sets the maximum number of times a message can be delivered to the source queue before being moved to the dead-letter queue.</summary>
+    /// <param name="config">The dead-letter queue configuration.</param>
+    /// <param name="count">The maximum receive count.</param>
+    /// <code lang="fsharp">
+    /// deadLetterQueue {
+    ///  maxReceiveCount 10
+    /// }
+    /// </code>
+    [<CustomOperation("maxReceiveCount")>]
+    member _.MaxReceiveCount(config: DeadLetterConfig, count: int) =
+        { config with
+            MaxReceiveCount = Some count }
+
 // SQS Queue configuration DSL
 type QueueConfig =
     { QueueName: string
@@ -16,7 +71,6 @@ type QueueConfig =
       RetentionPeriod: float option
       ContentBasedDeduplication: bool option
       MaxReceiveCount: int option
-      DeadLetterQueueName: string option
       DeadLetterQueue: IDeadLetterQueue option
       DeduplicationScope: DeduplicationScope option
       DeliveryDelay: Duration option
@@ -45,7 +99,6 @@ type QueueBuilder(name: string) =
           RetentionPeriod = None
           ContentBasedDeduplication = None
           MaxReceiveCount = None
-          DeadLetterQueueName = None
           DeadLetterQueue = None
           DeduplicationScope = None
           DeliveryDelay = None
@@ -67,7 +120,6 @@ type QueueBuilder(name: string) =
           RetentionPeriod = None
           ContentBasedDeduplication = None
           MaxReceiveCount = None
-          DeadLetterQueueName = None
           DeadLetterQueue = None
           DeduplicationScope = None
           DeliveryDelay = None
@@ -93,7 +145,6 @@ type QueueBuilder(name: string) =
             state2.ContentBasedDeduplication
             |> Option.orElse state1.ContentBasedDeduplication
           MaxReceiveCount = state2.MaxReceiveCount |> Option.orElse state1.MaxReceiveCount
-          DeadLetterQueueName = state2.DeadLetterQueueName |> Option.orElse state1.DeadLetterQueueName
           DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue
           DeduplicationScope = state2.DeduplicationScope |> Option.orElse state1.DeduplicationScope
           DeliveryDelay = state2.DeliveryDelay |> Option.orElse state1.DeliveryDelay
@@ -121,6 +172,8 @@ type QueueBuilder(name: string) =
 
         let props = QueueProps()
         props.QueueName <- config.QueueName
+
+        config.DeadLetterQueue |> Option.iter (fun d -> props.DeadLetterQueue <- d)
 
         config.VisibilityTimeout
         |> Option.iter (fun v -> props.VisibilityTimeout <- Duration.Seconds(v))
@@ -230,18 +283,16 @@ type QueueBuilder(name: string) =
 
     /// <summary>Configures a dead-letter queue for the queue.</summary>
     /// <param name="config">The queue configuration.</param>
-    /// <param name="dlqName">The name of the dead-letter queue.</param>
-    /// <param name="maxReceiveCount">Maximum receives before sending to DLQ.</param>
+    /// <param name="deadLetterQueue">The dead-letter queue configuration.</param>
     /// <code lang="fsharp">
     /// queue "MyQueue" {
-    ///     deadLetterQueue "MyDLQ" 3
+    ///     deadLetterQueue myDeadLetterQueue
     /// }
     /// </code>
     [<CustomOperation("deadLetterQueue")>]
-    member _.DeadLetterQueue(config: QueueConfig, dlqName: string, maxReceiveCount: int) =
+    member _.DeadLetterQueue(config: QueueConfig, deadLetterQueue: IDeadLetterQueue) =
         { config with
-            DeadLetterQueueName = Some dlqName
-            MaxReceiveCount = Some maxReceiveCount }
+            DeadLetterQueue = Some deadLetterQueue }
 
     /// <summary>Sets the delay for all messages in the queue.</summary>
     /// <param name="config">The queue configuration.</param>
@@ -404,3 +455,12 @@ module SQSBuilders =
     /// }
     /// </code>
     let queue name = QueueBuilder(name)
+
+    /// <summary>Creates a dead-letter queue configuration.</summary>
+    /// <code lang="fsharp">
+    /// deadLetterQueue {
+    ///     queue myDeadLetterQueue
+    ///     maxReceiveCount 5
+    /// }
+    /// </code>
+    let deadLetterQueue = DeadLetterBuilder()
