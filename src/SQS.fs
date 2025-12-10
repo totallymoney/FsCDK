@@ -22,7 +22,7 @@ type DeadLetterBuilder() =
     member _.Run(config: DeadLetterConfig) : IDeadLetterQueue =
         let queue =
             config.Queue
-            |> Option.defaultWith (fun () -> failwith "Queue must be specified using 'targetQueue'")
+            |> Option.defaultWith (fun () -> failwith "Queue must be specified using 'queue'")
 
         let maxReceiveCount = config.MaxReceiveCount |> Option.defaultValue 3
 
