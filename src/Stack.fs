@@ -44,7 +44,6 @@ type Operation =
     | TopicOp of TopicSpec
     | QueueOp of QueueSpec
     | BucketOp of BucketSpec
-    | SubscriptionOp of SubscriptionSpec
     | VpcOp of VpcSpec
     | SecurityGroupOp of SecurityGroupSpec
     | RdsInstanceOp of DatabaseInstanceSpec
@@ -167,6 +166,9 @@ module StackOperations =
         | TopicOp topicSpec ->
             let topic = Topic(stack, topicSpec.ConstructId, topicSpec.Props)
 
+            topicSpec.Subscriptions
+            |> List.iter (fun sub -> topic.AddSubscription(sub) |> ignore)
+
             topicSpec.Topic <- Some topic
 
         | QueueOp queueSpec ->
@@ -185,8 +187,6 @@ module StackOperations =
                         $"Warning: Bucket %s{b.BucketName} was already created to stack {b.Stack.StackName} when constructing same but %s{b.BucketName} to %s{stack.StackName}."
 
                 ()
-
-        | SubscriptionOp subscriptionSpec -> SNS.processSubscription stack subscriptionSpec
 
         | VpcOp vpcSpec ->
             let vpc = Vpc(stack, vpcSpec.ConstructId, vpcSpec.Props)
@@ -709,8 +709,6 @@ type StackBuilder(name: string) =
     member this.Yield(queueSpec: QueueSpec) : StackConfig = this.Init(QueueOp queueSpec)
 
     member this.Yield(bucketSpec: BucketSpec) : StackConfig = this.Init(BucketOp bucketSpec)
-
-    member this.Yield(subSpec: SubscriptionSpec) : StackConfig = this.Init(SubscriptionOp subSpec)
 
     member this.Yield(vpcSpec: VpcSpec) : StackConfig = this.Init(VpcOp vpcSpec)
 

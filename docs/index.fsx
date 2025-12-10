@@ -72,11 +72,6 @@ stack "Dev" {
 
     topic "user-events" { displayName "User events" }
 
-    subscription {
-        topic "user-events"
-        queue "users-queue"
-    }
-
     grant {
         table "users"
         lambda "users-api-dev"

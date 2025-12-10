@@ -4,7 +4,7 @@ open Amazon.CDK
 open Constructs
 
 // ============================================================================
-// Stage onfiguration DSL
+// Stage configuration DSL
 // ============================================================================
 
 type StageConfig =

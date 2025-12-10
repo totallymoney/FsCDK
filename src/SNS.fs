@@ -5,6 +5,8 @@ open Amazon.CDK.AWS.SNS
 open Amazon.CDK.AWS.SNS.Subscriptions
 open Amazon.CDK.AWS.Lambda
 open Amazon.CDK.AWS.SQS
+open System.Collections.Generic
+
 // ============================================================================
 // SNS Topic and Subscription Configuration DSL
 // ============================================================================
@@ -22,11 +24,13 @@ type TopicConfig =
       MasterKey: Amazon.CDK.AWS.KMS.IKey option
       MessageRetentionPeriodInDays: float option
       SignatureVersion: string option
+      Subscriptions: ITopicSubscription list
       TracingConfig: TracingConfig option }
 
 type TopicSpec =
     { TopicName: string
-      ConstructId: string // Construct ID for CDK
+      ConstructId: string
+      Subscriptions: ITopicSubscription list
       Props: TopicProps
       mutable Topic: ITopic option }
 
@@ -43,6 +47,7 @@ type TopicBuilder(name: string) =
           MasterKey = None
           MessageRetentionPeriodInDays = None
           SignatureVersion = None
+          Subscriptions = []
           TracingConfig = None }
 
     member _.Zero() : TopicConfig =
@@ -57,6 +62,7 @@ type TopicBuilder(name: string) =
           MasterKey = None
           MessageRetentionPeriodInDays = None
           SignatureVersion = None
+          Subscriptions = []
           TracingConfig = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> TopicConfig) : TopicConfig = f ()
@@ -81,11 +87,35 @@ type TopicBuilder(name: string) =
             state2.MessageRetentionPeriodInDays
             |> Option.orElse state1.MessageRetentionPeriodInDays
           SignatureVersion = state2.SignatureVersion |> Option.orElse state1.SignatureVersion
+          Subscriptions = state2.Subscriptions @ state1.Subscriptions
           TracingConfig = state2.TracingConfig |> Option.orElse state1.TracingConfig }
 
     member inline x.For(config: TopicConfig, [<InlineIfLambda>] f: unit -> TopicConfig) : TopicConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
+
+    /// <summary>Yields a subscription to be added to the topic (implicit yield).</summary>
+    /// <param name="subscription">The subscription to add.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     lambdaSubscription { handler myFunction }
+    ///     sqsSubscription { queue myQueue }
+    /// }
+    /// </code>
+    member _.Yield(subscription: ITopicSubscription) : TopicConfig =
+        { TopicName = name
+          ConstructId = None
+          DisplayName = None
+          FifoTopic = None
+          ContentBasedDeduplication = None
+          EnforceSSL = None
+          FifoThroughputScope = None
+          LoggingConfigs = []
+          MasterKey = None
+          MessageRetentionPeriodInDays = None
+          SignatureVersion = None
+          Subscriptions = [ subscription ]
+          TracingConfig = None }
 
     member _.Run(config: TopicConfig) : TopicSpec =
         let topicName = config.TopicName
@@ -120,6 +150,7 @@ type TopicBuilder(name: string) =
         { TopicName = topicName
           ConstructId = constructId
           Props = props
+          Subscriptions = config.Subscriptions
           Topic = None }
 
     /// <summary>Sets the construct ID for the topic.</summary>
@@ -258,210 +289,663 @@ type TopicBuilder(name: string) =
         { config with
             TracingConfig = Some tracingConfig }
 
-// SNS Subscription types
-type SubscriptionEndpointType =
-    | LambdaEndpoint of string // Lambda construct ID
-    | QueueEndpoint of string // Queue construct ID
-    | EmailEndpoint of string // Email address
-    | SmsEndpoint of string // Phone number
-    | HttpEndpoint of string // HTTP URL
-    | HttpsEndpoint of string // HTTPS URL
+    /// <summary>Adds a subscription to the topic.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="subscription">The subscription to add.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     subscription (lambdaSubscription {
+    ///         handler myLambdaFunction
+    ///     })
+    /// }
+    /// </code>
+    [<CustomOperation("subscription")>]
+    member _.Subscription(config: TopicConfig, subscription: ITopicSubscription) =
+        { config with
+            Subscriptions = subscription :: config.Subscriptions }
 
-// SNS Subscription configuration
-type SubscriptionConfig =
-    { TopicConstructId: string option
-      Endpoint: SubscriptionEndpointType option
-      FilterPolicy: Map<string, obj> option
-      DeadLetterQueue: string option } // Queue construct ID for subscription DLQ
+    /// <summary>Adds multiple subscriptions to the topic.</summary>
+    /// <param name="config">The topic configuration.</param>
+    /// <param name="subscriptions">The subscriptions to add.</param>
+    /// <code lang="fsharp">
+    /// topic "MyTopic" {
+    ///     subscriptions [
+    ///         lambdaSubscription { handler myFunction }
+    ///         sqsSubscription { queue myQueue }
+    ///     ]
+    /// }
+    /// </code>
+    [<CustomOperation("subscriptions")>]
+    member _.Subscriptions(config: TopicConfig, subscriptions: ITopicSubscription list) =
+        { config with
+            Subscriptions = subscriptions @ config.Subscriptions }
 
-type SubscriptionSpec =
-    { TopicConstructId: string
-      Endpoint: SubscriptionEndpointType
-      FilterPolicy: Map<string, obj> option
-      DeadLetterQueue: string option }
+// ============================================================================
+// Lambda Subscription Builder
+// ============================================================================
 
-type SubscriptionBuilder() =
-    member _.Yield(_: unit) : SubscriptionConfig =
-        { TopicConstructId = None
-          Endpoint = None
+type LambdaSubscriptionConfig =
+    { Function: IFunction option
+      DeadLetterQueue: IQueue option
+      FilterPolicy: IDictionary<string, SubscriptionFilter> option
+      FilterPolicyWithMessageBody: IDictionary<string, FilterOrPolicy> option }
+
+type LambdaSubscriptionBuilder() =
+    member _.Yield(_: unit) : LambdaSubscriptionConfig =
+        { Function = None
+          DeadLetterQueue = None
           FilterPolicy = None
-          DeadLetterQueue = None }
+          FilterPolicyWithMessageBody = None }
 
-    member _.Zero() : SubscriptionConfig =
-        { TopicConstructId = None
-          Endpoint = None
+    member _.Zero() : LambdaSubscriptionConfig =
+        { Function = None
+          DeadLetterQueue = None
           FilterPolicy = None
-          DeadLetterQueue = None }
+          FilterPolicyWithMessageBody = None }
 
-    member inline _.Delay([<InlineIfLambda>] f: unit -> SubscriptionConfig) : SubscriptionConfig = f ()
+    member inline _.Delay([<InlineIfLambda>] f: unit -> LambdaSubscriptionConfig) : LambdaSubscriptionConfig = f ()
 
-    member _.Combine(state1: SubscriptionConfig, state2: SubscriptionConfig) : SubscriptionConfig =
-        { TopicConstructId = state2.TopicConstructId |> Option.orElse state1.TopicConstructId
-          Endpoint = state2.Endpoint |> Option.orElse state1.Endpoint
+    member _.Combine(state1: LambdaSubscriptionConfig, state2: LambdaSubscriptionConfig) : LambdaSubscriptionConfig =
+        { Function = state2.Function |> Option.orElse state1.Function
+          DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue
           FilterPolicy = state2.FilterPolicy |> Option.orElse state1.FilterPolicy
-          DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue }
+          FilterPolicyWithMessageBody =
+            state2.FilterPolicyWithMessageBody
+            |> Option.orElse state1.FilterPolicyWithMessageBody }
 
     member inline x.For
         (
-            config: SubscriptionConfig,
-            [<InlineIfLambda>] f: unit -> SubscriptionConfig
-        ) : SubscriptionConfig =
+            config: LambdaSubscriptionConfig,
+            [<InlineIfLambda>] f: unit -> LambdaSubscriptionConfig
+        ) : LambdaSubscriptionConfig =
         let newConfig = f ()
         x.Combine(config, newConfig)
 
-    member _.Run(config: SubscriptionConfig) : SubscriptionSpec =
-        match config.TopicConstructId, config.Endpoint with
-        | Some t, Some e ->
-            { TopicConstructId = t
-              Endpoint = e
-              FilterPolicy = config.FilterPolicy
-              DeadLetterQueue = config.DeadLetterQueue }
-        | _ -> failwith "Subscription must specify topic and endpoint"
+    member _.Run(config: LambdaSubscriptionConfig) : ITopicSubscription =
+        let fn =
+            config.Function
+            |> Option.defaultWith (fun () -> failwith "Lambda subscription must specify a function using 'handler'")
 
-    /// <summary>Sets the SNS topic for the subscription.</summary>
-    /// <param name="topicConstructId">The construct ID of the topic.</param>
+        let props = LambdaSubscriptionProps()
+        config.DeadLetterQueue |> Option.iter (fun q -> props.DeadLetterQueue <- q)
+        config.FilterPolicy |> Option.iter (fun p -> props.FilterPolicy <- p)
+
+        config.FilterPolicyWithMessageBody
+        |> Option.iter (fun p -> props.FilterPolicyWithMessageBody <- p)
+
+        LambdaSubscription(fn, props)
+
+    /// <summary>Sets the Lambda function for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="func">The Lambda function to subscribe.</param>
     /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     lambda "MyFunction"
+    /// lambdaSubscription {
+    ///     handler myLambdaFunction
     /// }
     /// </code>
-    [<CustomOperation("topic")>]
-    member _.Topic(config: SubscriptionConfig, topicConstructId: string) =
-        { config with
-            TopicConstructId = Some topicConstructId }
+    [<CustomOperation("handler")>]
+    member _.Handler(config: LambdaSubscriptionConfig, func: IFunction) = { config with Function = Some func }
 
-    /// <summary>Subscribes a Lambda function to the topic.</summary>
-    /// <param name="lambdaConstructId">The construct ID of the Lambda function.</param>
+    /// <summary>Sets a dead-letter queue for failed messages.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="queue">The SQS queue to use as DLQ.</param>
     /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     lambda "MyFunction"
+    /// lambdaSubscription {
+    ///     fn myFunction
+    ///     deadLetterQueue myDlqQueue
     /// }
     /// </code>
-    [<CustomOperation("lambda")>]
-    member _.Lambda(config: SubscriptionConfig, lambdaConstructId: string) =
+    [<CustomOperation("deadLetterQueue")>]
+    member _.DeadLetterQueue(config: LambdaSubscriptionConfig, queue: IQueue) =
         { config with
-            Endpoint = Some(LambdaEndpoint lambdaConstructId) }
+            DeadLetterQueue = Some queue }
 
-    /// <summary>Subscribes an SQS queue to the topic.</summary>
-    /// <param name="queueConstructId">The construct ID of the queue.</param>
+    /// <summary>Sets a filter policy for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy dictionary.</param>
     /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     queue "MyQueue"
+    /// lambdaSubscription {
+    ///     fn myFunction
+    ///     filterPolicy (dict [ "eventType", SubscriptionFilter.StringFilter(StringConditions(Allowlist = [| "order" |])) ])
+    /// }
+    /// </code>
+    [<CustomOperation("filterPolicy")>]
+    member _.FilterPolicy(config: LambdaSubscriptionConfig, policy: IDictionary<string, SubscriptionFilter>) =
+        { config with
+            FilterPolicy = Some policy }
+
+    /// <summary>Sets a filter policy with message body for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy with message body dictionary.</param>
+    /// <code lang="fsharp">
+    /// lambdaSubscription {
+    ///     fn myFunction
+    ///     filterPolicyWithMessageBody (dict [ "body", FilterOrPolicy.Filter(...) ])
+    /// }
+    /// </code>
+    [<CustomOperation("filterPolicyWithMessageBody")>]
+    member _.FilterPolicyWithMessageBody
+        (
+            config: LambdaSubscriptionConfig,
+            policy: IDictionary<string, FilterOrPolicy>
+        ) =
+        { config with
+            FilterPolicyWithMessageBody = Some policy }
+
+// ============================================================================
+// SQS Subscription Builder
+// ============================================================================
+
+type SqsSubscriptionConfig =
+    { Queue: IQueue option
+      DeadLetterQueue: IQueue option
+      FilterPolicy: IDictionary<string, SubscriptionFilter> option
+      FilterPolicyWithMessageBody: IDictionary<string, FilterOrPolicy> option
+      RawMessageDelivery: bool option }
+
+type SqsSubscriptionBuilder() =
+    member _.Yield(_: unit) : SqsSubscriptionConfig =
+        { Queue = None
+          DeadLetterQueue = None
+          FilterPolicy = None
+          FilterPolicyWithMessageBody = None
+          RawMessageDelivery = None }
+
+    member _.Zero() : SqsSubscriptionConfig =
+        { Queue = None
+          DeadLetterQueue = None
+          FilterPolicy = None
+          FilterPolicyWithMessageBody = None
+          RawMessageDelivery = None }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> SqsSubscriptionConfig) : SqsSubscriptionConfig = f ()
+
+    member _.Combine(state1: SqsSubscriptionConfig, state2: SqsSubscriptionConfig) : SqsSubscriptionConfig =
+        { Queue = state2.Queue |> Option.orElse state1.Queue
+          DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue
+          FilterPolicy = state2.FilterPolicy |> Option.orElse state1.FilterPolicy
+          FilterPolicyWithMessageBody =
+            state2.FilterPolicyWithMessageBody
+            |> Option.orElse state1.FilterPolicyWithMessageBody
+          RawMessageDelivery = state2.RawMessageDelivery |> Option.orElse state1.RawMessageDelivery }
+
+    member inline x.For
+        (
+            config: SqsSubscriptionConfig,
+            [<InlineIfLambda>] f: unit -> SqsSubscriptionConfig
+        ) : SqsSubscriptionConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: SqsSubscriptionConfig) : ITopicSubscription =
+        let queue =
+            config.Queue
+            |> Option.defaultWith (fun () -> failwith "SQS subscription must specify a queue using 'queue'")
+
+        let props = SqsSubscriptionProps()
+        config.DeadLetterQueue |> Option.iter (fun q -> props.DeadLetterQueue <- q)
+        config.FilterPolicy |> Option.iter (fun p -> props.FilterPolicy <- p)
+
+        config.FilterPolicyWithMessageBody
+        |> Option.iter (fun p -> props.FilterPolicyWithMessageBody <- p)
+
+        config.RawMessageDelivery
+        |> Option.iter (fun r -> props.RawMessageDelivery <- r)
+
+        SqsSubscription(queue, props)
+
+    /// <summary>Sets the SQS queue for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="q">The SQS queue to subscribe.</param>
+    /// <code lang="fsharp">
+    /// sqsSubscription {
+    ///     queue mySqsQueue
     /// }
     /// </code>
     [<CustomOperation("queue")>]
-    member _.Queue(config: SubscriptionConfig, queueConstructId: string) =
-        { config with
-            Endpoint = Some(QueueEndpoint queueConstructId) }
+    member _.Queue(config: SqsSubscriptionConfig, q: IQueue) = { config with Queue = Some q }
 
-    /// <summary>Subscribes an email address to the topic.</summary>
-    /// <param name="emailAddress">The email address.</param>
+    /// <summary>Sets a dead-letter queue for failed messages.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="q">The SQS queue to use as DLQ.</param>
     /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
+    /// sqsSubscription {
+    ///     queue myQueue
+    ///     deadLetterQueue myDlqQueue
+    /// }
+    /// </code>
+    [<CustomOperation("deadLetterQueue")>]
+    member _.DeadLetterQueue(config: SqsSubscriptionConfig, q: IQueue) =
+        { config with DeadLetterQueue = Some q }
+
+    /// <summary>Sets a filter policy for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy dictionary.</param>
+    /// <code lang="fsharp">
+    /// sqsSubscription {
+    ///     queue myQueue
+    ///     filterPolicy (dict [ "eventType", SubscriptionFilter.StringFilter(StringConditions(Allowlist = [| "order" |])) ])
+    /// }
+    /// </code>
+    [<CustomOperation("filterPolicy")>]
+    member _.FilterPolicy(config: SqsSubscriptionConfig, policy: IDictionary<string, SubscriptionFilter>) =
+        { config with
+            FilterPolicy = Some policy }
+
+    /// <summary>Sets a filter policy with message body for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy with message body dictionary.</param>
+    /// <code lang="fsharp">
+    /// sqsSubscription {
+    ///     queue myQueue
+    ///     filterPolicyWithMessageBody (dict [ "body", FilterOrPolicy.Filter(...) ])
+    /// }
+    /// </code>
+    [<CustomOperation("filterPolicyWithMessageBody")>]
+    member _.FilterPolicyWithMessageBody(config: SqsSubscriptionConfig, policy: IDictionary<string, FilterOrPolicy>) =
+        { config with
+            FilterPolicyWithMessageBody = Some policy }
+
+    /// <summary>Enables raw message delivery (without SNS metadata).</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="enabled">Whether to enable raw message delivery.</param>
+    /// <code lang="fsharp">
+    /// sqsSubscription {
+    ///     queue myQueue
+    ///     rawMessageDelivery true
+    /// }
+    /// </code>
+    [<CustomOperation("rawMessageDelivery")>]
+    member _.RawMessageDelivery(config: SqsSubscriptionConfig, enabled: bool) =
+        { config with
+            RawMessageDelivery = Some enabled }
+
+// ============================================================================
+// Email Subscription Builder
+// ============================================================================
+
+type EmailSubscriptionConfig =
+    { EmailAddress: string option
+      DeadLetterQueue: IQueue option
+      FilterPolicy: IDictionary<string, SubscriptionFilter> option
+      FilterPolicyWithMessageBody: IDictionary<string, FilterOrPolicy> option
+      Json: bool option }
+
+type EmailSubscriptionBuilder() =
+    member _.Yield(_: unit) : EmailSubscriptionConfig =
+        { EmailAddress = None
+          DeadLetterQueue = None
+          FilterPolicy = None
+          FilterPolicyWithMessageBody = None
+          Json = None }
+
+    member _.Zero() : EmailSubscriptionConfig =
+        { EmailAddress = None
+          DeadLetterQueue = None
+          FilterPolicy = None
+          FilterPolicyWithMessageBody = None
+          Json = None }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> EmailSubscriptionConfig) : EmailSubscriptionConfig = f ()
+
+    member _.Combine(state1: EmailSubscriptionConfig, state2: EmailSubscriptionConfig) : EmailSubscriptionConfig =
+        { EmailAddress = state2.EmailAddress |> Option.orElse state1.EmailAddress
+          DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue
+          FilterPolicy = state2.FilterPolicy |> Option.orElse state1.FilterPolicy
+          FilterPolicyWithMessageBody =
+            state2.FilterPolicyWithMessageBody
+            |> Option.orElse state1.FilterPolicyWithMessageBody
+          Json = state2.Json |> Option.orElse state1.Json }
+
+    member inline x.For
+        (
+            config: EmailSubscriptionConfig,
+            [<InlineIfLambda>] f: unit -> EmailSubscriptionConfig
+        ) : EmailSubscriptionConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: EmailSubscriptionConfig) : ITopicSubscription =
+        let email =
+            config.EmailAddress
+            |> Option.defaultWith (fun () -> failwith "Email subscription must specify an email address using 'email'")
+
+        let props = EmailSubscriptionProps()
+        config.DeadLetterQueue |> Option.iter (fun q -> props.DeadLetterQueue <- q)
+        config.FilterPolicy |> Option.iter (fun p -> props.FilterPolicy <- p)
+
+        config.FilterPolicyWithMessageBody
+        |> Option.iter (fun p -> props.FilterPolicyWithMessageBody <- p)
+
+        config.Json |> Option.iter (fun j -> props.Json <- j)
+
+        EmailSubscription(email, props)
+
+    /// <summary>Sets the email address for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="address">The email address to subscribe.</param>
+    /// <code lang="fsharp">
+    /// emailSubscription {
     ///     email "admin@example.com"
     /// }
     /// </code>
     [<CustomOperation("email")>]
-    member _.Email(config: SubscriptionConfig, emailAddress: string) =
+    member _.Email(config: EmailSubscriptionConfig, address: string) =
         { config with
-            Endpoint = Some(EmailEndpoint emailAddress) }
+            EmailAddress = Some address }
 
-    /// <summary>Subscribes a phone number for SMS to the topic.</summary>
-    /// <param name="phoneNumber">The phone number.</param>
+    /// <summary>Sets a dead-letter queue for failed messages.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="queue">The SQS queue to use as DLQ.</param>
     /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     sms "+1234567890"
+    /// emailSubscription {
+    ///     email "admin@example.com"
+    ///     deadLetterQueue myDlqQueue
     /// }
     /// </code>
-    [<CustomOperation("sms")>]
-    member _.Sms(config: SubscriptionConfig, phoneNumber: string) =
+    [<CustomOperation("deadLetterQueue")>]
+    member _.DeadLetterQueue(config: EmailSubscriptionConfig, queue: IQueue) =
         { config with
-            Endpoint = Some(SmsEndpoint phoneNumber) }
-
-    /// <summary>Subscribes an HTTP endpoint to the topic.</summary>
-    /// <param name="url">The HTTP URL.</param>
-    /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     http "http://example.com/webhook"
-    /// }
-    /// </code>
-    [<CustomOperation("http")>]
-    member _.Http(config: SubscriptionConfig, url: string) =
-        { config with
-            Endpoint = Some(HttpEndpoint url) }
-
-    /// <summary>Subscribes an HTTPS endpoint to the topic.</summary>
-    /// <param name="url">The HTTPS URL.</param>
-    /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     https "https://example.com/webhook"
-    /// }
-    /// </code>
-    [<CustomOperation("https")>]
-    member _.Https(config: SubscriptionConfig, url: string) =
-        { config with
-            Endpoint = Some(HttpsEndpoint url) }
+            DeadLetterQueue = Some queue }
 
     /// <summary>Sets a filter policy for the subscription.</summary>
-    /// <param name="policy">List of key-value pairs for the filter policy.</param>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy dictionary.</param>
     /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     lambda "MyFunction"
-    ///     filterPolicy [ "eventType", "order"; "priority", "high" ]
+    /// emailSubscription {
+    ///     email "admin@example.com"
+    ///     filterPolicy (dict [ "eventType", SubscriptionFilter.StringFilter(StringConditions(Allowlist = [| "alert" |])) ])
     /// }
     /// </code>
     [<CustomOperation("filterPolicy")>]
-    member _.FilterPolicy(config: SubscriptionConfig, policy: (string * obj) list) =
+    member _.FilterPolicy(config: EmailSubscriptionConfig, policy: IDictionary<string, SubscriptionFilter>) =
         { config with
-            FilterPolicy = Some(policy |> Map.ofList) }
+            FilterPolicy = Some policy }
 
-    /// <summary>Sets a dead-letter queue for the subscription.</summary>
-    /// <param name="queueConstructId">The construct ID of the dead-letter queue.</param>
+    /// <summary>Sets a filter policy with message body for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy with message body dictionary.</param>
     /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     lambda "MyFunction"
-    ///     subscriptionDeadLetterQueue "MyDLQ"
+    /// emailSubscription {
+    ///     email "admin@example.com"
+    ///     filterPolicyWithMessageBody (dict [ "body", FilterOrPolicy.Filter(...) ])
     /// }
     /// </code>
-    [<CustomOperation("subscriptionDeadLetterQueue")>]
-    member _.SubscriptionDeadLetterQueue(config: SubscriptionConfig, queueConstructId: string) =
+    [<CustomOperation("filterPolicyWithMessageBody")>]
+    member _.FilterPolicyWithMessageBody(config: EmailSubscriptionConfig, policy: IDictionary<string, FilterOrPolicy>) =
         { config with
-            DeadLetterQueue = Some queueConstructId }
+            FilterPolicyWithMessageBody = Some policy }
 
-module SNS =
-    // Subscription processing function for Stack builder
-    let processSubscription (stack: Stack) (subscriptionSpec: SubscriptionSpec) =
-        try
-            // Find the topic
-            let topic = stack.Node.FindChild(subscriptionSpec.TopicConstructId) :?> Topic
+    /// <summary>Sends the full notification JSON to the email address.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="enabled">Whether to send JSON format.</param>
+    /// <code lang="fsharp">
+    /// emailSubscription {
+    ///     email "admin@example.com"
+    ///     json true
+    /// }
+    /// </code>
+    [<CustomOperation("json")>]
+    member _.Json(config: EmailSubscriptionConfig, enabled: bool) = { config with Json = Some enabled }
 
-            // Create subscription based on endpoint type
-            match subscriptionSpec.Endpoint with
-            | LambdaEndpoint lambdaId ->
-                let lambda = stack.Node.FindChild(lambdaId) :?> Function
-                topic.AddSubscription(LambdaSubscription(lambda)) |> ignore
-            | QueueEndpoint queueId ->
-                let queue = stack.Node.FindChild(queueId) :?> Queue
-                topic.AddSubscription(SqsSubscription(queue)) |> ignore
-            | EmailEndpoint email -> topic.AddSubscription(EmailSubscription(email)) |> ignore
-            | SmsEndpoint phone -> topic.AddSubscription(SmsSubscription(phone)) |> ignore
-            | HttpEndpoint url -> topic.AddSubscription(UrlSubscription(url)) |> ignore
-            | HttpsEndpoint url -> topic.AddSubscription(UrlSubscription(url)) |> ignore
+// ============================================================================
+// SMS Subscription Builder
+// ============================================================================
 
-            // Apply filter policy if specified
-            // Note: Filter policy configuration would need to be handled via subscription props
-            ()
-        with ex ->
-            printfn $"Warning: Failed to create subscription: %s{ex.Message}"
+type SmsSubscriptionConfig =
+    { PhoneNumber: string option
+      DeadLetterQueue: IQueue option
+      FilterPolicy: IDictionary<string, SubscriptionFilter> option
+      FilterPolicyWithMessageBody: IDictionary<string, FilterOrPolicy> option }
+
+type SmsSubscriptionBuilder() =
+    member _.Yield(_: unit) : SmsSubscriptionConfig =
+        { PhoneNumber = None
+          DeadLetterQueue = None
+          FilterPolicy = None
+          FilterPolicyWithMessageBody = None }
+
+    member _.Zero() : SmsSubscriptionConfig =
+        { PhoneNumber = None
+          DeadLetterQueue = None
+          FilterPolicy = None
+          FilterPolicyWithMessageBody = None }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> SmsSubscriptionConfig) : SmsSubscriptionConfig = f ()
+
+    member _.Combine(state1: SmsSubscriptionConfig, state2: SmsSubscriptionConfig) : SmsSubscriptionConfig =
+        { PhoneNumber = state2.PhoneNumber |> Option.orElse state1.PhoneNumber
+          DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue
+          FilterPolicy = state2.FilterPolicy |> Option.orElse state1.FilterPolicy
+          FilterPolicyWithMessageBody =
+            state2.FilterPolicyWithMessageBody
+            |> Option.orElse state1.FilterPolicyWithMessageBody }
+
+    member inline x.For
+        (
+            config: SmsSubscriptionConfig,
+            [<InlineIfLambda>] f: unit -> SmsSubscriptionConfig
+        ) : SmsSubscriptionConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: SmsSubscriptionConfig) : ITopicSubscription =
+        let phone =
+            config.PhoneNumber
+            |> Option.defaultWith (fun () ->
+                failwith "SMS subscription must specify a phone number using 'phoneNumber'")
+
+        let props = SmsSubscriptionProps()
+        config.DeadLetterQueue |> Option.iter (fun q -> props.DeadLetterQueue <- q)
+        config.FilterPolicy |> Option.iter (fun p -> props.FilterPolicy <- p)
+
+        config.FilterPolicyWithMessageBody
+        |> Option.iter (fun p -> props.FilterPolicyWithMessageBody <- p)
+
+        SmsSubscription(phone, props)
+
+    /// <summary>Sets the phone number for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="number">The phone number to subscribe (E.164 format recommended).</param>
+    /// <code lang="fsharp">
+    /// smsSubscription {
+    ///     phoneNumber "+1234567890"
+    /// }
+    /// </code>
+    [<CustomOperation("phoneNumber")>]
+    member _.PhoneNumber(config: SmsSubscriptionConfig, number: string) =
+        { config with
+            PhoneNumber = Some number }
+
+    /// <summary>Sets a dead-letter queue for failed messages.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="queue">The SQS queue to use as DLQ.</param>
+    /// <code lang="fsharp">
+    /// smsSubscription {
+    ///     phoneNumber "+1234567890"
+    ///     deadLetterQueue myDlqQueue
+    /// }
+    /// </code>
+    [<CustomOperation("deadLetterQueue")>]
+    member _.DeadLetterQueue(config: SmsSubscriptionConfig, queue: IQueue) =
+        { config with
+            DeadLetterQueue = Some queue }
+
+    /// <summary>Sets a filter policy for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy dictionary.</param>
+    /// <code lang="fsharp">
+    /// smsSubscription {
+    ///     phoneNumber "+1234567890"
+    ///     filterPolicy (dict [ "priority", SubscriptionFilter.StringFilter(StringConditions(Allowlist = [| "high" |])) ])
+    /// }
+    /// </code>
+    [<CustomOperation("filterPolicy")>]
+    member _.FilterPolicy(config: SmsSubscriptionConfig, policy: IDictionary<string, SubscriptionFilter>) =
+        { config with
+            FilterPolicy = Some policy }
+
+    /// <summary>Sets a filter policy with message body for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy with message body dictionary.</param>
+    /// <code lang="fsharp">
+    /// smsSubscription {
+    ///     phoneNumber "+1234567890"
+    ///     filterPolicyWithMessageBody (dict [ "body", FilterOrPolicy.Filter(...) ])
+    /// }
+    /// </code>
+    [<CustomOperation("filterPolicyWithMessageBody")>]
+    member _.FilterPolicyWithMessageBody(config: SmsSubscriptionConfig, policy: IDictionary<string, FilterOrPolicy>) =
+        { config with
+            FilterPolicyWithMessageBody = Some policy }
+
+// ============================================================================
+// URL Subscription Builder
+// ============================================================================
+
+type UrlSubscriptionConfig =
+    { Url: string option
+      DeadLetterQueue: IQueue option
+      FilterPolicy: IDictionary<string, SubscriptionFilter> option
+      FilterPolicyWithMessageBody: IDictionary<string, FilterOrPolicy> option
+      RawMessageDelivery: bool option
+      Protocol: SubscriptionProtocol option }
+
+type UrlSubscriptionBuilder() =
+    member _.Yield(_: unit) : UrlSubscriptionConfig =
+        { Url = None
+          DeadLetterQueue = None
+          FilterPolicy = None
+          FilterPolicyWithMessageBody = None
+          RawMessageDelivery = None
+          Protocol = None }
+
+    member _.Zero() : UrlSubscriptionConfig =
+        { Url = None
+          DeadLetterQueue = None
+          FilterPolicy = None
+          FilterPolicyWithMessageBody = None
+          RawMessageDelivery = None
+          Protocol = None }
+
+    member inline _.Delay([<InlineIfLambda>] f: unit -> UrlSubscriptionConfig) : UrlSubscriptionConfig = f ()
+
+    member _.Combine(state1: UrlSubscriptionConfig, state2: UrlSubscriptionConfig) : UrlSubscriptionConfig =
+        { Url = state2.Url |> Option.orElse state1.Url
+          DeadLetterQueue = state2.DeadLetterQueue |> Option.orElse state1.DeadLetterQueue
+          FilterPolicy = state2.FilterPolicy |> Option.orElse state1.FilterPolicy
+          FilterPolicyWithMessageBody =
+            state2.FilterPolicyWithMessageBody
+            |> Option.orElse state1.FilterPolicyWithMessageBody
+          RawMessageDelivery = state2.RawMessageDelivery |> Option.orElse state1.RawMessageDelivery
+          Protocol = state2.Protocol |> Option.orElse state1.Protocol }
+
+    member inline x.For
+        (
+            config: UrlSubscriptionConfig,
+            [<InlineIfLambda>] f: unit -> UrlSubscriptionConfig
+        ) : UrlSubscriptionConfig =
+        let newConfig = f ()
+        x.Combine(config, newConfig)
+
+    member _.Run(config: UrlSubscriptionConfig) : ITopicSubscription =
+        let url =
+            config.Url
+            |> Option.defaultWith (fun () -> failwith "URL subscription must specify a URL using 'url'")
+
+        let props = UrlSubscriptionProps()
+        config.DeadLetterQueue |> Option.iter (fun q -> props.DeadLetterQueue <- q)
+        config.FilterPolicy |> Option.iter (fun p -> props.FilterPolicy <- p)
+
+        config.FilterPolicyWithMessageBody
+        |> Option.iter (fun p -> props.FilterPolicyWithMessageBody <- p)
+
+        config.RawMessageDelivery
+        |> Option.iter (fun r -> props.RawMessageDelivery <- r)
+
+        config.Protocol |> Option.iter (fun p -> props.Protocol <- p)
+
+        UrlSubscription(url, props)
+
+    /// <summary>Sets the URL endpoint for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="endpoint">The HTTP/HTTPS URL to subscribe.</param>
+    /// <code lang="fsharp">
+    /// urlSubscription {
+    ///     url "https://example.com/webhook"
+    /// }
+    /// </code>
+    [<CustomOperation("url")>]
+    member _.Url(config: UrlSubscriptionConfig, endpoint: string) = { config with Url = Some endpoint }
+
+    /// <summary>Sets a dead-letter queue for failed messages.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="queue">The SQS queue to use as DLQ.</param>
+    /// <code lang="fsharp">
+    /// urlSubscription {
+    ///     url "https://example.com/webhook"
+    ///     deadLetterQueue myDlqQueue
+    /// }
+    /// </code>
+    [<CustomOperation("deadLetterQueue")>]
+    member _.DeadLetterQueue(config: UrlSubscriptionConfig, queue: IQueue) =
+        { config with
+            DeadLetterQueue = Some queue }
+
+    /// <summary>Sets a filter policy for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy dictionary.</param>
+    /// <code lang="fsharp">
+    /// urlSubscription {
+    ///     url "https://example.com/webhook"
+    ///     filterPolicy (dict [ "eventType", SubscriptionFilter.StringFilter(StringConditions(Allowlist = [| "order" |])) ])
+    /// }
+    /// </code>
+    [<CustomOperation("filterPolicy")>]
+    member _.FilterPolicy(config: UrlSubscriptionConfig, policy: IDictionary<string, SubscriptionFilter>) =
+        { config with
+            FilterPolicy = Some policy }
+
+    /// <summary>Sets a filter policy with message body for the subscription.</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="policy">The filter policy with message body dictionary.</param>
+    /// <code lang="fsharp">
+    /// urlSubscription {
+    ///     url "https://example.com/webhook"
+    ///     filterPolicyWithMessageBody (dict [ "body", FilterOrPolicy.Filter(...) ])
+    /// }
+    /// </code>
+    [<CustomOperation("filterPolicyWithMessageBody")>]
+    member _.FilterPolicyWithMessageBody(config: UrlSubscriptionConfig, policy: IDictionary<string, FilterOrPolicy>) =
+        { config with
+            FilterPolicyWithMessageBody = Some policy }
+
+    /// <summary>Enables raw message delivery (without SNS metadata).</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="enabled">Whether to enable raw message delivery.</param>
+    /// <code lang="fsharp">
+    /// urlSubscription {
+    ///     url "https://example.com/webhook"
+    ///     rawMessageDelivery true
+    /// }
+    /// </code>
+    [<CustomOperation("rawMessageDelivery")>]
+    member _.RawMessageDelivery(config: UrlSubscriptionConfig, enabled: bool) =
+        { config with
+            RawMessageDelivery = Some enabled }
+
+    /// <summary>Sets the protocol for the subscription (HTTP or HTTPS).</summary>
+    /// <param name="config">The subscription configuration.</param>
+    /// <param name="proto">The subscription protocol.</param>
+    /// <code lang="fsharp">
+    /// urlSubscription {
+    ///     url "https://example.com/webhook"
+    ///     protocol SubscriptionProtocol.HTTPS
+    /// }
+    /// </code>
+    [<CustomOperation("protocol")>]
+    member _.Protocol(config: UrlSubscriptionConfig, proto: SubscriptionProtocol) =
+        { config with Protocol = Some proto }
 
 // ============================================================================
 // Builders
@@ -479,12 +963,46 @@ module SNSBuilders =
     /// </code>
     let topic name = TopicBuilder(name)
 
-    /// <summary>Creates an SNS subscription configuration.</summary>
+    /// <summary>Creates a Lambda subscription configuration.</summary>
     /// <code lang="fsharp">
-    /// subscription {
-    ///     topic "MyTopic"
-    ///     lambda "MyFunction"
-    ///     filterPolicy [ "eventType", "order" ]
+    /// lambdaSubscription {
+    ///     handler myLambdaFunction
+    ///     filterPolicy (dict [ "eventType", SubscriptionFilter.StringFilter(StringConditions(Allowlist = [| "order" |])) ])
     /// }
     /// </code>
-    let subscription = SubscriptionBuilder()
+    let lambdaSubscription = LambdaSubscriptionBuilder()
+
+    /// <summary>Creates an SQS subscription configuration.</summary>
+    /// <code lang="fsharp">
+    /// sqsSubscription {
+    ///     queue mySqsQueue
+    ///     rawMessageDelivery true
+    /// }
+    /// </code>
+    let sqsSubscription = SqsSubscriptionBuilder()
+
+    /// <summary>Creates an email subscription configuration.</summary>
+    /// <code lang="fsharp">
+    /// emailSubscription {
+    ///     email "admin@example.com"
+    ///     json true
+    /// }
+    /// </code>
+    let emailSubscription = EmailSubscriptionBuilder()
+
+    /// <summary>Creates an SMS subscription configuration.</summary>
+    /// <code lang="fsharp">
+    /// smsSubscription {
+    ///     phoneNumber "+1234567890"
+    /// }
+    /// </code>
+    let smsSubscription = SmsSubscriptionBuilder()
+
+    /// <summary>Creates a URL subscription configuration.</summary>
+    /// <code lang="fsharp">
+    /// urlSubscription {
+    ///     url "https://example.com/webhook"
+    ///     rawMessageDelivery true
+    /// }
+    /// </code>
+    let urlSubscription = UrlSubscriptionBuilder()

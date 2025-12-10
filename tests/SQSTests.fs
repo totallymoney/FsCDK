@@ -38,11 +38,38 @@ let sqs_queue_dsl_tests =
               Expect.isTrue spec.Props.ContentBasedDeduplication.Value "ContentBasedDeduplication should be enabled"
           }
 
-          test "configures dead-letter queue reference" {
-              let spec = queue "MyQueue" { deadLetterQueue "MyDLQ" 3 }
+          test "deadLetterQueue builder works standalone" {
+              // Test that the builder works outside of stack CE
+              let app = App()
+              let testStack = Stack(app, "TestStack")
+              let testQueue = Queue(testStack, "TestQueue")
 
-              // Note: The actual DLQ connection happens at stack build time
-              Expect.equal spec.QueueName "MyQueue" "Queue name should be set"
+              // Test using CE syntax
+              let dlqConfig =
+                  deadLetterQueue {
+                      queue testQueue
+                      maxReceiveCount 5
+                  }
+
+              Expect.isNotNull dlqConfig "DLQ config should be created"
+              Expect.equal (dlqConfig.MaxReceiveCount :> obj) (5.0 :> obj) "MaxReceiveCount should be 5"
+          }
+
+          test "configures dead-letter queue reference" {
+              stack "DLQTestStack" {
+                  let! dlqQueue = queue "MyDLQ" { () }
+
+                  let dlqConfig =
+                      deadLetterQueue {
+                          queue dlqQueue
+                          maxReceiveCount 10
+                      }
+
+                  let spec = queue "MyQueue" { deadLetterQueue dlqConfig }
+
+                  // Note: The actual DLQ connection happens at stack build time
+                  Expect.equal spec.QueueName "MyQueue" "Queue name should be set"
+              }
           }
 
           test "applies encryption when configured" {
@@ -149,3 +176,4 @@ let sqs_queue_dsl_tests =
 
               Expect.isNull (box spec.Props.RemovalPolicy) "RemovalPolicy should be null when not configured"
           } ]
+    |> testSequenced

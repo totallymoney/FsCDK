@@ -26,6 +26,7 @@ that enable you to decouple and scale microservices, distributed systems, and se
 open FsCDK
 open Amazon.CDK
 open Amazon.CDK.AWS.SNS
+open Amazon.CDK.AWS.SNS.Subscriptions
 open Amazon.CDK.AWS.SQS
 open Amazon.CDK.AWS.Lambda
 
@@ -48,6 +49,23 @@ stack "FIFOTopic" {
         displayName "Transaction Events"
         fifo true
         contentBasedDeduplication true
+    }
+}
+
+(**
+## SNS: Topic with All Options
+
+Configure a topic with all available options.
+*)
+
+stack "FullTopic" {
+    topic "SecureNotifications" {
+        constructId "MySecureTopic"
+        displayName "Secure Notification Topic"
+        enforceSSL true
+        signatureVersion "2"
+        tracingConfig TracingConfig.ACTIVE
+        messageRetentionPeriodInDays 7.0
     }
 }
 
@@ -81,116 +99,354 @@ stack "FIFOQueue" {
 (**
 ## SQS: Queue with Dead Letter Queue
 
-Implement error handling with a dead-letter queue.
+Implement error handling with a dead-letter queue using `let!` to bind the DLQ.
 *)
 
 stack "QueueWithDLQ" {
-    // Create dead-letter queue first
-    let dlq =
+    // Create a dead-letter queue first and bind it with let!
+    let! dlqQueue =
         queue "ProcessingDLQ" {
             retentionPeriod 1209600.0 // 14 days
+        }
+
+    // Create the DLQ configuration
+    let dlqConfig =
+        deadLetterQueue {
+            queue dlqQueue
+            maxReceiveCount 3
         }
 
     // Create main queue with DLQ
     queue "OrderProcessing" {
         visibilityTimeout 30.0
-        deadLetterQueue "ProcessingDLQ" 3 // 3 max receives
+        deadLetterQueue dlqConfig
     }
 }
 
 (**
-## SNS to SQS: Fan-Out Pattern
+## SNS Subscription Builders
 
-Distribute messages from one SNS topic to multiple SQS queues.
+FsCDK provides type-safe subscription builders for all SNS subscription types.
+Each builder creates an `ITopicSubscription` that can be added to topics.
+
+### Available Subscription Builders
+
+| Builder | Purpose | Required Field |
+|---------|---------|----------------|
+| `lambdaSubscription` | Subscribe Lambda functions | `handler` |
+| `sqsSubscription` | Subscribe SQS queues | `queue` |
+| `emailSubscription` | Subscribe email addresses | `email` |
+| `smsSubscription` | Subscribe phone numbers | `phoneNumber` |
+| `urlSubscription` | Subscribe HTTP/HTTPS endpoints | `url` |
+
+### Common Options
+
+All subscription builders support these optional configurations:
+
+- `deadLetterQueue` - Queue for failed message delivery
+- `filterPolicy` - Filter messages by attributes
+- `filterPolicyWithMessageBody` - Filter messages by body content
+
 *)
-
-stack "FanOutPattern" {
-    // Create SNS topic
-    let orderTopic = topic "OrderEvents" { displayName "Order Processing Events" }
-
-    // Create multiple queues for different processing
-    let inventoryQueue = queue "InventoryProcessing" { visibilityTimeout 30.0 }
-
-    let shippingQueue = queue "ShippingProcessing" { visibilityTimeout 60.0 }
-
-    let analyticsQueue = queue "AnalyticsProcessing" { visibilityTimeout 120.0 }
-
-    // Note: Subscriptions must be configured using CDK directly
-    // Example: orderTopic.AddSubscription(SqsSubscription inventoryQueue)
-    ()
-}
 
 (**
-## SNS to Lambda
+## Lambda Subscription
 
-Trigger Lambda functions from SNS topics.
+Subscribe a Lambda function to an SNS topic. The function is invoked for each message published.
+Use `let!` within a `stack` CE to convert FsCDK builders to CDK constructs.
 *)
 
-stack "SNSToLambda" {
-    // Create Lambda function
-    let processorFunc =
-        lambda "EventProcessor" {
-            runtime Runtime.DOTNET_8
+stack "LambdaSubscriptionStack" {
+    // Create Lambda function using FsCDK builder
+    let! processorFunc =
+        lambda "Processor" {
             handler "App::ProcessEvent"
-            code "./lambda"
-        }
-
-    // Create SNS topic
-    let eventTopic = topic "SystemEvents" { displayName "System Event Notifications" }
-
-    // Note: Subscription must be configured using CDK directly
-    // Example: eventTopic.AddSubscription(LambdaSubscription processorFunc)
-    ()
-}
-
-(**
-## SQS to Lambda
-
-Process SQS messages with Lambda functions.
-*)
-
-stack "SQSToLambda" {
-    // Create queue
-    let workQueue =
-        queue "WorkQueue" {
-            visibilityTimeout 300.0 // 5 minutes (match Lambda timeout)
-        }
-
-    // Create Lambda function
-    let workerFunc =
-        lambda "Worker" {
             runtime Runtime.DOTNET_8
-            handler "App::ProcessMessage"
-            code "./lambda"
-            timeout 300.0 // 5 minutes
+            code (Code.FromAsset("./lambda"))
         }
 
-    // Note: Event source mapping must be configured using CDK directly
-    // Example: workQueue.GrantConsumeMessages workerFunc
-    ()
+    // Create topic with Lambda subscription using implicit yield
+    topic "EventTopic" {
+        displayName "Event Notifications"
+        lambdaSubscription { handler processorFunc }
+    }
 }
 
 (**
-## Email Notifications
+### Lambda Subscription with Filter Policy
 
-Send email notifications using SNS.
+Filter which messages trigger the Lambda function based on message attributes.
 *)
+
+stack "FilteredLambdaStack" {
+    let! processorFunc =
+        lambda "FilteredProcessor" {
+            handler "App::ProcessEvent"
+            runtime Runtime.DOTNET_8
+            code (Code.FromAsset("./lambda"))
+        }
+
+    topic "FilteredEventTopic" {
+        displayName "Filtered Events"
+
+        lambdaSubscription {
+            handler processorFunc
+
+            filterPolicy (
+                dict
+                    [ "eventType",
+                      SubscriptionFilter.StringFilter(StringConditions(Allowlist = [| "order"; "payment" |])) ]
+            )
+        }
+    }
+}
 
 (**
-Note: Email subscriptions must be configured using CDK directly.
-Email addresses require confirmation.
+## SQS Subscription
+
+Subscribe an SQS queue to receive messages from an SNS topic.
+This is the foundation of the fan-out pattern.
 *)
+
+stack "SQSSubscriptionStack" {
+    // Create SQS queue using FsCDK builder
+    let! orderQueue = queue "OrderQueue" { visibilityTimeout 30.0 }
+
+    // Create topic with SQS subscription using implicit yield
+    topic "OrderEvents" {
+        displayName "Order Processing Events"
+
+        sqsSubscription {
+            queue orderQueue
+            rawMessageDelivery true // Send raw message without SNS metadata
+        }
+    }
+}
 
 (**
-## SMS Notifications
+### SQS Subscription with Dead Letter Queue
 
-Send SMS notifications using SNS.
+Configure a dead letter queue to capture messages that fail to deliver.
 *)
+
+stack "SQSWithDLQStack" {
+    let! orderQueue = queue "OrderQueue" { visibilityTimeout 30.0 }
+    let! dlqQueue = queue "DLQ" { retentionPeriod 1209600.0 } // 14 days
+
+    topic "ReliableEvents" {
+        displayName "Reliable Event Delivery"
+
+        sqsSubscription {
+            queue orderQueue
+            deadLetterQueue dlqQueue
+            rawMessageDelivery true
+        }
+    }
+}
 
 (**
-Note: SMS subscriptions must be configured using CDK directly.
-Requires SMS settings configuration in AWS account.
+## Email Subscription
+
+Subscribe an email address to receive notifications. The email address will receive
+a confirmation email and must confirm before receiving messages.
 *)
+
+let topicWithEmail =
+    topic "AlertTopic" {
+        displayName "System Alerts"
+        emailSubscription { email "ops-team@example.com" }
+    }
+
+(**
+### Email Subscription with JSON Format
+
+Send the full SNS notification as JSON instead of just the message body.
+*)
+
+let topicWithJsonEmail =
+    topic "DetailedAlerts" {
+        displayName "Detailed System Alerts"
+
+        emailSubscription {
+            email "dev-team@example.com"
+            json true // Send full JSON notification
+        }
+    }
+
+(**
+## SMS Subscription
+
+Subscribe a phone number to receive SMS notifications.
+Phone numbers should be in E.164 format (e.g., +1234567890).
+*)
+
+let topicWithSms =
+    topic "UrgentAlerts" {
+        displayName "Urgent Notifications"
+        smsSubscription { phoneNumber "+1234567890" }
+    }
+
+(**
+## URL (HTTP/HTTPS) Subscription
+
+Subscribe an HTTP or HTTPS endpoint to receive notifications via webhook.
+The endpoint must confirm the subscription.
+*)
+
+let topicWithUrl =
+    topic "WebhookTopic" {
+        displayName "Webhook Notifications"
+
+        urlSubscription {
+            url "https://api.example.com/webhooks/sns"
+            rawMessageDelivery true
+        }
+    }
+
+(**
+### URL Subscription with Protocol Override
+
+Explicitly set the protocol (useful when URL doesn't clearly indicate HTTP vs HTTPS).
+*)
+
+let topicWithHttps =
+    topic "SecureWebhooks" {
+        displayName "Secure Webhook Notifications"
+
+        urlSubscription {
+            url "https://secure.example.com/notifications"
+            protocol SubscriptionProtocol.HTTPS
+            rawMessageDelivery true
+        }
+    }
+
+(**
+## Multiple Subscriptions
+
+Add multiple subscriptions to a single topic using implicit yields (each subscription builder
+is automatically added to the topic).
+*)
+
+stack "MultiSubscriptionStack" {
+    let! notificationQueue = queue "NotificationQueue" { () }
+
+    topic "MultiChannelAlerts" {
+        displayName "Multi-Channel Alert System"
+
+        // Notify ops team via email
+        emailSubscription { email "ops@example.com" }
+
+        // Send to the processing queue
+        sqsSubscription {
+            queue notificationQueue
+            rawMessageDelivery true
+        }
+
+        // Webhook for external integration
+        urlSubscription { url "https://slack.example.com/webhook" }
+
+        // SMS for critical alerts
+        smsSubscription { phoneNumber "+1987654321" }
+    }
+}
+
+(**
+## Fan-Out Pattern with Subscription Builders
+
+The fan-out pattern distributes messages from one SNS topic to multiple SQS queues
+for parallel processing. Each queue can have different processing characteristics.
+*)
+
+stack "FanOutStack" {
+    // Create multiple queues for different processing pipelines using FsCDK builders
+    let! inventoryQueue = queue "InventoryQueue" { visibilityTimeout 30.0 }
+    let! shippingQueue = queue "ShippingQueue" { visibilityTimeout 60.0 }
+    let! analyticsQueue = queue "AnalyticsQueue" { visibilityTimeout 120.0 }
+
+    // Create a topic with fan-out to all queues using implicit yields
+    topic "OrderEvents" {
+        displayName "Order Processing Events"
+
+        subscriptions
+            [ sqsSubscription {
+                  queue inventoryQueue
+                  rawMessageDelivery true
+              }
+
+              sqsSubscription {
+                  queue shippingQueue
+                  rawMessageDelivery true
+              }
+
+              sqsSubscription {
+                  queue analyticsQueue
+                  rawMessageDelivery true
+              } ]
+    }
+}
+
+(**
+## Filter Policy Examples
+
+Use filter policies to route messages to specific subscribers based on message attributes.
+
+### String Matching
+*)
+
+stack "FilterPolicyExamplesStack" {
+    let! filterExampleFn =
+        lambda "FilterExampleFn" {
+            handler "App::ProcessEvent"
+            runtime Runtime.DOTNET_8
+            code (Code.FromAsset("./lambda"))
+        }
+
+    // String Matching Filter
+    let stringFilterExample =
+        lambdaSubscription {
+            handler filterExampleFn
+
+            filterPolicy (
+                dict
+                    [ "eventType",
+                      SubscriptionFilter.StringFilter(StringConditions(Allowlist = [| "order"; "refund" |])) ]
+            )
+        }
+
+    // Numeric Matching Filter
+    let numericFilterExample =
+        lambdaSubscription {
+            handler filterExampleFn
+
+            filterPolicy (
+                dict
+                    [ "amount",
+                      SubscriptionFilter.NumericFilter(
+                          NumericConditions(Between = BetweenCondition(Start = 100.0, Stop = 1000.0))
+                      ) ]
+            )
+        }
+
+    // Prefix Matching Filter
+    let prefixFilterExample =
+        lambdaSubscription {
+            handler filterExampleFn
+
+            filterPolicy (
+                dict
+                    [ "source",
+                      SubscriptionFilter.StringFilter(StringConditions(MatchPrefixes = [| "prod-"; "staging-" |])) ]
+            )
+        }
+
+    // Use filters in a topic
+    topic "FilteredTopic" {
+        displayName "Topic with Filtered Subscriptions"
+        stringFilterExample
+        numericFilterExample
+        prefixFilterExample
+    }
+}
 
 (**
 ## Best Practices
@@ -291,21 +547,56 @@ Requires SMS settings configuration in AWS account.
 | **Cost** | Lower | Higher |
 | **Use Case** | Most scenarios | Banking, trading |
 
-## Message Attributes
+## Subscription Builder Reference
 
-Use message attributes for filtering and routing:
+### LambdaSubscriptionBuilder
 
-```fsharp
-// In Lambda publishing to SNS:
-let attributes = Dictionary<string, MessageAttributeValue>()
-attributes.Add("eventType", MessageAttributeValue(StringValue = "order"))
-attributes.Add("priority", MessageAttributeValue(StringValue = "high"))
+| Operation | Type | Description |
+|-----------|------|-------------|
+| `handler` | `IFunction` | **Required.** Lambda function to invoke |
+| `deadLetterQueue` | `IQueue` | Queue for failed deliveries |
+| `filterPolicy` | `IDictionary<string, SubscriptionFilter>` | Filter by message attributes |
+| `filterPolicyWithMessageBody` | `IDictionary<string, FilterOrPolicy>` | Filter by message body |
 
-topic.Publish(PublishRequest(
-    Message = json,
-    MessageAttributes = attributes
-))
-```
+### SqsSubscriptionBuilder
+
+| Operation | Type | Description |
+|-----------|------|-------------|
+| `queue` | `IQueue` | **Required.** SQS queue to subscribe |
+| `rawMessageDelivery` | `bool` | Send raw message without SNS envelope |
+| `deadLetterQueue` | `IQueue` | Queue for failed deliveries |
+| `filterPolicy` | `IDictionary<string, SubscriptionFilter>` | Filter by message attributes |
+| `filterPolicyWithMessageBody` | `IDictionary<string, FilterOrPolicy>` | Filter by message body |
+
+### EmailSubscriptionBuilder
+
+| Operation | Type | Description |
+|-----------|------|-------------|
+| `email` | `string` | **Required.** Email address to subscribe |
+| `json` | `bool` | Send full JSON notification |
+| `deadLetterQueue` | `IQueue` | Queue for failed deliveries |
+| `filterPolicy` | `IDictionary<string, SubscriptionFilter>` | Filter by message attributes |
+| `filterPolicyWithMessageBody` | `IDictionary<string, FilterOrPolicy>` | Filter by message body |
+
+### SmsSubscriptionBuilder
+
+| Operation | Type | Description |
+|-----------|------|-------------|
+| `phoneNumber` | `string` | **Required.** Phone number (E.164 format) |
+| `deadLetterQueue` | `IQueue` | Queue for failed deliveries |
+| `filterPolicy` | `IDictionary<string, SubscriptionFilter>` | Filter by message attributes |
+| `filterPolicyWithMessageBody` | `IDictionary<string, FilterOrPolicy>` | Filter by message body |
+
+### UrlSubscriptionBuilder
+
+| Operation | Type | Description |
+|-----------|------|-------------|
+| `url` | `string` | **Required.** HTTP/HTTPS endpoint URL |
+| `protocol` | `SubscriptionProtocol` | HTTP or HTTPS protocol |
+| `rawMessageDelivery` | `bool` | Send raw message without SNS envelope |
+| `deadLetterQueue` | `IQueue` | Queue for failed deliveries |
+| `filterPolicy` | `IDictionary<string, SubscriptionFilter>` | Filter by message attributes |
+| `filterPolicyWithMessageBody` | `IDictionary<string, FilterOrPolicy>` | Filter by message body |
 
 ## Resources
 

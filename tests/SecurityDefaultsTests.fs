@@ -37,6 +37,7 @@ let vpcFlowLogsTests =
 
               Expect.equal spec.FlowLogRetention (Some RetentionDays.ONE_MONTH) "Flow logs should have custom retention"
           } ]
+    |> testSequenced
 
 [<Tests>]
 let cloudTrailSecurityDefaultsTests =
@@ -116,6 +117,7 @@ let cloudTrailSecurityDefaultsTests =
 
               Expect.equal spec.ConstructId "CustomId" "ConstructId should be custom value"
           } ]
+    |> testSequenced
 
 [<Tests>]
 let dynamoDBSecurityDefaultsTests =
@@ -162,6 +164,7 @@ let dynamoDBSecurityDefaultsTests =
 
               Expect.isFalse pitrEnabled "DynamoDB should allow disabling PITR"
           } ]
+    |> testSequenced
 
 [<Tests>]
 let policyStatementWildcardTests =
@@ -177,3 +180,4 @@ let policyStatementWildcardTests =
 
               Expect.throws thrower "PolicyStatement should throw on double wildcards"
           } ]
+    |> testSequenced

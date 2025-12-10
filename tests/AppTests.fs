@@ -47,21 +47,23 @@ let appTests =
                       removalPolicy RemovalPolicy.DESTROY // fine for dev
                   }
 
-                  queue "users-dlq" {
-                      retentionPeriod (7.0 * 24.0 * 3600.0) // 7 days
-                  }
+                  let! dlqQueue =
+                      queue "users-dlq" {
+                          retentionPeriod (7.0 * 24.0 * 3600.0) // 7 days
+                      }
+
+                  let dlq =
+                      deadLetterQueue {
+                          queue dlqQueue
+                          maxReceiveCount 5
+                      }
 
                   queue "users-queue" {
-                      deadLetterQueue "users-dlq" 5
+                      deadLetterQueue dlq
                       visibilityTimeout 30.0
                   }
 
                   topic "user-events" { displayName "User events" }
-
-                  subscription {
-                      topic "user-events"
-                      queue "users-queue"
-                  }
               }
 
               stack "Prod" {

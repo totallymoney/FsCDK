@@ -19,6 +19,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="TestHelpers.fs" />
+        <Compile Include="SNSTests.fs" />
         <Compile Include="SQSTests.fs" />
         <Compile Include="DynamoDBTests.fs" />
         <Compile Include="S3LifecycleRuleBuilderTests.fs" />
