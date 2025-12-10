@@ -10,12 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2025-12-10
 
 ### Added
-- SNS subscription builders: `lambdaSubscription`, `sqsSubscription`, `emailSubscription`, `smsSubscription`, `urlSubscription`
+- SNS subscription builders
 - DynamoDB Global Secondary Index (GSI) and Local Secondary Index (LSI) builders
 - CloudWatch Dashboard builder
 
 ### Fixed
-- DeadLetterQueue CE: fixed strict evaluation bug in `Option.defaultValue`
+- DeadLetterQueue CE: fixed strict evaluation bug in Option.defaultValue
 - SNS and SQS builder improvements
 
 ## [0.1.0] - 2025-11-25
