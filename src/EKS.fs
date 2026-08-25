@@ -219,10 +219,10 @@ type EKSClusterBuilder(name: string) =
         { ClusterName = config.ClusterName
           ConstructId = constructId
           Props = props
-          AddNodegroupCapacity = List.Empty
-          AddServiceAccount = List.Empty
-          AddHelmChart = List.Empty
-          AddFargateProfile = List.Empty
+          AddNodegroupCapacity = List.rev config.AddNodegroupCapacity
+          AddServiceAccount = List.rev config.AddServiceAccount
+          AddHelmChart = List.rev config.AddHelmChart
+          AddFargateProfile = List.rev config.AddFargateProfile
           Cluster = None }
 
     /// <summary>Sets the construct ID for the EKS cluster.</summary>

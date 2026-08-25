@@ -37,8 +37,9 @@ type ECRRepositoryResource =
     {
         RepositoryName: string
         ConstructId: string
+        Props: RepositoryProps
         /// The underlying CDK Repository construct
-        Repository: Repository
+        mutable Repository: Repository
     }
 
 type ECRRepositoryBuilder(name: string) =
@@ -106,6 +107,7 @@ type ECRRepositoryBuilder(name: string) =
 
         { RepositoryName = repositoryName
           ConstructId = constructId
+          Props = props
           Repository = null }
 
     [<CustomOperation("constructId")>]

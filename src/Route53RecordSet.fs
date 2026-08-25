@@ -47,8 +47,9 @@ type Route53RecordSetResource =
     {
         RecordSetName: string
         ConstructId: string
+        Props: CfnRecordSetProps
         /// The underlying CDK CfnRecordSet construct
-        RecordSet: CfnRecordSet
+        mutable RecordSet: CfnRecordSet
     }
 
 type Route53RecordSetBuilder(name: string) =
@@ -143,6 +144,7 @@ type Route53RecordSetBuilder(name: string) =
 
         { RecordSetName = recordSetName
           ConstructId = constructId
+          Props = props
           RecordSet = null }
 
     [<CustomOperation("constructId")>]

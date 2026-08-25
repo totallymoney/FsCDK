@@ -857,7 +857,7 @@ type UserPoolConfig =
       SignInAliases: ISignInAliases option
       AutoVerify: IAutoVerifiedAttrs option
       StandardAttributes: IStandardAttributes option
-      CustomAttributes: ICustomAttribute list
+      CustomAttributes: (string * ICustomAttribute) list
       PasswordPolicy: IPasswordPolicy option
       MfaConfiguration: Mfa option
       MfaSecondFactor: IMfaSecondFactor option
@@ -965,7 +965,7 @@ type UserPoolBuilder(name: string) =
           LambdaTriggers = None
           RemovalPolicy = None }
 
-    member _.Yield(customAttr: ICustomAttribute) : UserPoolConfig =
+    member _.Yield((attrName, customAttr): string * ICustomAttribute) : UserPoolConfig =
         { UserPoolName = name
           ConstructId = None
           UserPoolName_ = None
@@ -973,7 +973,7 @@ type UserPoolBuilder(name: string) =
           SignInAliases = None
           AutoVerify = None
           StandardAttributes = None
-          CustomAttributes = [ customAttr ]
+          CustomAttributes = [ (attrName, customAttr) ]
           PasswordPolicy = None
           MfaConfiguration = None
           MfaSecondFactor = None
@@ -1142,9 +1142,10 @@ type UserPoolBuilder(name: string) =
         if not (List.isEmpty config.CustomAttributes) then
             let attrDict = System.Collections.Generic.Dictionary<string, ICustomAttribute>()
 
-            for attr in config.CustomAttributes do
-                // Note: Using type name as key; for precise control, set the dictionary directly upstream if needed
-                attrDict.Add(attr.GetType().Name, attr)
+            // The list is chronological (ops append, Combine appends), so
+            // plain overwrite gives last-definition-wins
+            for attrName, attr in config.CustomAttributes do
+                attrDict[attrName] <- attr
 
             props.CustomAttributes <- attrDict
 
@@ -1204,11 +1205,11 @@ type UserPoolBuilder(name: string) =
         { config with
             StandardAttributes = Some attrs }
 
-    /// <summary>Add a custom attribute (key derived from attribute type name).</summary>
+    /// <summary>Add a custom attribute with its attribute name (rendered as "custom:name").</summary>
     [<CustomOperation("customAttribute")>]
-    member _.CustomAttribute(config: UserPoolConfig, attr: ICustomAttribute) =
+    member _.CustomAttribute(config: UserPoolConfig, attrName: string, attr: ICustomAttribute) =
         { config with
-            CustomAttributes = attr :: config.CustomAttributes }
+            CustomAttributes = config.CustomAttributes @ [ (attrName, attr) ] }
 
     /// <summary>Sets password policy.</summary>
     [<CustomOperation("passwordPolicy")>]

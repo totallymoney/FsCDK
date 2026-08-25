@@ -50,8 +50,9 @@ type CloudWatchCanaryResource =
     {
         CanaryName: string
         ConstructId: string
+        Props: CanaryProps
         /// The underlying CDK Canary construct
-        Canary: Canary
+        mutable Canary: Canary
     }
 
 type CloudWatchCanaryBuilder(name: string) =
@@ -147,6 +148,7 @@ type CloudWatchCanaryBuilder(name: string) =
 
         { CanaryName = canaryName
           ConstructId = constructId
+          Props = props
           Canary = null }
 
     [<CustomOperation("constructId")>]

@@ -26,6 +26,7 @@ type ECSClusterConfig =
 type ECSClusterSpec =
     { ClusterName: string
       ConstructId: string
+      Props: ClusterProps
       mutable Cluster: Cluster option }
 
 type ECSClusterBuilder(name: string) =
@@ -73,6 +74,7 @@ type ECSClusterBuilder(name: string) =
 
         { ClusterName = clusterName
           ConstructId = constructId
+          Props = props
           Cluster = None }
 
     [<CustomOperation("constructId")>]
@@ -118,6 +120,7 @@ type ECSFargateServiceConfig =
 type ECSFargateServiceSpec =
     { ServiceName: string
       ConstructId: string
+      Props: FargateServiceProps
       mutable Service: FargateService option }
 
 type ECSFargateServiceBuilder(name: string) =
@@ -180,6 +183,7 @@ type ECSFargateServiceBuilder(name: string) =
 
         { ServiceName = serviceName
           ConstructId = constructId
+          Props = props
           Service = None }
 
     [<CustomOperation("constructId")>]

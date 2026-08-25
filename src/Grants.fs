@@ -130,18 +130,34 @@ type GrantBuilder() =
 module Grants =
     // Grant processing function for Stack builder
     let processGrant (stack: Stack) (grantSpec: GrantSpec) =
-        try
-            // Look for resources by their construct IDs
-            let table = stack.Node.FindChild(grantSpec.TableConstructId) :?> Table
-            let lambda = stack.Node.FindChild(grantSpec.LambdaConstructId) :?> Function
+        // A grant that cannot be applied must fail the synth: swallowing the error
+        // would deploy a Lambda without the IAM permissions the user asked for.
+        let findChild (constructId: string) (kind: string) =
+            try
+                stack.Node.FindChild(constructId)
+            with _ ->
+                failwith
+                    $"Grant failed: {kind} with construct id '{constructId}' was not found in stack '{stack.StackName}'. Ensure it is yielded in the stack before the grant."
 
-            match grantSpec.Access with
-            | Read -> table.GrantReadData(lambda) |> ignore
-            | Write -> table.GrantWriteData(lambda) |> ignore
-            | ReadWrite -> table.GrantReadWriteData(lambda) |> ignore
-            | Custom grantFunc -> grantFunc table lambda
-        with _ ->
-            () // Ignore if resources not found
+        let table =
+            match findChild grantSpec.TableConstructId "table" with
+            | :? Table as t -> t
+            | other ->
+                failwith
+                    $"Grant failed: construct '{grantSpec.TableConstructId}' is a {other.GetType().Name}, not a DynamoDB Table."
+
+        let lambda =
+            match findChild grantSpec.LambdaConstructId "lambda function" with
+            | :? Function as f -> f
+            | other ->
+                failwith
+                    $"Grant failed: construct '{grantSpec.LambdaConstructId}' is a {other.GetType().Name}, not a Lambda Function."
+
+        match grantSpec.Access with
+        | Read -> table.GrantReadData(lambda) |> ignore
+        | Write -> table.GrantWriteData(lambda) |> ignore
+        | ReadWrite -> table.GrantReadWriteData(lambda) |> ignore
+        | Custom grantFunc -> grantFunc table lambda
 
 // ============================================================================
 // Builders

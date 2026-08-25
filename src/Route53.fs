@@ -140,6 +140,7 @@ type Route53PrivateHostedZoneResource =
     {
         ZoneName: string
         ConstructId: string
+        Props: PrivateHostedZoneProps
         /// The underlying CDK PrivateHostedZone construct
         mutable HostedZone: IHostedZone option
     }
@@ -199,6 +200,7 @@ type Route53PrivateHostedZoneBuilder(zoneName: string) =
 
         { ZoneName = zoneName
           ConstructId = constructId
+          Props = props
           HostedZone = None }
 
     [<CustomOperation("constructId")>]
@@ -358,8 +360,9 @@ type Route53HealthCheckResource =
     {
         HealthCheckName: string
         ConstructId: string
+        Props: CfnHealthCheckProps
         /// The underlying CDK CfnHealthCheck construct
-        HealthCheck: CfnHealthCheck
+        mutable HealthCheck: CfnHealthCheck
     }
 
     /// Gets the health check ID
@@ -443,6 +446,7 @@ type Route53HealthCheckBuilder(name: string) =
 
         { HealthCheckName = healthCheckName
           ConstructId = constructId
+          Props = props
           HealthCheck = null }
 
     [<CustomOperation("constructId")>]

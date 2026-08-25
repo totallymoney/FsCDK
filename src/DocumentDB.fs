@@ -59,6 +59,7 @@ type DocumentDBClusterSpec =
     { ClusterName: string
       ConstructId: string
       Props: DatabaseClusterProps
+      Tags: (string * string) list
       mutable Cluster: DatabaseCluster option }
 
     interface IVpc with
@@ -176,7 +177,16 @@ type DocumentDBClusterBuilder(name: string) =
         | None -> failwith "MasterPassword (ISecret) is required for DocumentDB cluster"
 
         config.InstanceType
-        |> Option.iter (fun _ -> props.InstanceType <- InstanceType.Of(InstanceClass.BURSTABLE3, InstanceSize.MEDIUM))
+        |> Option.iter (fun instanceType ->
+            // Accept both "db.t3.medium" (DocumentDB style) and "t3.medium";
+            // CDK adds the "db." prefix itself.
+            let name =
+                if instanceType.StartsWith("db.") then
+                    instanceType.Substring(3)
+                else
+                    instanceType
+
+            props.InstanceType <- InstanceType(name))
 
         config.Instances |> Option.iter (fun v -> props.Instances <- v)
 
@@ -188,8 +198,14 @@ type DocumentDBClusterBuilder(name: string) =
         // Apply security group if provided
         config.SecurityGroup |> Option.iter (fun sg -> props.SecurityGroup <- sg)
 
-        config.BackupRetentionDays
-        |> Option.iter (fun v -> props.Backup <- BackupProps(Retention = Duration.Days(float v)))
+        match config.BackupRetentionDays, config.PreferredBackupWindow with
+        | None, None -> ()
+        | retention, window ->
+            let backup =
+                BackupProps(Retention = Duration.Days(float (retention |> Option.defaultValue 1)))
+
+            window |> Option.iter (fun w -> backup.PreferredWindow <- w)
+            props.Backup <- backup
 
         config.PreferredMaintenanceWindow
         |> Option.iter (fun v -> props.PreferredMaintenanceWindow <- v)
@@ -204,6 +220,7 @@ type DocumentDBClusterBuilder(name: string) =
         { ClusterName = clusterName
           ConstructId = constructId
           Props = props
+          Tags = List.rev config.Tags
           Cluster = None }
 
     [<CustomOperation("constructId")>]

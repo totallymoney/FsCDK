@@ -289,7 +289,12 @@ type DatabaseInstanceBuilder(name: string) =
         config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
         config.ParameterGroup |> Option.iter (fun p -> props.ParameterGroup <- p)
         config.DatabaseName_ |> Option.iter (fun d -> props.DatabaseName <- d)
-        config.Credentials |> Option.iter (fun c -> props.Credentials <- c)
+
+        // Explicit credentials win; otherwise masterUsername gets a generated secret
+        match config.Credentials, config.MasterUsername with
+        | Some c, _ -> props.Credentials <- c
+        | None, Some username -> props.Credentials <- Credentials.FromGeneratedSecret(username)
+        | None, None -> ()
 
         config.PreferredBackupWindow
         |> Option.iter (fun w -> props.PreferredBackupWindow <- w)

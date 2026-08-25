@@ -31,8 +31,9 @@ type HttpApiResource =
     {
         ApiName: string
         ConstructId: string
+        Props: HttpApiProps
         /// The underlying CDK HttpApi construct
-        Api: HttpApi
+        mutable Api: HttpApi
     }
 
 type HttpApiBuilder(name: string) =
@@ -78,6 +79,7 @@ type HttpApiBuilder(name: string) =
 
         { ApiName = apiName
           ConstructId = constructId
+          Props = props
           Api = null }
 
     [<CustomOperation("constructId")>]
@@ -101,15 +103,27 @@ type HttpApiBuilder(name: string) =
 /// Helper functions for creating HTTP API CORS configurations
 module HttpApiHelpers =
 
-    /// Creates CORS preflight options with common defaults
+    /// Creates CORS preflight options with common defaults.
+    /// Credentials are not allowed by default: API Gateway rejects
+    /// AllowCredentials=true combined with a wildcard origin.
     let cors (allowOrigins: string list) (allowMethods: CorsHttpMethod list) (allowHeaders: string list) =
         CorsPreflightOptions(
             AllowOrigins = (allowOrigins |> Array.ofList),
             AllowMethods = (allowMethods |> Array.ofList),
             AllowHeaders = (allowHeaders |> Array.ofList),
-            AllowCredentials = true,
             MaxAge = Duration.Hours(1.0)
         )
+
+    /// Creates CORS preflight options that allow credentials. Origins must be
+    /// explicit (no "*"): API Gateway rejects credentials with a wildcard origin.
+    let corsWithCredentials
+        (allowOrigins: string list)
+        (allowMethods: CorsHttpMethod list)
+        (allowHeaders: string list)
+        =
+        let options = cors allowOrigins allowMethods allowHeaders
+        options.AllowCredentials <- true
+        options
 
     /// Creates permissive CORS for development (allows all origins, methods, headers)
     let corsPermissive () =

@@ -33,9 +33,9 @@ jobs:
         path: |
           ~/.nuget/packages
           ~/.local/share/NuGet/v3-cache
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+        key: ${{ runner.os }}-nuget-v2-${{ hashFiles('**/packages.lock.json') }}
         restore-keys: |
-          ${{ runner.os }}-nuget-
+          ${{ runner.os }}-nuget-v2-
 
     - name: Restore
       run: dotnet restore ${{env.SLN_FILE}}

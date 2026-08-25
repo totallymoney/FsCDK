@@ -86,11 +86,11 @@ type UserBuilder() =
         let userProps = UserProps()
         let constructId = config.ConstructId |> Option.defaultValue "User"
 
-        config.Groups
-        |> Seq.iter (fun group -> userProps.Groups <- Array.append userProps.Groups [| group |])
+        if not (List.isEmpty config.Groups) then
+            userProps.Groups <- config.Groups |> List.toArray
 
-        config.ManagedPolicies
-        |> Seq.iter (fun policy -> userProps.ManagedPolicies <- Array.append userProps.ManagedPolicies [| policy |])
+        if not (List.isEmpty config.ManagedPolicies) then
+            userProps.ManagedPolicies <- config.ManagedPolicies |> List.toArray
 
         config.Password |> Option.iter (fun pwd -> userProps.Password <- pwd)
 
@@ -316,33 +316,28 @@ type PolicyBuilder(name: string) =
 
         let policyProps = PolicyProps()
 
-        let constructId = config.PolicyName |> Option.defaultValue name
+        let constructId =
+            config.ConstructId
+            |> Option.orElse config.PolicyName
+            |> Option.defaultValue name
 
         config.Document |> Option.iter (fun doc -> policyProps.Document <- doc)
 
         config.Force |> Option.iter (fun force -> policyProps.Force <- force)
 
-        config.Groups
-        |> Seq.iter (fun group -> policyProps.Groups <- Array.append policyProps.Groups [| group |])
+        if not (Seq.isEmpty config.Groups) then
+            policyProps.Groups <- config.Groups |> Seq.toArray
 
         config.PolicyName |> Option.iter (fun name -> policyProps.PolicyName <- name)
 
-        config.Roles
-        |> Seq.iter (fun role -> policyProps.Roles <- Array.append policyProps.Roles [| role |])
+        if not (Seq.isEmpty config.Roles) then
+            policyProps.Roles <- config.Roles |> Seq.toArray
 
-        config.Statements
-        |> Seq.iter (fun stmt ->
-            if policyProps.Statements = null then
-                policyProps.Statements <- [| stmt |]
-            else
-                policyProps.Statements <- Array.append policyProps.Statements [| stmt |])
+        if not (Seq.isEmpty config.Statements) then
+            policyProps.Statements <- config.Statements |> Seq.toArray
 
-        config.Users
-        |> Seq.iter (fun user ->
-            if policyProps.Users = null then
-                policyProps.Users <- [| user |]
-            else
-                policyProps.Users <- Array.append policyProps.Users [| user |])
+        if not (Seq.isEmpty config.Users) then
+            policyProps.Users <- config.Users |> Seq.toArray
 
         { PolicyName = name
           ConstructId = constructId
@@ -682,6 +677,9 @@ type ManagedPolicyBuilder(name: string) =
 
         if not (Seq.isEmpty config.Roles) then
             props.Roles <- config.Roles |> Seq.toArray
+
+        if not (Seq.isEmpty config.Users) then
+            props.Users <- config.Users |> Seq.toArray
 
         { PolicyName = config.PolicyName
           ConstructId = constructId

@@ -54,12 +54,14 @@ let tests =
 
               let spec =
                   userPool "PoolWithAttrs" {
-                      customAttribute attr1
-                      customAttribute attr2
+                      customAttribute "nickname" attr1
+                      customAttribute "score" attr2
                   }
 
               Expect.isNotNull spec.Props.CustomAttributes "CustomAttributes dictionary should be set"
               Expect.isTrue (spec.Props.CustomAttributes.Count >= 2) "At least two custom attributes expected"
+              Expect.isTrue (spec.Props.CustomAttributes.ContainsKey "nickname") "Attribute name should be the key"
+              Expect.isTrue (spec.Props.CustomAttributes.ContainsKey "score") "Attribute name should be the key"
 
           }
 

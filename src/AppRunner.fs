@@ -124,6 +124,45 @@ type AppRunnerServiceBuilder(name: string) =
         config.InstanceConfiguration
         |> Option.iter (fun v -> props.InstanceConfiguration <- v)
 
+        // The instance role rides on the instance configuration. Copy the
+        // user-supplied object rather than mutating it: shared configurations
+        // (e.g. AppRunnerHelpers.InstanceSizes) must not leak a role from one
+        // service into another.
+        config.InstanceRole
+        |> Option.iter (fun role ->
+            let instanceCfg = CfnService.InstanceConfigurationProperty()
+
+            config.InstanceConfiguration
+            |> Option.iter (fun existing ->
+                instanceCfg.Cpu <- existing.Cpu
+                instanceCfg.Memory <- existing.Memory
+                instanceCfg.InstanceRoleArn <- existing.InstanceRoleArn)
+
+            instanceCfg.InstanceRoleArn <- role.RoleArn
+            props.InstanceConfiguration <- instanceCfg)
+
+        // The ECR access role rides on the source configuration; same copy rule
+        config.AccessRole
+        |> Option.iter (fun role ->
+            config.SourceConfiguration
+            |> Option.iter (fun source ->
+                let sourceCfg = CfnService.SourceConfigurationProperty()
+                sourceCfg.ImageRepository <- source.ImageRepository
+                sourceCfg.CodeRepository <- source.CodeRepository
+                sourceCfg.AutoDeploymentsEnabled <- source.AutoDeploymentsEnabled
+
+                let auth = CfnService.AuthenticationConfigurationProperty()
+
+                match source.AuthenticationConfiguration with
+                | :? CfnService.AuthenticationConfigurationProperty as existing ->
+                    auth.ConnectionArn <- existing.ConnectionArn
+                    auth.AccessRoleArn <- existing.AccessRoleArn
+                | _ -> ()
+
+                auth.AccessRoleArn <- role.RoleArn
+                sourceCfg.AuthenticationConfiguration <- auth
+                props.SourceConfiguration <- sourceCfg))
+
         config.HealthCheckConfiguration
         |> Option.iter (fun v -> props.HealthCheckConfiguration <- v)
 
@@ -208,10 +247,15 @@ module AppRunnerHelpers =
         source.AutoDeploymentsEnabled <- true
         source
 
-    /// Creates source configuration from ECR with auto-deploy
+    /// Creates source configuration from ECR with auto-deploy and the access
+    /// role App Runner uses to pull from the private ECR repository
     let ecrSourceWithAutoDeploy (imageUri: string) (port: int) (accessRole: IRole) =
         let source = ecrSource imageUri port
         source.AutoDeploymentsEnabled <- true
+
+        let auth = CfnService.AuthenticationConfigurationProperty()
+        auth.AccessRoleArn <- accessRole.RoleArn
+        source.AuthenticationConfiguration <- auth
         source
 
     /// Creates instance configuration with custom resources

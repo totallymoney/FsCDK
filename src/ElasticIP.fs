@@ -38,8 +38,11 @@ type ElasticIPResource =
     {
         EipName: string
         ConstructId: string
+        Props: CfnEIPProps
+        /// Network interface to associate with the EIP (creates a CfnEIPAssociation)
+        NetworkInterfaceId: string option
         /// The underlying CDK CfnEIP construct
-        ElasticIP: CfnEIP
+        mutable ElasticIP: CfnEIP
     }
 
     /// Gets the allocated Elastic IP address
@@ -94,8 +97,8 @@ type ElasticIPBuilder(name: string) =
         config.Domain |> Option.iter (fun v -> props.Domain <- v)
         config.InstanceId |> Option.iter (fun v -> props.InstanceId <- v)
 
-        config.NetworkInterfaceId
-        |> Option.iter (fun v -> props.NetworkBorderGroup <- v)
+        // AWS::EC2::EIP has no NetworkInterfaceId property; the association is
+        // created as a separate CfnEIPAssociation when the stack is built.
 
         config.PublicIpv4Pool |> Option.iter (fun v -> props.PublicIpv4Pool <- v)
 
@@ -107,6 +110,8 @@ type ElasticIPBuilder(name: string) =
 
         { EipName = eipName
           ConstructId = constructId
+          Props = props
+          NetworkInterfaceId = config.NetworkInterfaceId
           ElasticIP = null }
 
     [<CustomOperation("constructId")>]

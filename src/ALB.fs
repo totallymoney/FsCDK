@@ -172,8 +172,9 @@ type ALBTargetGroupResource =
     {
         TargetGroupName: string
         ConstructId: string
+        Props: ApplicationTargetGroupProps
         /// The underlying CDK ApplicationTargetGroup construct
-        TargetGroup: ApplicationTargetGroup
+        mutable TargetGroup: ApplicationTargetGroup
     }
 
 type ALBTargetGroupBuilder(name: string) =
@@ -263,6 +264,7 @@ type ALBTargetGroupBuilder(name: string) =
 
         { TargetGroupName = targetGroupName
           ConstructId = constructId
+          Props = props
           TargetGroup = null }
 
     [<CustomOperation("constructId")>]
@@ -338,8 +340,9 @@ type ALBListenerConfig =
 type ALBListenerResource =
     {
         ConstructId: string
+        Props: ApplicationListenerProps
         /// The underlying CDK ApplicationListener construct
-        Listener: ApplicationListener
+        mutable Listener: ApplicationListener
     }
 
 type ALBListenerBuilder(loadBalancer: IApplicationLoadBalancer) =
@@ -409,6 +412,7 @@ type ALBListenerBuilder(loadBalancer: IApplicationLoadBalancer) =
         config.SslPolicy |> ValueOption.iter (fun v -> props.SslPolicy <- v)
 
         { ConstructId = constructId
+          Props = props
           Listener = null }
 
     [<CustomOperation("constructId")>]

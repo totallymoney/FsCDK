@@ -183,6 +183,7 @@ type EventBusConfig =
 type EventBusSpec =
     { EventBusName: string
       ConstructId: string
+      Props: Amazon.CDK.AWS.Events.EventBusProps
       mutable EventBus: IEventBus option }
 
     /// Gets the underlying IEventBus resource. Must be called after the stack is built.
@@ -224,10 +225,17 @@ type EventBusBuilder(name: string) =
     member _.Run(config: EventBusConfig) : EventBusSpec =
         let constructId = config.ConstructId |> Option.defaultValue config.EventBusName
 
-        // For custom event buses, we just use the name
-        // EventSource is only for partner event buses
+        let props = Amazon.CDK.AWS.Events.EventBusProps()
+
+        // CDK rejects setting both: a partner event bus takes its name from the
+        // event source, a custom bus from EventBusName.
+        match config.EventSourceName with
+        | Some sourceName -> props.EventSourceName <- sourceName
+        | None -> props.EventBusName <- config.EventBusName
+
         { EventBusName = config.EventBusName
           ConstructId = constructId
+          Props = props
           EventBus = None }
 
     /// <summary>Sets the construct ID.</summary>

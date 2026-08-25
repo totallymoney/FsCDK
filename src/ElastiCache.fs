@@ -13,14 +13,14 @@ open Amazon.CDK.AWS.EC2
 /// - Number of nodes = 1 (single node for dev)
 /// - Port = 6379 (Redis default)
 /// - Automatic failover = disabled (single node)
-/// - Encryption at rest = enabled
-/// - Encryption in transit = enabled
+/// - Encryption in transit = disabled (enable with `transitEncryptionEnabled true`)
+/// - Encryption at rest = NOT supported by AWS::ElastiCache::CacheCluster;
+///   use a replication group for at-rest encryption
 ///
 /// **Rationale:**
 /// These defaults follow AWS Well-Architected Framework:
 /// - Redis 7.0 provides latest features and security
 /// - T3.micro suitable for development and testing
-/// - Encryption enabled by default for security
 /// - Single node reduces costs for non-production
 ///
 /// **Use Cases:**
@@ -48,6 +48,7 @@ type ElastiCacheRedisConfig =
       SnapshotRetentionLimit: int voption
       SnapshotWindow: string option
       AutoMinorVersionUpgrade: bool voption
+      TransitEncryptionEnabled: bool voption
       Tags: (string * string) list }
 
 type ElasticCacheRedisSpec =
@@ -72,6 +73,7 @@ type ElasticCacheRedisBuilder(name: string) =
           SnapshotRetentionLimit = ValueSome 7
           SnapshotWindow = None
           AutoMinorVersionUpgrade = ValueSome true
+          TransitEncryptionEnabled = ValueNone
           Tags = [] }
 
     member _.Zero() : ElastiCacheRedisConfig =
@@ -89,6 +91,7 @@ type ElasticCacheRedisBuilder(name: string) =
           SnapshotRetentionLimit = ValueSome 7
           SnapshotWindow = None
           AutoMinorVersionUpgrade = ValueSome true
+          TransitEncryptionEnabled = ValueNone
           Tags = [] }
 
     member _.Combine(state1: ElastiCacheRedisConfig, state2: ElastiCacheRedisConfig) : ElastiCacheRedisConfig =
@@ -118,6 +121,9 @@ type ElasticCacheRedisBuilder(name: string) =
           AutoMinorVersionUpgrade =
             state2.AutoMinorVersionUpgrade
             |> ValueOption.orElse state1.AutoMinorVersionUpgrade
+          TransitEncryptionEnabled =
+            state2.TransitEncryptionEnabled
+            |> ValueOption.orElse state1.TransitEncryptionEnabled
           Tags =
             if state2.Tags.IsEmpty then
                 state1.Tags
@@ -163,6 +169,9 @@ type ElasticCacheRedisBuilder(name: string) =
 
         config.AutoMinorVersionUpgrade
         |> ValueOption.iter (fun v -> props.AutoMinorVersionUpgrade <- v)
+
+        config.TransitEncryptionEnabled
+        |> ValueOption.iter (fun v -> props.TransitEncryptionEnabled <- v)
 
         if not config.SecurityGroupIds.IsEmpty then
             props.VpcSecurityGroupIds <- config.SecurityGroupIds |> Array.ofList
@@ -238,6 +247,12 @@ type ElasticCacheRedisBuilder(name: string) =
     member _.AutoMinorVersionUpgrade(config: ElastiCacheRedisConfig, enabled: bool) =
         { config with
             AutoMinorVersionUpgrade = ValueSome enabled }
+
+    /// <summary>Enables in-transit (TLS) encryption for the cache cluster.</summary>
+    [<CustomOperation("transitEncryptionEnabled")>]
+    member _.TransitEncryptionEnabled(config: ElastiCacheRedisConfig, enabled: bool) =
+        { config with
+            TransitEncryptionEnabled = ValueSome enabled }
 
     [<CustomOperation("tag")>]
     member _.Tag(config: ElastiCacheRedisConfig, key: string, value: string) =

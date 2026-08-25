@@ -86,10 +86,13 @@ type DockerImageFunctionBuilder(name: string) =
         // Create props without eagerly constructing DockerImageCode (to avoid JSII in unit tests)
         let props = DockerImageFunctionProps(FunctionName = lambdaName)
 
-        // Environment variables
+        // Environment variables (last value wins on duplicate keys)
         if not (Seq.isEmpty config.Environment) then
             let envDict = Dictionary<string, string>()
-            config.Environment |> Seq.iter envDict.Add
+
+            for key, value in config.Environment do
+                envDict[key] <- value
+
             props.Environment <- envDict
 
         // Optional properties - defer Timeout to stack application to avoid JSII in unit tests

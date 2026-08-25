@@ -131,8 +131,11 @@ type KinesisStreamBuilder(name: string) =
 
         config.StreamName_ |> Option.iter (fun n -> props.StreamName <- n)
 
-        // AWS Best Practice: Default to 1 shard for cost optimization
-        props.ShardCount <- config.ShardCount |> Option.defaultValue 1 |> double
+        // AWS Best Practice: Default to 1 shard for cost optimization.
+        // CDK rejects a shard count for ON_DEMAND streams, so only set it for
+        // provisioned mode.
+        if config.StreamMode <> Some StreamMode.ON_DEMAND then
+            props.ShardCount <- config.ShardCount |> Option.defaultValue 1 |> double
 
         // AWS Best Practice: 24-hour retention by default
         props.RetentionPeriod <- config.RetentionPeriod |> Option.defaultValue (Duration.Hours(24.0))

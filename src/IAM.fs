@@ -144,7 +144,7 @@ type RoleBuilder(name: string) =
         |> Option.iter (fun boundary -> roleProps.PermissionsBoundary <- boundary)
 
         { RoleName = config.RoleName
-          ConstructId = config.RoleName
+          ConstructId = config.ConstructId |> Option.defaultValue config.RoleName
           PolicyStatements = config.PolicyStatements
           Props = roleProps
           Role = None }

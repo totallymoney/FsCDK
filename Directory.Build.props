@@ -15,9 +15,10 @@
   <PropertyGroup>
     <Authors>Edgar Gonzalez</Authors>
     <PackageTags>F#;Declarative;AWS;CDK</PackageTags>
-    <!-- Only include README.md for packable projects that actually have the file in their project directory -->
-    <PackageReadmeFile Condition="'$(IsPackable)' == 'true' and Exists('README.md')">README.md</PackageReadmeFile>
-    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <!-- README.md is packed from the repository root (see the fsproj None Include) -->
+    <PackageReadmeFile Condition="'$(IsPackable)' == 'true'">README.md</PackageReadmeFile>
+    <!-- Must match the repository LICENSE file (MIT) -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
