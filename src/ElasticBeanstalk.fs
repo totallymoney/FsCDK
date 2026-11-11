@@ -24,8 +24,9 @@ type ElasticBeanstalkApplicationResource =
     {
         ApplicationName: string
         ConstructId: string
+        Props: CfnApplicationProps
         /// The underlying CDK Application construct
-        Application: CfnApplication
+        mutable Application: CfnApplication
     }
 
 type ElasticBeanstalkApplicationBuilder(name: string) =
@@ -66,6 +67,7 @@ type ElasticBeanstalkApplicationBuilder(name: string) =
 
         { ApplicationName = applicationName
           ConstructId = constructId
+          Props = props
           Application = null }
 
     [<CustomOperation("constructId")>]

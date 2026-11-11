@@ -94,7 +94,7 @@ FsCDK provides F# builders for 35+ AWS services across all major categories:
 | **Bastion Host** | Secure SSH access to instances in private subnets - [📚 Docs with learning resources](https://totallymoney.github.io/FsCDK/bastion-host.html) |
 | **Bedrock** | AI/ML foundation models with Agents, Knowledge Bases, Data Sources, and Guardrails - [📚 Docs with learning resources](https://totallymoney.github.io/FsCDK/bedrock.html) |
 | **Certificate Manager** | Manages SSL/TLS certificates for secure connections - [📚 Docs with learning resources](https://totallymoney.github.io/FsCDK/certificate-manager.html) |
-| **CloudFront** | Content delivery network (CDN) for fast global content distribution |
+| **CloudFront** | Content delivery network (CDN) with Origin Access Control for private S3 origins and SPA error responses |
 | **CloudHSM** | Hardware security modules for cryptographic key storage |
 | **CloudWatch** | Monitors resources with alarms, log groups, metric filters, subscription filters, dashboards, and synthetic canaries |
 | **Cognito** | User authentication and authorization for web and mobile apps |
@@ -114,16 +114,17 @@ FsCDK provides F# builders for 35+ AWS services across all major categories:
 | **KMS** (Key Management Service) | Creates and manages encryption keys |
 | **Lambda** | Runs code without managing servers (serverless functions) with cost optimization controls |
 | **Network Load Balancer** | High-performance TCP/UDP load balancer |
-| **OIDC Provider** | Federated identity using OpenID Connect |
+| **OIDC Provider** | Federated identity using OpenID Connect, including GitHub Actions deploy roles (`githubActionsRole`) |
 | **RDS** (Relational Database Service) | Managed relational databases (PostgreSQL, MySQL, etc.) |
 | **Route53** | DNS service and domain name management |
-| **S3** (Simple Storage Service) | Object storage for files, backups, and static websites |
+| **S3** (Simple Storage Service) | Object storage for files, backups, and static websites, plus asset uploads with `bucketDeployment` |
 | **Secrets Manager** | Securely stores and rotates database credentials and API keys |
 | **SNS** (Simple Notification Service) | Pub/sub messaging for sending notifications |
 | **SQS** (Simple Queue Service) | Message queuing for decoupling and scaling applications |
 | **SSM** (Systems Manager) | Manages parameters and documents for configuration |
 | **Step Functions** | Coordinates multiple AWS services into serverless workflows |
 | **VPC** (Virtual Private Cloud) | Isolated network environment for your AWS resources |
+| **WAF** (WAFv2) | Web ACLs with managed rule groups, rate limiting, associations and redacted logging |
 | **X-Ray** | Distributed tracing for debugging and analyzing microservices |
 
 ### Additional Capabilities
@@ -131,6 +132,7 @@ FsCDK provides F# builders for 35+ AWS services across all major categories:
 - **Lambda Powertools** - Production-ready observability for Lambda functions
 - **Grants** - Simplified IAM permission management between resources
 - **Tags** - Resource tagging across stacks
+- **Stack outputs** - CloudFormation outputs with `cfnOutput`
 - **Production-Safe Defaults** - Security and reliability best practices built-in
 
 ## Examples

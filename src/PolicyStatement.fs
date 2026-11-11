@@ -59,8 +59,13 @@ type PolicyStatementBuilder() =
         let hasWildcardActions = config.Actions |> List.exists (fun a -> a = "*")
         let hasWildcardResources = config.Resources |> List.exists (fun r -> r = "*")
 
-        // CRITICAL: Both wildcards together is a security violation
-        if hasWildcardActions && hasWildcardResources then
+        // Deny-all statements (guardrails/SCP style) and condition-scoped
+        // statements are legitimate; only an unconditional Allow-all is blocked.
+        let isUnconditionalAllowAll =
+            config.Effect <> Some Effect.DENY && List.isEmpty config.Conditions
+
+        // CRITICAL: Both wildcards together on an unconditional Allow is a security violation
+        if hasWildcardActions && hasWildcardResources && isUnconditionalAllowAll then
             failwith
                 """
 SECURITY ERROR: PolicyStatement has wildcard actions ('*') AND resources ('*').
@@ -107,7 +112,28 @@ See docs/iam-best-practices.fsx for examples.
 
         config.Sid |> Option.iter (fun sid -> props.Sid <- sid)
 
-        props.Conditions <- config.Conditions |> Seq.toList |> Map.ofList |> Dictionary
+        if not (List.isEmpty config.Conditions) then
+            // IAM conditions are operator -> (conditionKey -> value); merge maps
+            // that share an operator, later operations winning per key.
+            let conditions = Dictionary<string, obj>()
+
+            for operator', value in List.rev config.Conditions do
+                let merged =
+                    match conditions.TryGetValue operator' with
+                    | true, (:? IDictionary<string, obj> as existing) ->
+                        match value with
+                        | :? IDictionary<string, obj> as incoming ->
+                            for kv in incoming do
+                                existing[kv.Key] <- kv.Value
+
+                            true
+                        | _ -> false
+                    | _ -> false
+
+                if not merged then
+                    conditions[operator'] <- value
+
+            props.Conditions <- conditions
 
         PolicyStatement(props)
 
@@ -131,10 +157,14 @@ See docs/iam-best-practices.fsx for examples.
     member _.Condition(config: PolicyStatementConfig, conditions: (string * obj) list) =
         { config with Conditions = conditions }
 
+    /// <summary>Adds a single condition, e.g. condition "StringEquals" "aws:PrincipalOrgID" "o-12345".</summary>
     [<CustomOperation("condition")>]
-    member _.Condition(config: PolicyStatementConfig, key: string, value: string) =
+    member _.Condition(config: PolicyStatementConfig, operator': string, conditionKey: string, value: obj) =
+        let conditionValue: obj =
+            Dictionary<string, obj>(dict [ conditionKey, value ]) :> obj
+
         { config with
-            Conditions = (key, value) :: config.Conditions }
+            Conditions = (operator', conditionValue) :: config.Conditions }
 
 // ============================================================================
 // Builders

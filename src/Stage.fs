@@ -73,6 +73,17 @@ type StageBuilder(name: string) =
         let props = StageProps()
         props.StageName <- config.Name
         config.Env |> Option.iter (fun v -> props.Env <- v)
+        config.Outdir |> Option.iter (fun v -> props.Outdir <- v)
+
+        config.PermissionsBoundary
+        |> Option.iter (fun v -> props.PermissionsBoundary <- v)
+
+        config.PolicyValidationBeta1
+        |> Option.iter (fun v -> props.PolicyValidationBeta1 <- List.toArray v)
+
+        config.PropertyInjectors
+        |> Option.iter (fun v -> props.PropertyInjectors <- List.toArray v)
+
         let construct = config.Construct |> Option.defaultWith (fun () -> App())
         Stage(construct, config.Name, props)
 

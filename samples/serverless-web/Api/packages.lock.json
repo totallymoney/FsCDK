@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net8.0": {
+      "Amazon.Lambda.Core": {
+        "type": "Direct",
+        "requested": "[2.7.0, )",
+        "resolved": "2.7.0",
+        "contentHash": "MUl+uIpB00yE8TwmW4ICEE3hd7DEgIWu94a7sFtAHoKz+skS52splHDxN/syId2E5STSYHCertdJSv7Qg1JdSA=="
+      },
+      "Amazon.Lambda.Serialization.SystemTextJson": {
+        "type": "Direct",
+        "requested": "[2.4.4, )",
+        "resolved": "2.4.4",
+        "contentHash": "iv/cvqFuZ3v3+NFDyof0IJZvU+4kdpzOe3pWSBwp9HB885I+D32WQxuid9V4GnvRynER9XnWMPaDmImX8qH5cA==",
+        "dependencies": {
+          "Amazon.Lambda.Core": "2.3.0"
+        }
+      },
+      "AWSSDK.DynamoDBv2": {
+        "type": "Direct",
+        "requested": "[4.0.6.1, )",
+        "resolved": "4.0.6.1",
+        "contentHash": "BqMJvSV96MpEriKRZqMqphXFd8lUj7arDDvjlGChVT/+/SNDbYaTPl7aiqU8bhyejyikK4Eis3T6ecdj9Wc7bA==",
+        "dependencies": {
+          "AWSSDK.Core": "[4.0.0.26, 5.0.0)"
+        }
+      },
+      "FSharp.Core": {
+        "type": "Direct",
+        "requested": "[8.0.403, )",
+        "resolved": "8.0.403",
+        "contentHash": "t1Pvv2++3zMQKKNuiQc1Lz4TCdaBajgG4mLhOE8AoFzborHQ/JbjIaJr6Mrq8m2z15KLu4r6Qz7E3oeACpljTg=="
+      },
+      "AWSSDK.Core": {
+        "type": "Transitive",
+        "resolved": "4.0.0.26",
+        "contentHash": "sP+yvQm/caU3MNAmk/AeI9t/SN2AGoXw84UK7KgjHvjyRxEzgb2bEpiClNGfNqtfI+9pGBSG2OwMOvapajoBxQ=="
+      }
+    }
+  }
+}

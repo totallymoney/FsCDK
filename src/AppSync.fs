@@ -255,8 +255,23 @@ module AppSyncHelpers =
     /// Creates a schema from a file path
     let schemaFromFile (filePath: string) = SchemaFile.FromAsset(filePath)
 
-    /// Creates a schema from inline SDL string
-    let schemaFromString (sdl: string) = SchemaFile.FromAsset(sdl)
+    /// Creates a schema from inline SDL string. SchemaFile requires a file
+    /// asset, so the SDL is materialized to a content-addressed temp file
+    /// (SHA-256 of the SDL, so equal content maps to the same path and
+    /// distinct schemas cannot collide).
+    let schemaFromString (sdl: string) =
+        let digest =
+            System.Text.Encoding.UTF8.GetBytes(sdl)
+            |> System.Security.Cryptography.SHA256.HashData
+            |> System.Convert.ToHexString
+
+        let fileName = $"fscdk-schema-{digest.ToLowerInvariant()}.graphql"
+        let path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), fileName)
+
+        if not (System.IO.File.Exists path) then
+            System.IO.File.WriteAllText(path, sdl)
+
+        SchemaFile.FromAsset(path)
 
     /// Common log levels
     module LogLevels =

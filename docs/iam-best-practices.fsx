@@ -113,6 +113,30 @@ lambda "MyFunction" {
 }
 
 (**
+#### ✅ GOOD: Narrow access further with conditions
+
+`condition operator key value` adds an IAM condition. Conditions with the same operator are merged into one block,
+so the statement below allows the read only from inside the organization **and** over TLS.
+Use `conditions` to pass a complete list of `(operator, value)` pairs instead.
+*)
+
+policyStatement {
+    effect Effect.ALLOW
+    actions [ "s3:GetObject" ]
+    resources [ "arn:aws:s3:::shared-reports/*" ]
+    condition "StringEquals" "aws:PrincipalOrgID" "o-a1b2c3d4e5"
+    condition "Bool" "aws:SecureTransport" "true"
+}
+
+(**
+The wildcard check blocks only an **unconditional Allow** with both `actions [ "*" ]` and `resources [ "*" ]`.
+Deny-all guardrails (`effect Effect.DENY`) and statements scoped by a condition pass.
+
+#### ✅ GOOD: No access keys in CI
+
+Deploy from GitHub Actions with a [GitHub Actions OIDC role](github-actions-oidc.html) (`githubActionsRole`) instead of
+storing access keys as repository secrets.
+
 ## Security Group Best Practices
 
 FsCDK security groups follow least privilege by default.
@@ -235,6 +259,9 @@ stack "MyStack" {
 
             // Account recovery via email only (more secure than SMS)
             accountRecovery AccountRecovery.EMAIL_ONLY
+
+            // Immutable custom attribute (stored as "custom:tenantId"): users cannot change their own tenant
+            customAttribute "tenantId" (StringAttribute(StringAttributeProps(Mutable = false)))
         }
 
     // ✅ GOOD: Secure client configuration
@@ -291,7 +318,8 @@ bucket "SecureAssets" {
 (**
 ## CloudFront CDN Security
 
-Secure content delivery with CloudFront.
+Secure content delivery with CloudFront. For S3 content, keep the bucket private and read it through Origin Access
+Control: see [CloudFront static sites and SPAs](cloudfront-static-site.html).
 *)
 
 open Amazon.CDK.AWS.CloudFront

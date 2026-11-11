@@ -14,7 +14,8 @@ FsCDK provides first-class integration with **AWS Lambda Powertools**, a suite o
 - Distributed tracing integration
 - Best practice environment variables
 
-Powertools layers are **automatically added** to supported Lambda functions (Python, Node.js, Java).
+Add `autoAddPowertools true` to a function and FsCDK attaches the Powertools layer for the stack's region on
+supported runtimes (Python, Node.js, Java). It is opt-in: functions without it get no layer.
 
 ---
 
@@ -43,8 +44,9 @@ stack "PowertoolsDemo" {
         runtime Runtime.PYTHON_3_11
         code "./src"
 
-        // Powertools layer added automatically!
-        // Just add environment variables for configuration
+        autoAddPowertools true
+
+        // Configure Powertools through environment variables
         environment
             [ "POWERTOOLS_SERVICE_NAME", "order-service"
               "POWERTOOLS_METRICS_NAMESPACE", "MyApp"
@@ -54,33 +56,24 @@ stack "PowertoolsDemo" {
 
 (**
 
-That's it! The Powertools layer is automatically added, and your function is ready to use Powertools features.
+That's it: the function now has the Powertools layer and is ready to use Powertools features.
 
 ---
 
 ## Supported Runtimes
 
-### Automatic Layer Addition
+### Layer addition with `autoAddPowertools true`
 
-FsCDK automatically adds Powertools layers for these runtimes:
+| Runtime | Powertools Layer |
+|---------|-----------------|
+| **Python 3.8 – 3.12** | AWSLambdaPowertoolsPython |
+| **Node.js 14 – 20** | AWSLambdaPowertoolsTypeScript |
+| **Java 8, 11, 17** | AWSLambdaPowertoolsJava |
+| **.NET 6+** | No layer: use the NuGet packages (see below) |
 
-| Runtime | Powertools Layer | Status |
-|---------|-----------------|---------|
-| **Python 3.8** | AWSLambdaPowertoolsPython | Auto-added |
-| **Python 3.9** | AWSLambdaPowertoolsPython | Auto-added |
-| **Python 3.10** | AWSLambdaPowertoolsPython | Auto-added |
-| **Python 3.11** | AWSLambdaPowertoolsPython | Auto-added |
-| **Python 3.12** | AWSLambdaPowertoolsPython | Auto-added |
-| **Node.js 14** | AWSLambdaPowertoolsTypeScript | Auto-added |
-| **Node.js 16** | AWSLambdaPowertoolsTypeScript | Auto-added |
-| **Node.js 18** | AWSLambdaPowertoolsTypeScript | Auto-added |
-| **Node.js 20** | AWSLambdaPowertoolsTypeScript | Auto-added |
-| **Java 8** | AWSLambdaPowertoolsJava | Auto-added |
-| **Java 11** | AWSLambdaPowertoolsJava | Auto-added |
-| **Java 17** | AWSLambdaPowertoolsJava | Auto-added |
-| **.NET 6+** | NuGet packages | Manual (see below) |
-
-> **Note**: Currently, Powertools layers use **us-east-1** region by default. The layer ARNs are regionalized and work in all AWS regions, but the ARN string currently references us-east-1. This will be improved in a future release to use the actual stack region.
+The layer ARN uses the stack's region, and functions of the same runtime in a stack share one layer reference.
+Other runtimes get no layer. To resolve an ARN yourself, call
+`LambdaPowertoolsHelpers.getPowertoolsLayerArn region runtime`, which returns `string option`.
 
 ### .NET Special Case
 
@@ -94,7 +87,7 @@ FsCDK automatically adds Powertools layers for these runtimes:
 </ItemGroup>
 ```
 
-FsCDK **skips** layer auto-addition for .NET runtimes.
+`autoAddPowertools true` adds no layer to .NET functions.
 
 ---
 
@@ -110,6 +103,7 @@ lambda "PythonOrderProcessor" {
     code "./python-service"
     memorySize 512
     timeout 30.0
+    autoAddPowertools true
 
     environment
         [ "POWERTOOLS_SERVICE_NAME", "order-processor"
@@ -234,6 +228,7 @@ lambda "NodeOrderProcessor" {
     code "./nodejs-service"
     memorySize 512
     timeout 30.0
+    autoAddPowertools true
 
     environment
         [ "POWERTOOLS_SERVICE_NAME", "order-processor"
@@ -349,6 +344,7 @@ lambda "JavaOrderProcessor" {
     code "./java-service/target/order-service.jar"
     memorySize 1024
     timeout 60.0
+    autoAddPowertools true
 
     environment
         [ "POWERTOOLS_SERVICE_NAME", "order-processor"
@@ -480,22 +476,24 @@ public class OrderHandler implements RequestHandler<OrderEvent, OrderResponse> {
 stack "MultiRuntimeStack" {
     scope app
 
-    // Python function - Powertools added automatically
+    // Python function - Python Powertools layer
     lambda "PythonFunction" {
         handler "app.handler"
         runtime Runtime.PYTHON_3_11
         code "./python-service"
+        autoAddPowertools true
 
         environment
             [ "POWERTOOLS_SERVICE_NAME", "python-service"
               "POWERTOOLS_METRICS_NAMESPACE", "MyApp" ]
     }
 
-    // Node.js function - Powertools added automatically
+    // Node.js function - TypeScript Powertools layer
     lambda "NodeFunction" {
         handler "index.handler"
         runtime Runtime.NODEJS_20_X
         code "./nodejs-service"
+        autoAddPowertools true
 
         environment
             [ "POWERTOOLS_SERVICE_NAME", "nodejs-service"
@@ -513,9 +511,9 @@ stack "MultiRuntimeStack" {
 
 (**
 
-### Disabling Auto-Addition
+### Pinning your own Powertools layer version
 
-If you need to use a custom Powertools layer version or disable it entirely:
+Leave `autoAddPowertools` off and add the layer version you want yourself:
 
 *)
 
@@ -533,7 +531,6 @@ lambda "CustomPowertoolsFunction" {
     handler "app.handler"
     runtime Runtime.PYTHON_3_11
     code "./src"
-    autoAddPowertools false // Disable auto-addition
 // layers [ customPowertoolsLayer ]  // Add the custom layer
 }
 
@@ -541,7 +538,7 @@ lambda "CustomPowertoolsFunction" {
 
 ### Using with Custom Layers
 
-Powertools layers are added alongside your custom layers:
+With `autoAddPowertools true`, the Powertools layer is added alongside your custom layers:
 
 *)
 
@@ -558,8 +555,8 @@ lambda "MultiLayerFunction" {
     handler "app.handler"
     runtime Runtime.PYTHON_3_11
     code "./src"
-// layers [ myCustomLayer ]  // Add custom layers here
-// Powertools layer added automatically in addition to your layers
+    autoAddPowertools true
+// layers [ myCustomLayer ]  // Add custom layers here; Powertools is added in addition to them
 }
 
 (**
@@ -636,18 +633,17 @@ With Powertools tracing enabled, X-Ray automatically generates:
 **Symptom**: Powertools not available in Lambda function
 
 **Causes**:
-1. Runtime not supported (check supported runtimes above)
-2. `autoAddPowertools false` was set
+1. `autoAddPowertools true` was not set (Powertools is opt-in)
+2. Runtime not supported (check supported runtimes above)
 3. .NET runtime (needs NuGet packages)
 
 **Solution**:
 ```fsharp
-// Verify Powertools is enabled (default)
 lambda "MyFunction" {
     handler "app.handler"
     runtime Runtime.PYTHON_3_11
     code "./src"
-    autoAddPowertools true  // Explicitly enable
+    autoAddPowertools true
 }
 ```
 
@@ -698,14 +694,10 @@ def lambda_handler(event, context):
 
 FsCDK's Lambda Powertools integration provides:
 
-**Zero-configuration** - Layers added automatically
-**Multi-runtime support** - Python, Node.js, Java, .NET
-**Production-grade observability** - Logging, metrics, tracing
-**Zero cold-start impact** - Layers don't increase startup time
-**Cost-effective metrics** - No CloudWatch API calls
-**Easy to override** - Use `autoAddPowertools false` if needed
-
-**Get production-ready observability with zero extra code!**
+- **One line** - `autoAddPowertools true` adds the right layer for the runtime and region
+- **Multi-runtime support** - Python, Node.js, Java layers; NuGet packages for .NET
+- **Production-grade observability** - Logging, metrics, tracing
+- **Cost-effective metrics** - No CloudWatch API calls
 
 *)
 ()

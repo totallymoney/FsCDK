@@ -202,7 +202,7 @@ type DnsValidatedCertificateSpec =
     { CertificateName: string
       ConstructId: string
       Props: DnsValidatedCertificateProps
-      mutable Certificate: Certificate }
+      mutable Certificate: ICertificate }
 
 type DnsValidatedCertificateBuilder(name: string) =
     member _.Yield(_: unit) : DnsValidatedCertificateConfig =
@@ -290,6 +290,8 @@ type DnsValidatedCertificateBuilder(name: string) =
         config.Region |> Option.iter (fun r -> props.Region <- r)
 
         config.CertificateName_ |> Option.iter (fun n -> props.CertificateName <- n)
+
+        config.KeyAlgorithm |> Option.iter (fun k -> props.KeyAlgorithm <- k)
 
         { CertificateName = config.CertificateName
           ConstructId = constructId

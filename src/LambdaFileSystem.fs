@@ -275,6 +275,8 @@ type AccessPointBuilder(id: string) =
 
         config.CreateAcl |> Option.iter (fun acl -> props.CreateAcl <- acl)
 
+        config.Path |> Option.iter (fun path -> props.Path <- path)
+
         config.PosixUser |> Option.iter (fun user -> props.PosixUser <- user)
 
         { ConstructId = constructId

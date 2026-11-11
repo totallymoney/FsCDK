@@ -127,14 +127,14 @@ stack "Prod" {
 **Production-Safe Defaults**
 
 - Implements [Yan Cui's serverless best practices](https://theburningmonk.com/) by default
-- Auto-creates Dead Letter Queues (DLQs) for Lambda functions
+- Creates Dead Letter Queues (DLQs) for Lambda functions on request (`autoCreateDLQ true`)
 - Enables X-Ray tracing and structured JSON logging
-- Sets conservative concurrency limits to prevent runaway costs
+- No hidden reserved concurrency: set `reservedConcurrentExecutions` explicitly
 
 **Security by Default**
 
 - S3 buckets block public access and enforce SSL/TLS
-- Lambda environment variables encrypted with KMS
+- DynamoDB tables are encrypted and have point-in-time recovery enabled
 - Security groups deny all outbound traffic by default (opt-in model)
 
 **F# Developer Experience**
@@ -173,8 +173,10 @@ table th {
 | **AppSync GraphQL API** | `appSyncGraphqlApi` | `authorizationConfig`, `constructId`, `domainName`, `logConfig`, `name`, `schema`, `xrayEnabled` |
 | **Bastion Host** | `bastionHost` | `constructId`, `instanceName`, `instanceType`, `machineImage`, `requireImdsv2`, `securityGroup`, `subnetSelection`, `vpc` |
 | **Bucket** | `bucket`, `s3Bucket` | `autoDeleteObjects`, `blockPublicAccess`, `constructId`, `encryption`, `encryptionKey`, `enforceSSL`, `removalPolicy`, `serverAccessLogsBucket`, `serverAccessLogsPrefix`, `versioned`, `websiteErrorDocument`, `websiteIndexDocument` |
+| **Bucket Deployment** | `bucketDeployment` | `cacheControl`, `constructId`, `destinationBucket`, `destinationKeyPrefix`, `distribution`, `distributionPaths`, `exclude`, `logGroup`, `memoryLimit`, `prune`, `retainOnDelete`, `source`, `sourcePath` |
 | **CDK App** | `app` | `context`, `stackTraces`, `synthesizer` |
-| **CloudWatch Alarm** | `cloudwatchAlarm` | `comparisonOperator`, `constructId`, `description`, `dimensions`, `evaluationPeriods`, `metric`, `metricName`, `metricNamespace`, `period`, `statistic`, `threshold`, `treatMissingData` |
+| **CloudFormation Output** | `cfnOutput` | `constructId`, `description`, `exportName`, `value` |
+| **CloudWatch Alarm** | `cloudwatchAlarm` | `actionsEnabled`, `alarmAction`, `comparisonOperator`, `constructId`, `description`, `dimensions`, `evaluationPeriods`, `insufficientDataAction`, `metric`, `metricName`, `metricNamespace`, `okAction`, `period`, `statistic`, `threshold`, `treatMissingData` |
 | **CloudWatch Log Group** | `logGroup` | `constructId`, `encryptionKey`, `logGroupClass`, `removalPolicy`, `retention` |
 | **CloudWatch Metric Filter** | `metricFilter` | `constructId`, `defaultValue`, `filterPattern`, `logGroup`, `metricName`, `metricNamespace`, `metricValue`, `unit` |
 | **CloudWatch Subscription Filter** | `subscriptionFilter` | `constructId`, `destination`, `filterPattern`, `logGroup` |
@@ -183,24 +185,26 @@ table th {
 | **Cors Rule** | `corsRule` | `allowedHeaders`, `allowedMethods`, `allowedOrigins`, `exposedHeaders`, `id`, `maxAgeSeconds` |
 | **Custom Resource** | `customResource` | `constructId`, `installLatestAwsSdk`, `logRetention`, `onCreate`, `onDelete`, `onUpdate`, `policy`, `timeout` |
 | **Database Instance** | `rdsInstance` | `allocatedStorage`, `autoMinorVersionUpgrade`, `backupRetentionDays`, `constructId`, `credentials`, `databaseName`, `deleteAutomatedBackups`, `deletionProtection`, `enablePerformanceInsights`, `engine`, `iamAuthentication`, `instanceType`, `masterUsername`, `monitoringInterval`, `multiAz`, `performanceInsightRetention`, `postgresEngine`, `preferredBackupWindow`, `preferredMaintenanceWindow`, `publiclyAccessible`, `removalPolicy`, `securityGroup`, `storageEncrypted`, `storageType`, `vpc`, `vpcSubnets` |
-| **Distribution** | `cloudFrontDistribution` | `additionalBehavior`, `additionalHttpBehavior`, `additionalS3Behavior`, `certificate`, `comment`, `constructId`, `defaultBehavior`, `defaultRootObject`, `domainName`, `enableIpv6`, `enableLogging`, `enabled`, `httpDefaultBehavior`, `httpVersion`, `minimumProtocolVersion`, `priceClass`, `s3DefaultBehavior`, `webAclId` |
+| **Distribution** | `cloudFrontDistribution` | `additionalBehavior`, `additionalHttpBehavior`, `additionalS3Behavior`, `certificate`, `comment`, `constructId`, `defaultBehavior`, `defaultRootObject`, `domainName`, `enableIpv6`, `enableLogging`, `enabled`, `errorResponse`, `httpDefaultBehavior`, `httpVersion`, `minimumProtocolVersion`, `priceClass`, `s3DefaultBehavior`, `spaErrorResponses`, `spaRewrite`, `webAclId` |
 | **DocumentDB Cluster** | `documentDBCluster` | `backupRetentionDays`, `backupWindow`, `constructId`, `deletionProtection`, `instanceType`, `instances`, `maintenanceWindow`, `masterPassword`, `masterUsername`, `port`, `removalPolicy`, `securityGroup`, `storageEncrypted`, `tag`, `tags`, `vpc`, `vpcSubnets` |
 | **ECR Lifecycle Rule** | (helpers) | `deleteUntaggedAfterDays`, `keepLastNImages`, `deleteTaggedAfterDays`, `standardDevLifecycleRules`, `standardProdLifecycleRules` |
 | **ECR Repository** | `ecrRepository` | `constructId`, `emptyOnDelete`, `imageScanOnPush`, `imageTagMutability`, `lifecycleRule`, `removalPolicy`, `repositoryName` |
 | **ECS Cluster** | `ecsCluster` | `constructId`, `containerInsights`, `enableFargateCapacityProviders`, `vpc` |
 | **ECS Fargate Service** | `ecsFargateService` | `assignPublicIp`, `circuitBreaker`, `cluster`, `constructId`, `desiredCount`, `enableExecuteCommand`, `healthCheckGracePeriod`, `maxHealthyPercent`, `minHealthyPercent`, `securityGroups`, `serviceName`, `taskDefinition`, `vpcSubnets` |
-| **EKS Cluster** | `eksCluster` | `addFargateProfile`, `addHelmChart`, `addNodegroupCapacity`, `addServiceAccount`, `constructId`, `coreDnsComputeType`, `defaultCapacity`, `defaultCapacityInstance`, `disableClusterLogging`, `enableAlbController`, `encryptionKey`, `endpointAccess`, `mastersRole`, `setClusterLogging`, `version`, `vpc`, `vpcSubnet` |
-| **ElastiCache Redis** | `elastiCacheRedis` | `autoMinorVersionUpgrade`, `availabilityZone`, `cacheNodeType`, `constructId`, `engineVersion`, `maintenanceWindow`, `numCacheNodes`, `port`, `securityGroupId`, `securityGroupIds`, `snapshotRetentionLimit`, `snapshotWindow`, `subnetGroup`, `tag`, `tags` |
+| **EKS Cluster** | `eksCluster` | `addFargateProfile`, `addHelmChart`, `addNodegroupCapacity`, `addServiceAccount`, `constructId`, `coreDnsComputeType`, `defaultCapacity`, `defaultCapacityInstance`, `disableClusterLogging`, `enableAlbController`, `encryptionKey`, `endpointAccess`, `kubectlLayer`, `mastersRole`, `setClusterLogging`, `version`, `vpc`, `vpcSubnet` |
+| **ElastiCache Redis** | `redisCluster` | `autoMinorVersionUpgrade`, `availabilityZone`, `cacheNodeType`, `constructId`, `engineVersion`, `maintenanceWindow`, `numCacheNodes`, `port`, `securityGroupId`, `securityGroupIds`, `snapshotRetentionLimit`, `snapshotWindow`, `subnetGroup`, `tag`, `tags`, `transitEncryptionEnabled` |
+| **Elastic IP** | `elasticIp` | `constructId`, `domain`, `instanceId`, `networkInterfaceId`, `publicIpv4Pool`, `tag`, `tags` |
 | **Elastic Beanstalk Application** | `elasticBeanstalkApplication` | `constructId`, `description` |
 | **Elastic Beanstalk Environment** | `elasticBeanstalkEnvironment` | `applicationName`, `constructId`, `description`, `optionSettings`, `solutionStackName`, `tier` |
 | **Event BridgeRule** | `eventBridgeRule` | `constructId`, `description`, `enabled`, `eventBus`, `eventPattern`, `ruleName`, `schedule`, `target` |
 | **Event Bus** | `eventBus` | `constructId`, `customEventBusName`, `eventSourceName` |
 | **Fargate Task Definition** | `fargateTaskDefinition` | `constructId`, `cpu`, `ephemeralStorageGiB`, `executionRole`, `family`, `memory`, `runtimePlatform`, `taskRole`, `volume`, `volumes` |
-| **Function** | `lambda` | `architecture`, `code`, `constructId`, `deadLetterQueue`, `deadLetterQueueEnabled`, `description`, `dockerImageCode`, `environment`, `environmentEncryption`, `envVar`, `ephemeralStorageSize`, `handler`, `inlineCode`, `insightsVersion`, `layer`, `layers`, `loggingFormat`, `logGroup`, `maxEventAge`, `memory`, `reservedConcurrentExecutions`, `retryAttempts`, `role`, `runtime`, `securityGroups`, `timeout`, `tracing`, `xrayEnabled` |
+| **Function** | `lambda` | `architecture`, `autoAddPowertools`, `autoCreateDLQ`, `code`, `constructId`, `deadLetterQueue`, `deadLetterQueueEnabled`, `description`, `dockerImageCode`, `environment`, `environmentEncryption`, `envVar`, `ephemeralStorageSize`, `handler`, `inlineCode`, `insightsVersion`, `layer`, `layers`, `loggingFormat`, `logGroup`, `maxEventAge`, `memory`, `reservedConcurrentExecutions`, `retryAttempts`, `role`, `runtime`, `securityGroups`, `timeout`, `tracing`, `xrayEnabled` |
 | **Gateway VPC Endpoint** | `gatewayVpcEndpoint` | `constructId`, `service`, `subnets`, `vpc` |
+| **GitHub Actions OIDC Role** | `githubActionsRole` | `audience`, `branch`, `cdkDeployAccess`, `constructId`, `description`, `environment`, `managedPolicy`, `maxSessionDuration`, `permissionsBoundary`, `policyStatement`, `provider`, `providerArn`, `pullRequests`, `repository`, `tag` |
 | **Grant** | `grant` | `customAccess`, `lambda`, `readAccess`, `readWriteAccess`, `table`, `writeAccess` |
-| **HTTP API (API Gateway V2)** | `httpApi` | `apiName`, `constructId`, `cors`, `createDefaultStage`, `defaultIntegration`, `description`, `disableExecuteApiEndpoint` |
-| **IAM PolicyStatement** | `policyStatement` | (none - uses method chaining, not CustomOperations) |
+| **HTTP API (API Gateway V2)** | `httpApi` | `accessLogs`, `cognitoAuthorizer`, `constructId`, `cors`, `createDefaultStage`, `customDomain`, `defaultAuthorizationScopes`, `defaultAuthorizer`, `description`, `disableExecuteApiEndpoint`, `domainMapping`, `jwtAuthorizer`, `publicRoute`, `route`, `routeSpec`, `throttle` |
+| **IAM PolicyStatement** | `policyStatement` | `actions`, `condition`, `conditions`, `effect`, `principals`, `resources`, `sid` |
 | **Import Source** | `importSource` | `bucket`, `bucketOwner`, `compressionType`, `inputFormat`, `keyPrefix` |
 | **Interface VPC Endpoint** | `interfaceVpcEndpoint` | `constructId`, `privateDnsEnabled`, `securityGroups`, `service`, `subnets`, `vpc` |
 | **Kinesis Stream** | `kinesisStream` | `constructId`, `encryption`, `encryptionKey`, `grantRead`, `grantWrite`, `onDemand`, `retentionPeriod`, `shardCount`, `streamMode`, `streamName`, `unencrypted` |
@@ -229,6 +233,7 @@ table th {
 | **User Pool Client** | `userPoolClient` | `authFlows`, `constructId`, `generateSecret`, `oAuth`, `preventUserExistenceErrors`, `supportedIdentityProvider`, `tokenValidities`, `userPool` |
 | **Vpc** | `vpc` | `cidr`, `constructId`, `defaultInstanceTenancy`, `enableDnsHostnames`, `enableDnsSupport`, `ipAddresses`, `maxAzs`, `natGateways`, `subnet` |
 | **VPC Link** | `vpcLink` | `constructId`, `description`, `targets`, `vpcLinkName` |
+| **WAF Web ACL** | `webAcl` | `associate`, `constructId`, `defaultAction`, `description`, `logTo`, `managedRuleGroup`, `metricName`, `rateLimit`, `recommendedRules`, `redactedField`, `rule`, `sampledRequests`, `scope` |
 | **X-Ray Group** | `xrayGroup` | `constructId`, `filterExpression`, `insightsEnabled`, `tag`, `tags` |
 | **X-Ray Sampling Rule** | `xraySamplingRule` | `constructId`, `fixedRate`, `host`, `httpMethod`, `priority`, `reservoirSize`, `resourceArn`, `serviceName`, `serviceType`, `tag`, `tags`, `urlPath` |
 
@@ -245,7 +250,7 @@ table th {
 | [![Bastion Host](img/icons/Res_Amazon-EC2_Instance_48.png)](bastion-host.html) | [**Bastion Host**](bastion-host.html) | Secure SSH access to instances in private subnets 📚 *with curated learning resources* |
 | | [**Bedrock**](bedrock.html) | Foundation models for generative AI applications (Agents, Knowledge Bases, Guardrails) |
 | [![Certificate Manager](img/icons/Arch_AWS-Certificate-Manager_48.png)](certificate-manager.html) | [**Certificate Manager**](certificate-manager.html) | Manages SSL/TLS certificates for secure connections 📚 *with curated learning resources* |
-| ![CloudFront](img/icons/Arch_Amazon-CloudFront_48.png) | **CloudFront** | Content delivery network (CDN) for fast global content distribution |
+| [![CloudFront](img/icons/Arch_Amazon-CloudFront_48.png)](cloudfront-static-site.html) | [**CloudFront**](cloudfront-static-site.html) | Content delivery network (CDN); private S3 sites with OAC, SPA routing, asset deployment |
 | ![CloudHSM](img/icons/Arch_AWS-CloudHSM_48.png) | **CloudHSM** | Hardware security modules for cryptographic key storage |
 | [![CloudWatch](img/icons/Arch_Amazon-CloudWatch_48.png)](cloudwatch-dashboard.html) | [**CloudWatch**](cloudwatch-dashboard.html) | Monitors resources with alarms, log groups, metric filters, subscription filters, dashboards, and synthetic canaries |
 | ![Cognito](img/icons/Arch_Amazon-Cognito_48.png) | **Cognito** | User authentication and authorization for web and mobile apps |
@@ -282,6 +287,8 @@ table th {
 - **Custom Resources** - Define custom CloudFormation resources
 - **Lambda Powertools** - Production-ready observability for Lambda functions
 - **Grants** - Simplified IAM permission management between resources
+- **[GitHub Actions OIDC roles](github-actions-oidc.html)** - Deploy from CI without long-lived access keys
+- **WAF** - Web ACLs with managed rule groups and rate limits (`webAcl`)
 - **Tags** - Resource tagging across stacks
 - **Production-Safe Defaults** - Security and reliability best practices built-in
 

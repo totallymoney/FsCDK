@@ -86,6 +86,7 @@ type FunctionSpec =
       RolePolicyStatements: PolicyStatement list
       EventSourceMappings: (string * IEventSourceMappingOptions) list
       AsyncInvokeOptions: IEventInvokeConfigOptions list
+      AutoAddPowertools: bool
       mutable Function: IFunction option }
 
 type FunctionBuilder(name: string) =
@@ -108,7 +109,7 @@ type FunctionBuilder(name: string) =
           Permissions = []
           RolePolicyStatements = []
           AsyncInvokeOptions = []
-          ReservedConcurrentExecutions = Some 10
+          ReservedConcurrentExecutions = None
           LogGroup = None
           Role = None
           InsightsVersion = None
@@ -121,12 +122,18 @@ type FunctionBuilder(name: string) =
           FileSystem = None
           DeadLetterQueue = None
           DeadLetterQueueEnabled = None
-          AutoCreateDLQ = Some true
+          // Opt-in: a default of true would add an SQS queue to every existing
+          // consumer's lambdas on upgrade
+          AutoCreateDLQ = None
           LoggingFormat = Some LoggingFormat.JSON
           MaxEventAge = None
-          RetryAttempts = Some 2
+          // None = AWS default (2 retries); setting a value creates an
+          // EventInvokeConfig, which conflicts with configureAsyncInvoke
+          RetryAttempts = None
           EnvironmentEncryption = None
-          AutoAddPowertools = Some true
+          // Opt-in: a default of true would attach a layer to every existing
+          // consumer's lambdas on upgrade (and can hit the 5-layer limit)
+          AutoAddPowertools = None
           EphemeralStorageSize = None
           AllowPublicSubnet = None
           ApplicationLogLevelV2 = None
@@ -407,8 +414,9 @@ type FunctionBuilder(name: string) =
         if not (Seq.isEmpty config.Environment) then
             let envDict = Dictionary<string, string>()
 
+            // Last value wins on duplicate keys
             for key, value in config.Environment do
-                envDict.Add(key, value)
+                envDict[key] <- value
 
             props.Environment <- envDict
 
@@ -447,6 +455,16 @@ type FunctionBuilder(name: string) =
         config.DeadLetterQueueEnabled
         |> Option.iter (fun e -> props.DeadLetterQueueEnabled <- e)
 
+        // AutoCreateDLQ (opt-in) lets CDK create an SQS dead-letter queue
+        // unless the user configured a DLQ target explicitly.
+        match config.DeadLetterQueue, config.DeadLetterTopic, config.DeadLetterQueueEnabled with
+        | None, None, None when config.AutoCreateDLQ = Some true -> props.DeadLetterQueueEnabled <- true
+        | _ -> ()
+
+        config.MaxEventAge |> Option.iter (fun age -> props.MaxEventAge <- age)
+
+        config.RetryAttempts |> Option.iter (fun r -> props.RetryAttempts <- float r)
+
         config.LoggingFormat |> Option.iter (fun f -> props.LoggingFormat <- f)
 
         config.EnvironmentEncryption
@@ -464,11 +482,12 @@ type FunctionBuilder(name: string) =
           ConstructId = constructId
           Props = props
           FunctionUrlOptions = config.FunctionUrlOptions
-          EventSources = config.EventSource
+          EventSources = config.EventSource @ config.EventSources
           EventSourceMappings = config.EventSourceMappings
           Permissions = config.Permissions
           RolePolicyStatements = config.RolePolicyStatements
           AsyncInvokeOptions = config.AsyncInvokeOptions
+          AutoAddPowertools = (config.AutoAddPowertools = Some true)
           Function = None }
 
     // Custom operations for primitive values
@@ -701,7 +720,7 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("addEventSources")>]
     member _.AddEventSources(config: FunctionConfig, eventSource: IEventSource list) =
         { config with
-            EventSource = eventSource }
+            EventSource = config.EventSource @ eventSource }
 
     /// <summary>Adds a single event source to the internal event sources list.</summary>
     /// <param name="config">The function configuration.</param>
@@ -715,7 +734,7 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("addEventSource")>]
     member _.AddEventSource(config: FunctionConfig, eventSource: IEventSource) =
         { config with
-            EventSource = eventSource :: config.EventSource }
+            EventSource = config.EventSource @ [ eventSource ] }
 
     /// <summary>Sets the event source mappings list to the provided list.</summary>
     /// <param name="config">The function configuration.</param>
@@ -732,7 +751,7 @@ type FunctionBuilder(name: string) =
             eventSourceMapping: (string * IEventSourceMappingOptions) list
         ) =
         { config with
-            EventSourceMappings = eventSourceMapping }
+            EventSourceMappings = config.EventSourceMappings @ eventSourceMapping }
 
     /// <summary>Adds a single event source mapping.</summary>
     /// <param name="config">The function configuration.</param>
@@ -745,9 +764,9 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("addEventSourceMapping")>]
     member _.AddEventSourceMapping(config: FunctionConfig, eventSourceMapping: string * IEventSourceMappingOptions) =
         { config with
-            EventSourceMappings = eventSourceMapping :: config.EventSourceMappings }
+            EventSourceMappings = config.EventSourceMappings @ [ eventSourceMapping ] }
 
-    /// <summary>Sets the permissions list to the provided list (replaces existing).</summary>
+    /// <summary>Adds the provided permissions to the permissions list.</summary>
     /// <param name="config">The function configuration.</param>
     /// <param name="permissions">List of permissions.</param>
     /// <code lang="fsharp">
@@ -758,7 +777,7 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("addPermissions")>]
     member _.AddPermissions(config: FunctionConfig, permissions: IPermission list) =
         { config with
-            Permissions = permissions }
+            Permissions = config.Permissions @ permissions }
 
     /// <summary>Adds a single permission to the permissions list.</summary>
     /// <param name="config">The function configuration.</param>
@@ -771,7 +790,7 @@ type FunctionBuilder(name: string) =
     [<CustomOperation("addPermission")>]
     member _.AddPermission(config: FunctionConfig, permissions: IPermission) =
         { config with
-            Permissions = permissions :: config.Permissions }
+            Permissions = config.Permissions @ [ permissions ] }
 
     /// <summary>Sets the role policy statements list to the provided list (replaces existing).</summary>
     /// <param name="config">The function configuration.</param>
@@ -1002,8 +1021,9 @@ type FunctionBuilder(name: string) =
             DeadLetterQueueEnabled = Some value }
 
     /// <summary>
-    /// Controls automatic DLQ creation. Default: true (Yan Cui recommendation).
-    /// Set to false to disable auto-DLQ creation.
+    /// Controls automatic DLQ creation (opt-in). When enabled, CDK creates an
+    /// SQS dead-letter queue for the function unless a DLQ target is
+    /// configured explicitly.
     /// </summary>
     /// <param name="config">The function configuration.</param>
     /// <param name="value">True to enable, false to disable automatic DLQ creation.</param>
@@ -1018,8 +1038,9 @@ type FunctionBuilder(name: string) =
             AutoCreateDLQ = Some value }
 
     /// <summary>
-    /// Controls automatic Lambda Powertools layer addition. Default: true (Yan Cui recommendation).
-    /// Set to false to disable Powertools auto-addition.
+    /// Controls automatic Lambda Powertools layer addition (opt-in). When
+    /// enabled, the region-appropriate Powertools layer is attached for
+    /// supported runtimes (Python, Node.js, Java; .NET uses NuGet packages).
     /// </summary>
     /// <param name="config">The function configuration.</param>
     /// <param name="value">True to auto-add Powertools, false to skip.</param>

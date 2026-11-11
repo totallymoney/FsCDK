@@ -67,6 +67,25 @@ let tests =
               Expect.equal spec.Props.PriceClass.Value PriceClass.PRICE_CLASS_100 "PriceClass should default to 100"
               Expect.isTrue spec.Props.EnableIpv6.Value "IPv6 should default to true"
 
+          testCase "HTTP origin behaviors do not cache by default"
+          <| fun _ ->
+              let spec =
+                  cloudFrontDistribution "NoCache" {
+                      httpDefaultBehavior "origin.example.com"
+                      additionalHttpBehavior "/api/*" "api.example.com"
+                  }
+
+              let behaviors =
+                  [ spec.Props.DefaultBehavior
+                    spec.Props.AdditionalBehaviors["/api/*"]
+                    CloudFrontBehaviors.httpBehaviorDefault "origin.example.com" None ]
+
+              for behavior in behaviors do
+                  Expect.equal
+                      behavior.CachePolicy.CachePolicyId
+                      CachePolicy.CACHING_DISABLED.CachePolicyId
+                      "ALL_VIEWER forwards credentials outside the cache key, so the default must not cache"
+
           testCase "additionalHttpBehavior adds to AdditionalBehaviors map"
           <| fun _ ->
               let spec =

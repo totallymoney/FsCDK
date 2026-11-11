@@ -289,7 +289,7 @@ FsCDK incorporates AWS Lambda production best practices from Yan Cui:
 3. **Event Age & Retry Defaults**: Sensible defaults for event handling
 4. **CloudWatch Log Groups**: Pre-create log groups with retention
 
-These are implemented with `autoCreateDLQ` and `autoAddPowertools` flags (default: true).
+These are opt-in through the `autoCreateDLQ` and `autoAddPowertools` flags (default: off).
 
 ## Adding New Resources
 

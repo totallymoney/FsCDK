@@ -20,27 +20,30 @@ type AppBuilder() =
           StackTraces = None
           DefaultStackSynthesizer = None
           AnalyticsReporting = Some false
-          AutoSynth = Some false
-          OutputDirectory = Some "cdk.out"
-          PolicyValidationBeta1 = Some []
-          PostCliContext = Some Map.empty
-          PropertyInjectors = Some []
-          TreeMetadata = Some false }
+          // Leave AutoSynth/Outdir/TreeMetadata to CDK: forcing them breaks
+          // `cdk synth` (no auto synth, ignored --output, no tree.json)
+          AutoSynth = None
+          OutputDirectory = None
+          PolicyValidationBeta1 = None
+          PostCliContext = None
+          PropertyInjectors = None
+          TreeMetadata = None }
 
     member this.Yield _ : AppConfig =
         { Context = Map.empty
           StackTraces = None
           DefaultStackSynthesizer = None
           AnalyticsReporting = Some false
-          AutoSynth = Some false
-          OutputDirectory = Some "cdk.out"
-          PolicyValidationBeta1 = Some []
-          PostCliContext = Some Map.empty
-          PropertyInjectors = Some []
-          TreeMetadata = Some false }
+          AutoSynth = None
+          OutputDirectory = None
+          PolicyValidationBeta1 = None
+          PostCliContext = None
+          PropertyInjectors = None
+          TreeMetadata = None }
 
     member _.Combine(config1: AppConfig, config2: AppConfig) =
-        { Context = Map.fold (fun acc k v -> Map.add k v acc) config2.Context config1.Context
+        // Later context entries overwrite earlier ones
+        { Context = Map.fold (fun acc k v -> Map.add k v acc) config1.Context config2.Context
           StackTraces = config1.StackTraces |> Option.orElse config2.StackTraces
           DefaultStackSynthesizer = config1.DefaultStackSynthesizer |> Option.orElse config2.DefaultStackSynthesizer
           AnalyticsReporting = config1.AnalyticsReporting |> Option.orElse config2.AnalyticsReporting
@@ -202,10 +205,22 @@ type AppBuilder() =
 
     member _.Run(config: AppConfig) =
         let props = AppProps(Context = config.Context)
-        props.AnalyticsReporting <- config.AnalyticsReporting |> Option.defaultValue false
-        props.AutoSynth <- config.AutoSynth |> Option.defaultValue false
-        props.Outdir <- config.OutputDirectory |> Option.defaultValue "cdk.out"
-        props.TreeMetadata <- config.TreeMetadata |> Option.defaultValue false
+
+        config.AnalyticsReporting
+        |> Option.iter (fun v -> props.AnalyticsReporting <- v)
+
+        config.AutoSynth |> Option.iter (fun v -> props.AutoSynth <- v)
+
+        // Under the CDK CLI, CDK_OUTDIR controls the output directory; outside
+        // it (programmatic Synth), keep the historical "cdk.out" default so
+        // scripts reading ./cdk.out continue to work.
+        match config.OutputDirectory with
+        | Some outdir -> props.Outdir <- outdir
+        | None ->
+            if isNull (System.Environment.GetEnvironmentVariable "CDK_OUTDIR") then
+                props.Outdir <- "cdk.out"
+
+        config.TreeMetadata |> Option.iter (fun v -> props.TreeMetadata <- v)
 
         config.PolicyValidationBeta1
         |> Option.iter (fun v -> props.PolicyValidationBeta1 <- v |> Seq.toArray)

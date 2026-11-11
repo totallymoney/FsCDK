@@ -50,6 +50,23 @@ module Config =
 
 let config = Config.get ()
 
+(**
+CDK needs a Lambda layer with `kubectl` and Helm, and the layer has to match the Kubernetes
+version. Reference the matching NuGet package (`Amazon.CDK.Lambda.Layer.KubectlV33` for 1.33)
+and create the layer under the stack:
+
+    let kubectl (scope: Constructs.Construct) : ILayerVersion = KubectlV33Layer(scope, "Kubectl")
+
+This page imports a published layer by ARN instead, to stay free of the extra package.
+*)
+
+let kubectl (scope: Constructs.Construct) : Amazon.CDK.AWS.Lambda.ILayerVersion =
+    Amazon.CDK.AWS.Lambda.LayerVersion.FromLayerVersionArn(
+        scope,
+        "Kubectl",
+        "arn:aws:lambda:us-east-1:123456789012:layer:kubectl:1"
+    )
+
 stack "BasicEKSStack" {
     env (
         environment {
@@ -75,7 +92,8 @@ stack "BasicEKSStack" {
     let cluster =
         eksCluster "MyEKSCluster" {
             vpc clusterVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
             defaultCapacity 0
             endpointAccess EndpointAccess.PUBLIC_AND_PRIVATE
 
@@ -128,7 +146,8 @@ stack "FargateEKSStack" {
     let fargateCluster =
         eksCluster "FargateCluster" {
             vpc fargateVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
             defaultCapacity 0
 
             addFargateProfile (
@@ -169,7 +188,8 @@ stack "MultiArchEKSStack" {
     let multiArchCluster =
         eksCluster "MultiArchCluster" {
             vpc multiArchVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
             defaultCapacity 0
 
             addNodegroupCapacity (
@@ -224,7 +244,8 @@ stack "SpotEKSStack" {
     let spotCluster =
         eksCluster "SpotCluster" {
             vpc spotVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
             defaultCapacity 0
 
             // On-demand nodes for critical workloads
@@ -286,7 +307,8 @@ stack "IRSAEKSStack" {
     let appServiceAccount =
         eksCluster "SpotCluster" {
             vpc irsaVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
             defaultCapacity 0
 
             addServiceAccount ("AppServiceAccount", ServiceAccountOptions(Name = "my-app-sa", Namespace = "default"))
@@ -335,7 +357,8 @@ stack "SecureEKSStack" {
     let secureCluster =
         eksCluster "SecureCluster" {
             vpc secureVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
             encryptionKey secretsKey
             endpointAccess EndpointAccess.PRIVATE
 
@@ -369,7 +392,8 @@ stack "K8sAppStack" {
     let appCluster =
         eksCluster "AppCluster" {
             vpc appVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
         }
 
     // Deploy nginx application
@@ -454,7 +478,8 @@ stack "HelmChartsStack" {
     let helmCluster =
         eksCluster "HelmCluster" {
             vpc helmVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
 
             addHelmChart (
                 // Install AWS Load Balancer Controller
@@ -521,7 +546,8 @@ stack "AutoScalingEKSStack" {
     let autoScaleCluster =
         eksCluster "AppCluster" {
             vpc autoScaleVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
 
             // Auto-scaling node group
             addNodegroupCapacity (
@@ -592,7 +618,8 @@ stack "ProductionEKSStack" {
     let prodCluster =
         eksCluster "ProductionCluster" {
             vpc prodVpc
-            version KubernetesVersion.V1_28
+            version KubernetesVersion.V1_33
+            kubectlLayer kubectl
             defaultCapacity 0
             endpointAccess EndpointAccess.PRIVATE // Private API for security
             encryptionKey eksKey

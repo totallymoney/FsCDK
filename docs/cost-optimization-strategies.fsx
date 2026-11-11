@@ -196,9 +196,9 @@ stack "DatabaseStack" {
 (**
 ## Lambda Cost Optimization
 
-Lambda with FsCDK production defaults is already optimized:
+Lambda cost levers to review with FsCDK:
 
-- **Reserved concurrency (10)** - Prevents runaway costs
+- **Reserved concurrency** - Set `reservedConcurrentExecutions` to cap runaway costs (not set by default)
 - **Memory/CPU ratio** - Use Lambda Power Tuning to find optimal memory
 - **Ephemeral storage** - 512 MB default (free tier)
 

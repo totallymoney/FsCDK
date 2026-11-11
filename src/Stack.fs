@@ -110,6 +110,19 @@ type Operation =
     | BedrockKnowledgeBaseOp of BedrockKnowledgeBaseSpec
     | BedrockDataSourceOp of BedrockDataSourceSpec
     | BedrockGuardrailOp of BedrockGuardrailSpec
+    | HttpApiOp of HttpApiSpec
+    | WebAclOp of WebAclSpec
+    | BucketDeploymentOp of BucketDeploymentSpec
+    | CfnOutputOp of CfnOutputSpec
+    | ALBTargetGroupOp of ALBTargetGroupResource
+    | ALBListenerOp of ALBListenerResource
+    | Route53RecordSetOp of Route53RecordSetResource
+    | Route53HealthCheckOp of Route53HealthCheckResource
+    | Route53PrivateHostedZoneOp of Route53PrivateHostedZoneResource
+    | ElasticIPOp of ElasticIPResource
+    | ECRRepositoryOp of ECRRepositoryResource
+    | CloudWatchCanaryOp of CloudWatchCanaryResource
+    | ElasticBeanstalkApplicationOp of ElasticBeanstalkApplicationResource
 
 // ============================================================================
 // Helper Functions - Process Operations in Stack
@@ -153,16 +166,46 @@ module StackOperations =
             lambdaSpec.EventSourceMappings
             |> List.iter (fun (id, opts) -> fn.AddEventSourceMapping(id, opts) |> ignore)
 
+            // Each permission needs a unique child construct id. The list is in
+            // chronological order (ops append), so the first-added permission
+            // keeps the legacy id and later additions get stable "-{i}" ids.
             lambdaSpec.Permissions
-            |> List.iter (fun perm -> fn.AddPermission(lambdaSpec.ConstructId, perm))
+            |> List.iteri (fun i perm ->
+                let permissionId =
+                    if i = 0 then
+                        lambdaSpec.ConstructId
+                    else
+                        $"{lambdaSpec.ConstructId}-{i}"
+
+                fn.AddPermission(permissionId, perm))
 
             lambdaSpec.RolePolicyStatements |> List.iter fn.AddToRolePolicy
 
             lambdaSpec.AsyncInvokeOptions |> List.iter fn.ConfigureAsyncInvoke
 
+            // Powertools layer is region-specific, so it can only be resolved here.
+            // The imported layer is shared per runtime within the stack.
+            if lambdaSpec.AutoAddPowertools then
+                LambdaPowertoolsHelpers.getPowertoolsLayerArn stack.Region lambdaSpec.Props.Runtime
+                |> Option.iter (fun arn ->
+                    let layerId = $"PowertoolsLayer-{lambdaSpec.Props.Runtime.Name}"
+
+                    let layer =
+                        match stack.Node.TryFindChild(layerId) with
+                        | :? ILayerVersion as existing -> existing
+                        | _ -> LambdaPowertools.createPowertoolsLayer stack layerId arn
+
+                    fn.AddLayers(layer))
+
             lambdaSpec.Function <- Some fn
 
         | DockerImageFunctionOp imageLambdaSpec ->
+            // Code and Timeout are deferred to stack application to avoid JSII in unit tests
+            imageLambdaSpec.Props.Code <- DockerImageCode.FromImageAsset(imageLambdaSpec.Code)
+
+            if imageLambdaSpec.TimeoutSeconds.HasValue then
+                imageLambdaSpec.Props.Timeout <- Duration.Seconds(imageLambdaSpec.TimeoutSeconds.Value)
+
             DockerImageFunction(stack, imageLambdaSpec.ConstructId, imageLambdaSpec.Props)
             |> ignore
 
@@ -222,17 +265,49 @@ module StackOperations =
             let sg = SecurityGroup(stack, sgSpec.ConstructId, sgSpec.Props)
             sgSpec.SecurityGroup <- Some sg
 
-        | RdsInstanceOp rdsSpec -> DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props) |> ignore
+        | RdsInstanceOp rdsSpec ->
+            let instance = DatabaseInstance(stack, rdsSpec.ConstructId, rdsSpec.Props)
+            rdsSpec.Instance <- Some instance
 
         | CloudFrontDistributionOp cfSpec ->
-            Amazon.CDK.AWS.CloudFront.Distribution(stack, cfSpec.ConstructId, cfSpec.Props)
-            |> ignore
+            cfSpec.SpaRewritePath
+            |> Option.iter (fun pagePath ->
+                match cfSpec.Props.DefaultBehavior with
+                | :? BehaviorOptions as behavior ->
+                    let rewrite =
+                        Amazon.CDK.AWS.CloudFront.Function(
+                            stack,
+                            $"{cfSpec.ConstructId}SpaRewrite",
+                            Amazon.CDK.AWS.CloudFront.FunctionProps(
+                                Code = FunctionCode.FromInline(CloudFrontOrigins.spaRewriteCode pagePath),
+                                Runtime = FunctionRuntime.JS_2_0
+                            )
+                        )
+
+                    let association =
+                        FunctionAssociation(Function = rewrite, EventType = FunctionEventType.VIEWER_REQUEST)
+                        :> IFunctionAssociation
+
+                    behavior.FunctionAssociations <-
+                        Array.append
+                            (behavior.FunctionAssociations |> Option.ofObj |> Option.defaultValue [||])
+                            [| association |]
+                | _ ->
+                    failwith
+                        $"Distribution '{cfSpec.DistributionName}': spaRewrite needs a default behavior built by FsCDK or a BehaviorOptions.")
+
+            let distribution =
+                Amazon.CDK.AWS.CloudFront.Distribution(stack, cfSpec.ConstructId, cfSpec.Props)
+
+            cfSpec.Distribution <- Some distribution
 
         | UserPoolOp upSpec ->
             let up = UserPool(stack, upSpec.ConstructId, upSpec.Props)
             upSpec.UserPool <- Some up
 
-        | UserPoolClientOp upcSpec -> UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props) |> ignore
+        | UserPoolClientOp upcSpec ->
+            let client = UserPoolClient(stack, upcSpec.ConstructId, upcSpec.Props)
+            upcSpec.UserPoolClient <- Some client
 
         | UserPoolResourceServerOp uprsSpec ->
             let rs = UserPoolResourceServer(stack, uprsSpec.ConstructId, uprsSpec.Props)
@@ -252,8 +327,7 @@ module StackOperations =
             ruleSpec.Rule <- Some rule
 
         | EventBusOp busSpec ->
-            let bus =
-                EventBus(stack, busSpec.ConstructId, EventBusProps(EventBusName = busSpec.EventBusName))
+            let bus = EventBus(stack, busSpec.ConstructId, busSpec.Props)
 
             busSpec.EventBus <- Some bus
 
@@ -299,6 +373,9 @@ module StackOperations =
         | BucketPolicyOp policySpec ->
             let policy = BucketPolicy(stack, policySpec.ConstructId, policySpec.Props)
 
+            if not policySpec.Statements.IsEmpty then
+                policy.Document.AddStatements(policySpec.Statements |> List.toArray)
+
             policySpec.Policy <- Some policy
 
         | CloudWatchDashboardOp dashSpec ->
@@ -306,6 +383,7 @@ module StackOperations =
             dashSpec.Dashboard <- Some dashboard
 
         | EKSClusterOp spec ->
+            spec.Props.KubectlLayer <- spec.KubectlLayer stack
             let cluster = AWS.EKS.Cluster(stack, spec.ConstructId, spec.Props)
 
             let _ =
@@ -342,6 +420,16 @@ module StackOperations =
 
         | CloudWatchAlarmOp alarmSpec ->
             let ala = Alarm(stack, alarmSpec.ConstructId, alarmSpec.Props)
+
+            if not alarmSpec.AlarmActions.IsEmpty then
+                ala.AddAlarmAction(Array.ofList alarmSpec.AlarmActions)
+
+            if not alarmSpec.OkActions.IsEmpty then
+                ala.AddOkAction(Array.ofList alarmSpec.OkActions)
+
+            if not alarmSpec.InsufficientDataActions.IsEmpty then
+                ala.AddInsufficientDataAction(Array.ofList alarmSpec.InsufficientDataActions)
+
             alarmSpec.Alarm <- Some ala
 
         //| CloudHSMClusterOp hsmSpec ->
@@ -356,6 +444,11 @@ module StackOperations =
             roleSpec.Role <- Some role
 
         | EC2InstanceOp ec2Spec ->
+            // Resolve a key pair referenced by name; needs a construct scope
+            ec2Spec.KeyPairName
+            |> Option.iter (fun keyPairName ->
+                ec2Spec.Props.KeyPair <- KeyPair.FromKeyPairName(stack, $"{ec2Spec.ConstructId}-KeyPair", keyPairName))
+
             let instance = Instance_(stack, ec2Spec.ConstructId, ec2Spec.Props)
             ec2Spec.Instance <- instance
 
@@ -380,9 +473,25 @@ module StackOperations =
             envSpec.Environment <- env
 
         | DnsValidatedCertificateOp certSpec ->
-            let cert = Certificate(stack, certSpec.ConstructId, certSpec.Props)
+            // Validation is deferred to stack application to avoid JSII in unit tests.
+            // A plain Certificate ignores HostedZone/Region, so use DNS validation
+            // explicitly and fall back to the cross-region-capable construct when a
+            // region is requested.
+            let cert: ICertificate =
+                if isNull certSpec.Props.Region then
+                    let props =
+                        CertificateProps(
+                            DomainName = certSpec.Props.DomainName,
+                            SubjectAlternativeNames = certSpec.Props.SubjectAlternativeNames,
+                            CertificateName = certSpec.Props.CertificateName,
+                            KeyAlgorithm = certSpec.Props.KeyAlgorithm,
+                            Validation = CertificateValidation.FromDns(certSpec.Props.HostedZone)
+                        )
 
-            certSpec.Certificate <- cert
+                    Certificate(stack, certSpec.ConstructId, props)
+                else
+                    DnsValidatedCertificate(stack, certSpec.ConstructId, certSpec.Props)
+
             certSpec.Certificate <- cert
 
         | AppRunnerServiceOp serviceSpec ->
@@ -393,17 +502,16 @@ module StackOperations =
 
         | ElasticCacheRedisOp clusterSpec ->
             let cfnCacheCluster =
-                CfnCacheCluster(
-                    stack,
-                    clusterSpec.ConstructId,
-                    CfnCacheClusterProps(ClusterName = clusterSpec.ClusterName)
-                )
+                CfnCacheCluster(stack, clusterSpec.ConstructId, clusterSpec.Props)
 
             clusterSpec.CacheCluster <- Some cfnCacheCluster
 
         | DocumentDBClusterOp clusterSpec ->
             let databaseCluster =
                 AWS.DocDB.DatabaseCluster(stack, clusterSpec.ConstructId, clusterSpec.Props)
+
+            clusterSpec.Tags
+            |> List.iter (fun (key, value) -> Amazon.CDK.Tags.Of(databaseCluster).Add(key, value))
 
             clusterSpec.Cluster <- Some databaseCluster
 
@@ -469,18 +577,13 @@ module StackOperations =
             taskDefSpec.TaskDefinition <- Some taskDef
 
         | ECSClusterOp clusterSpec ->
-            let cluster =
-                Cluster(stack, clusterSpec.ConstructId, ClusterProps(ClusterName = clusterSpec.ClusterName))
+            let cluster = Cluster(stack, clusterSpec.ConstructId, clusterSpec.Props)
 
             clusterSpec.Cluster <- Some cluster
 
         | ECSFargateServiceOp serviceResource ->
             let service =
-                FargateService(
-                    stack,
-                    serviceResource.ConstructId,
-                    FargateServiceProps(ServiceName = serviceResource.ServiceName)
-                )
+                FargateService(stack, serviceResource.ConstructId, serviceResource.Props)
 
             serviceResource.Service <- Some service
 
@@ -555,6 +658,8 @@ module StackOperations =
                     let logGroup = LogGroup(stack, $"{trailSpec.ConstructId}-Logs", logGroupProps)
 
                     trailSpec.Props.CloudWatchLogGroup <- logGroup
+                    // CDK ignores CloudWatchLogGroup unless SendToCloudWatchLogs is set
+                    trailSpec.Props.SendToCloudWatchLogs <- true
                     Trail(stack, trailSpec.ConstructId, trailSpec.Props)
                 else
                     Trail(stack, trailSpec.ConstructId, trailSpec.Props)
@@ -605,6 +710,82 @@ module StackOperations =
         | BedrockGuardrailOp grSpec ->
             let gr = CfnGuardrail(stack, grSpec.ConstructId, grSpec.Props)
             grSpec.Guardrail <- Some gr
+
+        | HttpApiOp apiSpec -> HttpApiOperations.create stack apiSpec
+
+        | WebAclOp aclSpec -> WebAclOperations.create stack aclSpec
+
+        | BucketDeploymentOp deploymentSpec ->
+            let deployment =
+                Amazon.CDK.AWS.S3.Deployment.BucketDeployment(stack, deploymentSpec.ConstructId, deploymentSpec.Props)
+
+            deploymentSpec.Deployment <- Some deployment
+
+        | CfnOutputOp outputSpec ->
+            let output = CfnOutput(stack, outputSpec.ConstructId, outputSpec.Props)
+            outputSpec.Output <- Some output
+
+        | ALBTargetGroupOp tgResource ->
+            let tg = ApplicationTargetGroup(stack, tgResource.ConstructId, tgResource.Props)
+
+            tgResource.TargetGroup <- tg
+
+        | ALBListenerOp listenerResource ->
+            let listener =
+                ApplicationListener(stack, listenerResource.ConstructId, listenerResource.Props)
+
+            listenerResource.Listener <- listener
+
+        | Route53RecordSetOp recordSetResource ->
+            let recordSet =
+                Amazon.CDK.AWS.Route53.CfnRecordSet(stack, recordSetResource.ConstructId, recordSetResource.Props)
+
+            recordSetResource.RecordSet <- recordSet
+
+        | Route53HealthCheckOp healthCheckResource ->
+            let healthCheck =
+                Amazon.CDK.AWS.Route53.CfnHealthCheck(stack, healthCheckResource.ConstructId, healthCheckResource.Props)
+
+            healthCheckResource.HealthCheck <- healthCheck
+
+        | Route53PrivateHostedZoneOp zoneResource ->
+            let zone = PrivateHostedZone(stack, zoneResource.ConstructId, zoneResource.Props)
+
+            zoneResource.HostedZone <- Some(zone :> IHostedZone)
+
+        | ElasticIPOp eipResource ->
+            let eip = CfnEIP(stack, eipResource.ConstructId, eipResource.Props)
+
+            // AWS::EC2::EIP cannot reference a network interface directly; the
+            // association is a separate resource.
+            eipResource.NetworkInterfaceId
+            |> Option.iter (fun eni ->
+                CfnEIPAssociation(
+                    stack,
+                    $"{eipResource.ConstructId}-Association",
+                    CfnEIPAssociationProps(AllocationId = eip.AttrAllocationId, NetworkInterfaceId = eni)
+                )
+                |> ignore)
+
+            eipResource.ElasticIP <- eip
+
+        | ECRRepositoryOp repoResource ->
+            let repo =
+                Amazon.CDK.AWS.ECR.Repository(stack, repoResource.ConstructId, repoResource.Props)
+
+            repoResource.Repository <- repo
+
+        | CloudWatchCanaryOp canaryResource ->
+            let canary =
+                Amazon.CDK.AWS.Synthetics.Canary(stack, canaryResource.ConstructId, canaryResource.Props)
+
+            canaryResource.Canary <- canary
+
+        | ElasticBeanstalkApplicationOp appResource ->
+            let app =
+                Amazon.CDK.AWS.ElasticBeanstalk.CfnApplication(stack, appResource.ConstructId, appResource.Props)
+
+            appResource.Application <- app
 
 
 // ============================================================================
@@ -842,6 +1023,39 @@ type StackBuilder(name: string) =
 
     member this.Yield(subscriptionResource: CloudWatchSubscriptionFilterSpec) : StackConfig =
         this.Init(CloudWatchSubscriptionFilterOp subscriptionResource)
+
+    member this.Yield(serviceSpec: AppRunnerServiceSpec) : StackConfig =
+        this.Init(AppRunnerServiceOp serviceSpec)
+
+    member this.Yield(clusterSpec: DocumentDBClusterSpec) : StackConfig =
+        this.Init(DocumentDBClusterOp clusterSpec)
+
+    member this.Yield(clusterSpec: ElasticCacheRedisSpec) : StackConfig =
+        this.Init(ElasticCacheRedisOp clusterSpec)
+
+    member this.Yield(tgResource: ALBTargetGroupResource) : StackConfig = this.Init(ALBTargetGroupOp tgResource)
+
+    member this.Yield(listenerResource: ALBListenerResource) : StackConfig =
+        this.Init(ALBListenerOp listenerResource)
+
+    member this.Yield(recordSetResource: Route53RecordSetResource) : StackConfig =
+        this.Init(Route53RecordSetOp recordSetResource)
+
+    member this.Yield(healthCheckResource: Route53HealthCheckResource) : StackConfig =
+        this.Init(Route53HealthCheckOp healthCheckResource)
+
+    member this.Yield(zoneResource: Route53PrivateHostedZoneResource) : StackConfig =
+        this.Init(Route53PrivateHostedZoneOp zoneResource)
+
+    member this.Yield(eipResource: ElasticIPResource) : StackConfig = this.Init(ElasticIPOp eipResource)
+
+    member this.Yield(repoResource: ECRRepositoryResource) : StackConfig = this.Init(ECRRepositoryOp repoResource)
+
+    member this.Yield(canaryResource: CloudWatchCanaryResource) : StackConfig =
+        this.Init(CloudWatchCanaryOp canaryResource)
+
+    member this.Yield(appResource: ElasticBeanstalkApplicationResource) : StackConfig =
+        this.Init(ElasticBeanstalkApplicationOp appResource)
 
     member inline this.Bind(spec: VpcSpec, [<InlineIfLambda>] cont: IVpc -> StackConfig) : StackConfig =
         this.BindViaYield VpcOp (fun s -> s.Vpc) "VPC" (fun s -> s.VpcName) spec cont
@@ -1117,6 +1331,89 @@ type StackBuilder(name: string) =
     member this.Yield(dsSpec: BedrockDataSourceSpec) : StackConfig = this.Init(BedrockDataSourceOp dsSpec)
 
     member this.Yield(grSpec: BedrockGuardrailSpec) : StackConfig = this.Init(BedrockGuardrailOp grSpec)
+
+    member this.Yield(apiSpec: HttpApiSpec) : StackConfig = this.Init(HttpApiOp apiSpec)
+
+    member this.Yield(aclSpec: WebAclSpec) : StackConfig = this.Init(WebAclOp aclSpec)
+
+    member this.Yield(deploymentSpec: BucketDeploymentSpec) : StackConfig =
+        this.Init(BucketDeploymentOp deploymentSpec)
+
+    member this.Yield(outputSpec: CfnOutputSpec) : StackConfig = this.Init(CfnOutputOp outputSpec)
+
+    member inline this.Bind
+        (
+            spec: HttpApiSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.Apigatewayv2.HttpApi -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield HttpApiOp (fun s -> s.HttpApi) "HttpApi" (fun s -> s.ApiName) spec cont
+
+    member inline this.Bind
+        (
+            spec: DatabaseInstanceSpec,
+            [<InlineIfLambda>] cont: DatabaseInstance -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield RdsInstanceOp (fun s -> s.Instance) "DatabaseInstance" (fun s -> s.DatabaseName) spec cont
+
+    member inline this.Bind
+        (
+            spec: DatabaseProxySpec,
+            [<InlineIfLambda>] cont: IDatabaseProxy -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield DatabaseProxyOp (fun s -> s.DatabaseProxy) "DatabaseProxy" (fun s -> s.ProxyName) spec cont
+
+    member inline this.Bind
+        (
+            spec: DistributionSpec,
+            [<InlineIfLambda>] cont: IDistribution -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield
+            CloudFrontDistributionOp
+            (fun s -> s.Distribution)
+            "Distribution"
+            (fun s -> s.DistributionName)
+            spec
+            cont
+
+    member inline this.Bind
+        (
+            spec: WebAclSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.WAFv2.CfnWebACL -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield WebAclOp (fun s -> s.WebAcl) "WebAcl" (fun s -> s.AclName) spec cont
+
+    member inline this.Bind
+        (
+            spec: BucketDeploymentSpec,
+            [<InlineIfLambda>] cont: Amazon.CDK.AWS.S3.Deployment.BucketDeployment -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield
+            BucketDeploymentOp
+            (fun s -> s.Deployment)
+            "BucketDeployment"
+            (fun s -> s.DeploymentName)
+            spec
+            cont
+
+    member inline this.Bind
+        (
+            spec: OIDCProviderSpec,
+            [<InlineIfLambda>] cont: IOpenIdConnectProvider -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield OIDCProviderOp (fun s -> s.Provider) "OIDC Provider" (fun s -> s.ProviderName) spec cont
+
+    member inline this.Bind
+        (
+            spec: UserPoolResourceServerSpec,
+            [<InlineIfLambda>] cont: IUserPoolResourceServer -> StackConfig
+        ) : StackConfig =
+        this.BindViaYield
+            UserPoolResourceServerOp
+            (fun s -> s.ResourceServer)
+            "UserPoolResourceServer"
+            (fun s -> s.ResourceServerName)
+            spec
+            cont
 
     member _.Zero() : StackConfig =
         { Name = name

@@ -74,6 +74,10 @@
       <Compile Include="CloudHSM.fs" />
       <Compile Include="CloudTrail.fs" />
       <Compile Include="Bedrock.fs" />
+      <Compile Include="WAF.fs" />
+      <Compile Include="S3Deployment.fs" />
+      <Compile Include="CfnOutput.fs" />
+      <Compile Include="GitHubActions.fs" />
 
       <Compile Include="Stack.fs" />
 

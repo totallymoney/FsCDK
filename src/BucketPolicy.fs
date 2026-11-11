@@ -35,12 +35,16 @@ type BucketPolicyConfig =
       ConstructId: string option
       Bucket: IBucket option
       Statements: PolicyStatement list
+      // Statements that need the target bucket's ARN; resolved in Run so the
+      // 'bucket' operation may appear anywhere in the builder expression.
+      PendingStatements: (IBucket -> PolicyStatement) list
       RemovalPolicy: Amazon.CDK.RemovalPolicy option }
 
 type BucketPolicySpec =
     { PolicyName: string
       ConstructId: string
       Props: BucketPolicyProps
+      Statements: PolicyStatement list
       mutable Policy: BucketPolicy option }
 
 type BucketPolicyBuilder(name: string) =
@@ -49,6 +53,7 @@ type BucketPolicyBuilder(name: string) =
           ConstructId = None
           Bucket = None
           Statements = []
+          PendingStatements = []
           RemovalPolicy = None }
 
     member _.Yield(statement: PolicyStatement) : BucketPolicyConfig =
@@ -56,6 +61,7 @@ type BucketPolicyBuilder(name: string) =
           ConstructId = None
           Bucket = None
           Statements = [ statement ]
+          PendingStatements = []
           RemovalPolicy = None }
 
     member _.Zero() : BucketPolicyConfig =
@@ -63,6 +69,7 @@ type BucketPolicyBuilder(name: string) =
           ConstructId = None
           Bucket = None
           Statements = []
+          PendingStatements = []
           RemovalPolicy = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> BucketPolicyConfig) : BucketPolicyConfig = f ()
@@ -86,6 +93,7 @@ type BucketPolicyBuilder(name: string) =
             | Some _ -> a.Bucket
             | None -> b.Bucket
           Statements = a.Statements @ b.Statements
+          PendingStatements = a.PendingStatements @ b.PendingStatements
           RemovalPolicy =
             match a.RemovalPolicy with
             | Some _ -> a.RemovalPolicy
@@ -95,13 +103,25 @@ type BucketPolicyBuilder(name: string) =
         let props = BucketPolicyProps()
         let constructId = config.ConstructId |> Option.defaultValue config.PolicyName
 
-        config.Bucket |> Option.iter (fun bucket -> props.Bucket <- bucket)
+        let bucket =
+            match config.Bucket with
+            | Some bucket -> bucket
+            | None ->
+                failwith
+                    $"Bucket is required for bucket policy '{config.PolicyName}'. Set it with the 'bucket' operation."
+
+        props.Bucket <- bucket
 
         config.RemovalPolicy |> Option.iter (fun rp -> props.RemovalPolicy <- rp)
+
+        let statements =
+            (config.Statements |> List.rev)
+            @ (config.PendingStatements |> List.rev |> List.map (fun make -> make bucket))
 
         { PolicyName = config.PolicyName
           ConstructId = constructId
           Props = props
+          Statements = statements
           Policy = None }
 
     /// <summary>Sets the construct ID for the bucket policy.</summary>
@@ -125,94 +145,82 @@ type BucketPolicyBuilder(name: string) =
     /// <summary>Adds a statement that denies non-HTTPS requests (security best practice).</summary>
     [<CustomOperation("denyInsecureTransport")>]
     member _.DenyInsecureTransport(config: BucketPolicyConfig) =
-        let conditions = System.Collections.Generic.Dictionary<string, obj>()
-        conditions.Add("aws:SecureTransport", box "false")
+        let make (bucket: IBucket) =
+            let conditions = System.Collections.Generic.Dictionary<string, obj>()
+            conditions.Add("aws:SecureTransport", box "false")
 
-        let statement =
             PolicyStatement(
                 PolicyStatementProps(
                     Sid = "DenyInsecureTransport",
                     Effect = System.Nullable Effect.DENY,
                     Principals = [| AnyPrincipal() :> IPrincipal |],
                     Actions = [| "s3:*" |],
-                    Resources =
-                        [| match config.Bucket with
-                           | Some b -> b.BucketArn + "/*"
-                           | None -> "*" |],
+                    Resources = [| bucket.BucketArn; bucket.BucketArn + "/*" |],
                     Conditions = dict<string, obj> [ "Bool", conditions ]
                 )
             )
 
         { config with
-            Statements = statement :: config.Statements }
+            PendingStatements = make :: config.PendingStatements }
 
     /// <summary>Adds a statement that allows CloudFront OAI access.</summary>
     [<CustomOperation("allowCloudFrontOAI")>]
     member _.AllowCloudFrontOAI(config: BucketPolicyConfig, oaiCanonicalUserId: string) =
-        let statement =
+        let make (bucket: IBucket) =
             PolicyStatement(
                 PolicyStatementProps(
                     Sid = "AllowCloudFrontOAI",
                     Effect = System.Nullable Effect.ALLOW,
                     Principals = [| CanonicalUserPrincipal(oaiCanonicalUserId) :> IPrincipal |],
                     Actions = [| "s3:GetObject" |],
-                    Resources =
-                        [| match config.Bucket with
-                           | Some(b) -> b.BucketArn + "/*"
-                           | None -> "*" |]
+                    Resources = [| bucket.BucketArn + "/*" |]
                 )
             )
 
         { config with
-            Statements = statement :: config.Statements }
+            PendingStatements = make :: config.PendingStatements }
 
     /// <summary>Adds a statement that restricts access to specific IP addresses.</summary>
     [<CustomOperation("allowFromIpAddresses")>]
     member _.AllowFromIpAddresses(config: BucketPolicyConfig, ipAddresses: string list) =
-        let conditions = System.Collections.Generic.Dictionary<string, obj>()
-        conditions.Add("aws:SourceIp", box (ipAddresses |> List.toArray))
+        let make (bucket: IBucket) =
+            let conditions = System.Collections.Generic.Dictionary<string, obj>()
+            conditions.Add("aws:SourceIp", box (ipAddresses |> List.toArray))
 
-        let statement =
             PolicyStatement(
                 PolicyStatementProps(
                     Sid = "AllowFromSpecificIPs",
                     Effect = System.Nullable Effect.ALLOW,
                     Principals = [| AnyPrincipal() :> IPrincipal |],
                     Actions = [| "s3:GetObject" |],
-                    Resources =
-                        [| match config.Bucket with
-                           | Some(b) -> b.BucketArn + "/*"
-                           | None -> "*" |],
+                    Resources = [| bucket.BucketArn + "/*" |],
                     Conditions = dict [ "IpAddress", conditions ]
                 )
             )
 
         { config with
-            Statements = statement :: config.Statements }
+            PendingStatements = make :: config.PendingStatements }
 
     /// <summary>Adds a statement that denies access from specific IP addresses.</summary>
     [<CustomOperation("denyFromIpAddresses")>]
     member _.DenyFromIpAddresses(config: BucketPolicyConfig, ipAddresses: string list) =
-        let conditions = System.Collections.Generic.Dictionary<string, obj>()
-        conditions.Add("aws:SourceIp", box (ipAddresses |> List.toArray))
+        let make (bucket: IBucket) =
+            let conditions = System.Collections.Generic.Dictionary<string, obj>()
+            conditions.Add("aws:SourceIp", box (ipAddresses |> List.toArray))
 
-        let statement =
             PolicyStatement(
                 PolicyStatementProps(
                     Sid = "DenyFromSpecificIPs",
                     Effect = System.Nullable Effect.DENY,
                     Principals = [| AnyPrincipal() :> IPrincipal |],
                     Actions = [| "s3:*" |],
-                    Resources =
-                        [| match config.Bucket with
-                           | Some b -> b.BucketArn + "/*"
-                           | None -> "*" |],
+                    Resources = [| bucket.BucketArn; bucket.BucketArn + "/*" |],
                     Conditions = dict [ "IpAddress", conditions ]
                 )
             )
 
         { config with
-            Statements = statement :: config.Statements }
+            PendingStatements = make :: config.PendingStatements }
 
     /// <summary>Sets the removal policy for the bucket policy.</summary>
     [<CustomOperation("removalPolicy")>]
@@ -236,7 +244,7 @@ module BucketPolicyStatements =
                 Effect = System.Nullable Effect.DENY,
                 Principals = [| AnyPrincipal() :> IPrincipal |],
                 Actions = [| "s3:*" |],
-                Resources = [| bucket.BucketArn + "/*" |],
+                Resources = [| bucket.BucketArn; bucket.BucketArn + "/*" |],
                 Conditions = dict [ "Bool", conditions ]
             )
         )

@@ -120,7 +120,7 @@ type KMSKeyBuilder(name: string) =
         config.KeySpec |> Option.iter (fun s -> props.KeySpec <- s)
         config.KeyUsage |> Option.iter (fun u -> props.KeyUsage <- u)
         config.PendingWindow |> Option.iter (fun w -> props.PendingWindow <- w)
-        //config.AdmissionPrincipal |> Option.iter (fun p -> props.AdmissionPrincipal <- p)
+        config.AdmissionPrincipal |> Option.iter (fun p -> props.Admins <- [| p |])
         config.Policy |> Option.iter (fun p -> props.Policy <- p)
 
         { KeyName = config.KeyName

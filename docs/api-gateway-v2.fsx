@@ -27,154 +27,200 @@ Use the code samples alongside the implementation checklist and the “Further l
 
 open FsCDK
 open Amazon.CDK
-open Amazon.CDK.AWS.Apigatewayv2
-//open Amazon.CDK.AWS.Apigatewayv2Integrations
 open Amazon.CDK.AWS.Lambda
+open Amazon.CDK.AWS.Logs
+// Opened last so HttpMethod is the API Gateway one, not Amazon.CDK.AWS.Lambda.HttpMethod
+open Amazon.CDK.AWS.Apigatewayv2
+
+(*** hide ***)
+// `dotnet publish` output of the Lambda project; a placeholder folder keeps this page evaluable.
+let publishDir =
+    let dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fscdk-docs-api")
+    System.IO.Directory.CreateDirectory(dir) |> ignore
+    System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "Api.dll"), "placeholder")
+    dir
 
 (**
-## Basic HTTP API
+## HTTP API with a Lambda route
 
-Create a simple HTTP API with auto-deployment enabled by default.
+Bind the function with `let!` and route to it. Every route that targets the same function shares one
+integration; CDK adds a Lambda invoke permission per route. The bound `HttpApi` exposes `Url`, `ApiEndpoint`
+and metrics, so it can feed outputs, alarms and CloudFront origins.
 *)
 
 stack "BasicHttpAPI" {
-    // Create the HTTP API
-    let api = httpApi "my-api" { description "My HTTP API" }
-    ()
+    let! itemsFn =
+        lambda "ItemsHandler" {
+            runtime Runtime.DOTNET_8
+            handler "Api::Api.Handler::handle"
+            code publishDir
+        }
+
+    let! api =
+        httpApi "items-api" {
+            description "Items API"
+            route HttpMethod.GET "/items" itemsFn
+            route HttpMethod.POST "/items" itemsFn
+        }
+
+    cfnOutput "ItemsApiUrl" { value api.Url }
 }
 
 (**
 ## HTTP API with CORS
 
 Adopt a least-privilege CORS policy from day one. The development configuration below mirrors the rapid-prototyping approach that **Heitor Lessa** demonstrates in the Powertools workshops, while the production configuration reflects the lock-down guidance from the **AWS Security Blog** article “Implementing secure CORS for API Gateway.” Use permissive settings only in sandbox environments and document every approved origin for production.
+
+`HttpApiHelpers.corsPermissive` allows any origin and therefore does not allow credentials (browsers reject that combination).
+When the browser must send cookies or other credentials, use `HttpApiHelpers.corsWithCredentials` with explicit origins:
+API Gateway rejects `AllowCredentials` combined with a `*` origin.
 *)
 
 stack "HttpAPIWithCORS" {
-    // Development: Allow all origins
-    let devApi =
-        httpApi "dev-api" {
-            description "Development API with permissive CORS"
-            cors (HttpApiHelpers.corsPermissive ())
-            ()
+    let! fn =
+        lambda "CorsHandler" {
+            runtime Runtime.DOTNET_8
+            handler "Api::Api.Handler::handle"
+            code publishDir
         }
+
+    // Development: Allow all origins
+    httpApi "dev-api" {
+        description "Development API with permissive CORS"
+        cors (HttpApiHelpers.corsPermissive ())
+        route HttpMethod.ANY "/{proxy+}" fn
+    }
 
     // Production: Restrict to specific origins
-    let corsOptions =
-        HttpApiHelpers.cors
-            [ "https://myapp.com"; "https://www.myapp.com" ]
-            [ CorsHttpMethod.GET; CorsHttpMethod.POST; CorsHttpMethod.PUT ]
-            [ "Content-Type"; "Authorization" ]
+    httpApi "prod-api" {
+        description "Production API with restricted CORS"
 
-    let prodApi =
-        httpApi "prod-api" {
-            description "Production API with restricted CORS"
-            cors corsOptions
-        }
+        cors (
+            HttpApiHelpers.cors
+                [ "https://myapp.com"; "https://www.myapp.com" ]
+                [ CorsHttpMethod.GET; CorsHttpMethod.POST; CorsHttpMethod.PUT ]
+                [ "Content-Type"; "Authorization" ]
+        )
 
-    ()
+        route HttpMethod.ANY "/{proxy+}" fn
+    }
+
+    // Production with cookies: explicit origins + credentials
+    httpApi "session-api" {
+        description "API called with browser credentials"
+
+        cors (
+            HttpApiHelpers.corsWithCredentials
+                [ "https://myapp.com" ]
+                [ CorsHttpMethod.GET; CorsHttpMethod.POST ]
+                [ "Content-Type" ]
+        )
+
+        route HttpMethod.ANY "/{proxy+}" fn
+    }
 }
-
-(**
-## HTTP API with Lambda Integration
-
-FsCDK keeps the Lambda integration lightweight so you can focus on business logic. Follow the playbook shared in **re:Invent SVS402 – Deep dive on serverless APIs**: separate route definitions from function code, enable structured logging via Powertools, and surface integration metrics in CloudWatch. The snippet below establishes the foundation; pair it with reserved concurrency and DLQs as shown in [Lambda Production Defaults](lambda-production-defaults.html) to hit production-readiness quickly.
-*)
-
-stack "HttpAPIWithLambda" {
-    // Create Lambda function
-    let apiFunction =
-        lambda "ApiHandler" {
-            runtime Runtime.DOTNET_8
-            handler "Api::Handler"
-            code "./lambda"
-            environment [ "API_VERSION", "v1" ]
-            ()
-        }
-
-    // Create HTTP API
-    let api =
-        httpApi "users-api" {
-            description "Users API with Lambda integration"
-            cors (HttpApiHelpers.corsPermissive ())
-        }
-
-    // Note: Route integrations must be added using the CDK HttpApi directly
-    // Example:
-    //   let integration = HttpLambdaIntegration("GetUsersIntegration", apiFunction.Function.Value)
-    //   api.Api.AddRoutes(HttpRouteOptions(
-    //       Path = "/users",
-    //       Methods = [| HttpMethod.GET |],
-    //       Integration = integration
-    //   ))
-
-    ()
-}
-
-(**
-## Multiple routes & harmonised contracts
-
-Model your REST surface explicitly so consumers always know which verbs and payloads are supported. This mirrors the contract-first workflow advocated by **Jeremy Daly** in his “EventBridge and API Gateway integration” talks—each route should map cleanly to a Lambda function or integration with clear telemetry. The code below introduces per-verb handlers; augment it with JSON schema validators or Lambda Powertools’ middleware for request/response shaping.
-*)
-
-stack "MultiRouteAPI" {
-    // Create Lambda functions for different operations
-    let getUsersFunc =
-        lambda "GetUsers" {
-            runtime Runtime.DOTNET_8
-            handler "Api::GetUsers"
-            code "./lambda"
-            ()
-        }
-
-    let createUserFunc =
-        lambda "CreateUser" {
-            runtime Runtime.DOTNET_8
-            handler "Api::CreateUser"
-            code "./lambda"
-        }
-
-    let updateUserFunc =
-        lambda "UpdateUser" {
-            runtime Runtime.DOTNET_8
-            handler "Api::UpdateUser"
-            code "./lambda"
-        }
-
-    let deleteUserFunc =
-        lambda "DeleteUser" {
-            runtime Runtime.DOTNET_8
-            handler "Api::DeleteUser"
-            code "./lambda"
-        }
-
-    // Create HTTP API
-    let api =
-        httpApi "rest-api" {
-            description "RESTful API with multiple routes"
-            cors (HttpApiHelpers.corsPermissive ())
-        }
-
-    // Routes are added using CDK directly:
-    // GET /users - List users
-    // POST /users - Create user
-    // PUT /users/{id} - Update user
-    // DELETE /users/{id} - Delete user`
-    ()
-}
-
-(**
-## Custom domains & TLS
-
-Serve your API from branded domains to simplify client configuration and enforce HSTS. Provision ACM certificates in the target region (us-east-1 for edge-optimised) and map them via Route 53 alias records, following the detailed steps in the **AWS Networking Blog** post “End-to-end TLS with API Gateway.”
-*)
 
 (**
 ## Authorization strategies
 
 Plan for authentication and authorisation from day zero. HTTP APIs natively support JWT authorisers (ideal for Cognito, Auth0, or custom OIDC providers) and Lambda authorisers for bespoke logic. Map your requirements to the guidance from **Ben Kehoe’s** “Identity for serverless” series and the official **API Gateway Security Workshops** so you can implement least-privilege, auditable access.
+
+The authorizer you set on the API is the default for every route:
+
+- `cognitoAuthorizer name pool [ clients ]` derives the issuer from the user pool and accepts tokens issued to the listed app clients.
+- `jwtAuthorizer name issuer [ audiences ]` works with any OIDC issuer. API Gateway checks `aud`, or `client_id` for Cognito access tokens.
+- `defaultAuthorizer` takes any `IHttpRouteAuthorizer`, for example an `HttpLambdaAuthorizer`.
+
+`publicRoute` opts a single route out (health checks), and `routeSpec` with the `HttpRoute` helpers sets per-route authorizers or OAuth scopes.
 *)
 
+stack "MultiRouteAPI" {
+    let! usersFn =
+        lambda "UsersHandler" {
+            runtime Runtime.DOTNET_8
+            handler "Api::Api.Users::handle"
+            code publishDir
+        }
+
+    let! pool = userPool "ApiUsers" { () }
+    let! webClient = userPoolClient "ApiWebClient" { userPool pool }
+
+    httpApi "rest-api" {
+        description "RESTful API with multiple routes"
+        cognitoAuthorizer "Cognito" pool [ webClient ]
+
+        route HttpMethod.GET "/users" usersFn
+        route HttpMethod.POST "/users" usersFn
+        route HttpMethod.PUT "/users/{id}" usersFn
+
+        routeSpec (
+            HttpRoute.lambda HttpMethod.DELETE "/users/{id}" usersFn
+            |> HttpRoute.withScopes [ "users/admin" ]
+        )
+
+        publicRoute HttpMethod.GET "/health" usersFn
+    }
+}
+
+stack "Auth0API" {
+    let! fn =
+        lambda "Auth0Handler" {
+            runtime Runtime.DOTNET_8
+            handler "Api::Api.Handler::handle"
+            code publishDir
+        }
+
+    httpApi "auth0-api" {
+        jwtAuthorizer "Auth0" "https://my-tenant.eu.auth0.com/" [ "https://api.example.com" ]
+        defaultAuthorizationScopes [ "read:items" ]
+        route HttpMethod.ANY "/{proxy+}" fn
+    }
+}
+
 (**
+## Custom domains, throttling & access logs
+
+Serve your API from branded domains to simplify client configuration. `customDomain` creates a regional API Gateway
+domain name (the ACM certificate must be in the API's region) and maps it to the `$default` stage; add a Route 53 alias
+to the domain's `RegionalDomainName`. `disableExecuteApiEndpoint true` forces clients onto the custom domain.
+
+`throttle rate burst` sets default-stage route throttling and `accessLogs` writes JSON access logs that leave out
+JWT claims and bodies (see `HttpApiOperations.defaultAccessLogFormat`).
+*)
+
+stack "ProductionAPI" {
+    let! fn =
+        lambda "OrdersHandler" {
+            runtime Runtime.DOTNET_8
+            handler "Api::Api.Orders::handle"
+            code publishDir
+        }
+
+    let! cert = certificate "ApiCertificate" { domainName "api.example.com" }
+    let! accessLogGroup = logGroup "/api/orders/access" { retention RetentionDays.ONE_YEAR }
+
+    httpApi "orders-api" {
+        route HttpMethod.ANY "/orders/{proxy+}" fn
+        customDomain "api.example.com" cert
+        disableExecuteApiEndpoint true
+        throttle 100.0 200
+        accessLogs accessLogGroup
+    }
+}
+
+(**
+## WAF and HTTP APIs
+
+AWS WAF cannot be associated with HTTP APIs. To put a web ACL in front of one, route the API through CloudFront and
+attach a `webAcl` with `scope WebAclScope.CloudFront` (deployed in us-east-1) to the distribution with `webAclId`.
+The [serverless web sample](https://github.com/totallymoney/FsCDK/tree/main/samples/serverless-web) shows the full
+setup: CloudFront + OAC SPA, `/api/*` to the HTTP API with a Cognito JWT authorizer, a .NET Lambda with SnapStart and DynamoDB.
+
+The API's own `execute-api` endpoint (and any custom domain) stays reachable directly, so WAF rules apply only to
+traffic that comes through CloudFront; the JWT authorizer and stage throttling apply either way. To force traffic
+through CloudFront, have CloudFront add a secret origin header and check it in a Lambda authorizer, or use a regional
+REST API, which WAF supports directly.
+
 ## Helper functions
 
 FsCDK ships ergonomic helpers for CORS policies and route keys so you can codify conventions instead of scattering strings through your codebase. Use them to mirror the patterns from the **AWS API Gateway Workshop**—define reusable builders, enforce consistent verbs and paths, and keep policy changes centralised.
@@ -189,6 +235,9 @@ let restrictedCors =
         [ CorsHttpMethod.GET; CorsHttpMethod.POST ]
         [ "Content-Type"; "Authorization" ]
 
+let credentialedCors =
+    HttpApiHelpers.corsWithCredentials [ "https://example.com" ] [ CorsHttpMethod.GET ] [ "Content-Type" ]
+
 // Route Key Helpers
 let getUsersRoute = HttpApiHelpers.getRoute "/users"
 let createUserRoute = HttpApiHelpers.postRoute "/users"
@@ -201,19 +250,32 @@ let anyMethodRoute = HttpApiHelpers.anyRoute "/{proxy+}"
 
 | Area | What to do | Why |
 |------|------------|-----|
-| Latency | Choose HTTP APIs over REST APIs for 50–70% lower latency and cost. Keep payloads small and enable compression when responses exceed 1 MB. | Aligns with **re:Invent ARC406** recommendations and AWS’ pricing model. |
-| Security | Lock CORS to approved origins, prefer JWT authorisers for stateless auth, and front public APIs with AWS WAF. Enable access logging to CloudWatch Logs Insights. | Mirrors **Ben Kehoe’s** least-privilege guidance and AWS Security Blog best practices. |
-| Reliability | Set Lambda timeouts ≤29 s, configure reserved concurrency, and attach DLQs or on-failure destinations for integrations. Add CloudWatch alarms on 4xx/5xx metrics. | Matches the resiliency playbook from **AWS Builders Library – Automating safe deployments**. |
+| Latency | Choose HTTP APIs over REST APIs for 50–70% lower latency and cost. Keep payloads small and enable compression when responses exceed 1 MB. | Aligns with **re:Invent ARC406** recommendations and AWS’ pricing model. |
+| Security | Lock CORS to approved origins, prefer JWT authorisers for stateless auth, and front public APIs with AWS WAF through CloudFront. Enable access logging to CloudWatch Logs Insights. | Mirrors **Ben Kehoe’s** least-privilege guidance and AWS Security Blog best practices. |
+| Reliability | Set Lambda timeouts ≤29 s, configure reserved concurrency, and attach DLQs or on-failure destinations for integrations. Add CloudWatch alarms on 4xx/5xx metrics. | Matches the resiliency playbook from **AWS Builders Library – Automating safe deployments**. |
 | Cost | Monitor `$default` stage metrics, use pay-per-request billing, and cache responses at the integration layer where possible. Audit usage quarterly. | Reinforces advice from **Serverless Land** cost optimisation sessions. |
 | Operations | Tag APIs (`Service`, `Environment`), version routes (`/v1`, `/v2`), and document schemas using OpenAPI. Include runbooks for authoriser failures. | Supports operational excellence per Well-Architected Serverless Lens. |
 
-FsCDK’s builder defaults—auto-deployed `$default` stage, throttling, and disabled CORS—provide a sensible starting point. Use the escape hatch (`api.Api`) whenever you need to customise integrations, authorisers, or stages.
+FsCDK’s builder defaults—auto-deployed `$default` stage and disabled CORS—provide a sensible starting point. Bind the
+API with `let!` whenever you need the underlying `HttpApi` (stages, VPC links, metrics). Alarms notify an SNS topic
+with `alarmAction`; `okAction` and `insufficientDataAction` notify on recovery and missing data, and
+`actionsEnabled false` mutes the actions without deleting the alarm:
 
 ```fsharp
-// Example escape hatch usage (schema validation, authorisers, etc.)
-// let integration = HttpLambdaIntegration("UsersIntegration", handler.Function.Value)
-// api.Api.AddRoutes(HttpRouteOptions(Path = "/users", Methods = [| HttpMethod.GET |], Integration = integration))
+let! api = httpApi "items-api" { route HttpMethod.GET "/items" itemsFn }
+let! alertsTopic = topic "ApiAlerts" { () }
+
+cloudwatchAlarm "ItemsApi5xx" {
+    metric (api.MetricServerError())
+    threshold 5.0
+    evaluationPeriods 1
+    alarmAction alertsTopic
+    okAction alertsTopic
+}
 ```
+
+See [CloudFront static sites and SPAs](cloudfront-static-site.html) to serve the API under `/api/*` next to a
+single-page app.
 
 ## Further learning
 

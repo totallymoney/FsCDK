@@ -54,12 +54,14 @@ let tests =
 
               let spec =
                   userPool "PoolWithAttrs" {
-                      customAttribute attr1
-                      customAttribute attr2
+                      customAttribute "nickname" attr1
+                      customAttribute "score" attr2
                   }
 
               Expect.isNotNull spec.Props.CustomAttributes "CustomAttributes dictionary should be set"
               Expect.isTrue (spec.Props.CustomAttributes.Count >= 2) "At least two custom attributes expected"
+              Expect.isTrue (spec.Props.CustomAttributes.ContainsKey "nickname") "Attribute name should be the key"
+              Expect.isTrue (spec.Props.CustomAttributes.ContainsKey "score") "Attribute name should be the key"
 
           }
 
@@ -97,9 +99,10 @@ let tests =
                   spec.Props.PreventUserExistenceErrors.Value
                   "PreventUserExistenceErrors should default to true"
 
-              // Auth flows default to SRP + password
+              // Auth flows default to SRP only, and OAuth is off until configured
               Expect.isTrue spec.Props.AuthFlows.UserSrp.Value "SRP auth flow should be enabled"
-              Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled"
+              Expect.isFalse spec.Props.AuthFlows.UserPassword.HasValue "Password auth flow should be opt-in"
+              Expect.isTrue spec.Props.DisableOAuth.Value "OAuth should be off without oAuth settings"
 
           }
 

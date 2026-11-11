@@ -24,29 +24,38 @@ Serverless workloads succeed when they:
 - **Emit rich telemetry** – JSON logs, X-Ray tracing, and Powertools illuminate behaviour.
 - **Fail predictably** – Retry and event-age limits avoid infinite loops and stale updates.
 
-FsCDK turns these best practices into defaults so you don’t have to wire them by hand.
+FsCDK turns the telemetry practices into defaults and makes the rest one-line opt-ins, so nothing changes your
+function's behaviour or cost without you asking for it.
 
 ---
 
 ## Defaults applied to every function
 
-Every Lambda function in FsCDK automatically gets these production-safe defaults:
-
 | Feature | Default value | Rationale |
 |---------|---------------|-----------|
-| **Reserved concurrency** | `10` | Limits blast radius and mirrors Yan Cui's cost-control advice. |
 | **X-Ray tracing** | `ACTIVE` | Enables end-to-end tracing per Heitor Lessa's observability workshops. |
 | **Logging format** | `JSON` | Unlocks CloudWatch Logs Insights and downstream analytics. |
-| **Log retention** | `1 week` (via logGroup) | Corey Quinn cost optimization: "Never store logs forever." Use logGroup builder for custom retention. |
-| **Ephemeral storage** | `512 MB` | AWS free tier default. Increase only when processing large files. |
-| **Retry attempts** | `2` | Prevents infinite retry loops while allowing transient recovery. |
-| **Max event age** | `6 hours` | Avoids stale data processing as recommended in the Lambda operator guide. |
-| **Dead-letter queue** | Auto-created SQS (14-day retention) | Guarantees recoverability and audit trails. |
-| **Lambda Powertools** | Enabled | Adds structured logging, metrics, and tracing helpers automatically. |
+
+Everything else uses the AWS Lambda defaults: no reserved concurrency (the function shares the account's unreserved
+pool), 512 MB ephemeral storage, and for asynchronous invocations 2 retry attempts and a 6-hour maximum event age.
+
+## Opt-in production features
+
+| Feature | Operation | What it does |
+|---------|-----------|--------------|
+| **Dead-letter queue** | `autoCreateDLQ true` | CDK creates an SQS dead-letter queue (14-day retention) for failed async events, unless you set `deadLetterQueue` or `deadLetterTopic` yourself. |
+| **Lambda Powertools** | `autoAddPowertools true` | Attaches the Powertools layer for the stack's region (Python, Node.js, Java; .NET uses NuGet packages). |
+| **Reserved concurrency** | `reservedConcurrentExecutions n` | Caps concurrency to limit blast radius and cost. It also reserves `n` from the account quota. |
+| **Async retries / event age** | `retryAttempts n`, `maxEventAge d` | Overrides the Lambda defaults of 2 retries and 6 hours. |
+| **Log retention** | `logGroup` | Pre-create the log group with a retention period instead of keeping logs forever. |
+
+> **Upgrading from FsCDK 0.2.x:** earlier versions documented the DLQ and Powertools as automatic but never
+> created them, and silently set reserved concurrency to 10 on every function. That hidden cap is gone: set
+> `reservedConcurrentExecutions` explicitly if you relied on it.
 
 ---
 
-## Basic usage (defaults already applied)
+## Basic usage with the opt-ins enabled
 
 *)
 
@@ -71,15 +80,14 @@ stack "ProductionStack" {
         runtime Runtime.PYTHON_3_11
         code "./src"
 
-        environment [ "TABLE_NAME", "orders-table"; "POWERTOOLS_SERVICE_NAME", "order-service" ] // Powertools auto-configured
+        environment [ "TABLE_NAME", "orders-table"; "POWERTOOLS_SERVICE_NAME", "order-service" ]
+
+        autoCreateDLQ true // SQS dead-letter queue for failed async events
+        autoAddPowertools true // Powertools layer for the stack's region
+        reservedConcurrentExecutions 10 // Explicit concurrency cap
     }
-// Reserved concurrency = 10
-// X-Ray tracing enabled
-// JSON logging enabled
-// DLQ auto-created: "OrderProcessor-dlq"
-// Powertools layer added automatically
-// Max event age = 6 hours
-// Retry attempts = 2
+// Always on: X-Ray tracing ACTIVE, JSON logging
+// Lambda defaults: max event age 6 hours, 2 retry attempts
 }
 
 (**
@@ -102,11 +110,9 @@ stack "CustomStack" {
         code "./dist"
 
         // Override defaults
-        reservedConcurrentExecutions 500 // Allow higher concurrency
-        tracing Tracing.PASS_THROUGH // Disable X-Ray
+        reservedConcurrentExecutions 500 // Explicit, load-tested cap
+        tracing Tracing.PASS_THROUGH // Only trace when upstream sends a trace header
         loggingFormat LoggingFormat.TEXT // Use plain text logs
-        autoCreateDLQ false // Disable DLQ
-        autoAddPowertools false // Skip Powertools layer
         maxEventAge (Duration.Hours(1.0)) // 1 hour instead of 6
         retryAttempts 0 // No retries
     }
@@ -116,16 +122,19 @@ stack "CustomStack" {
 
 ---
 
-## Dead Letter Queue (DLQ) Auto-Creation
+## Dead Letter Queue (DLQ) auto-creation (opt-in)
 
 ### How it works
 
-FsCDK provisions a standard SQS queue and wires it to the Lambda’s asynchronous failure destination—matching the blueprint from the **AWS Lambda Operator Guide**:
+With `autoCreateDLQ true`, CDK provisions a standard SQS queue as the function's dead-letter queue, matching the
+blueprint from the **AWS Lambda Operator Guide**:
 
-- **Naming convention**: `{FunctionName}-dlq`
 - **Retention**: 14 days (enough to investigate issues and reprocess, per Yan Cui’s guidance)
-- **Queue type**: Standard SQS
-- **Construct ID**: `{ConstructId}-DLQ`
+- **Queue type**: Standard SQS, named by CloudFormation
+- **Skipped** when you configure `deadLetterQueue`, `deadLetterTopic` or `deadLetterQueueEnabled` yourself
+
+DLQs only capture failed **asynchronous** invocations (S3, SNS, EventBridge...). Stream and queue event sources
+(SQS, Kinesis, DynamoDB Streams) use the event source mapping's own failure destination instead.
 
 *)
 
@@ -133,9 +142,9 @@ lambda "PaymentProcessor" {
     handler "process_payment"
     runtime Runtime.PYTHON_3_11
     code "./payment-service"
+    autoCreateDLQ true
 }
-// Automatically creates SQS queue: "PaymentProcessor-dlq"
-// Failed events stored for 14 days
+// CDK creates the SQS dead-letter queue; failed events are kept for 14 days
 
 (**
 
@@ -162,7 +171,6 @@ stack "CustomDLQStack" {
         runtime Runtime.PYTHON_3_11
         code "./src"
         deadLetterQueue customDlq // Use custom DLQ
-        autoCreateDLQ false // Disable auto-creation
     }
 }
 
@@ -172,7 +180,7 @@ stack "CustomDLQStack" {
 
 ## AWS Lambda Powertools integration
 
-Created by AWS Principal Engineer **Heitor Lessa**, Lambda Powertools delivers the structured logging, metrics, and tracing helpers showcased in the **Powertools Live Workshops** (average rating 4.9★). FsCDK automatically layers these utilities so your handlers follow the same blueprint Heitor presents in re:Invent sessions.
+Created by AWS Principal Engineer **Heitor Lessa**, Lambda Powertools delivers the structured logging, metrics, and tracing helpers showcased in the **Powertools Live Workshops** (average rating 4.9★). Add `autoAddPowertools true` and FsCDK attaches the Powertools layer for the stack's region, shared by all functions of the same runtime in the stack.
 
 ### Key capabilities
 
@@ -205,8 +213,9 @@ lambda "PythonFunction" {
         [ "POWERTOOLS_SERVICE_NAME", "user-service"
           "POWERTOOLS_METRICS_NAMESPACE", "MyApp"
           "LOG_LEVEL", "INFO" ]
+
+    autoAddPowertools true
 }
-// Powertools layer added automatically!
 
 (**
 
@@ -245,6 +254,8 @@ lambda "NodeFunction" {
         [ "POWERTOOLS_SERVICE_NAME", "order-service"
           "POWERTOOLS_METRICS_NAMESPACE", "MyApp"
           "LOG_LEVEL", "INFO" ]
+
+    autoAddPowertools true
 }
 
 (**
@@ -270,9 +281,10 @@ export const handler = async (event: any) => {
 };
 ```
 
-### Disabling Powertools
+### Functions without Powertools
 
-If you don't want Powertools (e.g., for .NET or custom logging):
+Powertools is off unless you enable it, so .NET functions (which use the NuGet packages) and functions with
+their own logging library need nothing extra:
 
 *)
 
@@ -280,7 +292,6 @@ lambda "CustomLoggingFunction" {
     handler "index.handler"
     runtime Runtime.DOTNET_8
     code "./dotnet-service"
-    autoAddPowertools false // Skip Powertools layer
 }
 
 (**
@@ -291,39 +302,34 @@ lambda "CustomLoggingFunction" {
 
 ### Why reserved concurrency?
 
-By default, Lambda can consume the entire account concurrency pool (1,000 per Region). Without guard rails you risk surprise costs and throttling other services—a scenario highlighted in **Yan Cui’s “All you need to know about Lambda concurrency”**. FsCDK therefore caps concurrency at 10 by default.
+By default, Lambda can consume the entire account concurrency pool (1,000 per Region). Without guard rails you risk surprise costs and throttling other services—a scenario highlighted in **Yan Cui’s “All you need to know about Lambda concurrency”**.
 
-### When to override
+FsCDK does not set reserved concurrency for you: a reservation is both a cap for the function and a slice of the
+account quota taken away from every other function, so the right value depends on your traffic and account.
 
-Increase or remove the cap only after:
-- Load testing confirms throughput requirements
-- You’ve configured cost and error alarms
-- Other critical functions have explicit concurrency protections in place
+### When to set it
+
+- To protect a downstream system (database, third-party API) from more parallel calls than it can handle
+- To guarantee capacity for a critical function in a busy account
+- To cap the cost of a function that could be triggered in bulk
+
+Pick the value from load tests, and add throttle and error alarms when you do.
 
 *)
 
-// Development/staging - keep defaults
+// No reservation: shares the account's unreserved concurrency
 lambda "DevFunction" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
     code "./src"
-// Reserved concurrency = 10 (default)
 }
 
-// Production - increase based on load testing
+// Production - cap based on load testing
 lambda "ProdFunction" {
     handler "index.handler"
     runtime Runtime.PYTHON_3_11
     code "./src"
     reservedConcurrentExecutions 500 // Tested capacity
-}
-
-// Unlimited (use with caution!)
-lambda "UnlimitedFunction" {
-    handler "index.handler"
-    runtime Runtime.PYTHON_3_11
-    code "./src"
-    reservedConcurrentExecutions -1 // Remove limit (not recommended!)
 }
 
 (**
@@ -432,7 +438,7 @@ fields @timestamp, level, message, userId
 
 ### Default event handling
 
-Async invocations inherit a 6-hour max age and two retry attempts, echoing the configuration recommended in the **AWS Lambda Operator Guide** to balance resiliency with timely processing.
+Unless you set `retryAttempts` or `maxEventAge`, async invocations use Lambda's own defaults: a 6-hour maximum event age and two retry attempts.
 
 ### When to override
 
@@ -461,7 +467,7 @@ lambda "CustomAsyncFunction" {
 
 ### Why limit event age?
 
-Stale events lead to incorrect business logic, wasted compute, and confusing audit trails—an issue repeatedly called out in the **AWS Compute Blog**. FsCDK therefore drops payloads older than six hours by default.
+Stale events lead to incorrect business logic, wasted compute, and confusing audit trails—an issue repeatedly called out in the **AWS Compute Blog**. Lambda drops payloads older than six hours by default; shorten that with `maxEventAge` when an event loses its value sooner, and pair it with a DLQ so dropped events are kept.
 
 ---
 
@@ -500,14 +506,11 @@ stack "ProductionOrderService" {
               "POWERTOOLS_METRICS_NAMESPACE", "OrderService"
               "LOG_LEVEL", "INFO" ]
 
-        // Production-safe defaults applied automatically:
-        // Reserved concurrency = 10
-        // X-Ray tracing = ACTIVE
-        // JSON logging
-        // DLQ = "OrderProcessor-dlq" (14-day retention)
-        // Powertools layer added
-        // Max event age = 6 hours
-        // Retry attempts = 2
+        // Opt-in production features
+        autoCreateDLQ true // SQS DLQ, 14-day retention
+        autoAddPowertools true
+        reservedConcurrentExecutions 50 // Protects the table from bursts
+        // Always on: X-Ray tracing ACTIVE, JSON logging
 
         // Grant DynamoDB permissions
         addRolePolicyStatement (
@@ -533,27 +536,17 @@ stack "ProductionOrderService" {
             [ "POWERTOOLS_SERVICE_NAME", "notification-sender"
               "POWERTOOLS_METRICS_NAMESPACE", "OrderService" ]
 
-    // Other defaults still applied:
-    // X-Ray tracing = ACTIVE
-    // JSON logging
-    // DLQ auto-created
-    // Powertools layer
+        autoCreateDLQ true
+        autoAddPowertools true
     }
 
-    // Legacy function (custom configuration)
+    // Legacy function: no opt-ins, plain text logs
     lambda "LegacyProcessor" {
         handler "legacy.handler"
         runtime Runtime.JAVA_17
         code "./legacy-service"
-
-        // Disable new features for legacy compatibility
-        autoCreateDLQ false // Custom error handling
-        autoAddPowertools false // Custom logging library
         loggingFormat LoggingFormat.TEXT // Legacy log parser
-
-    // Still protected:
-    // Reserved concurrency = 10
-    // X-Ray tracing = ACTIVE (can disable if needed)
+    // Still on: X-Ray tracing ACTIVE (can disable if needed)
     }
 }
 
@@ -567,16 +560,16 @@ productionApp.Synth() |> ignore
 
 ### DO
 
-- Keep the defaults for new workloads—Yan Cui calls them "sane guard rails" for any greenfield project.
+- Turn on `autoCreateDLQ` (or set your own DLQ) for every asynchronously invoked function.
 - Embrace Lambda Powertools to standardise logging, metrics, and tracing without reinventing tooling.
 - Monitor DLQs with CloudWatch alarms and establish a replay runbook.
-- Load test before raising reserved concurrency or removing limits.
+- Set reserved concurrency from load tests where a downstream system or the account quota needs protecting.
 - Retain JSON logging to unlock Logs Insights, OpenSearch, and external observability platforms.
 
 ### DON’T
 
-- Remove concurrency limits without validated traffic modelling; it’s the fastest path to bill shock.
-- Disable DLQs or you’ll lose the audit trail needed during incidents.
+- Rely on unbounded concurrency for functions that hit fragile downstream systems; it’s the fastest path to bill shock and outages.
+- Leave async functions without a DLQ or on-failure destination, or you’ll lose the audit trail needed during incidents.
 - Turn off X-Ray in production unless compliance requires it—the overhead is minimal.
 - Set overly tight `MaxEventAge`; you’ll drop legitimate events unnecessarily.
 - Revert to plaintext logging; structured logs are the foundation for analytics.
@@ -688,13 +681,13 @@ productionApp.Synth() |> ignore
 
 ### Why FsCDK Uses These Defaults
 
-FsCDK's production defaults are based on lessons learned by AWS Heroes and the broader serverless community:
+FsCDK's defaults and opt-ins are based on lessons learned by AWS Heroes and the broader serverless community:
 
-1. **Reserved Concurrency (10)** - Prevents runaway costs and protects downstream systems ([AWS docs](https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html))
-2. **Auto-create DLQ** - Never lose events, always have audit trail ([AWS DLQ docs](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#invocation-dlq))
-3. **X-Ray Tracing** - Essential for debugging distributed systems ([AWS X-Ray](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html))
-4. **Structured JSON Logging** - Enables CloudWatch Logs Insights queries ([Lambda Powertools](https://docs.powertools.aws.dev/lambda/python/latest/))
-5. **Lambda Powertools** - Battle-tested utilities from AWS ([official docs](https://docs.powertools.aws.dev/lambda/))
+1. **X-Ray Tracing** (default) - Essential for debugging distributed systems ([AWS X-Ray](https://docs.aws.amazon.com/lambda/latest/dg/services-xray.html))
+2. **Structured JSON Logging** (default) - Enables CloudWatch Logs Insights queries ([Lambda Powertools](https://docs.powertools.aws.dev/lambda/python/latest/))
+3. **Auto-create DLQ** (opt-in) - Never lose events, always have audit trail ([AWS DLQ docs](https://docs.aws.amazon.com/lambda/latest/dg/invocation-async.html#invocation-dlq))
+4. **Lambda Powertools** (opt-in) - Battle-tested utilities from AWS ([official docs](https://docs.powertools.aws.dev/lambda/))
+5. **Reserved Concurrency** (explicit) - Prevents runaway costs and protects downstream systems ([AWS docs](https://docs.aws.amazon.com/lambda/latest/dg/lambda-concurrency.html))
 
 ### FsCDK Implementation Details
 
@@ -704,19 +697,16 @@ These defaults are implemented in `src/Function.fs` and `src/LambdaPowertools.fs
 
 ## Summary
 
-FsCDK's production defaults ensure your Lambda functions are:
+| Feature | How | Benefit |
+|---------|-----|---------|
+| **X-Ray Tracing** | Default | Full observability across services |
+| **JSON Logging** | Default | Structured logs for better debugging |
+| **Auto-created DLQ** | `autoCreateDLQ true` | Never lose failed events |
+| **Lambda Powertools** | `autoAddPowertools true` | Production-grade logging, metrics, tracing |
+| **Reserved Concurrency** | `reservedConcurrentExecutions n` | Prevents runaway costs |
+| **Event Age / Retry Limits** | `maxEventAge`, `retryAttempts` | Prevents stale events and retry storms |
 
-| Feature | Benefit |
-|---------|---------|
-| **Reserved Concurrency** | Prevents runaway costs |
-| **X-Ray Tracing** | Full observability across services |
-| **JSON Logging** | Structured logs for better debugging |
-| **Auto-created DLQ** | Never lose failed events |
-| **Lambda Powertools** | Production-grade logging, metrics, tracing |
-| **Event Age Limits** | Prevents stale event processing |
-| **Retry Limits** | Prevents infinite retry loops |
-
-**These defaults can all be overridden**, but they provide a safe starting point for production workloads.
+The defaults can be overridden, and the opt-ins are one line each.
 
 *)
 ()

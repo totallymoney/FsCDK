@@ -42,7 +42,16 @@ type DatabaseInstanceConfig =
 type DatabaseInstanceSpec =
     { DatabaseName: string
       ConstructId: string
-      Props: DatabaseInstanceProps }
+      Props: DatabaseInstanceProps
+      mutable Instance: DatabaseInstance option }
+
+    /// Gets the underlying DatabaseInstance (secret, endpoint, connections, grants). Must be called after the stack is built.
+    member this.Resource =
+        match this.Instance with
+        | Some instance -> instance
+        | None ->
+            failwith
+                $"DatabaseInstance '{this.DatabaseName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type DatabaseInstanceBuilder(name: string) =
 
@@ -289,7 +298,12 @@ type DatabaseInstanceBuilder(name: string) =
         config.RemovalPolicy |> Option.iter (fun r -> props.RemovalPolicy <- r)
         config.ParameterGroup |> Option.iter (fun p -> props.ParameterGroup <- p)
         config.DatabaseName_ |> Option.iter (fun d -> props.DatabaseName <- d)
-        config.Credentials |> Option.iter (fun c -> props.Credentials <- c)
+
+        // Explicit credentials win; otherwise masterUsername gets a generated secret
+        match config.Credentials, config.MasterUsername with
+        | Some c, _ -> props.Credentials <- c
+        | None, Some username -> props.Credentials <- Credentials.FromGeneratedSecret(username)
+        | None, None -> ()
 
         config.PreferredBackupWindow
         |> Option.iter (fun w -> props.PreferredBackupWindow <- w)
@@ -317,7 +331,8 @@ type DatabaseInstanceBuilder(name: string) =
 
         { DatabaseName = config.DatabaseName
           ConstructId = constructId
-          Props = props }
+          Props = props
+          Instance = None }
 
     /// <summary>Sets the construct ID for the database instance.</summary>
     [<CustomOperation("constructId")>]
@@ -769,13 +784,13 @@ type DatabaseProxyBuilder(name: string) =
 
     /// <summary>Sets the proxy target to a database instance.</summary>
     [<CustomOperation("proxyTarget")>]
-    member _.ProxyTargetInstance(config: DatabaseProxyConfig, instance: IDatabaseInstance) =
+    member _.ProxyTarget(config: DatabaseProxyConfig, instance: IDatabaseInstance) =
         { config with
             ProxyTarget = Some(InstanceProxyTarget instance) }
 
     /// <summary>Sets the proxy target to a database cluster.</summary>
     [<CustomOperation("proxyTarget")>]
-    member _.ProxyTargetCluster(config: DatabaseProxyConfig, cluster: IDatabaseCluster) =
+    member _.ProxyTarget(config: DatabaseProxyConfig, cluster: IDatabaseCluster) =
         { config with
             ProxyTarget = Some(ClusterProxyTarget cluster) }
 

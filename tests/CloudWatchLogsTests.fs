@@ -25,6 +25,14 @@ let cloudwatch_logs_tests =
                     Expect.equal logGroupResource.ConstructId "/aws/lambda/test" "ConstructId should default to name"
                 }
 
+                test "sets no removal policy by default, so CDK retains the logs" {
+                    let logGroupResource = logGroup "/aws/lambda/test" { () }
+
+                    Expect.isFalse
+                        logGroupResource.Props.RemovalPolicy.HasValue
+                        "The removal policy should be left to CDK (RETAIN)"
+                }
+
                 test "allows custom constructId" {
                     let logGroupResource = logGroup "/aws/lambda/test" { constructId "MyLogGroup" }
 

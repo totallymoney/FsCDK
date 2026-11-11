@@ -2,6 +2,8 @@ namespace FsCDK
 
 open Amazon.CDK
 open Amazon.CDK.AWS.CloudWatch
+open Amazon.CDK.AWS.CloudWatch.Actions
+open Amazon.CDK.AWS.SNS
 open Amazon.CDK.AWS.CloudTrail
 open Amazon.CDK.AWS.S3
 open Amazon.CDK.AWS.Lambda
@@ -247,12 +249,18 @@ type CloudWatchAlarmConfig =
       EvaluationPeriods: int option
       ComparisonOperator: ComparisonOperator option
       TreatMissingData: TreatMissingData option
-      ActionsEnabled: bool option }
+      ActionsEnabled: bool option
+      AlarmActions: IAlarmAction list
+      OkActions: IAlarmAction list
+      InsufficientDataActions: IAlarmAction list }
 
 type CloudWatchAlarmSpec =
     { AlarmName: string
       ConstructId: string
       Props: AlarmProps
+      AlarmActions: IAlarmAction list
+      OkActions: IAlarmAction list
+      InsufficientDataActions: IAlarmAction list
       mutable Alarm: IAlarm option }
 
 type CloudWatchAlarmBuilder(name: string) =
@@ -270,7 +278,10 @@ type CloudWatchAlarmBuilder(name: string) =
           EvaluationPeriods = Some 1
           ComparisonOperator = Some ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
           TreatMissingData = Some TreatMissingData.NOT_BREACHING
-          ActionsEnabled = Some true }
+          ActionsEnabled = Some true
+          AlarmActions = []
+          OkActions = []
+          InsufficientDataActions = [] }
 
     member _.Zero() : CloudWatchAlarmConfig =
         { AlarmName = name
@@ -286,7 +297,10 @@ type CloudWatchAlarmBuilder(name: string) =
           EvaluationPeriods = Some 1
           ComparisonOperator = Some ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD
           TreatMissingData = Some TreatMissingData.NOT_BREACHING
-          ActionsEnabled = Some true }
+          ActionsEnabled = Some true
+          AlarmActions = []
+          OkActions = []
+          InsufficientDataActions = [] }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> CloudWatchAlarmConfig) : CloudWatchAlarmConfig = f ()
 
@@ -308,7 +322,10 @@ type CloudWatchAlarmBuilder(name: string) =
           EvaluationPeriods = state2.EvaluationPeriods |> Option.orElse state1.EvaluationPeriods
           ComparisonOperator = state2.ComparisonOperator |> Option.orElse state1.ComparisonOperator
           TreatMissingData = state2.TreatMissingData |> Option.orElse state1.TreatMissingData
-          ActionsEnabled = state2.ActionsEnabled |> Option.orElse state1.ActionsEnabled }
+          ActionsEnabled = state2.ActionsEnabled |> Option.orElse state1.ActionsEnabled
+          AlarmActions = state1.AlarmActions @ state2.AlarmActions
+          OkActions = state1.OkActions @ state2.OkActions
+          InsufficientDataActions = state1.InsufficientDataActions @ state2.InsufficientDataActions }
 
     member inline x.For
         (
@@ -343,6 +360,9 @@ type CloudWatchAlarmBuilder(name: string) =
             { AlarmName = config.AlarmName
               ConstructId = constructId
               Props = props
+              AlarmActions = config.AlarmActions
+              OkActions = config.OkActions
+              InsufficientDataActions = config.InsufficientDataActions
               Alarm = None }
 
         | None, None, _
@@ -375,6 +395,9 @@ type CloudWatchAlarmBuilder(name: string) =
             { AlarmName = config.AlarmName
               ConstructId = constructId
               Props = props
+              AlarmActions = config.AlarmActions
+              OkActions = config.OkActions
+              InsufficientDataActions = config.InsufficientDataActions
               Alarm = None }
 
     /// <summary>Sets the construct ID for the alarm.</summary>
@@ -434,6 +457,50 @@ type CloudWatchAlarmBuilder(name: string) =
     member _.TreatMissingData(config: CloudWatchAlarmConfig, treatment: TreatMissingData) =
         { config with
             TreatMissingData = Some treatment }
+
+    /// <summary>Notifies an SNS topic when the alarm enters the ALARM state. Can be used several times.</summary>
+    /// <param name="topic">The topic to notify.</param>
+    /// <code lang="fsharp">
+    /// let! alerts = topic "Alerts" { () }
+    /// cloudwatchAlarm "ApiErrors" {
+    ///     metricNamespace "AWS/ApiGateway"
+    ///     metricName "5xx"
+    ///     threshold 5.0
+    ///     alarmAction alerts
+    /// }
+    /// </code>
+    [<CustomOperation("alarmAction")>]
+    member _.AlarmAction(config: CloudWatchAlarmConfig, topic: ITopic) =
+        { config with
+            AlarmActions = config.AlarmActions @ [ SnsAction(topic) :> IAlarmAction ] }
+
+    /// <summary>Runs any alarm action (SNS, Lambda, Auto Scaling, EC2...) when the alarm enters the ALARM state.</summary>
+    /// <param name="action">The action.</param>
+    [<CustomOperation("alarmAction")>]
+    member _.AlarmAction(config: CloudWatchAlarmConfig, action: IAlarmAction) =
+        { config with
+            AlarmActions = config.AlarmActions @ [ action ] }
+
+    /// <summary>Notifies an SNS topic when the alarm returns to the OK state.</summary>
+    /// <param name="topic">The topic to notify.</param>
+    [<CustomOperation("okAction")>]
+    member _.OkAction(config: CloudWatchAlarmConfig, topic: ITopic) =
+        { config with
+            OkActions = config.OkActions @ [ SnsAction(topic) :> IAlarmAction ] }
+
+    /// <summary>Notifies an SNS topic when the alarm enters the INSUFFICIENT_DATA state.</summary>
+    /// <param name="topic">The topic to notify.</param>
+    [<CustomOperation("insufficientDataAction")>]
+    member _.InsufficientDataAction(config: CloudWatchAlarmConfig, topic: ITopic) =
+        { config with
+            InsufficientDataActions = config.InsufficientDataActions @ [ SnsAction(topic) :> IAlarmAction ] }
+
+    /// <summary>Enables or disables the alarm's actions (default: enabled).</summary>
+    /// <param name="enabled">Whether actions run.</param>
+    [<CustomOperation("actionsEnabled")>]
+    member _.ActionsEnabled(config: CloudWatchAlarmConfig, enabled: bool) =
+        { config with
+            ActionsEnabled = Some enabled }
 
 // ============================================================================
 // Builders

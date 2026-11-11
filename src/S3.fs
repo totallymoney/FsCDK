@@ -59,11 +59,11 @@ type BucketBuilder(name: string) =
     member _.Yield(_: unit) : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
-          Encryption = Some BucketEncryption.KMS_MANAGED
+          BlockPublicAccess = None
+          Encryption = None
           EncryptionKey = None
-          EnforceSSL = Some true
-          Versioned = Some false
+          EnforceSSL = None
+          Versioned = None
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -77,11 +77,11 @@ type BucketBuilder(name: string) =
     member _.Yield(corsRule: ICorsRule) : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
-          Encryption = Some BucketEncryption.KMS_MANAGED
+          BlockPublicAccess = None
+          Encryption = None
           EncryptionKey = None
-          EnforceSSL = Some true
-          Versioned = Some false
+          EnforceSSL = None
+          Versioned = None
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -95,11 +95,11 @@ type BucketBuilder(name: string) =
     member _.Yield(lifecycleRule: ILifecycleRule) : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
-          Encryption = Some BucketEncryption.KMS_MANAGED
+          BlockPublicAccess = None
+          Encryption = None
           EncryptionKey = None
-          EnforceSSL = Some true
-          Versioned = Some false
+          EnforceSSL = None
+          Versioned = None
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -113,11 +113,11 @@ type BucketBuilder(name: string) =
     member _.Yield(metrics: IBucketMetrics) : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
-          Encryption = Some BucketEncryption.KMS_MANAGED
+          BlockPublicAccess = None
+          Encryption = None
           EncryptionKey = None
-          EnforceSSL = Some true
-          Versioned = Some false
+          EnforceSSL = None
+          Versioned = None
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -131,11 +131,11 @@ type BucketBuilder(name: string) =
     member _.Zero() : BucketConfig =
         { BucketName = name
           ConstructId = None
-          BlockPublicAccess = Some BlockPublicAccess.BLOCK_ALL
-          Encryption = Some BucketEncryption.KMS_MANAGED
+          BlockPublicAccess = None
+          Encryption = None
           EncryptionKey = None
-          EnforceSSL = Some true
-          Versioned = Some false
+          EnforceSSL = None
+          Versioned = None
           RemovalPolicy = None
           ServerAccessLogsBucket = None
           ServerAccessLogsPrefix = None
@@ -177,13 +177,15 @@ type BucketBuilder(name: string) =
         let props = BucketProps()
         props.BucketName <- bucketName
 
-        config.BlockPublicAccess |> Option.iter (fun v -> props.BlockPublicAccess <- v)
-        config.Encryption |> Option.iter (fun v -> props.Encryption <- v)
+        // Defaults are applied here, not in Yield: a yielded rule must not reset earlier settings
+        props.BlockPublicAccess <- config.BlockPublicAccess |> Option.defaultValue BlockPublicAccess.BLOCK_ALL
+
+        props.Encryption <- config.Encryption |> Option.defaultValue BucketEncryption.KMS_MANAGED
 
         config.EncryptionKey |> Option.iter (fun k -> props.EncryptionKey <- k)
 
-        config.EnforceSSL |> Option.iter (fun v -> props.EnforceSSL <- v)
-        config.Versioned |> Option.iter (fun v -> props.Versioned <- v)
+        props.EnforceSSL <- config.EnforceSSL |> Option.defaultValue true
+        props.Versioned <- config.Versioned |> Option.defaultValue false
 
         config.RemovalPolicy |> Option.iter (fun v -> props.RemovalPolicy <- v)
 

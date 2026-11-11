@@ -27,16 +27,71 @@ type DistributionConfig =
       LogIncludesCookies: bool option
       GeoRestriction: GeoRestriction option
       WebAclId: string option
-      AdditionalBehaviors: Map<string, IBehaviorOptions> }
+      AdditionalBehaviors: Map<string, IBehaviorOptions>
+      ErrorResponses: IErrorResponse list
+      SpaRewritePath: string option }
 
 type DistributionSpec =
-    { DistributionName: string
-      ConstructId: string
-      Props: DistributionProps }
+    {
+        DistributionName: string
+        ConstructId: string
+        Props: DistributionProps
+        /// Page that extensionless default-behavior paths are rewritten to by a CloudFront Function.
+        SpaRewritePath: string option
+        mutable Distribution: IDistribution option
+    }
+
+    /// Gets the underlying IDistribution. Must be called after the stack is built.
+    member this.Resource =
+        match this.Distribution with
+        | Some distribution -> distribution
+        | None ->
+            failwith
+                $"Distribution '{this.DistributionName}' has not been created yet. Ensure it's yielded in the stack before referencing it."
 
 type S3OriginType =
+    /// S3 static website endpoint (public bucket website hosting).
     | StaticWebsiteOrigin of bucket: IBucket
+    /// Private S3 bucket reached through an Origin Access Control (recommended over OAI).
+    /// CDK adds the bucket policy (and KMS key policy for SSE-KMS buckets in the same stack).
+    | OriginAccessControlOrigin of bucket: IBucket
     | GenericOrigin of origin: IOrigin
+
+module CloudFrontOrigins =
+
+    /// OAC origin for a private bucket. Refuses buckets encrypted with the AWS managed key (aws/s3):
+    /// its key policy cannot grant CloudFront kms:Decrypt, so every object would return 403.
+    let originAccessControl (bucket: IBucket) : IOrigin =
+        match bucket.Node.DefaultChild with
+        | :? CfnBucket as cfn when not (isNull cfn.BucketEncryption) ->
+            let encryption =
+                Amazon.CDK.Stack.Of(bucket).Resolve(cfn.BucketEncryption)
+                |> System.Text.Json.JsonSerializer.Serialize
+
+            if encryption.Contains "aws:kms" && not (encryption.Contains "kmsMasterKeyId") then
+                invalidArg
+                    "bucket"
+                    $"Bucket '{bucket.Node.Id}' uses SSE-KMS with the AWS managed key (aws/s3), which CloudFront OAC cannot decrypt. Use 'encryption BucketEncryption.S3_MANAGED' or a customer managed key ('encryptionKey')."
+        | _ -> ()
+
+        S3BucketOrigin.WithOriginAccessControl(bucket)
+
+    let toOrigin (originType: S3OriginType) : IOrigin =
+        match originType with
+        | S3OriginType.StaticWebsiteOrigin bucket -> S3StaticWebsiteOrigin bucket :> IOrigin
+        | S3OriginType.OriginAccessControlOrigin bucket -> originAccessControl bucket
+        | S3OriginType.GenericOrigin origin -> origin
+
+    /// CloudFront Function (viewer request): paths whose last segment has no file extension go to the SPA entry page.
+    let spaRewriteCode (pagePath: string) =
+        $"""function handler(event) {{
+  var request = event.request;
+  var uri = request.uri;
+  if (uri.indexOf('.', uri.lastIndexOf('/')) === -1) {{
+    request.uri = '{pagePath}';
+  }}
+  return request;
+}}"""
 
 type DistributionBuilder(name: string) =
     member _.Yield(_: unit) : DistributionConfig =
@@ -58,7 +113,9 @@ type DistributionBuilder(name: string) =
           LogIncludesCookies = None
           GeoRestriction = None
           WebAclId = None
-          AdditionalBehaviors = Map.empty }
+          AdditionalBehaviors = Map.empty
+          ErrorResponses = []
+          SpaRewritePath = None }
 
     member _.Zero() : DistributionConfig =
         { DistributionName = name
@@ -79,7 +136,9 @@ type DistributionBuilder(name: string) =
           LogIncludesCookies = None
           GeoRestriction = None
           WebAclId = None
-          AdditionalBehaviors = Map.empty }
+          AdditionalBehaviors = Map.empty
+          ErrorResponses = []
+          SpaRewritePath = None }
 
     member inline _.Delay([<InlineIfLambda>] f: unit -> DistributionConfig) : DistributionConfig = f ()
 
@@ -160,7 +219,9 @@ type DistributionBuilder(name: string) =
             | Some _ -> a.WebAclId
             | None -> b.WebAclId
           AdditionalBehaviors =
-            Map.fold (fun acc key value -> Map.add key value acc) a.AdditionalBehaviors b.AdditionalBehaviors }
+            Map.fold (fun acc key value -> Map.add key value acc) a.AdditionalBehaviors b.AdditionalBehaviors
+          ErrorResponses = a.ErrorResponses @ b.ErrorResponses
+          SpaRewritePath = a.SpaRewritePath |> Option.orElse b.SpaRewritePath }
 
     member _.Run(config: DistributionConfig) : DistributionSpec =
         let props = DistributionProps()
@@ -216,9 +277,14 @@ type DistributionBuilder(name: string) =
 
             props.AdditionalBehaviors <- behaviorDict
 
+        if not (List.isEmpty config.ErrorResponses) then
+            props.ErrorResponses <- config.ErrorResponses |> List.toArray
+
         { DistributionName = config.DistributionName
           ConstructId = constructId
-          Props = props }
+          Props = props
+          SpaRewritePath = config.SpaRewritePath
+          Distribution = None }
 
     /// <summary>Sets the construct ID for the distribution.</summary>
     [<CustomOperation("constructId")>]
@@ -254,10 +320,7 @@ type DistributionBuilder(name: string) =
         ) =
         let behavior = BehaviorOptions()
 
-        let origin =
-            match originType with
-            | S3OriginType.StaticWebsiteOrigin bucket -> S3StaticWebsiteOrigin bucket :> IOrigin
-            | S3OriginType.GenericOrigin origin -> origin
+        let origin = CloudFrontOrigins.toOrigin originType
 
         behavior.Origin <- origin
         behavior.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
@@ -278,8 +341,11 @@ type DistributionBuilder(name: string) =
     /// Convenience: default HTTP(S) origin behavior (e.g., ALB/API) with common defaults.
     /// Defaults:
     /// - ViewerProtocolPolicy = REDIRECT_TO_HTTPS
-    /// - CachePolicy = CachePolicy.CACHING_OPTIMIZED (override for dynamic APIs)
-    /// - OriginRequestPolicy = OriginRequestPolicy.ALL_VIEWER
+    /// - CachePolicy = CachePolicy.CACHING_DISABLED. ALL_VIEWER forwards Authorization, cookies and
+    ///   query strings without putting them in the cache key, so a caching policy would serve one
+    ///   viewer's response to another. Pass a cache policy that keys on what the response varies by.
+    /// - OriginRequestPolicy = OriginRequestPolicy.ALL_VIEWER (API Gateway and Lambda URL origins
+    ///   reject the viewer's Host header: pass ALL_VIEWER_EXCEPT_HOST_HEADER for those)
     /// - Compress = true
     /// </summary>
     [<CustomOperation("httpDefaultBehavior")>]
@@ -307,7 +373,7 @@ type DistributionBuilder(name: string) =
         let behavior = BehaviorOptions()
         behavior.Origin <- origin
         behavior.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
-        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_OPTIMIZED
+        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_DISABLED
         behavior.OriginRequestPolicy <- defaultArg originRequestPolicy OriginRequestPolicy.ALL_VIEWER
 
         responseHeadersPolicy
@@ -346,10 +412,7 @@ type DistributionBuilder(name: string) =
         ) =
         let behavior = BehaviorOptions()
 
-        let origin =
-            match originType with
-            | S3OriginType.StaticWebsiteOrigin bucket -> S3StaticWebsiteOrigin bucket :> IOrigin
-            | S3OriginType.GenericOrigin origin -> origin
+        let origin = CloudFrontOrigins.toOrigin originType
 
         behavior.Origin <- origin
         behavior.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
@@ -396,7 +459,7 @@ type DistributionBuilder(name: string) =
         let behavior = BehaviorOptions()
         behavior.Origin <- origin
         behavior.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
-        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_OPTIMIZED
+        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_DISABLED
         behavior.OriginRequestPolicy <- defaultArg originRequestPolicy OriginRequestPolicy.ALL_VIEWER
 
         responseHeadersPolicy
@@ -471,6 +534,67 @@ type DistributionBuilder(name: string) =
     /// <summary>Sets the associated WAF web ACL ID.</summary>
     [<CustomOperation("webAclId")>]
     member _.WebAclId(config: DistributionConfig, aclId: string) = { config with WebAclId = Some aclId }
+
+    /// <summary>Adds a custom error response.</summary>
+    /// <param name="response">The error response.</param>
+    /// <code lang="fsharp">
+    /// cloudFrontDistribution "Cdn" {
+    ///     errorResponse (ErrorResponse(HttpStatus = 404.0, ResponseHttpStatus = 404.0, ResponsePagePath = "/404.html"))
+    /// }
+    /// </code>
+    [<CustomOperation("errorResponse")>]
+    member _.ErrorResponse(config: DistributionConfig, response: IErrorResponse) =
+        { config with
+            ErrorResponses = config.ErrorResponses @ [ response ] }
+
+    /// <summary>
+    /// Single-page-app routing: serves the given page with status 200 for 403 and 404 errors,
+    /// so client-side routes like /accounts/42 load the app. The responses apply to every behavior,
+    /// including API behaviors and WAF blocks (clients would get 200 + HTML instead of 403/404):
+    /// use spaRewrite when the distribution also serves an API.
+    /// </summary>
+    /// <param name="pagePath">The app entry page, e.g. "/index.html".</param>
+    /// <code lang="fsharp">
+    /// cloudFrontDistribution "Cdn" {
+    ///     s3DefaultBehavior (OriginAccessControlOrigin bucket)
+    ///     spaErrorResponses "/index.html"
+    /// }
+    /// </code>
+    [<CustomOperation("spaErrorResponses")>]
+    member _.SpaErrorResponses(config: DistributionConfig, pagePath: string) =
+        let toIndex status =
+            ErrorResponse(
+                HttpStatus = status,
+                ResponseHttpStatus = 200.0,
+                ResponsePagePath = pagePath,
+                Ttl = Amazon.CDK.Duration.Seconds(0.0)
+            )
+            :> IErrorResponse
+
+        { config with
+            ErrorResponses = config.ErrorResponses @ [ toIndex 403.0; toIndex 404.0 ] }
+
+    /// <summary>
+    /// Single-page-app routing on the default behavior only: a CloudFront Function rewrites paths whose
+    /// last segment has no file extension (e.g. /accounts/42) to the given page. Additional behaviors such
+    /// as /api/* keep their own status codes. The default behavior must be built by FsCDK
+    /// (s3DefaultBehavior, httpDefaultBehavior or a BehaviorOptions).
+    /// </summary>
+    /// <param name="pagePath">The app entry page, e.g. "/index.html".</param>
+    /// <code lang="fsharp">
+    /// cloudFrontDistribution "Cdn" {
+    ///     s3DefaultBehavior (OriginAccessControlOrigin bucket)
+    ///     spaRewrite "/index.html"
+    ///     additionalBehavior "/api/*" apiBehavior
+    /// }
+    /// </code>
+    [<CustomOperation("spaRewrite")>]
+    member _.SpaRewrite(config: DistributionConfig, pagePath: string) =
+        if not (pagePath.StartsWith "/") || pagePath.Contains "'" then
+            invalidArg "pagePath" $"spaRewrite page must be an absolute path such as /index.html (got '{pagePath}')."
+
+        { config with
+            SpaRewritePath = Some pagePath }
 
 // ============================================================================
 // CloudFront Origin Access Identity Configuration DSL
@@ -591,10 +715,7 @@ module CloudFrontBehaviors =
 
         let b = BehaviorOptions()
 
-        b.Origin <-
-            match originType with
-            | S3OriginType.StaticWebsiteOrigin bucket -> S3StaticWebsiteOrigin bucket :> IOrigin
-            | S3OriginType.GenericOrigin origin -> origin
+        b.Origin <- CloudFrontOrigins.toOrigin originType
 
         b.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
         b.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_OPTIMIZED
@@ -631,7 +752,7 @@ module CloudFrontBehaviors =
         let b = BehaviorOptions()
         b.Origin <- origin
         b.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
-        b.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_OPTIMIZED
+        b.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_DISABLED
         b.OriginRequestPolicy <- defaultArg originRequestPolicy OriginRequestPolicy.ALL_VIEWER
         responseHeadersPolicy |> Option.iter (fun p -> b.ResponseHeadersPolicy <- p)
         allowedMethods |> Option.iter (fun m -> b.AllowedMethods <- m)

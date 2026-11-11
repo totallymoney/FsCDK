@@ -110,7 +110,8 @@ module LambdaPowertools =
             let logLevel level = ("LOG_LEVEL", level)
             let serviceName name = ("POWERTOOLS_SERVICE_NAME", name)
             let metricsNamespace ns = ("POWERTOOLS_METRICS_NAMESPACE", ns)
-            let tracingEnabled = ("POWERTOOLS_TRACER_CAPTURE_RESPONSE", "true")
+            let tracingEnabled = ("POWERTOOLS_TRACE_ENABLED", "true")
+            let tracingCaptureResponse = ("POWERTOOLS_TRACER_CAPTURE_RESPONSE", "true")
 
         /// Java Powertools environment variables
         module Java =
@@ -124,7 +125,8 @@ module LambdaPowertools =
             let logLevel level = ("POWERTOOLS_LOG_LEVEL", level)
             let serviceName name = ("POWERTOOLS_SERVICE_NAME", name)
             let metricsNamespace ns = ("POWERTOOLS_METRICS_NAMESPACE", ns)
-            let tracingEnabled = ("POWERTOOLS_TRACER_CAPTURE_RESPONSE", "true")
+            let tracingEnabled = ("POWERTOOLS_TRACE_DISABLED", "false")
+            let tracingCaptureResponse = ("POWERTOOLS_TRACER_CAPTURE_RESPONSE", "true")
 
     /// Configures a Lambda function with Powertools best practices
     let configurePowertools (func: IFunction) (serviceName: string) (logLevel: string) (metricsNamespace: string) =
@@ -250,11 +252,10 @@ export const handler = async (event: any) => {
 /// Helper functions for Lambda Powertools integration
 module LambdaPowertoolsHelpers =
 
-    /// Gets the appropriate Powertools layer ARN for a given runtime
+    /// Gets the appropriate Powertools layer ARN for a given runtime in the given
+    /// region (pass the stack's region; CDK tokens are resolved at synth time).
     /// Returns None for unsupported runtimes (e.g., .NET which uses NuGet)
-    let getPowertoolsLayerArn (runtime: Runtime) : string option =
-        let region = "us-east-1" // Default region, will be replaced by actual region in stack
-
+    let getPowertoolsLayerArn (region: string) (runtime: Runtime) : string option =
         // Match runtime family and return appropriate layer ARN
         match runtime.Name with
         | name when name.StartsWith("python3.8") -> Some(LambdaPowertools.LayerVersionArns.Python.python38 region)

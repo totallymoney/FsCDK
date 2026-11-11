@@ -40,10 +40,15 @@ type EC2InstanceConfig =
       BlockDevices: IBlockDevice list }
 
 type EC2InstanceSpec =
-    { InstanceName: string
-      ConstructId: string
-      mutable Instance: Instance_
-      Props: InstanceProps }
+    {
+        InstanceName: string
+        ConstructId: string
+        /// Existing key pair name; resolved via KeyPair.FromKeyPairName when the
+        /// stack is built (requires a construct scope)
+        KeyPairName: string option
+        mutable Instance: Instance_
+        Props: InstanceProps
+    }
 
 type EC2InstanceBuilder(name: string) =
     member _.Yield(_: unit) : EC2InstanceConfig =
@@ -120,11 +125,8 @@ type EC2InstanceBuilder(name: string) =
         config.VpcSubnets |> Option.iter (fun v -> props.VpcSubnets <- v)
 
         config.SecurityGroup |> Option.iter (fun v -> props.SecurityGroup <- v)
-        // Use KeyPair if provided, otherwise fall back to KeyPairName (for backward compatibility)
-        match config.KeyPair, config.KeyPairName with
-        | Some kp, _ -> props.KeyPair <- kp
-        //| None, Some name -> props.KeyName <- name // Using deprecated property for backward compatibility
-        | _, _ -> ()
+        // Use KeyPair if provided; KeyPairName is resolved at stack time (see spec)
+        config.KeyPair |> Option.iter (fun kp -> props.KeyPair <- kp)
 
         config.Role |> Option.iter (fun v -> props.Role <- v)
         config.UserData |> Option.iter (fun v -> props.UserData <- v)
@@ -138,6 +140,10 @@ type EC2InstanceBuilder(name: string) =
 
         { InstanceName = instanceName
           ConstructId = constructId
+          KeyPairName =
+            (match config.KeyPair with
+             | Some _ -> None
+             | None -> config.KeyPairName)
           Instance = null
           Props = props }
 
