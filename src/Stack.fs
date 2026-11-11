@@ -383,6 +383,7 @@ module StackOperations =
             dashSpec.Dashboard <- Some dashboard
 
         | EKSClusterOp spec ->
+            spec.Props.KubectlLayer <- spec.KubectlLayer stack
             let cluster = AWS.EKS.Cluster(stack, spec.ConstructId, spec.Props)
 
             let _ =

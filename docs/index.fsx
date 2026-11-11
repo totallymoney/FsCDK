@@ -127,14 +127,14 @@ stack "Prod" {
 **Production-Safe Defaults**
 
 - Implements [Yan Cui's serverless best practices](https://theburningmonk.com/) by default
-- Auto-creates Dead Letter Queues (DLQs) for Lambda functions
+- Creates Dead Letter Queues (DLQs) for Lambda functions on request (`autoCreateDLQ true`)
 - Enables X-Ray tracing and structured JSON logging
-- Sets conservative concurrency limits to prevent runaway costs
+- No hidden reserved concurrency: set `reservedConcurrentExecutions` explicitly
 
 **Security by Default**
 
 - S3 buckets block public access and enforce SSL/TLS
-- Lambda environment variables encrypted with KMS
+- DynamoDB tables are encrypted and have point-in-time recovery enabled
 - Security groups deny all outbound traffic by default (opt-in model)
 
 **F# Developer Experience**
@@ -191,7 +191,7 @@ table th {
 | **ECR Repository** | `ecrRepository` | `constructId`, `emptyOnDelete`, `imageScanOnPush`, `imageTagMutability`, `lifecycleRule`, `removalPolicy`, `repositoryName` |
 | **ECS Cluster** | `ecsCluster` | `constructId`, `containerInsights`, `enableFargateCapacityProviders`, `vpc` |
 | **ECS Fargate Service** | `ecsFargateService` | `assignPublicIp`, `circuitBreaker`, `cluster`, `constructId`, `desiredCount`, `enableExecuteCommand`, `healthCheckGracePeriod`, `maxHealthyPercent`, `minHealthyPercent`, `securityGroups`, `serviceName`, `taskDefinition`, `vpcSubnets` |
-| **EKS Cluster** | `eksCluster` | `addFargateProfile`, `addHelmChart`, `addNodegroupCapacity`, `addServiceAccount`, `constructId`, `coreDnsComputeType`, `defaultCapacity`, `defaultCapacityInstance`, `disableClusterLogging`, `enableAlbController`, `encryptionKey`, `endpointAccess`, `mastersRole`, `setClusterLogging`, `version`, `vpc`, `vpcSubnet` |
+| **EKS Cluster** | `eksCluster` | `addFargateProfile`, `addHelmChart`, `addNodegroupCapacity`, `addServiceAccount`, `constructId`, `coreDnsComputeType`, `defaultCapacity`, `defaultCapacityInstance`, `disableClusterLogging`, `enableAlbController`, `encryptionKey`, `endpointAccess`, `kubectlLayer`, `mastersRole`, `setClusterLogging`, `version`, `vpc`, `vpcSubnet` |
 | **ElastiCache Redis** | `redisCluster` | `autoMinorVersionUpgrade`, `availabilityZone`, `cacheNodeType`, `constructId`, `engineVersion`, `maintenanceWindow`, `numCacheNodes`, `port`, `securityGroupId`, `securityGroupIds`, `snapshotRetentionLimit`, `snapshotWindow`, `subnetGroup`, `tag`, `tags`, `transitEncryptionEnabled` |
 | **Elastic IP** | `elasticIp` | `constructId`, `domain`, `instanceId`, `networkInterfaceId`, `publicIpv4Pool`, `tag`, `tags` |
 | **Elastic Beanstalk Application** | `elasticBeanstalkApplication` | `constructId`, `description` |

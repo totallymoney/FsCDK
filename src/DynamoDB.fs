@@ -557,7 +557,7 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = Some true
+          PointInTimeRecovery = None
           TimeToLiveAttribute = None
           GlobalSecondaryIndexes = []
           LocalSecondaryIndexes = []
@@ -566,7 +566,7 @@ type TableBuilder(name: string) =
           ImportSource = None
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED
+          Encryption = None
           EncryptionKey = None
           Grant = None }
 
@@ -577,7 +577,7 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = Some true
+          PointInTimeRecovery = None
           TimeToLiveAttribute = None
           GlobalSecondaryIndexes = []
           LocalSecondaryIndexes = []
@@ -586,7 +586,7 @@ type TableBuilder(name: string) =
           ImportSource = Some spec
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED
+          Encryption = None
           EncryptionKey = None
           Grant = None }
 
@@ -597,7 +597,7 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = Some true
+          PointInTimeRecovery = None
           TimeToLiveAttribute = None
           GlobalSecondaryIndexes = [ gsi ]
           LocalSecondaryIndexes = []
@@ -606,7 +606,7 @@ type TableBuilder(name: string) =
           ImportSource = None
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED
+          Encryption = None
           EncryptionKey = None
           Grant = None }
 
@@ -617,7 +617,7 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = Some true
+          PointInTimeRecovery = None
           TimeToLiveAttribute = None
           GlobalSecondaryIndexes = []
           LocalSecondaryIndexes = [ lsi ]
@@ -626,7 +626,7 @@ type TableBuilder(name: string) =
           ImportSource = None
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED
+          Encryption = None
           EncryptionKey = None
           Grant = None }
 
@@ -637,7 +637,7 @@ type TableBuilder(name: string) =
           SortKey = None
           BillingMode = None
           RemovalPolicy = None
-          PointInTimeRecovery = Some true
+          PointInTimeRecovery = None
           TimeToLiveAttribute = None
           GlobalSecondaryIndexes = []
           LocalSecondaryIndexes = []
@@ -646,7 +646,7 @@ type TableBuilder(name: string) =
           ImportSource = None
           Stream = None
           KinesisStream = None
-          Encryption = Some TableEncryption.AWS_MANAGED
+          Encryption = None
           EncryptionKey = None
           Grant = None }
 
@@ -717,7 +717,8 @@ type TableBuilder(name: string) =
         config.KinesisStream
         |> Option.iter (fun kinesisStream -> props.KinesisStream <- kinesisStream)
 
-        config.Encryption |> Option.iter (fun enc -> props.Encryption <- enc)
+        // Defaults are applied here, not in Yield: a yielded index must not reset earlier settings
+        props.Encryption <- config.Encryption |> Option.defaultValue TableEncryption.AWS_MANAGED
 
         config.EncryptionKey |> Option.iter (fun key -> props.EncryptionKey <- key)
 

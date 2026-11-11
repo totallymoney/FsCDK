@@ -14,14 +14,14 @@ open Amazon.CDK.AWS.KMS
 /// High-level EKS Cluster builder following AWS best practices.
 ///
 /// **Default Security Settings:**
-/// - Kubernetes version = latest stable
+/// - Kubernetes version = none: `version` is required, and `kubectlLayer` must match it
 /// - Endpoint access = PUBLIC_AND_PRIVATE
 /// - Cluster logging = enabled for all log types
 /// - Encryption = enabled with AWS managed key
 ///
 /// **Rationale:**
 /// These defaults follow AWS Well-Architected Framework:
-/// - Latest K8s version for security patches
+/// - An explicit K8s version, since the kubectl layer has to match it
 /// - Public and private access for flexibility
 /// - Comprehensive logging for troubleshooting
 /// - Encryption at rest for data protection
@@ -34,6 +34,7 @@ type EKSClusterConfig =
     { ClusterName: string
       ConstructId: string option
       Version: KubernetesVersion option
+      KubectlLayer: (Constructs.Construct -> Amazon.CDK.AWS.Lambda.ILayerVersion) option
       Vpc: IVpc option
       VpcSubnets: ISubnetSelection list
       DefaultCapacity: int option
@@ -50,14 +51,18 @@ type EKSClusterConfig =
       AddFargateProfile: (string * FargateProfileOptions) list }
 
 type EKSClusterSpec =
-    { ClusterName: string
-      ConstructId: string
-      Props: ClusterProps
-      AddNodegroupCapacity: (string * NodegroupOptions) list
-      AddServiceAccount: (string * ServiceAccountOptions) list
-      AddHelmChart: (string * HelmChartOptions) list
-      AddFargateProfile: (string * FargateProfileOptions) list
-      mutable Cluster: ICluster option }
+    {
+        ClusterName: string
+        ConstructId: string
+        Props: ClusterProps
+        /// Creates the kubectl layer under the stack; the stack sets it on Props before the cluster is created
+        KubectlLayer: Constructs.Construct -> Amazon.CDK.AWS.Lambda.ILayerVersion
+        AddNodegroupCapacity: (string * NodegroupOptions) list
+        AddServiceAccount: (string * ServiceAccountOptions) list
+        AddHelmChart: (string * HelmChartOptions) list
+        AddFargateProfile: (string * FargateProfileOptions) list
+        mutable Cluster: ICluster option
+    }
 
     /// Gets the underlying ICluster resource. Must be called after the stack is built.
     member this.Resource =
@@ -71,7 +76,8 @@ type EKSClusterBuilder(name: string) =
     member _.Yield(_: unit) : EKSClusterConfig =
         { ClusterName = name
           ConstructId = None
-          Version = Some KubernetesVersion.V1_28
+          Version = None
+          KubectlLayer = None
           Vpc = None
           VpcSubnets = []
           DefaultCapacity = Some 2
@@ -95,7 +101,8 @@ type EKSClusterBuilder(name: string) =
     member _.Zero() : EKSClusterConfig =
         { ClusterName = name
           ConstructId = None
-          Version = Some KubernetesVersion.V1_28
+          Version = None
+          KubectlLayer = None
           Vpc = None
           VpcSubnets = []
           DefaultCapacity = Some 2
@@ -132,6 +139,10 @@ type EKSClusterBuilder(name: string) =
             match a.Version with
             | Some _ -> a.Version
             | None -> b.Version
+          KubectlLayer =
+            match a.KubectlLayer with
+            | Some _ -> a.KubectlLayer
+            | None -> b.KubectlLayer
           Vpc =
             match a.Vpc with
             | Some _ -> a.Vpc
@@ -187,8 +198,19 @@ type EKSClusterBuilder(name: string) =
             | Some vpcRef -> vpcRef
             | None -> invalidArg "vpc" "VPC is required for EKS Cluster"
 
-        // AWS Best Practice: Use latest stable Kubernetes version
-        props.Version <- config.Version |> Option.defaultValue KubernetesVersion.V1_28
+        props.Version <-
+            match config.Version with
+            | Some version -> version
+            | None -> invalidArg "version" "A Kubernetes version is required for EKS Cluster"
+
+        // CDK requires the layer and ships none: it comes from the package matching the version
+        let kubectlLayer =
+            match config.KubectlLayer with
+            | Some layer -> layer
+            | None ->
+                invalidArg
+                    "kubectlLayer"
+                    "A kubectl layer is required for EKS Cluster: reference the Amazon.CDK.Lambda.Layer.KubectlVxx package that matches the Kubernetes version and set e.g. kubectlLayer (fun scope -> KubectlV33Layer(scope, \"Kubectl\"))"
 
         // AWS Best Practice: Enable both public and private endpoint access
         props.EndpointAccess <- config.EndpointAccess |> Option.defaultValue EndpointAccess.PUBLIC_AND_PRIVATE
@@ -219,6 +241,7 @@ type EKSClusterBuilder(name: string) =
         { ClusterName = config.ClusterName
           ConstructId = constructId
           Props = props
+          KubectlLayer = kubectlLayer
           AddNodegroupCapacity = List.rev config.AddNodegroupCapacity
           AddServiceAccount = List.rev config.AddServiceAccount
           AddHelmChart = List.rev config.AddHelmChart
@@ -229,9 +252,32 @@ type EKSClusterBuilder(name: string) =
     [<CustomOperation("constructId")>]
     member _.ConstructId(config: EKSClusterConfig, id: string) = { config with ConstructId = Some id }
 
-    /// <summary>Sets the Kubernetes version.</summary>
+    /// <summary>Sets the Kubernetes version. Required.</summary>
     [<CustomOperation("version")>]
     member _.Version(config: EKSClusterConfig, version: KubernetesVersion) = { config with Version = Some version }
+
+    /// <summary>
+    /// Sets the Lambda layer with kubectl and Helm that the cluster's handler uses. Required.
+    /// The layer is created under the stack, from the NuGet package that matches the Kubernetes
+    /// version (Amazon.CDK.Lambda.Layer.KubectlV33 for 1.33).
+    /// </summary>
+    /// <param name="config">The current cluster configuration.</param>
+    /// <param name="layer">Creates the layer in the given scope.</param>
+    /// <code lang="fsharp">
+    /// eksCluster "MyCluster" {
+    ///     vpc myVpc
+    ///     version KubernetesVersion.V1_33
+    ///     kubectlLayer (fun scope -> KubectlV33Layer(scope, "Kubectl"))
+    /// }
+    /// </code>
+    [<CustomOperation("kubectlLayer")>]
+    member _.KubectlLayer
+        (
+            config: EKSClusterConfig,
+            layer: Constructs.Construct -> Amazon.CDK.AWS.Lambda.ILayerVersion
+        ) =
+        { config with
+            KubectlLayer = Some layer }
 
     /// <summary>Sets the VPC for the cluster.</summary>
     [<CustomOperation("vpc")>]
@@ -324,7 +370,8 @@ module EKSBuilders =
     /// <code lang="fsharp">
     /// eksCluster "MyCluster" {
     ///     vpc myVpc
-    ///     version KubernetesVersion.V1_28
+    ///     version KubernetesVersion.V1_33
+    ///     kubectlLayer (fun scope -> KubectlV33Layer(scope, "Kubectl"))
     ///     defaultCapacity 3
     /// }
     /// </code>

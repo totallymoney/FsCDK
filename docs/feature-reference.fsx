@@ -318,8 +318,7 @@ FsCDK emphasizes **security and reliability by default**:
 - Structured JSON logging
 - Opt-in DLQ creation (`autoCreateDLQ true`) and Powertools layer (`autoAddPowertools true`)
 - No hidden reserved concurrency: set `reservedConcurrentExecutions` explicitly
-- Environment encryption (KMS)
-- 90-day log retention
+- Environment encryption with your own KMS key on request (`environmentEncryption key`)
 
 ### VPC
 
@@ -354,7 +353,7 @@ FsCDK emphasizes **security and reliability by default**:
 
 - **AWS_MANAGED encryption by default** (NEW)
 - **Point-in-Time Recovery enabled** (NEW)
-- PAY_PER_REQUEST billing
+- Billing mode is the CDK default (provisioned, 5 read and 5 write units): set `billingMode BillingMode.PAY_PER_REQUEST` for on-demand
 
 ### S3
 
@@ -372,7 +371,7 @@ FsCDK emphasizes **security and reliability by default**:
 
 - Container Insights enabled
 - Comprehensive logging
-- Latest versions
+- EKS: explicit Kubernetes version and matching kubectl layer
 
 ### Step Functions
 

@@ -155,6 +155,26 @@ let dynamo_table_dsl_tests =
                   "PITR spec should not be created when disabled"
           }
 
+          test "settings before a yielded index are kept" {
+              let spec =
+                  table "WithIndex" {
+                      partitionKey "pk" AttributeType.STRING
+                      pointInTimeRecovery false
+                      encryption TableEncryption.DEFAULT
+
+                      GlobalSecondaryIndexProps(
+                          IndexName = "byOwner",
+                          PartitionKey = Attribute(Name = "owner", Type = AttributeType.STRING)
+                      )
+                  }
+
+              Expect.isNull
+                  (box spec.Props.PointInTimeRecoverySpecification)
+                  "pointInTimeRecovery false should survive the index"
+
+              Expect.equal spec.Props.Encryption.Value TableEncryption.DEFAULT "encryption should survive the index"
+          }
+
           // TTL tests
           test "applies time-to-live attribute when configured" {
               let spec =

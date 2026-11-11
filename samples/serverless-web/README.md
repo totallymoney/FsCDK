@@ -23,9 +23,8 @@ eu-west-2 stack through SSM.
 - **Bucket encryption:** CloudFront OAC cannot decrypt objects under the AWS managed `aws/s3` KMS key (the FsCDK
   bucket default), so the site bucket uses SSE-S3. Use a customer managed key (`encryptionKey`) if you need KMS;
   CDK then grants CloudFront `kms:Decrypt` in the key policy.
-- **Cognito app client:** the FsCDK `userPoolClient` defaults allow the implicit OAuth flow and
-  `USER_PASSWORD_AUTH` with an `https://example.com` callback. Set `authFlows` and `oAuth` (code flow with PKCE,
-  your real callback URLs) before using this with real users.
+- **Cognito app client:** the FsCDK `userPoolClient` defaults to SRP sign-in with OAuth disabled. For the
+  hosted UI set `oAuth` (code flow with PKCE, your real callback URLs).
 
 ## Synthesize
 

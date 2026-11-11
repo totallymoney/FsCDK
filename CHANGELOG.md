@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `samples/serverless-web`: CloudFront + OAC SPA, HTTP API with Cognito JWT to a .NET Lambda (SnapStart), DynamoDB, WAF
 
 ### Fixed
+- `table`: a yielded global or local secondary index or import source reset earlier `pointInTimeRecovery` and `encryption` to their defaults
+- `userPoolClient` defaults to SRP only (`USER_PASSWORD_AUTH` was on by default) and disables OAuth unless `oAuth` is set (CDK's default enabled the implicit grant with a `https://example.com` callback)
+- `logGroup` no longer defaults to `RemovalPolicy.DESTROY`; CDK's RETAIN applies unless `removalPolicy` is set
+- Docs claimed default DLQs, concurrency limits, KMS-encrypted Lambda environments, 90-day log retention and PAY_PER_REQUEST billing that the code does not apply
+- `bucket`/`s3Bucket`: a yielded lifecycle rule, CORS rule or metrics reset earlier `versioned`, `encryption`, `enforceSSL` and `blockPublicAccess` to their defaults
+- `eksCluster` failed every synth: CDK requires a kubectl layer and no operation set one. `kubectlLayer` is new and required, and so is `version` (the 1.28 default is gone)
+- CloudFront HTTP-origin behaviors (`httpDefaultBehavior`, `additionalHttpBehavior`, `CloudFrontBehaviors.httpBehavior`) cached with `CACHING_OPTIMIZED` while `ALL_VIEWER` forwarded Authorization, cookies and query strings outside the cache key, so one viewer's response could reach another. The default is now `CACHING_DISABLED`; pass a cache policy to cache
 - Thirteen builders previously produced no CloudFormation resource at all — their props never
   reached a construct: `httpApi`, `ecrRepository`, `canary`, `ebApplication`, `albTargetGroup`,
   `albListener`, `recordSet` (Route53), `healthCheck` (Route53), `privateHostedZone`, `elasticIp`,
@@ -113,6 +120,12 @@ your `cdk diff` carefully before deploying:
   `reservedConcurrentExecutions` explicitly if you need the cap.
 - **`dnsValidatedCertificate`**: validation changes from CDK's default (email) to DNS, which
   replaces the certificate resource on the next deploy.
+- **`userPoolClient` auth flows**: a client that signs users in with `USER_PASSWORD_AUTH`, or uses
+  the hosted UI without `oAuth` settings, loses that on the next deploy. Set
+  `authFlows (AuthFlow(UserSrp = true, UserPassword = true))` or `oAuth` explicitly to keep it.
+- **CloudFront HTTP origins**: responses are no longer cached unless a cache policy is passed.
+- **`eksCluster`**: `version` and `kubectlLayer` are required.
+- **`logGroup`**: the deletion policy changes from Delete to Retain.
 - **EC2 `keyPairName`**: previously ignored, now applied — adding a key pair to a deployed
   instance requires replacement.
 - Source-breaking signature changes: `customAttribute` now takes the attribute name

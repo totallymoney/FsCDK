@@ -99,9 +99,10 @@ let tests =
                   spec.Props.PreventUserExistenceErrors.Value
                   "PreventUserExistenceErrors should default to true"
 
-              // Auth flows default to SRP + password
+              // Auth flows default to SRP only, and OAuth is off until configured
               Expect.isTrue spec.Props.AuthFlows.UserSrp.Value "SRP auth flow should be enabled"
-              Expect.isTrue spec.Props.AuthFlows.UserPassword.Value "Password auth flow should be enabled"
+              Expect.isFalse spec.Props.AuthFlows.UserPassword.HasValue "Password auth flow should be opt-in"
+              Expect.isTrue spec.Props.DisableOAuth.Value "OAuth should be off without oAuth settings"
 
           }
 

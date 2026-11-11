@@ -1371,12 +1371,13 @@ type UserPoolClientBuilder(name: string) =
         // AWS Best Practice: Don't generate secret for public clients (web/mobile)
         props.GenerateSecret <- config.GenerateSecret |> Option.defaultValue false
 
-        // AWS Best Practice: Enable SRP and password auth flow by default
-        props.AuthFlows <-
-            config.AuthFlows
-            |> Option.defaultValue (AuthFlow(UserSrp = true, UserPassword = true))
+        // SRP only: USER_PASSWORD_AUTH sends the password itself to Cognito, so it is opt-in
+        props.AuthFlows <- config.AuthFlows |> Option.defaultValue (AuthFlow(UserSrp = true))
 
-        config.OAuth |> Option.iter (fun o -> props.OAuth <- o)
+        // Without settings CDK enables the implicit grant with a https://example.com callback
+        match config.OAuth with
+        | Some settings -> props.OAuth <- settings
+        | None -> props.DisableOAuth <- true
 
         if not (List.isEmpty config.SupportedIdentityProviders) then
             props.SupportedIdentityProviders <- config.SupportedIdentityProviders |> List.toArray
@@ -1408,11 +1409,11 @@ type UserPoolClientBuilder(name: string) =
         { config with
             GenerateSecret = Some generate }
 
-    /// <summary>Sets authentication flows.</summary>
+    /// <summary>Sets authentication flows. Default: SRP only.</summary>
     [<CustomOperation("authFlows")>]
     member _.AuthFlows(config: UserPoolClientConfig, flows: IAuthFlow) = { config with AuthFlows = Some flows }
 
-    /// <summary>Sets OAuth settings.</summary>
+    /// <summary>Sets OAuth settings. Without them OAuth is disabled for the client.</summary>
     [<CustomOperation("oAuth")>]
     member _.OAuth(config: UserPoolClientConfig, settings: IOAuthSettings) = { config with OAuth = Some settings }
 

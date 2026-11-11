@@ -9,13 +9,13 @@ open Amazon.CDK.AWS.KMS
 ///
 /// **Default Security Settings:**
 /// - Retention = 7 days (cost-effective default, change for compliance)
-/// - Removal policy = DESTROY (logs cleaned up on stack deletion)
+/// - Removal policy = CDK default (RETAIN): logs survive stack deletion; set `removalPolicy` to delete them
 /// - Encryption = AWS managed key (optional customer managed key)
 ///
 /// **Rationale:**
 /// These defaults follow AWS Well-Architected Framework:
 /// - 7-day retention balances observability and cost
-/// - DESTROY removal policy prevents orphaned log groups
+/// - Retained logs stay available for audits after a stack or resource is removed
 /// - Encryption at rest protects sensitive log data
 ///
 /// **Escape Hatch:**
@@ -41,7 +41,7 @@ type CloudWatchLogGroupBuilder(name: string) =
         { LogGroupName = name
           ConstructId = None
           Retention = ValueSome RetentionDays.ONE_WEEK
-          RemovalPolicy = ValueSome RemovalPolicy.DESTROY
+          RemovalPolicy = ValueNone
           EncryptionKey = None
           LogGroupClass = ValueNone }
 
@@ -49,7 +49,7 @@ type CloudWatchLogGroupBuilder(name: string) =
         { LogGroupName = name
           ConstructId = None
           Retention = ValueSome RetentionDays.ONE_WEEK
-          RemovalPolicy = ValueSome RemovalPolicy.DESTROY
+          RemovalPolicy = ValueNone
           EncryptionKey = None
           LogGroupClass = ValueNone }
 

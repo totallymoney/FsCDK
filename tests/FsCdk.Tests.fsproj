@@ -59,6 +59,7 @@
         <Compile Include="SecurityDefaultsTests.fs" />
         <Compile Include="BedrockTests.fs" />
         <Compile Include="WiredBuildersTests.fs" />
+        <Compile Include="EKSTests.fs" />
         <Compile Include="HttpApiTests.fs" />
         <Compile Include="ServerlessWebStackTests.fs" />
         <Compile Include="SnapshotTests/S3SnapshotTests.fs" />

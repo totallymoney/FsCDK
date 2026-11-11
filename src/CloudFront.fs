@@ -341,8 +341,11 @@ type DistributionBuilder(name: string) =
     /// Convenience: default HTTP(S) origin behavior (e.g., ALB/API) with common defaults.
     /// Defaults:
     /// - ViewerProtocolPolicy = REDIRECT_TO_HTTPS
-    /// - CachePolicy = CachePolicy.CACHING_OPTIMIZED (override for dynamic APIs)
-    /// - OriginRequestPolicy = OriginRequestPolicy.ALL_VIEWER
+    /// - CachePolicy = CachePolicy.CACHING_DISABLED. ALL_VIEWER forwards Authorization, cookies and
+    ///   query strings without putting them in the cache key, so a caching policy would serve one
+    ///   viewer's response to another. Pass a cache policy that keys on what the response varies by.
+    /// - OriginRequestPolicy = OriginRequestPolicy.ALL_VIEWER (API Gateway and Lambda URL origins
+    ///   reject the viewer's Host header: pass ALL_VIEWER_EXCEPT_HOST_HEADER for those)
     /// - Compress = true
     /// </summary>
     [<CustomOperation("httpDefaultBehavior")>]
@@ -370,7 +373,7 @@ type DistributionBuilder(name: string) =
         let behavior = BehaviorOptions()
         behavior.Origin <- origin
         behavior.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
-        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_OPTIMIZED
+        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_DISABLED
         behavior.OriginRequestPolicy <- defaultArg originRequestPolicy OriginRequestPolicy.ALL_VIEWER
 
         responseHeadersPolicy
@@ -456,7 +459,7 @@ type DistributionBuilder(name: string) =
         let behavior = BehaviorOptions()
         behavior.Origin <- origin
         behavior.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
-        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_OPTIMIZED
+        behavior.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_DISABLED
         behavior.OriginRequestPolicy <- defaultArg originRequestPolicy OriginRequestPolicy.ALL_VIEWER
 
         responseHeadersPolicy
@@ -749,7 +752,7 @@ module CloudFrontBehaviors =
         let b = BehaviorOptions()
         b.Origin <- origin
         b.ViewerProtocolPolicy <- defaultArg viewerProtocolPolicy ViewerProtocolPolicy.REDIRECT_TO_HTTPS
-        b.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_OPTIMIZED
+        b.CachePolicy <- defaultArg cachePolicy CachePolicy.CACHING_DISABLED
         b.OriginRequestPolicy <- defaultArg originRequestPolicy OriginRequestPolicy.ALL_VIEWER
         responseHeadersPolicy |> Option.iter (fun p -> b.ResponseHeadersPolicy <- p)
         allowedMethods |> Option.iter (fun m -> b.AllowedMethods <- m)
